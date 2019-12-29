@@ -1,0 +1,35 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build",
+            "type": "shell",
+            "command": "zig build",
+            "problemMatcher": "$gcc",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Build_Test",
+            "type": "shell",
+            "command": "zig test tests/tests.zig --output-dir zig-cache/tests --pkg-begin zigimg zigimg.zig --pkg-end --library c",
+            "problemMatcher": "$gcc"
+        },
+        {
+            "label": "Run tests",
+            "type": "shell",
+            "command": "zig build test",
+            "problemMatcher": "$gcc"
+        },
+        {
+            "label": "Format current file",
+            "type": "shell",
+            "command": "zig fmt ${file}",
+            "problemMatcher": []
+        }
+    ]
+}
