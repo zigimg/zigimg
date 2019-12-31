@@ -1,5 +1,5 @@
-const bmp_test = @import("bmp_test.zig");
-
 test "zigimg test suite" {
-    _ = bmp_test;
+    _ = @import("bmp_test.zig");
+    _ = @import("color_test.zig");
+    _ = @import("octree_quantizer_test.zig");
 }
