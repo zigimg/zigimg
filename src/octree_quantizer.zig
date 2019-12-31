@@ -80,7 +80,7 @@ pub const OctTreeQuantizer = struct {
                 break;
             }
             if (node.isLeaf()) {
-                palette[paletteIndex] = Color.initRGB(@intCast(u8, node.red & 0xFF), @intCast(u8, node.green & 0xFF), @intCast(u8, node.blue & 0xFF));
+                palette[paletteIndex] = node.getColor();
                 node.paletteIndex = paletteIndex;
                 paletteIndex += 1;
             }
@@ -120,6 +120,10 @@ const OctTreeQuantizerNode = struct {
 
     pub fn isLeaf(self: Self) bool {
         return self.referenceCount > 0;
+    }
+
+    pub fn getColor(self: Self) Color {
+        return Color.initRGB(@intCast(u8, self.red / self.referenceCount), @intCast(u8, self.green / self.referenceCount), @intCast(u8, self.blue / self.referenceCount));
     }
 
     pub fn addColor(self: *Self, color: Color, level: i32, parent: *OctTreeQuantizer) anyerror!void {
@@ -189,7 +193,7 @@ const OctTreeQuantizerNode = struct {
                 self.red += child.red;
                 self.green += child.green;
                 self.blue += child.blue;
-                self.referenceCount += 1;
+                self.referenceCount += child.referenceCount;
                 result += 1;
                 self.children[i] = null;
             }

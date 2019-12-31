@@ -26,6 +26,10 @@ test "Build the oct tree with 3 colors" {
     expectEq(try quantizer.getPaletteIndex(red), 2);
     expectEq(try quantizer.getPaletteIndex(green), 1);
     expectEq(try quantizer.getPaletteIndex(blue), 0);
+
+    expectEq(palette[0].B, 0xFF);
+    expectEq(palette[1].G, 0xFF);
+    expectEq(palette[2].R, 0xFF);
 }
 
 test "Build a oct tree with 32-bit RGBA bitmap" {
@@ -47,8 +51,18 @@ test "Build a oct tree with 32-bit RGBA bitmap" {
     expectEq(palette.len, 255);
 
     var paletteIndex = try quantizer.getPaletteIndex(color.Color.initRGBA(110, 0, 0, 255));
+    var palette93 = palette[93];
     expectEq(paletteIndex, 93);
+    expectEq(palette[93].R, 110);
+    expectEq(palette[93].G, 2);
+    expectEq(palette[93].B, 2);
+    expectEq(palette[93].A, 255);
 
     var secondPaletteIndex = try quantizer.getPaletteIndex(color.Color.initRGBA(0, 0, 119, 255));
+    var palette53 = palette[53];
     expectEq(secondPaletteIndex, 53);
+    expectEq(palette[53].R, 0);
+    expectEq(palette[53].G, 0);
+    expectEq(palette[53].B, 117);
+    expectEq(palette[53].A, 255);
 }
