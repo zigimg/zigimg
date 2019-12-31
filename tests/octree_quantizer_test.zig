@@ -45,4 +45,10 @@ test "Build a oct tree with 32-bit RGBA bitmap" {
     var paletteStorage: [256]color.Color = undefined;
     var palette = try quantizer.makePalette(255, paletteStorage[0..]);
     expectEq(palette.len, 255);
+
+    var paletteIndex = try quantizer.getPaletteIndex(color.Color.initRGBA(110, 0, 0, 255));
+    expectEq(paletteIndex, 93);
+
+    var secondPaletteIndex = try quantizer.getPaletteIndex(color.Color.initRGBA(0, 0, 119, 255));
+    expectEq(secondPaletteIndex, 53);
 }

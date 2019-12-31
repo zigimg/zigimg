@@ -72,7 +72,10 @@ pub const OctTreeQuantizer = struct {
             try self.levels[level].resize(0);
         }
 
-        for (rootLeafNodes.toSlice()) |node| {
+        var processedRoofLeafNodes = try self.rootNode.getLeafNodes(self.arenaAllocator.child_allocator);
+        defer processedRoofLeafNodes.deinit();
+
+        for (processedRoofLeafNodes.toSlice()) |node| {
             if (paletteIndex >= colorCount) {
                 break;
             }
@@ -141,17 +144,17 @@ const OctTreeQuantizerNode = struct {
         }
     }
 
-    pub fn getPaletteIndex(self: Self, color: Color, level: i32) !usize {
+    pub fn getPaletteIndex(self: Self, color: Color, level: i32) anyerror!usize {
         if (self.isLeaf()) {
             return self.paletteIndex;
         }
         const index = getColorIndex(color, level);
         if (self.children[index]) |child| {
-            return child.getPaletteIndex(color, level + 1);
+            return try child.getPaletteIndex(color, level + 1);
         } else {
             for (self.children) |childOptional| {
                 if (childOptional) |child| {
-                    return child.getPaletteIndex(color, level + 1);
+                    return try child.getPaletteIndex(color, level + 1);
                 }
             }
         }
