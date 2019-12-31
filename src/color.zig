@@ -25,16 +25,16 @@ pub const Color = struct {
     }
 
     pub fn premultipliedAlpha(self: Self) Self {
-        var floatR:f32 = @intToFloat(f32, self.R) / 255.0;
-        var floatG:f32 = @intToFloat(f32, self.G) / 255.0;
-        var floatB:f32 = @intToFloat(f32, self.B) / 255.0;
-        var floatA:f32 = @intToFloat(f32, self.A) / 255.0;
+        var floatR: f32 = @intToFloat(f32, self.R) / 255.0;
+        var floatG: f32 = @intToFloat(f32, self.G) / 255.0;
+        var floatB: f32 = @intToFloat(f32, self.B) / 255.0;
+        var floatA: f32 = @intToFloat(f32, self.A) / 255.0;
 
-        return Self {
+        return Self{
             .R = @floatToInt(u8, (floatR * floatA) * 0xFF),
             .G = @floatToInt(u8, (floatG * floatA) * 0xFF),
             .B = @floatToInt(u8, (floatB * floatA) * 0xFF),
-            .A = self.A
+            .A = self.A,
         };
     }
 };

@@ -13,13 +13,13 @@ var heap_allocator = &heapAlloc.allocator;
 test "Build the oct tree with 3 colors" {
     var quantizer = OctTreeQuantizer.init(heap_allocator);
     defer quantizer.deinit();
-    const red = color.Color.initRGB(0xFF, 0, 0 );
+    const red = color.Color.initRGB(0xFF, 0, 0);
     const green = color.Color.initRGB(0, 0xFF, 0);
     const blue = color.Color.initRGB(0, 0, 0xFF);
     try quantizer.addColor(red);
     try quantizer.addColor(green);
     try quantizer.addColor(blue);
-    var paletteStorage:[256] color.Color = undefined;
+    var paletteStorage: [256]color.Color = undefined;
     var palette = try quantizer.makePalette(256, paletteStorage[0..]);
     expectEq(palette.len, 3);
 
@@ -42,7 +42,7 @@ test "Build a oct tree with 32-bit RGBA bitmap" {
         }
     }
 
-    var paletteStorage:[256] color.Color = undefined;
+    var paletteStorage: [256]color.Color = undefined;
     var palette = try quantizer.makePalette(255, paletteStorage[0..]);
     expectEq(palette.len, 255);
 }

@@ -7,7 +7,7 @@ const MaxDepth = 8;
 
 pub const OctTreeQuantizer = struct {
     rootNode: OctTreeQuantizerNode,
-    levels: [MaxDepth] NodeArrayList,
+    levels: [MaxDepth]NodeArrayList,
     arenaAllocator: ArenaAllocator,
 
     const NodeArrayList = ArrayList(*OctTreeQuantizerNode);
@@ -15,11 +15,11 @@ pub const OctTreeQuantizer = struct {
 
     pub fn init(allocator: *Allocator) Self {
         var result = Self{
-            .rootNode = OctTreeQuantizerNode {},
+            .rootNode = OctTreeQuantizerNode{},
             .arenaAllocator = ArenaAllocator.init(allocator),
             .levels = undefined,
         };
-        var i:usize = 0;
+        var i: usize = 0;
         while (i < result.levels.len) : (i += 1) {
             result.levels[i] = NodeArrayList.init(allocator);
         }
@@ -29,7 +29,7 @@ pub const OctTreeQuantizer = struct {
 
     pub fn deinit(self: *Self) void {
         self.arenaAllocator.deinit();
-        var i:usize = 0;
+        var i: usize = 0;
         while (i < self.levels.len) : (i += 1) {
             self.levels[i].deinit();
         }
@@ -38,29 +38,29 @@ pub const OctTreeQuantizer = struct {
     pub fn allocateNode(self: *Self) !*OctTreeQuantizerNode {
         return try self.arenaAllocator.allocator.create(OctTreeQuantizerNode);
     }
- 
+
     pub fn addLevelNode(self: *Self, level: i32, node: *OctTreeQuantizerNode) !void {
         try self.levels[@intCast(usize, level)].append(node);
     }
 
     pub fn addColor(self: *Self, color: Color) !void {
-       try self.rootNode.addColor(color, 0, self);
+        try self.rootNode.addColor(color, 0, self);
     }
 
     pub fn getPaletteIndex(self: Self, color: Color) !usize {
         return try self.rootNode.getPaletteIndex(color, 0);
     }
 
-    pub fn makePalette(self: *Self, colorCount: usize, palette: [] Color) anyerror![]Color {
-        var paletteIndex:usize = 0;
+    pub fn makePalette(self: *Self, colorCount: usize, palette: []Color) anyerror![]Color {
+        var paletteIndex: usize = 0;
 
         var rootLeafNodes = try self.rootNode.getLeafNodes(self.arenaAllocator.child_allocator);
         defer rootLeafNodes.deinit();
         var leafCount = rootLeafNodes.len;
 
-        var level:usize = MaxDepth - 1;
+        var level: usize = MaxDepth - 1;
         while (level >= 0) : (level -= 1) {
-            for(self.levels[level].toSlice()) |node| {
+            for (self.levels[level].toSlice()) |node| {
                 leafCount -= @intCast(usize, node.removeLeaves());
                 if (leafCount <= colorCount) {
                     break;
@@ -93,7 +93,7 @@ const OctTreeQuantizerNode = struct {
     blue: u32 = 0,
     referenceCount: usize = 0,
     paletteIndex: usize = 0,
-    children: [8] ?*Self = undefined,
+    children: [8]?*Self = undefined,
 
     const Self = @This();
     const NodeArrayList = ArrayList(*Self);
@@ -105,7 +105,7 @@ const OctTreeQuantizerNode = struct {
         self.referenceCount = 0;
         self.paletteIndex = 0;
 
-        var i:usize = 0;
+        var i: usize = 0;
         while (i < self.children.len) : (i += 1) {
             self.children[i] = null;
         }
@@ -163,24 +163,24 @@ const OctTreeQuantizerNode = struct {
         var leafNodes = NodeArrayList.init(allocator);
 
         for (self.children) |childOptional| {
-              if (childOptional) |child| {
-                  if (child.isLeaf()) {
-                      try leafNodes.append(child);
-                  } else {
-                      var childNodes = try child.getLeafNodes(allocator);
-                      defer childNodes.deinit();
-                      for (childNodes.toSlice()) |childNode| {
-                          try leafNodes.append(childNode);
-                      }
-                  }
-              }
+            if (childOptional) |child| {
+                if (child.isLeaf()) {
+                    try leafNodes.append(child);
+                } else {
+                    var childNodes = try child.getLeafNodes(allocator);
+                    defer childNodes.deinit();
+                    for (childNodes.toSlice()) |childNode| {
+                        try leafNodes.append(childNode);
+                    }
+                }
+            }
         }
 
         return leafNodes;
     }
 
     pub fn removeLeaves(self: *Self) i32 {
-        var result:i32 = 0;
+        var result: i32 = 0;
         for (self.children) |childOptional, i| {
             if (childOptional) |child| {
                 self.red += child.red;
@@ -195,7 +195,7 @@ const OctTreeQuantizerNode = struct {
     }
 
     inline fn getColorIndex(color: Color, level: i32) usize {
-        var index:usize = 0;
+        var index: usize = 0;
         var mask = @intCast(u8, 0b10000000) >> @intCast(u3, level);
         if (color.R & mask != 0) {
             index |= 0b100;
@@ -209,4 +209,3 @@ const OctTreeQuantizerNode = struct {
         return index;
     }
 };
-
