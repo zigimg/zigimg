@@ -1,13 +1,20 @@
-const Allocator = @import("std").mem.Allocator;
-const color = @import("color.zig");
-const File = @import("std").fs.File;
-const errors = @import("errors.zig");
-const fs = @import("std").fs;
-const io = @import("std").io;
-const mem = @import("std").mem;
-const path = @import("std").fs.path;
-usingnamespace @import("utils.zig");
-usingnamespace @import("pixel_format.zig");
+const Allocator = std.mem.Allocator;
+const File = std.fs.File;
+const FormatInterface = @import("../format_interface.zig").FormatInterface;
+const ImageFormat = image.ImageFormat;
+const ImageInStream = image.ImageInStream;
+const ImageInfo = image.ImageInfo;
+const ImageSeekStream = image.ImageSeekStream;
+const PixelFormat = @import("../pixel_format.zig").PixelFormat;
+const color = @import("../color.zig");
+const errors = @import("../errors.zig");
+const fs = std.fs;
+const image = @import("../image.zig");
+const io = std.io;
+const mem = std.mem;
+const path = std.fs.path;
+const std = @import("std");
+usingnamespace @import("../utils.zig");
 
 const BitmapMagicHeader = [_]u8{ 'B', 'M' };
 
@@ -135,60 +142,53 @@ pub const BitmapInfoHeader = union(enum) {
 };
 
 pub const Bitmap = struct {
-    fileHeader: BitmapFileHeader,
-    infoHeader: BitmapInfoHeader,
-    pixels: ?[]color.Color,
-    allocator: *Allocator,
+    fileHeader: BitmapFileHeader = undefined,
+    infoHeader: BitmapInfoHeader = undefined,
+    pixel_format: PixelFormat = undefined,
 
-    const BitmapInStream = io.InStream(anyerror);
-    const BitmapSeekStream = io.SeekableStream(anyerror, anyerror);
+    const Self = @This();
 
-    pub fn init(allocator: *Allocator) Bitmap {
-        return Bitmap{
-            .fileHeader = undefined,
-            .infoHeader = undefined,
-            .pixels = null,
-            .allocator = allocator,
+    pub fn formatInterface() FormatInterface {
+        return FormatInterface{
+            .format = @ptrCast(FormatInterface.FormatFn, format),
+            .formatDetect = @ptrCast(FormatInterface.FormatDetectFn, formatDetect),
+            .readForImage = @ptrCast(FormatInterface.ReadForImageFn, readForImage),
         };
     }
 
-    pub fn deinit(self: *Bitmap) void {
-        if (self.pixels) |pixels| {
-            self.allocator.free(pixels);
-            self.pixels = null;
+    pub fn format() ImageFormat {
+        return ImageFormat.Bmp;
+    }
+
+    pub fn formatDetect(inStream: *ImageInStream, seekStream: *ImageSeekStream) !bool {
+        var magicNumberBuffer: [2]u8 = undefined;
+        _ = try inStream.read(magicNumberBuffer[0..]);
+        if (std.mem.eql(u8, magicNumberBuffer[0..], BitmapMagicHeader[0..])) {
+            return true;
         }
+
+        return false;
     }
 
-    //TODO: maybe uniformize I/O once we support one that more file format
-    pub fn fromFile(allocator: *Allocator, filePath: []const u8) !Bitmap {
-        var result = init(allocator);
+    pub fn readForImage(allocator: *Allocator, inStream: *ImageInStream, seekStream: *ImageSeekStream) !ImageInfo {
+        var bmp = Self{};
+        var imageInfo = ImageInfo{};
 
-        var absolutePath = try path.resolve(allocator, &[_][]const u8{filePath});
-        defer allocator.free(absolutePath);
-
-        var file = try fs.openFileAbsolute(absolutePath, File.OpenFlags{});
-        defer file.close();
-
-        var fileInStream = file.inStream();
-        var fileSeekStream = file.seekableStream();
-        // TODO: Replace with something better when available
-        try internalRead(@ptrCast(*BitmapInStream, &fileInStream.stream), @ptrCast(*BitmapSeekStream, &fileSeekStream.stream), &result);
-
-        return result;
+        imageInfo.pixels = try bmp.read(allocator, inStream, seekStream);
+        imageInfo.width = @intCast(usize, bmp.width());
+        imageInfo.height = @intCast(usize, bmp.height());
+        imageInfo.pixel_format = bmp.pixel_format;
+        return imageInfo;
     }
 
-    pub fn fromMemory(allocator: *Allocator, buffer: []const u8) !Bitmap {
-        var result = init(allocator);
-
-        var memoryInStream = io.SliceSeekableInStream.init(buffer);
-        // TODO: Replace with something better when available
-        try internalRead(@ptrCast(*BitmapInStream, &memoryInStream.stream), @ptrCast(*BitmapSeekStream, &memoryInStream.seekable_stream), &result);
-
-        return result;
+    pub fn read(self: *Self, allocator: *Allocator, inStream: *ImageInStream, seekStream: *ImageSeekStream) !color.ColorStorage {
+        var pixels: color.ColorStorage = undefined;
+        try self.internalRead(allocator, inStream, seekStream, &pixels);
+        return pixels;
     }
 
-    pub fn width(self: *Bitmap) i32 {
-        return switch(self.infoHeader) {
+    pub fn width(self: Self) i32 {
+        return switch (self.infoHeader) {
             .Windows31 => |win31| {
                 return win31.width;
             },
@@ -197,12 +197,12 @@ pub const Bitmap = struct {
             },
             .V5 => |v5Header| {
                 return v5Header.width;
-            }
+            },
         };
     }
 
-    pub fn height(self: *Bitmap) i32 {
-         return switch(self.infoHeader) {
+    pub fn height(self: Self) i32 {
+        return switch (self.infoHeader) {
             .Windows31 => |win31| {
                 return win31.height;
             },
@@ -211,18 +211,14 @@ pub const Bitmap = struct {
             },
             .V5 => |v5Header| {
                 return v5Header.height;
-            }
+            },
         };
     }
 
-    pub fn allocPixels(self: *Bitmap, size: usize) !void {
-        self.pixels = try self.allocator.alloc(color.Color, size);
-    }
-
-    fn internalRead(inStream: *BitmapInStream, seekStream: *BitmapSeekStream, bitmap: *Bitmap) !void {
+    fn internalRead(self: *Self, allocator: *Allocator, inStream: *ImageInStream, seekStream: *ImageSeekStream, pixels: *color.ColorStorage) !void {
         // Read file header
-        bitmap.fileHeader = try readStructLittle(inStream, BitmapFileHeader);
-        if (!mem.eql(u8, bitmap.fileHeader.magicHeader[0..], BitmapMagicHeader[0..])) {
+        self.fileHeader = try readStructLittle(inStream, BitmapFileHeader);
+        if (!mem.eql(u8, self.fileHeader.magicHeader[0..], BitmapMagicHeader[0..])) {
             return errors.ImageError.InvalidMagicHeader;
         }
 
@@ -232,7 +228,7 @@ pub const Bitmap = struct {
         try seekStream.seekTo(currentHeaderPos);
 
         // Read info header
-        bitmap.infoHeader = switch (headerSize) {
+        self.infoHeader = switch (headerSize) {
             BitmapInfoHeaderWindows31.HeaderSize => BitmapInfoHeader{ .Windows31 = try readStructLittle(inStream, BitmapInfoHeaderWindows31) },
             BitmapInfoHeaderV4.HeaderSize => BitmapInfoHeader{ .V4 = try readStructLittle(inStream, BitmapInfoHeaderV4) },
             BitmapInfoHeaderV5.HeaderSize => BitmapInfoHeader{ .V5 = try readStructLittle(inStream, BitmapInfoHeaderV5) },
@@ -240,20 +236,24 @@ pub const Bitmap = struct {
         };
 
         // Read pixel data
-        _ = switch (bitmap.infoHeader) {
+        _ = switch (self.infoHeader) {
             .V4 => |v4Header| {
                 const pixelWidth = v4Header.width;
                 const pixelHeight = v4Header.height;
-                const pixelFormat = try getPixelFormat(v4Header.bitCount, v4Header.compressionMethod);
+                self.pixel_format = try getPixelFormat(v4Header.bitCount, v4Header.compressionMethod);
 
-                try readPixels(inStream, bitmap, pixelWidth, pixelHeight, pixelFormat);
+                pixels.* = try color.ColorStorage.init(allocator, self.pixel_format, @intCast(usize, pixelWidth * pixelHeight));
+
+                try readPixels(inStream, pixelWidth, pixelHeight, self.pixel_format, pixels);
             },
             .V5 => |v5Header| {
                 const pixelWidth = v5Header.width;
                 const pixelHeight = v5Header.height;
-                const pixelFormat = try getPixelFormat(v5Header.bitCount, v5Header.compressionMethod);
+                self.pixel_format = try getPixelFormat(v5Header.bitCount, v5Header.compressionMethod);
 
-                try readPixels(inStream, bitmap, pixelWidth, pixelHeight, pixelFormat);
+                pixels.* = try color.ColorStorage.init(allocator, self.pixel_format, @intCast(usize, pixelWidth * pixelHeight));
+
+                try readPixels(inStream, pixelWidth, pixelHeight, self.pixel_format, pixels);
             },
             else => return errors.ImageError.UnsupportedBitmapType,
         };
@@ -269,55 +269,32 @@ pub const Bitmap = struct {
         }
     }
 
-    fn readPixels(inStream: *BitmapInStream, bitmap: *Bitmap, pixelWidth: i32, pixelHeight: i32, pixelFormat: PixelFormat) !void {
-        _ = switch (pixelFormat) {
+    fn readPixels(inStream: *ImageInStream, pixelWidth: i32, pixelHeight: i32, pixelFormat: PixelFormat, pixels: *color.ColorStorage) !void {
+        return switch (pixelFormat) {
             PixelFormat.Rgb24 => {
-                const pixelCount = pixelWidth * pixelHeight;
-                try bitmap.allocPixels(@intCast(usize, pixelCount));
-
-                var colorBuffer: color.Rgb24 = undefined;
-
-                if (bitmap.pixels) |pixels| {
-                    var x: i32 = 0;
-                    var y: i32 = pixelHeight - 1;
-                    while (y >= 0) : (y -= 1) {
-                        const scanline: i32 = y * pixelWidth;
-
-                        x = 0;
-                        while (x < pixelWidth) : (x += 1) {
-                            colorBuffer = try readStructLittle(inStream, color.Rgb24);
-                            pixels[@intCast(usize, scanline + x)] = colorBuffer.toColor();
-                        }
-                    }
-                } else {
-                    return errors.ImageError.AllocationFailed;
-                }
+                return readPixelsInternal(pixels.Rgb24, inStream, pixelWidth, pixelHeight);
             },
             PixelFormat.Argb32 => {
-                const pixelCount = pixelWidth * pixelHeight;
-                try bitmap.allocPixels(@intCast(usize, pixelCount));
-
-                var colorBuffer: color.Argb32 = undefined;
-
-                if (bitmap.pixels) |pixels| {
-                    var x: i32 = 0;
-                    var y: i32 = pixelHeight - 1;
-                    while (y >= 0) : (y -= 1) {
-                        const scanline = y * pixelWidth;
-
-                        x = 0;
-                        while (x < pixelWidth) : (x += 1) {
-                            colorBuffer = try readStructLittle(inStream, color.Argb32);
-                            pixels[@intCast(usize, scanline + x)] = colorBuffer.toColor();
-                        }
-                    }
-                } else {
-                    return errors.ImageError.AllocationFailed;
-                }
+                return readPixelsInternal(pixels.Argb32, inStream, pixelWidth, pixelHeight);
             },
             else => {
                 return errors.ImageError.UnsupportedPixelFormat;
             },
         };
+    }
+
+    fn readPixelsInternal(pixels: var, inStream: *ImageInStream, pixelWidth: i32, pixelHeight: i32) !void {
+        const ColorBufferType = @typeInfo(@TypeOf(pixels)).Pointer.child;
+
+        var x: i32 = 0;
+        var y: i32 = pixelHeight - 1;
+        while (y >= 0) : (y -= 1) {
+            const scanline = y * pixelWidth;
+
+            x = 0;
+            while (x < pixelWidth) : (x += 1) {
+                pixels[@intCast(usize, scanline + x)] = try readStructLittle(inStream, ColorBufferType);
+            }
+        }
     }
 };

@@ -1,17 +1,16 @@
-const ArrayList = @import("std").ArrayList;
-const HeapAllocator = @import("std").heap.HeapAllocator;
-const OctTreeQuantizer = @import("zigimg").octree_quantizer.OctTreeQuantizer;
-const assert = @import("std").debug.assert;
-const bmp = @import("zigimg").bmp;
-const color = @import("zigimg").color;
-const testing = @import("std").testing;
+const ArrayList = std.ArrayList;
+const HeapAllocator = std.heap.HeapAllocator;
+const Image = zigimg.Image;
+const OctTreeQuantizer = zigimg.OctTreeQuantizer;
+const assert = std.debug.assert;
+const color = zigimg.color;
+const std = @import("std");
+const testing = std.testing;
+const zigimg = @import("zigimg");
 usingnamespace @import("helpers.zig");
 
-var heapAlloc = HeapAllocator.init();
-var heap_allocator = &heapAlloc.allocator;
-
 test "Build the oct tree with 3 colors" {
-    var quantizer = OctTreeQuantizer.init(heap_allocator);
+    var quantizer = OctTreeQuantizer.init(testing.allocator);
     defer quantizer.deinit();
     const red = color.Color.initRGB(0xFF, 0, 0);
     const green = color.Color.initRGB(0, 0xFF, 0);
@@ -34,15 +33,16 @@ test "Build the oct tree with 3 colors" {
 
 test "Build a oct tree with 32-bit RGBA bitmap" {
     const MemoryRGBABitmap = @embedFile("fixtures/bmp/windows_rgba_v5.bmp");
-    var theBitmap = try bmp.Bitmap.fromMemory(heap_allocator, MemoryRGBABitmap);
-    defer theBitmap.deinit();
+    var image = try Image.fromMemory(testing.allocator, MemoryRGBABitmap);
+    defer image.deinit();
 
-    var quantizer = OctTreeQuantizer.init(heap_allocator);
+    var quantizer = OctTreeQuantizer.init(testing.allocator);
     defer quantizer.deinit();
 
-    if (theBitmap.pixels) |pixelData| {
-        for (pixelData) |pixel| {
-            try quantizer.addColor(pixel.premultipliedAlpha());
+    if (image.pixels) |pixelData| {
+        // TODO: Use generic color iterator from Image
+        for (pixelData.Argb32) |pixel| {
+            try quantizer.addColor(pixel.toColor().premultipliedAlpha());
         }
     }
 
@@ -51,7 +51,6 @@ test "Build a oct tree with 32-bit RGBA bitmap" {
     expectEq(palette.len, 255);
 
     var paletteIndex = try quantizer.getPaletteIndex(color.Color.initRGBA(110, 0, 0, 255));
-    var palette93 = palette[93];
     expectEq(paletteIndex, 93);
     expectEq(palette[93].R, 110);
     expectEq(palette[93].G, 2);
@@ -59,7 +58,6 @@ test "Build a oct tree with 32-bit RGBA bitmap" {
     expectEq(palette[93].A, 255);
 
     var secondPaletteIndex = try quantizer.getPaletteIndex(color.Color.initRGBA(0, 0, 119, 255));
-    var palette53 = palette[53];
     expectEq(secondPaletteIndex, 53);
     expectEq(palette[53].R, 0);
     expectEq(palette[53].G, 0);

@@ -9,6 +9,7 @@
             "type": "cppvsdbg",
             "request": "launch",
             "program": "zig-cache/tests/test.exe",
+            "preLaunchTask": "Build_Test",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

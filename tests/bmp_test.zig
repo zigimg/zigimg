@@ -1,18 +1,18 @@
-const bmp = @import("zigimg").bmp;
-const HeapAllocator = @import("std").heap.HeapAllocator;
-const assert = @import("std").debug.assert;
-const testing = @import("std").testing;
-const color = @import("zigimg").color;
-const errors = @import("zigimg").errors;
+const ImageInStream = zigimg.ImageInStream;
+const ImageSeekStream = zigimg.ImageSeekStream;
+const PixelFormat = zigimg.PixelFormat;
+const assert = std.debug.assert;
+const bmp = zigimg.bmp;
+const color = zigimg.color;
+const errors = zigimg.errors;
+const std = @import("std");
+const testing = std.testing;
+const zigimg = @import("zigimg");
 usingnamespace @import("helpers.zig");
-usingnamespace @import("zigimg").pixel_format;
 
 const MemoryRGBABitmap = @embedFile("fixtures/bmp/windows_rgba_v5.bmp");
 
-var heapAlloc = HeapAllocator.init();
-var heap_allocator = &heapAlloc.allocator;
-
-fn verifyBitmapRGBAV5(theBitmap: *bmp.Bitmap) void {
+fn verifyBitmapRGBAV5(theBitmap: bmp.Bitmap, pixels: color.ColorStorage) void {
     expectEq(theBitmap.fileHeader.size, 153738);
     expectEq(theBitmap.fileHeader.reserved, 0);
     expectEq(theBitmap.fileHeader.pixelOffset, 138);
@@ -59,127 +59,132 @@ fn verifyBitmapRGBAV5(theBitmap: *bmp.Bitmap) void {
         else => unreachable,
     };
 
-    if (theBitmap.pixels) |pixels| {
-        expectEq(pixels.len, 240 * 160);
+    testing.expect(pixels == .Argb32);
 
-        const firstPixel = pixels[0];
-        expectEq(firstPixel.R, 0xFF);
-        expectEq(firstPixel.G, 0xFF);
-        expectEq(firstPixel.B, 0xFF);
-        expectEq(firstPixel.A, 0xFF);
+    expectEq(pixels.len(), 240 * 160);
 
-        const secondPixel = pixels[1];
-        expectEq(secondPixel.R, 0xFF);
-        expectEq(secondPixel.G, 0x00);
-        expectEq(secondPixel.B, 0x00);
-        expectEq(secondPixel.A, 0xFF);
+    const firstPixel = pixels.Argb32[0];
+    expectEq(firstPixel.R, 0xFF);
+    expectEq(firstPixel.G, 0xFF);
+    expectEq(firstPixel.B, 0xFF);
+    expectEq(firstPixel.A, 0xFF);
 
-        const thirdPixel = pixels[2];
-        expectEq(thirdPixel.R, 0x00);
-        expectEq(thirdPixel.G, 0xFF);
-        expectEq(thirdPixel.B, 0x00);
-        expectEq(thirdPixel.A, 0xFF);
+    const secondPixel = pixels.Argb32[1];
+    expectEq(secondPixel.R, 0xFF);
+    expectEq(secondPixel.G, 0x00);
+    expectEq(secondPixel.B, 0x00);
+    expectEq(secondPixel.A, 0xFF);
 
-        const fourthPixel = pixels[3];
-        expectEq(fourthPixel.R, 0x00);
-        expectEq(fourthPixel.G, 0x00);
-        expectEq(fourthPixel.B, 0xFF);
-        expectEq(fourthPixel.A, 0xFF);
+    const thirdPixel = pixels.Argb32[2];
+    expectEq(thirdPixel.R, 0x00);
+    expectEq(thirdPixel.G, 0xFF);
+    expectEq(thirdPixel.B, 0x00);
+    expectEq(thirdPixel.A, 0xFF);
 
-        const coloredPixel = pixels[(22 * 240) + 16];
-        expectEq(coloredPixel.R, 195);
-        expectEq(coloredPixel.G, 195);
-        expectEq(coloredPixel.B, 255);
-        expectEq(coloredPixel.A, 255);
-    } else {
-        assert(false);
-    }
-}
+    const fourthPixel = pixels.Argb32[3];
+    expectEq(fourthPixel.R, 0x00);
+    expectEq(fourthPixel.G, 0x00);
+    expectEq(fourthPixel.B, 0xFF);
+    expectEq(fourthPixel.A, 0xFF);
 
-test "Init and deinit bitmap should work" {
-    var theBitmap = bmp.Bitmap.init(heap_allocator);
-    try theBitmap.allocPixels(32);
-    theBitmap.deinit();
-    expectEq(theBitmap.pixels, null);
+    const coloredPixel = pixels.Argb32[(22 * 240) + 16];
+    expectEq(coloredPixel.R, 195);
+    expectEq(coloredPixel.G, 195);
+    expectEq(coloredPixel.B, 255);
+    expectEq(coloredPixel.A, 255);
 }
 
 test "Read simple version 4 24-bit RGB bitmap" {
-    var theBitmap = try bmp.Bitmap.fromFile(heap_allocator, "tests/fixtures/bmp/simple_v4.bmp");
+    const file = try testOpenFile(testing.allocator, "tests/fixtures/bmp/simple_v4.bmp");
+    defer file.close();
+
+    var fileInStream = file.inStream();
+    var fileSeekStream = file.seekableStream();
+
+    var theBitmap = bmp.Bitmap{};
+    const pixels = try theBitmap.read(testing.allocator, @ptrCast(*ImageInStream, &fileInStream.stream), @ptrCast(*ImageSeekStream, &fileSeekStream.stream));
+    defer pixels.deinit(testing.allocator);
+
     expectEq(theBitmap.width(), 8);
     expectEq(theBitmap.height(), 1);
 
-    defer theBitmap.deinit();
-    if (theBitmap.pixels) |pixels| {
-        const red = pixels[0];
-        expectEq(red.R, 0xFF);
-        expectEq(red.G, 0x00);
-        expectEq(red.B, 0x00);
-        expectEq(red.A, 0xFF);
+    testing.expect(pixels == .Rgb24);
 
-        const green = pixels[1];
-        expectEq(green.R, 0x00);
-        expectEq(green.G, 0xFF);
-        expectEq(green.B, 0x00);
-        expectEq(green.A, 0xFF);
+    const red = pixels.Rgb24[0];
+    expectEq(red.R, 0xFF);
+    expectEq(red.G, 0x00);
+    expectEq(red.B, 0x00);
 
-        const blue = pixels[2];
-        expectEq(blue.R, 0x00);
-        expectEq(blue.G, 0x00);
-        expectEq(blue.B, 0xFF);
-        expectEq(blue.A, 0xFF);
+    const green = pixels.Rgb24[1];
+    expectEq(green.R, 0x00);
+    expectEq(green.G, 0xFF);
+    expectEq(green.B, 0x00);
 
-        const cyan = pixels[3];
-        expectEq(cyan.R, 0x00);
-        expectEq(cyan.G, 0xFF);
-        expectEq(cyan.B, 0xFF);
-        expectEq(cyan.A, 0xFF);
+    const blue = pixels.Rgb24[2];
+    expectEq(blue.R, 0x00);
+    expectEq(blue.G, 0x00);
+    expectEq(blue.B, 0xFF);
 
-        const magenta = pixels[4];
-        expectEq(magenta.R, 0xFF);
-        expectEq(magenta.G, 0x00);
-        expectEq(magenta.B, 0xFF);
-        expectEq(magenta.A, 0xFF);
+    const cyan = pixels.Rgb24[3];
+    expectEq(cyan.R, 0x00);
+    expectEq(cyan.G, 0xFF);
+    expectEq(cyan.B, 0xFF);
 
-        const yellow = pixels[5];
-        expectEq(yellow.R, 0xFF);
-        expectEq(yellow.G, 0xFF);
-        expectEq(yellow.B, 0x00);
-        expectEq(yellow.A, 0xFF);
+    const magenta = pixels.Rgb24[4];
+    expectEq(magenta.R, 0xFF);
+    expectEq(magenta.G, 0x00);
+    expectEq(magenta.B, 0xFF);
 
-        const black = pixels[6];
-        expectEq(black.R, 0x00);
-        expectEq(black.G, 0x00);
-        expectEq(black.B, 0x00);
-        expectEq(black.A, 0xFF);
+    const yellow = pixels.Rgb24[5];
+    expectEq(yellow.R, 0xFF);
+    expectEq(yellow.G, 0xFF);
+    expectEq(yellow.B, 0x00);
 
-        const white = pixels[7];
-        expectEq(white.R, 0xFF);
-        expectEq(white.G, 0xFF);
-        expectEq(white.B, 0xFF);
-        expectEq(white.A, 0xFF);
-    } else {
-        assert(false);
-    }
+    const black = pixels.Rgb24[6];
+    expectEq(black.R, 0x00);
+    expectEq(black.G, 0x00);
+    expectEq(black.B, 0x00);
+
+    const white = pixels.Rgb24[7];
+    expectEq(white.R, 0xFF);
+    expectEq(white.G, 0xFF);
+    expectEq(white.B, 0xFF);
 }
 
 test "Read a valid version 5 RGBA bitmap from file" {
-    var theBitmap = try bmp.Bitmap.fromFile(heap_allocator, "tests/fixtures/bmp/windows_rgba_v5.bmp");
-    defer theBitmap.deinit();
-    verifyBitmapRGBAV5(&theBitmap);
+    // var theBitmap = try bmp.Bitmap.fromFile(testing.allocator, "tests/fixtures/bmp/windows_rgba_v5.bmp");
+    // verifyBitmapRGBAV5(&theBitmap);
+    const file = try testOpenFile(testing.allocator, "tests/fixtures/bmp/windows_rgba_v5.bmp");
+    defer file.close();
+
+    var fileInStream = file.inStream();
+    var fileSeekStream = file.seekableStream();
+
+    var theBitmap = bmp.Bitmap{};
+    const pixels = try theBitmap.read(testing.allocator, @ptrCast(*ImageInStream, &fileInStream.stream), @ptrCast(*ImageSeekStream, &fileSeekStream.stream));
+    defer pixels.deinit(testing.allocator);
+    verifyBitmapRGBAV5(theBitmap, pixels);
 }
 
 test "Read a valid version 5 RGBA bitmap from memory" {
-    var theBitmap = try bmp.Bitmap.fromMemory(heap_allocator, MemoryRGBABitmap);
-    defer theBitmap.deinit();
-    verifyBitmapRGBAV5(&theBitmap);
+    var memoryInStream = std.io.SliceSeekableInStream.init(MemoryRGBABitmap);
+
+    var theBitmap = bmp.Bitmap{};
+    // TODO: Replace with something better when available
+    const pixels = try theBitmap.read(testing.allocator, @ptrCast(*ImageInStream, &memoryInStream.stream), @ptrCast(*ImageSeekStream, &memoryInStream.seekable_stream));
+    defer pixels.deinit(testing.allocator);
+
+    verifyBitmapRGBAV5(theBitmap, pixels);
 }
 
 test "Should error when reading an invalid file" {
-    var invalidFile = bmp.Bitmap.fromFile(heap_allocator, "tests/fixtures/bmp/notbmp.png");
-    expectError(invalidFile, errors.ImageError.InvalidMagicHeader);
-}
+    const file = try testOpenFile(testing.allocator, "tests/fixtures/png/notbmp.png");
+    defer file.close();
 
-test "Should error on invalid path" {
-    var invalidPath = bmp.Bitmap.fromFile(heap_allocator, "notapathdummy");
-    expectError(invalidPath, error.FileNotFound);
+    var fileInStream = file.inStream();
+    var fileSeekStream = file.seekableStream();
+
+    var theBitmap = bmp.Bitmap{};
+    const invalidFile = theBitmap.read(testing.allocator, @ptrCast(*ImageInStream, &fileInStream.stream), @ptrCast(*ImageSeekStream, &fileSeekStream.stream));
+    expectError(invalidFile, errors.ImageError.InvalidMagicHeader);
 }
