@@ -189,6 +189,47 @@ test "Should detect PCX properly" {
     }
 }
 
+test "Should detect PBM properly" {
+    const imageTests = &[_][]const u8{
+        "tests/fixtures/netpbm/pbm_ascii.pbm",
+        "tests/fixtures/netpbm/pbm_binary.pbm",
+    };
+
+    for (imageTests) |image_path| {
+        const image = try Image.fromFilePath(testing.allocator, image_path);
+        defer image.deinit();
+        testing.expect(image.image_format == .Pbm);
+    }
+}
+
+test "Should detect PGM properly" {
+    const imageTests = &[_][]const u8{
+        "tests/fixtures/netpbm/pgm_ascii_grayscale8.pgm",
+        "tests/fixtures/netpbm/pgm_binary_grayscale8.pgm",
+        "tests/fixtures/netpbm/pgm_ascii_grayscale16.pgm",
+        "tests/fixtures/netpbm/pgm_binary_grayscale16.pgm",
+    };
+
+    for (imageTests) |image_path| {
+        const image = try Image.fromFilePath(testing.allocator, image_path);
+        defer image.deinit();
+        testing.expect(image.image_format == .Pgm);
+    }
+}
+
+test "Should detect PPM properly" {
+    const imageTests = &[_][]const u8{
+        "tests/fixtures/netpbm/ppm_ascii_rgb24.ppm",
+        "tests/fixtures/netpbm/ppm_binary_rgb24.ppm",
+    };
+
+    for (imageTests) |image_path| {
+        const image = try Image.fromFilePath(testing.allocator, image_path);
+        defer image.deinit();
+        testing.expect(image.image_format == .Ppm);
+    }
+}
+
 test "Should error on invalid path" {
     var invalidPath = Image.fromFilePath(testing.allocator, "notapathdummy");
     expectError(invalidPath, error.FileNotFound);
