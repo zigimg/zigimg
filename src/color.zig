@@ -211,12 +211,39 @@ fn IndexedStorage(comptime T: type) type {
     };
 }
 
+fn Grayscale(comptime T: type) type {
+    return struct {
+        value: T,
+
+        pub const MaxInt = std.math.maxInt(T);
+
+        const Self = @This();
+
+        pub fn toColor(self: Self) Color {
+            const gray = toColorInt(u8, toColorFloat(self.value, MaxInt));
+            return Color {
+                .R = gray,
+                .G = gray,
+                .B = gray,
+                .A = 0xFF,
+            };
+        }
+    };
+}
+
+pub const Monochrome = Grayscale(u1);
+pub const Grayscale8 = Grayscale(u8);
+pub const Grayscale16 = Grayscale(u16);
+
 pub const ColorStorage = union(PixelFormat) {
     Bpp1: IndexedStorage(u1),
     Bpp2: IndexedStorage(u2),
     Bpp4: IndexedStorage(u4),
     Bpp8: IndexedStorage(u8),
     Bpp16: IndexedStorage(u16),
+    Monochrome: []Monochrome,
+    Grayscale8: []Grayscale8,
+    Grayscale16: []Grayscale16,
     Rgb24: []Rgb24,
     Rgba32: []Rgba32,
     Rgb565: []Rgb565,
@@ -250,6 +277,21 @@ pub const ColorStorage = union(PixelFormat) {
             .Bpp16 => {
                 return Self{
                     .Bpp16 = try IndexedStorage(u16).init(allocator, pixel_count),
+                };
+            },
+            .Monochrome => {
+                return Self {
+                    .Monochrome = try allocator.alloc(Monochrome, pixel_count),
+                };
+            },
+            .Grayscale8 => { 
+                return Self {
+                    .Grayscale8 = try allocator.alloc(Grayscale8, pixel_count),
+                };
+            },
+            .Grayscale16 => {
+                return Self {
+                    .Grayscale16 = try allocator.alloc(Grayscale16, pixel_count),
                 };
             },
             .Rgb24 => {
@@ -287,6 +329,9 @@ pub const ColorStorage = union(PixelFormat) {
             .Bpp4 => |data| data.deinit(allocator),
             .Bpp8 => |data| data.deinit(allocator),
             .Bpp16 => |data| data.deinit(allocator),
+            .Monochrome => |data| allocator.free(data),
+            .Grayscale8 => |data| allocator.free(data),
+            .Grayscale16 => |data| allocator.free(data),
             .Rgb24 => |data| allocator.free(data),
             .Rgba32 => |data| allocator.free(data),
             .Rgb565 => |data| allocator.free(data),
@@ -302,6 +347,9 @@ pub const ColorStorage = union(PixelFormat) {
             .Bpp4 => |data| data.indices.len,
             .Bpp8 => |data| data.indices.len,
             .Bpp16 => |data| data.indices.len,
+            .Monochrome => |data| data.len,
+            .Grayscale8 => |data| data.len,
+            .Grayscale16 => |data| data.len,
             .Rgb24 => |data| data.len,
             .Rgba32 => |data| data.len,
             .Rgb565 => |data| data.len,

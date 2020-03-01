@@ -62,3 +62,41 @@ test "Convert Argb32 to Color" {
     expectEq(result.B, 150);
     expectEq(result.A, 200);
 }
+
+test "Convert Monochrome to Color" {
+    const white = color.Monochrome { .value = 1 };
+    const whiteColor = white.toColor();
+
+    expectEq(whiteColor.R, 255);
+    expectEq(whiteColor.G, 255);
+    expectEq(whiteColor.B, 255);
+    expectEq(whiteColor.A, 255);
+
+    const black = color.Monochrome { .value = 0 };
+    const blackColor = black.toColor();
+
+    expectEq(blackColor.R, 0);
+    expectEq(blackColor.G, 0);
+    expectEq(blackColor.B, 0);
+    expectEq(blackColor.A, 255);
+}
+
+test "Convert Grayscale8 to Color" {
+    const original = color.Grayscale8 { .value = 128 };
+    const result = original.toColor();
+
+    expectEq(result.R, 128);
+    expectEq(result.G, 128);
+    expectEq(result.B, 128);
+    expectEq(result.A, 255);
+}
+
+test "Convert Grayscale16 to Color" {
+    const original = color.Grayscale16 { .value = 21845 };
+    const result = original.toColor();
+
+    expectEq(result.R, 85);
+    expectEq(result.G, 85);
+    expectEq(result.B, 85);
+    expectEq(result.A, 255);
+}

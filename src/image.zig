@@ -10,9 +10,12 @@ const io = std.io;
 const std = @import("std");
 
 pub const ImageFormat = enum {
-    Raw,
     Bmp,
+    Pbm,
     Pcx,
+    Pgm,
+    Ppm,
+    Raw,
 };
 
 pub const ImageInStream = io.InStream(anyerror);
