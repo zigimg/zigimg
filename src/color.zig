@@ -221,7 +221,7 @@ fn Grayscale(comptime T: type) type {
 
         pub fn toColor(self: Self) Color {
             const gray = toColorInt(u8, toColorFloat(self.value, MaxInt));
-            return Color {
+            return Color{
                 .R = gray,
                 .G = gray,
                 .B = gray,
@@ -280,17 +280,17 @@ pub const ColorStorage = union(PixelFormat) {
                 };
             },
             .Monochrome => {
-                return Self {
+                return Self{
                     .Monochrome = try allocator.alloc(Monochrome, pixel_count),
                 };
             },
-            .Grayscale8 => { 
-                return Self {
+            .Grayscale8 => {
+                return Self{
                     .Grayscale8 = try allocator.alloc(Grayscale8, pixel_count),
                 };
             },
             .Grayscale16 => {
-                return Self {
+                return Self{
                     .Grayscale16 = try allocator.alloc(Grayscale16, pixel_count),
                 };
             },
@@ -356,5 +356,50 @@ pub const ColorStorage = union(PixelFormat) {
             .Rgb555 => |data| data.len,
             .Argb32 => |data| data.len,
         };
+    }
+};
+
+pub const ColorStorageIterator = struct {
+    pixels: *const ColorStorage = undefined,
+    currentIndex: usize = 0,
+    end: usize = 0,
+
+    const Self = @This();
+
+    pub fn init(pixels: *const ColorStorage) Self {
+        return Self{
+            .pixels = pixels,
+            .end = pixels.len(),
+        };
+    }
+
+    pub fn initNull() Self {
+        return Self{};
+    }
+
+    pub fn next(self: *Self) ?Color {
+        if (self.currentIndex >= self.end) {
+            return null;
+        }
+
+        const result: ?Color = switch (self.pixels.*) {
+            .Bpp1 => |data| data.palette[data.indices[self.currentIndex]],
+            .Bpp2 => |data| data.palette[data.indices[self.currentIndex]],
+            .Bpp4 => |data| data.palette[data.indices[self.currentIndex]],
+            .Bpp8 => |data| data.palette[data.indices[self.currentIndex]],
+            .Bpp16 => |data| data.palette[data.indices[self.currentIndex]],
+            .Monochrome => |data| data[self.currentIndex].toColor(),
+            .Grayscale8 => |data| data[self.currentIndex].toColor(),
+            .Grayscale16 => |data| data[self.currentIndex].toColor(),
+            .Rgb24 => |data| data[self.currentIndex].toColor(),
+            .Rgba32 => |data| data[self.currentIndex].toColor(),
+            .Rgb565 => |data| data[self.currentIndex].toColor(),
+            .Rgb555 => |data| data[self.currentIndex].toColor(),
+            .Argb32 => |data| data[self.currentIndex].toColor(),
+            else => null,
+        };
+
+        self.currentIndex += 1;
+        return result;
     }
 };

@@ -1,6 +1,7 @@
 const assert = @import("std").debug.assert;
 const testing = @import("std").testing;
 const Image = @import("zigimg").Image;
+const color = @import("zigimg").color;
 const PixelFormat = @import("zigimg").PixelFormat;
 usingnamespace @import("helpers.zig");
 
@@ -289,5 +290,34 @@ test "Should read a 24-bit bitmap" {
         expectEq(white.R, 0xFF);
         expectEq(white.G, 0xFF);
         expectEq(white.B, 0xFF);
+    }
+}
+
+test "Test Color iterator" {
+    var image = try Image.fromFilePath(testing.allocator, "tests/fixtures/bmp/simple_v4.bmp");
+    defer image.deinit();
+
+    const expectedColors = [_]color.Color{
+        color.Color.initRGB(0xFF, 0x00, 0x00),
+        color.Color.initRGB(0x00, 0xFF, 0x00),
+        color.Color.initRGB(0x00, 0x00, 0xFF),
+        color.Color.initRGB(0x00, 0xFF, 0xFF),
+        color.Color.initRGB(0xFF, 0x00, 0xFF),
+        color.Color.initRGB(0xFF, 0xFF, 0x00),
+        color.Color.initRGB(0x00, 0x00, 0x00),
+        color.Color.initRGB(0xFF, 0xFF, 0xFF),
+    };
+
+    expectEq(image.width, 8);
+    expectEq(image.height, 1);
+
+    var it = image.iterator();
+    var i: usize = 0;
+    while (it.next()) |actual| {
+        const expected = expectedColors[i];
+        expectEq(actual.R, expected.R);
+        expectEq(actual.G, expected.G);
+        expectEq(actual.B, expected.B);
+        i += 1;
     }
 }

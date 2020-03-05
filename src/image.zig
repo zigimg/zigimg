@@ -96,6 +96,14 @@ pub const Image = struct {
         return result;
     }
 
+    pub fn iterator(self: Self) color.ColorStorageIterator {
+        if (self.pixels) |*pixels| {
+            return color.ColorStorageIterator.init(pixels);
+        }
+
+        return color.ColorStorageIterator.initNull();
+    }
+
     fn internalRead(self: *Self, allocator: *Allocator, inStream: *ImageInStream, seekStream: *ImageSeekStream) !void {
         var formatInterface = try findImageInterface(inStream, seekStream);
         self.image_format = formatInterface.format();
