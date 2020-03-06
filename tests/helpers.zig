@@ -1,6 +1,12 @@
 const std = @import("std");
 const testing = std.testing;
 
+pub const zigimg_test_allocator = &zigimg_test_allocator_instance.allocator;
+pub var zigimg_test_allocator_instance = testing.LeakCountAllocator.init(&zigimg_base_allocator_instance.allocator);
+
+pub var zigimg_base_allocator_instance = std.heap.ThreadSafeFixedBufferAllocator.init(zigimg_allocator_mem[0..]);
+var zigimg_allocator_mem: [4 * 1024 * 1024]u8 = undefined;
+
 pub fn expectEq(actual: var, expected: var) void {
     testing.expectEqual(@as(@TypeOf(actual), expected), actual);
 }

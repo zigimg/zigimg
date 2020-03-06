@@ -170,21 +170,16 @@ pub const Bitmap = struct {
         return false;
     }
 
-    pub fn readForImage(allocator: *Allocator, inStream: *ImageInStream, seekStream: *ImageSeekStream) !ImageInfo {
+    pub fn readForImage(allocator: *Allocator, inStream: *ImageInStream, seekStream: *ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
         var bmp = Self{};
-        var imageInfo = ImageInfo{};
 
-        imageInfo.pixels = try bmp.read(allocator, inStream, seekStream);
+        try bmp.read(allocator, inStream, seekStream, pixels);
+
+        var imageInfo = ImageInfo{};
         imageInfo.width = @intCast(usize, bmp.width());
         imageInfo.height = @intCast(usize, bmp.height());
         imageInfo.pixel_format = bmp.pixel_format;
         return imageInfo;
-    }
-
-    pub fn read(self: *Self, allocator: *Allocator, inStream: *ImageInStream, seekStream: *ImageSeekStream) !color.ColorStorage {
-        var pixels: color.ColorStorage = undefined;
-        try self.internalRead(allocator, inStream, seekStream, &pixels);
-        return pixels;
     }
 
     pub fn width(self: Self) i32 {
@@ -215,7 +210,7 @@ pub const Bitmap = struct {
         };
     }
 
-    fn internalRead(self: *Self, allocator: *Allocator, inStream: *ImageInStream, seekStream: *ImageSeekStream, pixels: *color.ColorStorage) !void {
+    pub fn read(self: *Self, allocator: *Allocator, inStream: *ImageInStream, seekStream: *ImageSeekStream, pixelsOpt: *?color.ColorStorage) !void {
         // Read file header
         self.fileHeader = try readStructLittle(inStream, BitmapFileHeader);
         if (!mem.eql(u8, self.fileHeader.magicHeader[0..], BitmapMagicHeader[0..])) {
@@ -242,18 +237,22 @@ pub const Bitmap = struct {
                 const pixelHeight = v4Header.height;
                 self.pixel_format = try getPixelFormat(v4Header.bitCount, v4Header.compressionMethod);
 
-                pixels.* = try color.ColorStorage.init(allocator, self.pixel_format, @intCast(usize, pixelWidth * pixelHeight));
+                pixelsOpt.* = try color.ColorStorage.init(allocator, self.pixel_format, @intCast(usize, pixelWidth * pixelHeight));
 
-                try readPixels(inStream, pixelWidth, pixelHeight, self.pixel_format, pixels);
+                if (pixelsOpt.*) |*pixels| {
+                    try readPixels(inStream, pixelWidth, pixelHeight, self.pixel_format, pixels);
+                }
             },
             .V5 => |v5Header| {
                 const pixelWidth = v5Header.width;
                 const pixelHeight = v5Header.height;
                 self.pixel_format = try getPixelFormat(v5Header.bitCount, v5Header.compressionMethod);
 
-                pixels.* = try color.ColorStorage.init(allocator, self.pixel_format, @intCast(usize, pixelWidth * pixelHeight));
+                pixelsOpt.* = try color.ColorStorage.init(allocator, self.pixel_format, @intCast(usize, pixelWidth * pixelHeight));
 
-                try readPixels(inStream, pixelWidth, pixelHeight, self.pixel_format, pixels);
+                if (pixelsOpt.*) |*pixels| {
+                    try readPixels(inStream, pixelWidth, pixelHeight, self.pixel_format, pixels);
+                }
             },
             else => return errors.ImageError.UnsupportedBitmapType,
         };

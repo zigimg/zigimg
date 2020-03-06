@@ -9,5 +9,5 @@ pub const FormatInterface = struct {
 
     pub const FormatFn = fn () image.ImageFormat;
     pub const FormatDetectFn = fn (inStream: *image.ImageInStream, seekStream: *image.ImageSeekStream) anyerror!bool;
-    pub const ReadForImageFn = fn (allocator: *Allocator, inStream: *image.ImageInStream, seekStream: *image.ImageSeekStream) anyerror!image.ImageInfo;
+    pub const ReadForImageFn = fn (allocator: *Allocator, inStream: *image.ImageInStream, seekStream: *image.ImageSeekStream, pixels: *?color.ColorStorage) anyerror!image.ImageInfo;
 };

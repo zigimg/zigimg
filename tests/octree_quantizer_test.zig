@@ -10,15 +10,15 @@ const zigimg = @import("zigimg");
 usingnamespace @import("helpers.zig");
 
 test "Build the oct tree with 3 colors" {
-    var quantizer = OctTreeQuantizer.init(testing.allocator);
+    var quantizer = OctTreeQuantizer.init(zigimg_test_allocator);
     defer quantizer.deinit();
-    const red = color.Color.initRGB(0xFF, 0, 0);
-    const green = color.Color.initRGB(0, 0xFF, 0);
-    const blue = color.Color.initRGB(0, 0, 0xFF);
+    const red = color.IntegerColor8.initRGB(0xFF, 0, 0);
+    const green = color.IntegerColor8.initRGB(0, 0xFF, 0);
+    const blue = color.IntegerColor8.initRGB(0, 0, 0xFF);
     try quantizer.addColor(red);
     try quantizer.addColor(green);
     try quantizer.addColor(blue);
-    var paletteStorage: [256]color.Color = undefined;
+    var paletteStorage: [256]color.IntegerColor8 = undefined;
     var palette = try quantizer.makePalette(256, paletteStorage[0..]);
     expectEq(palette.len, 3);
 
@@ -33,31 +33,30 @@ test "Build the oct tree with 3 colors" {
 
 test "Build a oct tree with 32-bit RGBA bitmap" {
     const MemoryRGBABitmap = @embedFile("fixtures/bmp/windows_rgba_v5.bmp");
-    var image = try Image.fromMemory(testing.allocator, MemoryRGBABitmap);
+    var image = try Image.fromMemory(zigimg_test_allocator, MemoryRGBABitmap);
     defer image.deinit();
 
-    var quantizer = OctTreeQuantizer.init(testing.allocator);
+    var quantizer = OctTreeQuantizer.init(zigimg_test_allocator);
     defer quantizer.deinit();
 
-    if (image.pixels) |pixelData| {
-        // TODO: Use generic color iterator from Image
-        for (pixelData.Argb32) |pixel| {
-            try quantizer.addColor(pixel.toColor().premultipliedAlpha());
-        }
+    var colorIt = image.iterator();
+
+    while (colorIt.next()) |pixel| {
+        try quantizer.addColor(pixel.premultipliedAlpha().toIntegerColor8());
     }
 
-    var paletteStorage: [256]color.Color = undefined;
+    var paletteStorage: [256]color.IntegerColor8 = undefined;
     var palette = try quantizer.makePalette(255, paletteStorage[0..]);
     expectEq(palette.len, 255);
 
-    var paletteIndex = try quantizer.getPaletteIndex(color.Color.initRGBA(110, 0, 0, 255));
+    var paletteIndex = try quantizer.getPaletteIndex(color.IntegerColor8.initRGBA(110, 0, 0, 255));
     expectEq(paletteIndex, 93);
     expectEq(palette[93].R, 110);
     expectEq(palette[93].G, 2);
     expectEq(palette[93].B, 2);
     expectEq(palette[93].A, 255);
 
-    var secondPaletteIndex = try quantizer.getPaletteIndex(color.Color.initRGBA(0, 0, 119, 255));
+    var secondPaletteIndex = try quantizer.getPaletteIndex(color.IntegerColor8.initRGBA(0, 0, 119, 255));
     expectEq(secondPaletteIndex, 53);
     expectEq(palette[53].R, 0);
     expectEq(palette[53].G, 0);
