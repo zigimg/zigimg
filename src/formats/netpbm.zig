@@ -271,11 +271,12 @@ fn Netpbm(comptime imageFormat: ImageFormat, comptime headerNumbers: []const u8)
             return found;
         }
 
-        pub fn readForImage(allocator: *Allocator, inStream: *ImageInStream, seekStream: *ImageSeekStream) !ImageInfo {
+        pub fn readForImage(allocator: *Allocator, inStream: *ImageInStream, seekStream: *ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
             var netpbmFile = Self{};
 
+            try netpbmFile.read(allocator, inStream, seekStream, pixels);
+
             var imageInfo = ImageInfo{};
-            imageInfo.pixels = try netpbmFile.read(allocator, inStream, seekStream);
             imageInfo.width = netpbmFile.header.width;
             imageInfo.height = netpbmFile.header.height;
             imageInfo.pixel_format = netpbmFile.pixel_format;
@@ -283,7 +284,7 @@ fn Netpbm(comptime imageFormat: ImageFormat, comptime headerNumbers: []const u8)
             return imageInfo;
         }
 
-        pub fn read(self: *Self, allocator: *Allocator, inStream: *ImageInStream, seekStream: *ImageSeekStream) !color.ColorStorage {
+        pub fn read(self: *Self, allocator: *Allocator, inStream: *ImageInStream, seekStream: *ImageSeekStream, pixelsOpt: *?color.ColorStorage) !void {
             self.header = try parseHeader(inStream);
 
             self.pixel_format = switch (self.header.format) {
@@ -292,33 +293,33 @@ fn Netpbm(comptime imageFormat: ImageFormat, comptime headerNumbers: []const u8)
                 .Rgb => PixelFormat.Rgb24,
             };
 
-            var pixels = try color.ColorStorage.init(allocator, self.pixel_format, self.header.width * self.header.height);
+            pixelsOpt.* = try color.ColorStorage.init(allocator, self.pixel_format, self.header.width * self.header.height);
 
-            switch (self.header.format) {
-                .Bitmap => {
-                    if (self.header.binary) {
-                        try loadBinaryBitmap(self.header, pixels.Monochrome, inStream);
-                    } else {
-                        try loadAsciiBitmap(self.header, pixels.Monochrome, inStream);
-                    }
-                },
-                .Grayscale => {
-                    if (self.header.binary) {
-                        try loadBinaryGraymap(self.header, pixels.Grayscale8, inStream);
-                    } else {
-                        try loadAsciiGraymap(self.header, pixels.Grayscale8, inStream);
-                    }
-                },
-                .Rgb => {
-                    if (self.header.binary) {
-                        try loadBinaryRgbmap(self.header, pixels.Rgb24, inStream);
-                    } else {
-                        try loadAsciiRgbmap(self.header, pixels.Rgb24, inStream);
-                    }
-                },
+            if (pixelsOpt.*) |pixels| {
+                switch (self.header.format) {
+                    .Bitmap => {
+                        if (self.header.binary) {
+                            try loadBinaryBitmap(self.header, pixels.Monochrome, inStream);
+                        } else {
+                            try loadAsciiBitmap(self.header, pixels.Monochrome, inStream);
+                        }
+                    },
+                    .Grayscale => {
+                        if (self.header.binary) {
+                            try loadBinaryGraymap(self.header, pixels.Grayscale8, inStream);
+                        } else {
+                            try loadAsciiGraymap(self.header, pixels.Grayscale8, inStream);
+                        }
+                    },
+                    .Rgb => {
+                        if (self.header.binary) {
+                            try loadBinaryRgbmap(self.header, pixels.Rgb24, inStream);
+                        } else {
+                            try loadAsciiRgbmap(self.header, pixels.Rgb24, inStream);
+                        }
+                    },
+                }
             }
-
-            return pixels;
         }
     };
 }

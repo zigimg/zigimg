@@ -4,32 +4,32 @@ const Allocator = std.mem.Allocator;
 const PixelFormat = @import("pixel_format.zig").PixelFormat;
 const TypeInfo = std.builtin.TypeInfo;
 
-inline fn toColorInt(comptime T: type, value: f32) T {
+pub inline fn toColorInt(comptime T: type, value: f32) T {
     return math.max(math.minInt(T), math.min(math.maxInt(T), @floatToInt(T, math.round(value * @intToFloat(f32, math.maxInt(T))))));
 }
 
-inline fn toColorFloat(value: var, comptime maxValue: f32) f32 {
-    return @intToFloat(f32, value) / maxValue;
+pub inline fn toColorFloat(value: var) f32 {
+    return @intToFloat(f32, value) / @intToFloat(f32, math.maxInt(@TypeOf(value)));
 }
 
 pub const Color = struct {
-    R: u8,
-    G: u8,
-    B: u8,
-    A: u8,
+    R: f32,
+    G: f32,
+    B: f32,
+    A: f32,
 
     const Self = @This();
 
-    pub fn initRGB(r: u8, g: u8, b: u8) Self {
+    pub fn initRGB(r: f32, g: f32, b: f32) Self {
         return Self{
             .R = r,
             .G = g,
             .B = b,
-            .A = 0xFF,
+            .A = 1.0,
         };
     }
 
-    pub fn initRGBA(r: u8, g: u8, b: u8, a: u8) Self {
+    pub fn initRGBA(r: f32, g: f32, b: f32, a: f32) Self {
         return Self{
             .R = r,
             .G = g,
@@ -39,19 +39,86 @@ pub const Color = struct {
     }
 
     pub fn premultipliedAlpha(self: Self) Self {
-        var floatR: f32 = toColorFloat(self.R, 255.0);
-        var floatG: f32 = toColorFloat(self.G, 255.0);
-        var floatB: f32 = toColorFloat(self.B, 255.0);
-        var floatA: f32 = toColorFloat(self.A, 255.0);
-
         return Self{
-            .R = toColorInt(u8, floatR * floatA),
-            .G = toColorInt(u8, floatG * floatA),
-            .B = toColorInt(u8, floatB * floatA),
+            .R = self.R * self.A,
+            .G = self.G * self.A,
+            .B = self.B * self.A,
             .A = self.A,
         };
     }
+
+    pub fn toIntegerColor(self: Self, comptime storage_type: type) IntegerColor(storage_type) {
+        return IntegerColor(storage_type){
+            .R = toColorInt(storage_type, self.R),
+            .G = toColorInt(storage_type, self.G),
+            .B = toColorInt(storage_type, self.B),
+            .A = toColorInt(storage_type, self.A),
+        };
+    }
+
+    pub fn toIntegerColor8(self: Self) IntegerColor8 {
+        return toIntegerColor(self, u8);
+    }
+
+    pub fn toIntegerColor16(self: Self) IntegerColor16 {
+        return toIntegerColor(self, u16);
+    }
 };
+
+pub fn IntegerColor(comptime storage_type: type) type {
+    return struct {
+        R: storage_type,
+        G: storage_type,
+        B: storage_type,
+        A: storage_type,
+
+        const Self = @This();
+
+        pub fn initRGB(r: storage_type, g: storage_type, b: storage_type) Self {
+            return Self{
+                .R = r,
+                .G = g,
+                .B = b,
+                .A = math.maxInt(storage_type),
+            };
+        }
+
+        pub fn initRGBA(r: storage_type, g: storage_type, b: storage_type, a: storage_type) Self {
+            return Self{
+                .R = r,
+                .G = g,
+                .B = b,
+                .A = a,
+            };
+        }
+
+        pub fn premultipliedAlpha(self: Self) Self {
+            var floatR: f32 = toColorFloat(self.R);
+            var floatG: f32 = toColorFloat(self.G);
+            var floatB: f32 = toColorFloat(self.B);
+            var floatA: f32 = toColorFloat(self.A);
+
+            return Self{
+                .R = toColorInt(u8, floatR * floatA),
+                .G = toColorInt(u8, floatG * floatA),
+                .B = toColorInt(u8, floatB * floatA),
+                .A = self.A,
+            };
+        }
+
+        pub fn toColor(self: Self) Color {
+            return Color{
+                .R = toColorFloat(self.R),
+                .G = toColorFloat(self.G),
+                .B = toColorFloat(self.B),
+                .A = toColorFloat(self.A),
+            };
+        }
+    };
+}
+
+pub const IntegerColor8 = IntegerColor(u8);
+pub const IntegerColor16 = IntegerColor(u16);
 
 fn RgbColor(comptime red_bits: comptime_int, comptime green_bits: comptime_int, comptime blue_bits: comptime_int) type {
     return packed struct {
@@ -62,10 +129,6 @@ fn RgbColor(comptime red_bits: comptime_int, comptime green_bits: comptime_int, 
         const RedType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .is_signed = false, .bits = red_bits } });
         const GreenType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .is_signed = false, .bits = green_bits } });
         const BlueType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .is_signed = false, .bits = blue_bits } });
-
-        const MaxRed = @intToFloat(f32, (1 << red_bits) - 1);
-        const MaxGreen = @intToFloat(f32, (1 << green_bits) - 1);
-        const MaxBlue = @intToFloat(f32, (1 << blue_bits) - 1);
 
         const Self = @This();
 
@@ -79,10 +142,10 @@ fn RgbColor(comptime red_bits: comptime_int, comptime green_bits: comptime_int, 
 
         pub fn toColor(self: Self) Color {
             return Color{
-                .R = toColorInt(u8, toColorFloat(self.R, MaxRed)),
-                .G = toColorInt(u8, toColorFloat(self.G, MaxGreen)),
-                .B = toColorInt(u8, toColorFloat(self.B, MaxBlue)),
-                .A = 0xFF,
+                .R = toColorFloat(self.R),
+                .G = toColorFloat(self.G),
+                .B = toColorFloat(self.B),
+                .A = 1.0,
             };
         }
     };
@@ -100,11 +163,6 @@ fn ARgbColor(comptime red_bits: comptime_int, comptime green_bits: comptime_int,
         const BlueType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .is_signed = false, .bits = blue_bits } });
         const AlphaType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .is_signed = false, .bits = alpha_bits } });
 
-        const MaxRed = @intToFloat(f32, (1 << red_bits) - 1);
-        const MaxGreen = @intToFloat(f32, (1 << green_bits) - 1);
-        const MaxBlue = @intToFloat(f32, (1 << blue_bits) - 1);
-        const MaxAlpha = @intToFloat(f32, (1 << alpha_bits) - 1);
-
         const Self = @This();
 
         pub fn initRGB(r: RedType, g: GreenType, b: BlueType) Self {
@@ -112,7 +170,7 @@ fn ARgbColor(comptime red_bits: comptime_int, comptime green_bits: comptime_int,
                 .R = r,
                 .G = g,
                 .B = b,
-                .A = @floatToInt(AlphaType, MaxAlpha),
+                .A = math.maxInt(AlphaType),
             };
         }
 
@@ -127,10 +185,10 @@ fn ARgbColor(comptime red_bits: comptime_int, comptime green_bits: comptime_int,
 
         pub fn toColor(self: Self) Color {
             return Color{
-                .R = toColorInt(u8, toColorFloat(self.R, MaxRed)),
-                .G = toColorInt(u8, toColorFloat(self.G, MaxGreen)),
-                .B = toColorInt(u8, toColorFloat(self.B, MaxBlue)),
-                .A = toColorInt(u8, toColorFloat(self.A, MaxAlpha)),
+                .R = toColorFloat(self.R),
+                .G = toColorFloat(self.G),
+                .B = toColorFloat(self.B),
+                .A = toColorFloat(self.A),
             };
         }
     };
@@ -148,11 +206,6 @@ fn RgbaColor(comptime red_bits: comptime_int, comptime green_bits: comptime_int,
         const BlueType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .is_signed = false, .bits = blue_bits } });
         const AlphaType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .is_signed = false, .bits = alpha_bits } });
 
-        const MaxRed = @intToFloat(f32, (1 << red_bits) - 1);
-        const MaxGreen = @intToFloat(f32, (1 << green_bits) - 1);
-        const MaxBlue = @intToFloat(f32, (1 << blue_bits) - 1);
-        const MaxAlpha = @intToFloat(f32, (1 << alpha_bits) - 1);
-
         const Self = @This();
 
         pub fn initRGB(r: RedType, g: GreenType, b: BlueType) Self {
@@ -160,7 +213,7 @@ fn RgbaColor(comptime red_bits: comptime_int, comptime green_bits: comptime_int,
                 .R = r,
                 .G = g,
                 .B = b,
-                .A = @floatToInt(AlphaType, MaxAlpha),
+                .A = math.maxInt(AlphaType),
             };
         }
 
@@ -175,10 +228,10 @@ fn RgbaColor(comptime red_bits: comptime_int, comptime green_bits: comptime_int,
 
         pub fn toColor(self: Self) Color {
             return Color{
-                .R = toColorInt(u8, toColorFloat(self.R, MaxRed)),
-                .G = toColorInt(u8, toColorFloat(self.G, MaxGreen)),
-                .B = toColorInt(u8, toColorFloat(self.B, MaxBlue)),
-                .A = toColorInt(u8, toColorFloat(self.A, MaxAlpha)),
+                .R = toColorFloat(self.R),
+                .G = toColorFloat(self.G),
+                .B = toColorFloat(self.B),
+                .A = toColorFloat(self.A),
             };
         }
     };
@@ -192,7 +245,7 @@ pub const Argb32 = ARgbColor(8, 8, 8, 8);
 
 fn IndexedStorage(comptime T: type) type {
     return struct {
-        palette: [PaletteSize]Color = undefined,
+        palette: []Color,
         indices: []T,
 
         pub const PaletteSize = 1 << @bitSizeOf(T);
@@ -202,10 +255,12 @@ fn IndexedStorage(comptime T: type) type {
         pub fn init(allocator: *Allocator, pixel_count: usize) !Self {
             return Self{
                 .indices = try allocator.alloc(T, pixel_count),
+                .palette = try allocator.alloc(Color, PaletteSize),
             };
         }
 
         pub fn deinit(self: Self, allocator: *Allocator) void {
+            allocator.free(self.palette);
             allocator.free(self.indices);
         }
     };
@@ -215,17 +270,15 @@ fn Grayscale(comptime T: type) type {
     return struct {
         value: T,
 
-        pub const MaxInt = std.math.maxInt(T);
-
         const Self = @This();
 
         pub fn toColor(self: Self) Color {
-            const gray = toColorInt(u8, toColorFloat(self.value, MaxInt));
+            const gray = toColorFloat(self.value);
             return Color{
                 .R = gray,
                 .G = gray,
                 .B = gray,
-                .A = 0xFF,
+                .A = 1.0,
             };
         }
     };

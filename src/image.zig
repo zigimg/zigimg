@@ -22,7 +22,9 @@ pub const ImageInStream = io.InStream(anyerror);
 pub const ImageSeekStream = io.SeekableStream(anyerror, anyerror);
 
 pub const ImageInfo = struct {
-    width: usize = 0, height: usize = 0, pixels: ?ColorStorage = null, pixel_format: PixelFormat = undefined
+    width: usize = 0,
+    height: usize = 0,
+    pixel_format: PixelFormat = undefined,
 };
 
 /// Format-independant image
@@ -109,12 +111,12 @@ pub const Image = struct {
         self.image_format = formatInterface.format();
 
         try seekStream.seekTo(0);
-        const imageInfo = try formatInterface.readForImage(allocator, inStream, seekStream);
+
+        const imageInfo = try formatInterface.readForImage(allocator, inStream, seekStream, &self.pixels);
 
         self.width = imageInfo.width;
         self.height = imageInfo.height;
         self.pixel_format = imageInfo.pixel_format;
-        self.pixels = imageInfo.pixels;
     }
 
     fn findImageInterface(inStream: *ImageInStream, seekStream: *ImageSeekStream) !FormatInterface {

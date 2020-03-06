@@ -15,4 +15,4 @@ jobs:
         with:
           version: master
       - name: Run tests
-        run: zig build test -Drelease-fast
+        run: zig build test

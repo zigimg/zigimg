@@ -129,11 +129,12 @@ pub const PCX = struct {
         return true;
     }
 
-    pub fn readForImage(allocator: *Allocator, inStream: *ImageInStream, seekStream: *ImageSeekStream) !ImageInfo {
+    pub fn readForImage(allocator: *Allocator, inStream: *ImageInStream, seekStream: *ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
         var pcx = PCX{};
 
+        try pcx.read(allocator, inStream, seekStream, pixels);
+
         var imageInfo = ImageInfo{};
-        imageInfo.pixels = try pcx.read(allocator, inStream, seekStream);
         imageInfo.width = pcx.width;
         imageInfo.height = pcx.height;
         imageInfo.pixel_format = pcx.pixel_format;
@@ -141,7 +142,7 @@ pub const PCX = struct {
         return imageInfo;
     }
 
-    pub fn read(self: *Self, allocator: *Allocator, inStream: *ImageInStream, seekStream: *ImageSeekStream) !color.ColorStorage {
+    pub fn read(self: *Self, allocator: *Allocator, inStream: *ImageInStream, seekStream: *ImageSeekStream, pixelsOpt: *?color.ColorStorage) !void {
         self.header = try utils.readStructLittle(inStream, PCXHeader);
         _ = try inStream.read(PCXHeader.padding[0..]);
 
@@ -181,111 +182,111 @@ pub const PCX = struct {
         const hasDummyByte = (@bitCast(i16, self.header.stride) - @bitCast(isize, self.width)) == 1;
         const actualWidth = if (hasDummyByte) self.width + 1 else self.width;
 
-        var pixels = try color.ColorStorage.init(allocator, self.pixel_format, self.width * self.height);
+        pixelsOpt.* = try color.ColorStorage.init(allocator, self.pixel_format, self.width * self.height);
 
-        var decoder = RLEDecoder.init(inStream);
+        if (pixelsOpt.*) |pixels| {
+            var decoder = RLEDecoder.init(inStream);
 
-        const scanlineLength = (self.header.stride * self.header.planes);
+            const scanlineLength = (self.header.stride * self.header.planes);
 
-        var y: usize = 0;
-        while (y < self.height) : (y += 1) {
-            var offset: usize = 0;
-            var x: usize = 0;
+            var y: usize = 0;
+            while (y < self.height) : (y += 1) {
+                var offset: usize = 0;
+                var x: usize = 0;
 
-            const yStride = y * self.width;
+                const yStride = y * self.width;
 
-            // read all pixels from the current row
-            while (offset < scanlineLength and x < self.width) : (offset += 1) {
-                const byte = try decoder.readByte();
-                switch (pixels) {
-                    .Bpp1 => |storage| {
-                        var i: usize = 0;
-                        while (i < 8) : (i += 1) {
+                // read all pixels from the current row
+                while (offset < scanlineLength and x < self.width) : (offset += 1) {
+                    const byte = try decoder.readByte();
+                    switch (pixels) {
+                        .Bpp1 => |storage| {
+                            var i: usize = 0;
+                            while (i < 8) : (i += 1) {
+                                if (x < self.width) {
+                                    storage.indices[yStride + x] = @intCast(u1, (byte >> (7 - @intCast(u3, i))) & 0x01);
+                                    x += 1;
+                                }
+                            }
+                        },
+                        .Bpp4 => |storage| {
+                            storage.indices[yStride + x] = @truncate(u4, byte >> 4);
+                            x += 1;
                             if (x < self.width) {
-                                storage.indices[yStride + x] = @intCast(u1, (byte >> (7 - @intCast(u3, i))) & 0x01);
+                                storage.indices[yStride + x] = @truncate(u4, byte);
                                 x += 1;
                             }
-                        }
-                    },
-                    .Bpp4 => |storage| {
-                        storage.indices[yStride + x] = @truncate(u4, byte >> 4);
-                        x += 1;
-                        if (x < self.width) {
-                            storage.indices[yStride + x] = @truncate(u4, byte);
+                        },
+                        .Bpp8 => |storage| {
+                            storage.indices[yStride + x] = byte;
                             x += 1;
-                        }
-                    },
-                    .Bpp8 => |storage| {
-                        storage.indices[yStride + x] = byte;
-                        x += 1;
-                    },
-                    .Rgb24 => |storage| {
-                        if (hasDummyByte and byte == 0x00) {
-                            continue;
-                        }
-                        const pixelX = offset % (actualWidth);
-                        const currentColor = offset / (actualWidth);
-                        switch (currentColor) {
-                            0 => {
-                                storage[yStride + pixelX].R = byte;
-                            },
-                            1 => {
-                                storage[yStride + pixelX].G = byte;
-                            },
-                            2 => {
-                                storage[yStride + pixelX].B = byte;
-                            },
-                            else => {},
-                        }
+                        },
+                        .Rgb24 => |storage| {
+                            if (hasDummyByte and byte == 0x00) {
+                                continue;
+                            }
+                            const pixelX = offset % (actualWidth);
+                            const currentColor = offset / (actualWidth);
+                            switch (currentColor) {
+                                0 => {
+                                    storage[yStride + pixelX].R = byte;
+                                },
+                                1 => {
+                                    storage[yStride + pixelX].G = byte;
+                                },
+                                2 => {
+                                    storage[yStride + pixelX].B = byte;
+                                },
+                                else => {},
+                            }
 
-                        if (pixelX > 0 and (pixelX % self.header.planes) == 0) {
-                            x += 1;
-                        }
-                    },
-                    else => std.debug.panic("{} pixel format not supported yet!", .{@tagName(pixels)}),
+                            if (pixelX > 0 and (pixelX % self.header.planes) == 0) {
+                                x += 1;
+                            }
+                        },
+                        else => std.debug.panic("{} pixel format not supported yet!", .{@tagName(pixels)}),
+                    }
+                }
+
+                // discard the rest of the bytes in the current row
+                while (offset < self.header.stride) : (offset += 1) {
+                    _ = try decoder.readByte();
                 }
             }
 
-            // discard the rest of the bytes in the current row
-            while (offset < self.header.stride) : (offset += 1) {
-                _ = try decoder.readByte();
-            }
-        }
+            try decoder.finish();
 
-        try decoder.finish();
+            if (self.pixel_format == .Bpp1 or self.pixel_format == .Bpp4 or self.pixel_format == .Bpp8) {
+                var pal = switch (pixels) {
+                    .Bpp1 => |*storage| storage.palette[0..],
+                    .Bpp4 => |*storage| storage.palette[0..],
+                    .Bpp8 => |*storage| storage.palette[0..],
+                    else => undefined,
+                };
 
-        if (self.pixel_format == .Bpp1 or self.pixel_format == .Bpp4 or self.pixel_format == .Bpp8) {
-            var pal = switch (pixels) {
-                .Bpp1 => |*storage| storage.palette[0..],
-                .Bpp4 => |*storage| storage.palette[0..],
-                .Bpp8 => |*storage| storage.palette[0..],
-                else => undefined,
-            };
+                var i: usize = 0;
+                while (i < std.math.min(pal.len, self.header.builtinPalette.len / 3)) : (i += 1) {
+                    pal[i].R = color.toColorFloat(self.header.builtinPalette[3 * i + 0]);
+                    pal[i].G = color.toColorFloat(self.header.builtinPalette[3 * i + 1]);
+                    pal[i].B = color.toColorFloat(self.header.builtinPalette[3 * i + 2]);
+                    pal[i].A = 1.0;
+                }
 
-            var i: usize = 0;
-            while (i < std.math.min(pal.len, self.header.builtinPalette.len / 3)) : (i += 1) {
-                pal[i].R = self.header.builtinPalette[3 * i + 0];
-                pal[i].G = self.header.builtinPalette[3 * i + 1];
-                pal[i].B = self.header.builtinPalette[3 * i + 2];
-                pal[i].A = 0xFF;
-            }
+                if (pixels == .Bpp8) {
+                    const endPos = try seekStream.getEndPos();
+                    try seekStream.seekTo(endPos - 769);
 
-            if (pixels == .Bpp8) {
-                const endPos = try seekStream.getEndPos();
-                try seekStream.seekTo(endPos - 769);
+                    if ((try inStream.readByte()) != 0x0C)
+                        return error.MissingPalette;
 
-                if ((try inStream.readByte()) != 0x0C)
-                    return error.MissingPalette;
-
-                for (pal) |*c| {
-                    c.R = try inStream.readByte();
-                    c.G = try inStream.readByte();
-                    c.B = try inStream.readByte();
-                    c.A = 0xFF;
+                    for (pal) |*c| {
+                        c.R = color.toColorFloat(try inStream.readByte());
+                        c.G = color.toColorFloat(try inStream.readByte());
+                        c.B = color.toColorFloat(try inStream.readByte());
+                        c.A = 1.0;
+                    }
                 }
             }
         }
-
-        return pixels;
     }
 };
