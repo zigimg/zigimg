@@ -231,6 +231,18 @@ test "Should detect PPM properly" {
     }
 }
 
+test "Should detect PNG properly" {
+    const imageTests = &[_][]const u8{
+        "tests/fixtures/png/basi0g01.png",
+    };
+
+    for (imageTests) |image_path| {
+        const image = try Image.fromFilePath(zigimg_test_allocator, image_path);
+        defer image.deinit();
+        testing.expect(image.image_format == .Png);
+    }
+}
+
 test "Should error on invalid path" {
     var invalidPath = Image.fromFilePath(zigimg_test_allocator, "notapathdummy");
     expectError(invalidPath, error.FileNotFound);

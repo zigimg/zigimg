@@ -14,6 +14,7 @@ pub const ImageFormat = enum {
     Pbm,
     Pcx,
     Pgm,
+    Png,
     Ppm,
     Raw,
 };

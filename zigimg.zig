@@ -12,3 +12,4 @@ pub const errors = @import("src/errors.zig");
 pub const image = @import("src/image.zig");
 pub const netpbm = @import("src/formats/netpbm.zig");
 pub const pcx = @import("src/formats/pcx.zig");
+pub const png = @import("src/formats/png.zig");
