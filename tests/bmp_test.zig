@@ -203,7 +203,7 @@ test "Read a valid version 5 RGBA bitmap from memory" {
 }
 
 test "Should error when reading an invalid file" {
-    const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/png/notbmp.png");
+    const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/bmp/notbmp.png");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
