@@ -1,0 +1,66 @@
+const ImageInStream = zigimg.ImageInStream;
+const ImageSeekStream = zigimg.ImageSeekStream;
+const PixelFormat = zigimg.PixelFormat;
+const assert = std.debug.assert;
+const color = zigimg.color;
+const errors = zigimg.errors;
+const png = zigimg.png;
+const std = @import("std");
+const testing = std.testing;
+const zigimg = @import("zigimg");
+usingnamespace @import("helpers.zig");
+
+test "Should error on non PNG images" {
+    const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/bmp/simple_v4.bmp");
+    defer file.close();
+
+    var fileInStream = file.inStream();
+    var fileSeekStream = file.seekableStream();
+
+    var pngFile = png.PNG{};
+
+    var pixelsOpt: ?color.ColorStorage = null;
+    const invalidFile = pngFile.read(zigimg_test_allocator, @ptrCast(*ImageInStream, &fileInStream.stream), @ptrCast(*ImageSeekStream, &fileSeekStream.stream), &pixelsOpt);
+    defer {
+        if (pixelsOpt) |pixels| {
+            pixels.deinit(zigimg_test_allocator);
+        }
+    }
+
+    expectError(invalidFile, errors.ImageError.InvalidMagicHeader);
+}
+
+test "Read PNG header properly" {
+    const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/png/basn0g01.png");
+    defer file.close();
+
+    var fileInStream = file.inStream();
+    var fileSeekStream = file.seekableStream();
+
+    var pngFile = png.PNG{};
+
+    var pixelsOpt: ?color.ColorStorage = null;
+    try pngFile.read(zigimg_test_allocator, @ptrCast(*ImageInStream, &fileInStream.stream), @ptrCast(*ImageSeekStream, &fileSeekStream.stream), &pixelsOpt);
+
+    defer {
+        if (pixelsOpt) |pixels| {
+            pixels.deinit(zigimg_test_allocator);
+        }
+    }
+
+    expectEq(pngFile.header.width, 32);
+    expectEq(pngFile.header.height, 32);
+    expectEq(pngFile.header.bit_depth, 1);
+    testing.expect(pngFile.header.color_type == .Grayscale);
+    expectEq(pngFile.header.compression_method, 0);
+    expectEq(pngFile.header.filter_method, 0);
+    testing.expect(pngFile.header.interlace_method == .Standard);
+
+    testing.expect(pngFile.pixel_format == .Grayscale1);
+
+    testing.expect(pixelsOpt != null);
+
+    if (pixelsOpt) |pixels| {
+        testing.expect(pixels == .Grayscale1);
+    }
+}

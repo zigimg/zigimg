@@ -63,8 +63,8 @@ test "Convert Argb32 to Color" {
     expectEq(result.A, 200);
 }
 
-test "Convert Monochrome to Color" {
-    const white = color.Monochrome{ .value = 1 };
+test "Convert Grayscale1 to Color" {
+    const white = color.Grayscale1{ .value = 1 };
     const whiteColor = white.toColor().toIntegerColor8();
 
     expectEq(whiteColor.R, 255);
@@ -72,7 +72,7 @@ test "Convert Monochrome to Color" {
     expectEq(whiteColor.B, 255);
     expectEq(whiteColor.A, 255);
 
-    const black = color.Monochrome{ .value = 0 };
+    const black = color.Grayscale1{ .value = 0 };
     const blackColor = black.toColor().toIntegerColor8();
 
     expectEq(blackColor.R, 0);

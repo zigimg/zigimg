@@ -242,6 +242,8 @@ pub const Rgba32 = RgbaColor(8, 8, 8, 8);
 pub const Rgb565 = RgbColor(5, 6, 5);
 pub const Rgb555 = RgbColor(5, 5, 5);
 pub const Argb32 = ARgbColor(8, 8, 8, 8);
+pub const Rgb48 = RgbColor(16, 16, 16);
+pub const Rgba64 = RgbaColor(16, 16, 16, 16);
 
 fn IndexedStorage(comptime T: type) type {
     return struct {
@@ -284,9 +286,32 @@ fn Grayscale(comptime T: type) type {
     };
 }
 
-pub const Monochrome = Grayscale(u1);
+fn GrayscaleAlpha(comptime T: type) type {
+    return struct {
+        value: T,
+        alpha: T,
+
+        const Self = @This();
+
+        pub fn toColor(self: Self) Color {
+            const gray = toColorFloat(self.value);
+            return Color{
+                .R = gray,
+                .G = gray,
+                .B = gray,
+                .A = toColorFloat(self.alpha),
+            };
+        }
+    };
+}
+
+pub const Grayscale1 = Grayscale(u1);
+pub const Grayscale2 = Grayscale(u2);
+pub const Grayscale4 = Grayscale(u4);
 pub const Grayscale8 = Grayscale(u8);
 pub const Grayscale16 = Grayscale(u16);
+pub const Grayscale8Alpha = GrayscaleAlpha(u8);
+pub const Grayscale16Alpha = GrayscaleAlpha(u16);
 
 pub const ColorStorage = union(PixelFormat) {
     Bpp1: IndexedStorage(u1),
@@ -294,14 +319,20 @@ pub const ColorStorage = union(PixelFormat) {
     Bpp4: IndexedStorage(u4),
     Bpp8: IndexedStorage(u8),
     Bpp16: IndexedStorage(u16),
-    Monochrome: []Monochrome,
+    Grayscale1: []Grayscale1,
+    Grayscale2: []Grayscale2,
+    Grayscale4: []Grayscale4,
     Grayscale8: []Grayscale8,
+    Grayscale8Alpha: []Grayscale8Alpha,
     Grayscale16: []Grayscale16,
+    Grayscale16Alpha: []Grayscale16Alpha,
     Rgb24: []Rgb24,
     Rgba32: []Rgba32,
     Rgb565: []Rgb565,
     Rgb555: []Rgb555,
     Argb32: []Argb32,
+    Rgb48: []Rgb48,
+    Rgba64: []Rgba64,
 
     const Self = @This();
 
@@ -332,9 +363,19 @@ pub const ColorStorage = union(PixelFormat) {
                     .Bpp16 = try IndexedStorage(u16).init(allocator, pixel_count),
                 };
             },
-            .Monochrome => {
+            .Grayscale1 => {
                 return Self{
-                    .Monochrome = try allocator.alloc(Monochrome, pixel_count),
+                    .Grayscale1 = try allocator.alloc(Grayscale1, pixel_count),
+                };
+            },
+            .Grayscale2 => {
+                return Self{
+                    .Grayscale2 = try allocator.alloc(Grayscale2, pixel_count),
+                };
+            },
+            .Grayscale4 => {
+                return Self{
+                    .Grayscale4 = try allocator.alloc(Grayscale4, pixel_count),
                 };
             },
             .Grayscale8 => {
@@ -342,9 +383,19 @@ pub const ColorStorage = union(PixelFormat) {
                     .Grayscale8 = try allocator.alloc(Grayscale8, pixel_count),
                 };
             },
+            .Grayscale8Alpha => {
+                return Self{
+                    .Grayscale8Alpha = try allocator.alloc(Grayscale8Alpha, pixel_count),
+                };
+            },
             .Grayscale16 => {
                 return Self{
                     .Grayscale16 = try allocator.alloc(Grayscale16, pixel_count),
+                };
+            },
+            .Grayscale16Alpha => {
+                return Self{
+                    .Grayscale16Alpha = try allocator.alloc(Grayscale16Alpha, pixel_count),
                 };
             },
             .Rgb24 => {
@@ -372,6 +423,16 @@ pub const ColorStorage = union(PixelFormat) {
                     .Argb32 = try allocator.alloc(Argb32, pixel_count),
                 };
             },
+            .Rgb48 => {
+                return Self{
+                    .Rgb48 = try allocator.alloc(Rgb48, pixel_count),
+                };
+            },
+            .Rgba64 => {
+                return Self{
+                    .Rgba64 = try allocator.alloc(Rgba64, pixel_count),
+                };
+            },
         };
     }
 
@@ -382,14 +443,20 @@ pub const ColorStorage = union(PixelFormat) {
             .Bpp4 => |data| data.deinit(allocator),
             .Bpp8 => |data| data.deinit(allocator),
             .Bpp16 => |data| data.deinit(allocator),
-            .Monochrome => |data| allocator.free(data),
+            .Grayscale1 => |data| allocator.free(data),
+            .Grayscale2 => |data| allocator.free(data),
+            .Grayscale4 => |data| allocator.free(data),
             .Grayscale8 => |data| allocator.free(data),
+            .Grayscale8Alpha => |data| allocator.free(data),
             .Grayscale16 => |data| allocator.free(data),
+            .Grayscale16Alpha => |data| allocator.free(data),
             .Rgb24 => |data| allocator.free(data),
             .Rgba32 => |data| allocator.free(data),
             .Rgb565 => |data| allocator.free(data),
             .Rgb555 => |data| allocator.free(data),
             .Argb32 => |data| allocator.free(data),
+            .Rgb48 => |data| allocator.free(data),
+            .Rgba64 => |data| allocator.free(data),
         }
     }
 
@@ -400,14 +467,20 @@ pub const ColorStorage = union(PixelFormat) {
             .Bpp4 => |data| data.indices.len,
             .Bpp8 => |data| data.indices.len,
             .Bpp16 => |data| data.indices.len,
-            .Monochrome => |data| data.len,
+            .Grayscale1 => |data| data.len,
+            .Grayscale2 => |data| data.len,
+            .Grayscale4 => |data| data.len,
             .Grayscale8 => |data| data.len,
+            .Grayscale8Alpha => |data| data.len,
             .Grayscale16 => |data| data.len,
+            .Grayscale16Alpha => |data| data.len,
             .Rgb24 => |data| data.len,
             .Rgba32 => |data| data.len,
             .Rgb565 => |data| data.len,
             .Rgb555 => |data| data.len,
             .Argb32 => |data| data.len,
+            .Rgb48 => |data| data.len,
+            .Rgba64 => |data| data.len,
         };
     }
 };
@@ -441,14 +514,20 @@ pub const ColorStorageIterator = struct {
             .Bpp4 => |data| data.palette[data.indices[self.currentIndex]],
             .Bpp8 => |data| data.palette[data.indices[self.currentIndex]],
             .Bpp16 => |data| data.palette[data.indices[self.currentIndex]],
-            .Monochrome => |data| data[self.currentIndex].toColor(),
+            .Grayscale1 => |data| data[self.currentIndex].toColor(),
+            .Grayscale2 => |data| data[self.currentIndex].toColor(),
+            .Grayscale4 => |data| data[self.currentIndex].toColor(),
             .Grayscale8 => |data| data[self.currentIndex].toColor(),
+            .Grayscale8Alpha => |data| data[self.currentIndex].toColor(),
             .Grayscale16 => |data| data[self.currentIndex].toColor(),
+            .Grayscale16Alpha => |data| data[self.currentIndex].toColor(),
             .Rgb24 => |data| data[self.currentIndex].toColor(),
             .Rgba32 => |data| data[self.currentIndex].toColor(),
             .Rgb565 => |data| data[self.currentIndex].toColor(),
             .Rgb555 => |data| data[self.currentIndex].toColor(),
             .Argb32 => |data| data[self.currentIndex].toColor(),
+            .Rgb48 => |data| data[self.currentIndex].toColor(),
+            .Rgba64 => |data| data[self.currentIndex].toColor(),
             else => null,
         };
 

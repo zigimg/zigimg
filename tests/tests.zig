@@ -5,4 +5,5 @@ test "zigimg test suite" {
     _ = @import("netpbm_test.zig");
     _ = @import("octree_quantizer_test.zig");
     _ = @import("pcx_test.zig");
+    _ = @import("png_test.zig");
 }

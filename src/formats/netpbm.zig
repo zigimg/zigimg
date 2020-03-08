@@ -133,7 +133,7 @@ fn parseNumber(stream: ImageInStream, buffer: []u8) !usize {
     }
 }
 
-fn loadBinaryBitmap(header: Header, data: []color.Monochrome, stream: ImageInStream) !void {
+fn loadBinaryBitmap(header: Header, data: []color.Grayscale1, stream: ImageInStream) !void {
     var dataIndex: usize = 0;
     const dataEnd = header.width * header.height;
 
@@ -146,14 +146,14 @@ fn loadBinaryBitmap(header: Header, data: []color.Monochrome, stream: ImageInStr
 
             // set bit is black, cleared bit is white
             // bits are "left to right" (so msb to lsb)
-            data[dataIndex] = color.Monochrome{ .value = pixel };
+            data[dataIndex] = color.Grayscale1{ .value = pixel };
             dataIndex += 1;
             i += 1;
         }
     }
 }
 
-fn loadAsciiBitmap(header: Header, data: []color.Monochrome, stream: ImageInStream) !void {
+fn loadAsciiBitmap(header: Header, data: []color.Grayscale1, stream: ImageInStream) !void {
     var dataIndex: usize = 0;
     const dataEnd = header.width * header.height;
 
@@ -166,7 +166,7 @@ fn loadAsciiBitmap(header: Header, data: []color.Monochrome, stream: ImageInStre
         // 1 is black, 0 is white in PBM spec.
         // we use 1=white, 0=black in u1 format
         const pixel = if (b == '0') @as(u1, 1) else @as(u1, 0);
-        data[dataIndex] = color.Monochrome{ .value = pixel };
+        data[dataIndex] = color.Grayscale1{ .value = pixel };
 
         dataIndex += 1;
     }
@@ -288,7 +288,7 @@ fn Netpbm(comptime imageFormat: ImageFormat, comptime headerNumbers: []const u8)
             self.header = try parseHeader(inStream);
 
             self.pixel_format = switch (self.header.format) {
-                .Bitmap => PixelFormat.Monochrome,
+                .Bitmap => PixelFormat.Grayscale1,
                 .Grayscale => PixelFormat.Grayscale8,
                 .Rgb => PixelFormat.Rgb24,
             };
@@ -299,9 +299,9 @@ fn Netpbm(comptime imageFormat: ImageFormat, comptime headerNumbers: []const u8)
                 switch (self.header.format) {
                     .Bitmap => {
                         if (self.header.binary) {
-                            try loadBinaryBitmap(self.header, pixels.Monochrome, inStream);
+                            try loadBinaryBitmap(self.header, pixels.Grayscale1, inStream);
                         } else {
-                            try loadAsciiBitmap(self.header, pixels.Monochrome, inStream);
+                            try loadAsciiBitmap(self.header, pixels.Grayscale1, inStream);
                         }
                     },
                     .Grayscale => {
