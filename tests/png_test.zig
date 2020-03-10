@@ -17,7 +17,8 @@ test "Should error on non PNG images" {
     var fileInStream = file.inStream();
     var fileSeekStream = file.seekableStream();
 
-    var pngFile = png.PNG{};
+    var pngFile = png.PNG.init(zigimg_test_allocator);
+    defer pngFile.deinit();
 
     var pixelsOpt: ?color.ColorStorage = null;
     const invalidFile = pngFile.read(zigimg_test_allocator, @ptrCast(*ImageInStream, &fileInStream.stream), @ptrCast(*ImageSeekStream, &fileSeekStream.stream), &pixelsOpt);
@@ -37,7 +38,8 @@ test "Read PNG header properly" {
     var fileInStream = file.inStream();
     var fileSeekStream = file.seekableStream();
 
-    var pngFile = png.PNG{};
+    var pngFile = png.PNG.init(zigimg_test_allocator);
+    defer pngFile.deinit();
 
     var pixelsOpt: ?color.ColorStorage = null;
     try pngFile.read(zigimg_test_allocator, @ptrCast(*ImageInStream, &fileInStream.stream), @ptrCast(*ImageSeekStream, &fileSeekStream.stream), &pixelsOpt);
@@ -62,5 +64,33 @@ test "Read PNG header properly" {
 
     if (pixelsOpt) |pixels| {
         testing.expect(pixels == .Grayscale1);
+    }
+}
+
+test "Read gAMA chunk properly" {
+    const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/png/basn0g01.png");
+    defer file.close();
+
+    var fileInStream = file.inStream();
+    var fileSeekStream = file.seekableStream();
+
+    var pngFile = png.PNG.init(zigimg_test_allocator);
+    defer pngFile.deinit();
+
+    var pixelsOpt: ?color.ColorStorage = null;
+    try pngFile.read(zigimg_test_allocator, @ptrCast(*ImageInStream, &fileInStream.stream), @ptrCast(*ImageSeekStream, &fileSeekStream.stream), &pixelsOpt);
+
+    defer {
+        if (pixelsOpt) |pixels| {
+            pixels.deinit(zigimg_test_allocator);
+        }
+    }
+
+    const gammaChunkOpt = pngFile.findFirstChunk("gAMA");
+
+    testing.expect(gammaChunkOpt != null);
+
+    if (gammaChunkOpt) |gammaChunk| {
+        expectEq(gammaChunk.gAMA.toGammaExponent(), 1.0);
     }
 }

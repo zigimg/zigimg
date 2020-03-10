@@ -3,18 +3,18 @@ const std = @import("std");
 const io = std.io;
 const meta = std.meta;
 
-pub fn toMagicNumberNative(comptime magic: []const u8) u32 {
+pub fn toMagicNumberNative(magic: []const u8) u32 {
     var result: u32 = 0;
-    inline for (magic) |character, index| {
-        result |= (@as(u32, character) << (index * 8));
+    for (magic) |character, index| {
+        result |= (@as(u32, character) << @intCast(u5, (index * 8)));
     }
     return result;
 }
 
-pub fn toMagicNumberForeign(comptime magic: []const u8) u32 {
+pub fn toMagicNumberForeign(magic: []const u8) u32 {
     var result: u32 = 0;
-    inline for (magic) |character, index| {
-        result |= (@as(u32, character) << ((magic.len - 1 - index) * 8));
+    for (magic) |character, index| {
+        result |= (@as(u32, character) << @intCast(u5, (magic.len - 1 - index) * 8));
     }
     return result;
 }

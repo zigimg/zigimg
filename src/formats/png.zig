@@ -40,46 +40,124 @@ pub const IHDR = packed struct {
     pub const ChunkID = utils.toMagicNumberBig(ChunkType);
 
     const Self = @This();
+
+    pub fn deinit(self: Self, allocator: *Allocator) void {}
+
+    pub fn read(self: *Self, readBuffer: []u8) !bool {
+        var slice_stream = std.io.SliceInStream.init(readBuffer);
+        var actualStream = @ptrCast(*ImageInStream, &slice_stream.stream);
+        self.* = try utils.readStructBig(actualStream, Self);
+        return true;
+    }
 };
 
-// const CriticalChunks = struct {
-//     // Image header
-//     pub const IHDR = "IHDR";
-//     // Palette table
-//     pub const PLTE = "PLTE";
-//     // Image data chunk
-//     pub const IDAT = "IDAT";
-//     // Image trailer
-//     pub const IEND = "IEND";
-// };
-
-// const AncillaryChuncks = struct {
-//     // Transparency information
-//     pub const tRNS = "tRNS";
-//     // Color space information
-//     pub const cHRM = "cHRM";
-//     pub const gAMA = "gAMA";
-//     pub const iCCP = "iCPP";
-//     pub const sBIT = "sBIT";
-//     pub const sRGB = "sRGB";
-//     // Textual information
-//     pub const iTXt = "iTXt";
-//     pub const tEXT = "tEXT";
-//     pub const zTXt = "zTXt";
-//     // Miscellaneous information
-//     pub const bKGD = "bKGD";
-//     pub const hIST = "hIST";
-//     pub const pHYs = "pHYs";
-//     pub const sPLT = "sPLT";
-//     // Time information
-//     pub const tIME = "tIME";
-// };
-
-const Chunk = packed struct {
-    length: u32 = 0,
-    chunkType: [4]u8 = undefined,
+pub const IDAT = struct {
     data: []u8 = undefined,
-    crc: u32 = undefined,
+
+    pub const ChunkType = "IDAT";
+    pub const ChunkID = utils.toMagicNumberBig(ChunkType);
+
+    const Self = @This();
+
+    pub fn deinit(self: Self, allocator: *Allocator) void {
+        allocator.free(self.data);
+    }
+
+    pub fn read(self: *Self, readBuffer: []u8) !bool {
+        self.data = readBuffer;
+        return false;
+    }
+};
+
+pub const IEND = packed struct {
+    pub const ChunkType = "IEND";
+    pub const ChunkID = utils.toMagicNumberBig(ChunkType);
+
+    const Self = @This();
+
+    pub fn deinit(self: Self, allocator: *Allocator) void {}
+
+    pub fn read(self: *Self, readBuffer: []u8) !bool {
+        return true;
+    }
+};
+
+pub const gAMA = packed struct {
+    iGamma: u32,
+
+    pub const ChunkType = "gAMA";
+    pub const ChunkID = utils.toMagicNumberBig(ChunkType);
+
+    const Self = @This();
+
+    pub fn deinit(self: Self, allocator: *Allocator) void {}
+
+    pub fn read(self: *Self, readBuffer: []u8) !bool {
+        var slice_stream = std.io.SliceInStream.init(readBuffer);
+        self.iGamma = try slice_stream.stream.readIntBig(u32);
+        return true;
+    }
+
+    pub fn toGammaExponent(self: Self) f32 {
+        return @intToFloat(f32, self.iGamma) / 100000.0;
+    }
+};
+
+pub const ChunkVariant = union(enum) {
+    IDAT: IDAT,
+    gAMA: gAMA,
+
+    const Self = @This();
+
+    pub fn deinit(self: Self, allocator: *Allocator) void {
+        switch (self) {
+            .IDAT => |instance| instance.deinit(allocator),
+            .gAMA => |instance| instance.deinit(allocator),
+        }
+    }
+
+    pub fn getChunkID(self: Self) u32 {
+        return switch (self) {
+            .IDAT => |instance| @field(@TypeOf(instance), "ChunkID"),
+            .gAMA => |instance| @field(@TypeOf(instance), "ChunkID"),
+        };
+    }
+};
+
+const ChunkAllowed = enum {
+    OneOrMore,
+    OnlyOne,
+    ZeroOrOne,
+    ZeroOrMore,
+};
+
+const ChunkInfo = struct {
+    chunk_type: type,
+    allowed: ChunkAllowed,
+    store: bool,
+};
+
+const AllChunks = [_]ChunkInfo{
+    .{
+        .chunk_type = IHDR,
+        .allowed = .OnlyOne,
+        .store = false,
+    },
+    .{
+        .chunk_type = IDAT,
+        .allowed = .OneOrMore,
+        .store = true,
+    },
+    .{
+        .chunk_type = gAMA,
+        .allowed = .ZeroOrOne,
+        .store = true,
+    },
+    .{
+        .chunk_type = IEND,
+        .allowed = .OnlyOne,
+        .store = false,
+    },
 };
 
 fn ValidBitDepths(color_type: ColorType) []const u8 {
@@ -95,9 +173,26 @@ fn ValidBitDepths(color_type: ColorType) []const u8 {
 // remember, PNG uses network byte order (aka Big Endian)
 pub const PNG = struct {
     header: IHDR = undefined,
+    chunks: std.ArrayList(ChunkVariant) = undefined,
     pixel_format: PixelFormat = undefined,
+    allocator: *Allocator = undefined,
 
     const Self = @This();
+
+    pub fn init(allocator: *Allocator) Self {
+        return Self{
+            .chunks = std.ArrayList(ChunkVariant).init(allocator),
+            .allocator = allocator,
+        };
+    }
+
+    pub fn deinit(self: Self) void {
+        for (self.chunks.span()) |chunk| {
+            chunk.deinit(self.allocator);
+        }
+
+        self.chunks.deinit();
+    }
 
     pub fn formatInterface() FormatInterface {
         return FormatInterface{
@@ -118,8 +213,21 @@ pub const PNG = struct {
         return std.mem.eql(u8, magicNumberBuffer[0..], PNGMagicHeader);
     }
 
+    pub fn findFirstChunk(self: Self, chunk_type: []const u8) ?ChunkVariant {
+        const chunkID = utils.toMagicNumberBig(chunk_type);
+
+        for (self.chunks.span()) |chunk| {
+            if (chunk.getChunkID() == chunkID) {
+                return chunk;
+            }
+        }
+
+        return null;
+    }
+
     pub fn readForImage(allocator: *Allocator, inStream: *ImageInStream, seekStream: *ImageSeekStream, pixelsOpt: *?color.ColorStorage) !ImageInfo {
-        var png = PNG{};
+        var png = PNG.init(allocator);
+        defer png.deinit();
 
         try png.read(allocator, inStream, seekStream, pixelsOpt);
 
@@ -139,25 +247,7 @@ pub const PNG = struct {
             return errors.ImageError.InvalidMagicHeader;
         }
 
-        const chunkSize = try inStream.readIntBig(u32);
-
-        if (chunkSize != @sizeOf(IHDR)) {
-            return errors.PngError.InvalidChunk;
-        }
-
-        var chunkType: [4]u8 = undefined;
-        _ = try inStream.read(chunkType[0..]);
-
-        if (!std.mem.eql(u8, chunkType[0..], IHDR.ChunkType)) {
-            return errors.PngError.InvalidChunk;
-        }
-
-        var headerBuffer: [@sizeOf(IHDR)]u8 = undefined;
-        _ = try inStream.read(headerBuffer[0..]);
-
-        var slice_stream = std.io.SliceInStream.init(&headerBuffer);
-
-        self.header = try utils.readStructBig(@ptrCast(*ImageInStream, &slice_stream.stream), IHDR);
+        while (try self.readChunk(allocator, inStream)) {}
 
         if (!self.validateBitDepth()) {
             return errors.PngError.InvalidBitDepth;
@@ -207,18 +297,93 @@ pub const PNG = struct {
         }
 
         pixelsOpt.* = try color.ColorStorage.init(allocator, self.pixel_format, self.header.width * self.header.height);
+    }
 
-        const headerCrc = try inStream.readIntBig(u32);
+    fn readChunk(self: *Self, allocator: *Allocator, inStream: *ImageInStream) !bool {
+        const chunkSize = try inStream.readIntBig(u32);
+
+        var chunkType: [4]u8 = undefined;
+        _ = try inStream.read(chunkType[0..]);
+
+        var readBuffer = try allocator.alloc(u8, chunkSize);
+        errdefer allocator.free(readBuffer);
+
+        _ = try inStream.read(readBuffer);
+
+        const readCrc = try inStream.readIntBig(u32);
 
         var crcHash = crc.Crc32.init();
         crcHash.update(chunkType[0..]);
-        crcHash.update(headerBuffer[0..]);
+        crcHash.update(readBuffer[0..]);
 
         const computedCrc = crcHash.final();
 
-        if (computedCrc != headerCrc) {
+        if (computedCrc != readCrc) {
             return errors.PngError.InvalidCRC;
         }
+
+        var found = false;
+        var deallocateBuffer = true;
+        var continueReading = true;
+
+        const readChunkID = utils.toMagicNumberBig(chunkType[0..]);
+
+        // TODO: fix the bug in Zig to make this works
+        // inline for (AllChunks) |chunkInfo| {
+        //     const typeChunkID = @field(chunkInfo.chunk_type, "ChunkID");
+
+        //     if (readChunkID == typeChunkID) {
+        //         found = true;
+
+        //         if (readChunkID == IHDR.ChunkID) {
+        //             deallocateBuffer = try self.header.read(readBuffer);
+        //         } else if (readChunkID == IEND.ChunkID) {
+        //             continueReading = false;
+        //         } else if (chunkInfo.store) {
+        //             const finalChunk = try self.chunks.addOne();
+        //             finalChunk.* = @unionInit(ChunkVariant, @typeName(chunkInfo.chunk_type), undefined);
+        //             deallocateBuffer = try @field(finalChunk, @typeName(chunkInfo.chunk_type)).read(readBuffer);
+        //         }
+        //         break;
+        //     }
+        // }
+
+        // Remove this when the code below works
+        switch (readChunkID) {
+            IHDR.ChunkID => {
+                deallocateBuffer = try self.header.read(readBuffer);
+                found = true;
+            },
+            IEND.ChunkID => {
+                continueReading = false;
+                found = true;
+            },
+            gAMA.ChunkID => {
+                const gammaChunk = try self.chunks.addOne();
+                gammaChunk.* = @unionInit(ChunkVariant, gAMA.ChunkType, undefined);
+                deallocateBuffer = try @field(gammaChunk, gAMA.ChunkType).read(readBuffer);
+                found = true;
+            },
+            IDAT.ChunkID => {
+                const dataChunk = try self.chunks.addOne();
+                dataChunk.* = @unionInit(ChunkVariant, IDAT.ChunkType, undefined);
+                deallocateBuffer = try @field(dataChunk, IDAT.ChunkType).read(readBuffer);
+                found = true;
+            },
+            else => {},
+        }
+
+        if (deallocateBuffer) {
+            allocator.free(readBuffer);
+        }
+
+        const chunkIsCritical = (chunkType[0] & (1 << 5)) == 0;
+
+        if (chunkIsCritical and !found) {
+            return errors.PngError.InvalidChunk;
+        }
+
+        return continueReading;
     }
 
     fn validateBitDepth(self: Self) bool {
