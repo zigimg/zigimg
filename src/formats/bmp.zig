@@ -160,7 +160,7 @@ pub const Bitmap = struct {
         return ImageFormat.Bmp;
     }
 
-    pub fn formatDetect(inStream: *ImageInStream, seekStream: *ImageSeekStream) !bool {
+    pub fn formatDetect(inStream: ImageInStream, seekStream: ImageSeekStream) !bool {
         var magicNumberBuffer: [2]u8 = undefined;
         _ = try inStream.read(magicNumberBuffer[0..]);
         if (std.mem.eql(u8, magicNumberBuffer[0..], BitmapMagicHeader[0..])) {
@@ -170,7 +170,7 @@ pub const Bitmap = struct {
         return false;
     }
 
-    pub fn readForImage(allocator: *Allocator, inStream: *ImageInStream, seekStream: *ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
+    pub fn readForImage(allocator: *Allocator, inStream: ImageInStream, seekStream: ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
         var bmp = Self{};
 
         try bmp.read(allocator, inStream, seekStream, pixels);
@@ -210,7 +210,7 @@ pub const Bitmap = struct {
         };
     }
 
-    pub fn read(self: *Self, allocator: *Allocator, inStream: *ImageInStream, seekStream: *ImageSeekStream, pixelsOpt: *?color.ColorStorage) !void {
+    pub fn read(self: *Self, allocator: *Allocator, inStream: ImageInStream, seekStream: ImageSeekStream, pixelsOpt: *?color.ColorStorage) !void {
         // Read file header
         self.fileHeader = try readStructLittle(inStream, BitmapFileHeader);
         if (!mem.eql(u8, self.fileHeader.magicHeader[0..], BitmapMagicHeader[0..])) {
@@ -268,7 +268,7 @@ pub const Bitmap = struct {
         }
     }
 
-    fn readPixels(inStream: *ImageInStream, pixelWidth: i32, pixelHeight: i32, pixelFormat: PixelFormat, pixels: *color.ColorStorage) !void {
+    fn readPixels(inStream: ImageInStream, pixelWidth: i32, pixelHeight: i32, pixelFormat: PixelFormat, pixels: *color.ColorStorage) !void {
         return switch (pixelFormat) {
             PixelFormat.Rgb24 => {
                 return readPixelsInternal(pixels.Rgb24, inStream, pixelWidth, pixelHeight);
@@ -282,7 +282,7 @@ pub const Bitmap = struct {
         };
     }
 
-    fn readPixelsInternal(pixels: var, inStream: *ImageInStream, pixelWidth: i32, pixelHeight: i32) !void {
+    fn readPixelsInternal(pixels: var, inStream: ImageInStream, pixelWidth: i32, pixelHeight: i32) !void {
         const ColorBufferType = @typeInfo(@TypeOf(pixels)).Pointer.child;
 
         var x: i32 = 0;

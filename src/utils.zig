@@ -27,11 +27,11 @@ pub const toMagicNumberLittle = switch (builtin.endian) {
     builtin.Endian.Big => toMagicNumberForeign,
 };
 
-pub fn readStructNative(inStream: *io.InStream(anyerror), comptime T: type) !T {
+pub fn readStructNative(inStream: io.StreamSource.InStream, comptime T: type) !T {
     return try inStream.readStruct(T);
 }
 
-pub fn readStructForeign(inStream: *io.InStream(anyerror), comptime T: type) !T {
+pub fn readStructForeign(inStream: io.StreamSource.InStream, comptime T: type) !T {
     comptime assert(@typeInfo(T).Struct.layout != builtin.TypeInfo.ContainerLayout.Auto);
 
     var result: T = undefined;

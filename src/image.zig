@@ -18,8 +18,8 @@ pub const ImageFormat = enum {
     Raw,
 };
 
-pub const ImageInStream = io.InStream(anyerror);
-pub const ImageSeekStream = io.SeekableStream(anyerror, anyerror);
+pub const ImageInStream = io.StreamSource.InStream;
+pub const ImageSeekStream = io.StreamSource.SeekableStream;
 
 pub const ImageInfo = struct {
     width: usize = 0,
@@ -65,11 +65,10 @@ pub const Image = struct {
     pub fn fromFile(allocator: *Allocator, file: *std.fs.File) !Self {
         var result = init(allocator);
 
-        var fileInStream = file.inStream();
-        var fileSeekStream = file.seekableStream();
+        var stream_source = io.StreamSource{ .file = file.* };
 
         // TODO: Replace with something better when available
-        try result.internalRead(allocator, @ptrCast(*ImageInStream, &fileInStream.stream), @ptrCast(*ImageSeekStream, &fileSeekStream.stream));
+        try result.internalRead(allocator, stream_source.inStream(), stream_source.seekableStream());
 
         return result;
     }
@@ -77,10 +76,10 @@ pub const Image = struct {
     pub fn fromMemory(allocator: *Allocator, buffer: []const u8) !Image {
         var result = init(allocator);
 
-        var memoryInStream = io.SliceSeekableInStream.init(buffer);
+        var stream_source = io.StreamSource{ .const_buffer = buffer };
 
         // TODO: Replace with something better when available
-        try result.internalRead(allocator, @ptrCast(*ImageInStream, &memoryInStream.stream), @ptrCast(*ImageSeekStream, &memoryInStream.seekable_stream));
+        try result.internalRead(allocator, stream_source.inStream(), stream_source.seekableStream());
 
         return result;
     }
@@ -106,7 +105,7 @@ pub const Image = struct {
         return color.ColorStorageIterator.initNull();
     }
 
-    fn internalRead(self: *Self, allocator: *Allocator, inStream: *ImageInStream, seekStream: *ImageSeekStream) !void {
+    fn internalRead(self: *Self, allocator: *Allocator, inStream: ImageInStream, seekStream: ImageSeekStream) !void {
         var formatInterface = try findImageInterface(inStream, seekStream);
         self.image_format = formatInterface.format();
 
@@ -119,7 +118,7 @@ pub const Image = struct {
         self.pixel_format = imageInfo.pixel_format;
     }
 
-    fn findImageInterface(inStream: *ImageInStream, seekStream: *ImageSeekStream) !FormatInterface {
+    fn findImageInterface(inStream: ImageInStream, seekStream: ImageSeekStream) !FormatInterface {
         const FormatInteraceFnType = fn () FormatInterface;
         const allFuncs = comptime blk: {
             const allFormatDecls = std.meta.declarations(AllImageFormats);
