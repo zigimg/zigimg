@@ -46,10 +46,10 @@ const RLEDecoder = struct {
         remaining: usize,
     };
 
-    stream: *ImageInStream,
+    stream: ImageInStream,
     currentRun: ?Run,
 
-    fn init(stream: *ImageInStream) RLEDecoder {
+    fn init(stream: ImageInStream) RLEDecoder {
         return RLEDecoder{
             .stream = stream,
             .currentRun = null,
@@ -114,7 +114,7 @@ pub const PCX = struct {
         return ImageFormat.Pcx;
     }
 
-    pub fn formatDetect(inStream: *ImageInStream, seekStream: *ImageSeekStream) !bool {
+    pub fn formatDetect(inStream: ImageInStream, seekStream: ImageSeekStream) !bool {
         var magicNumberBuffer: [2]u8 = undefined;
         _ = try inStream.read(magicNumberBuffer[0..]);
 
@@ -129,7 +129,7 @@ pub const PCX = struct {
         return true;
     }
 
-    pub fn readForImage(allocator: *Allocator, inStream: *ImageInStream, seekStream: *ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
+    pub fn readForImage(allocator: *Allocator, inStream: ImageInStream, seekStream: ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
         var pcx = PCX{};
 
         try pcx.read(allocator, inStream, seekStream, pixels);
@@ -142,7 +142,7 @@ pub const PCX = struct {
         return imageInfo;
     }
 
-    pub fn read(self: *Self, allocator: *Allocator, inStream: *ImageInStream, seekStream: *ImageSeekStream, pixelsOpt: *?color.ColorStorage) !void {
+    pub fn read(self: *Self, allocator: *Allocator, inStream: ImageInStream, seekStream: ImageSeekStream, pixelsOpt: *?color.ColorStorage) !void {
         self.header = try utils.readStructLittle(inStream, PCXHeader);
         _ = try inStream.read(PCXHeader.padding[0..]);
 
