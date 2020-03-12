@@ -102,13 +102,12 @@ test "Read simple version 4 24-bit RGB bitmap" {
     const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/bmp/simple_v4.bmp");
     defer file.close();
 
-    var fileInStream = file.inStream();
-    var fileSeekStream = file.seekableStream();
-
     var theBitmap = bmp.Bitmap{};
 
+    var stream_source = std.io.StreamSource{ .file = file };
+
     var pixelsOpt: ?color.ColorStorage = null;
-    try theBitmap.read(zigimg_test_allocator, @ptrCast(*ImageInStream, &fileInStream.stream), @ptrCast(*ImageSeekStream, &fileSeekStream.stream), &pixelsOpt);
+    try theBitmap.read(zigimg_test_allocator, stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
         if (pixelsOpt) |pixels| {
@@ -167,18 +166,15 @@ test "Read simple version 4 24-bit RGB bitmap" {
 }
 
 test "Read a valid version 5 RGBA bitmap from file" {
-    // var theBitmap = try bmp.Bitmap.fromFile(zigimg_test_allocator, "tests/fixtures/bmp/windows_rgba_v5.bmp");
-    // verifyBitmapRGBAV5(&theBitmap);
     const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/bmp/windows_rgba_v5.bmp");
     defer file.close();
 
-    var fileInStream = file.inStream();
-    var fileSeekStream = file.seekableStream();
+    var stream_source = std.io.StreamSource{ .file = file };
 
     var theBitmap = bmp.Bitmap{};
 
     var pixelsOpt: ?color.ColorStorage = null;
-    try theBitmap.read(zigimg_test_allocator, @ptrCast(*ImageInStream, &fileInStream.stream), @ptrCast(*ImageSeekStream, &fileSeekStream.stream), &pixelsOpt);
+    try theBitmap.read(zigimg_test_allocator, stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
         if (pixelsOpt) |pixels| {
@@ -190,13 +186,12 @@ test "Read a valid version 5 RGBA bitmap from file" {
 }
 
 test "Read a valid version 5 RGBA bitmap from memory" {
-    var memoryInStream = std.io.SliceSeekableInStream.init(MemoryRGBABitmap);
+    var stream_source = std.io.StreamSource{ .const_buffer = std.io.fixedBufferStream(MemoryRGBABitmap) };
 
     var theBitmap = bmp.Bitmap{};
 
     var pixelsOpt: ?color.ColorStorage = null;
-    // TODO: Replace with something better when available
-    try theBitmap.read(zigimg_test_allocator, @ptrCast(*ImageInStream, &memoryInStream.stream), @ptrCast(*ImageSeekStream, &memoryInStream.seekable_stream), &pixelsOpt);
+    try theBitmap.read(zigimg_test_allocator, stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
         if (pixelsOpt) |pixels| {
@@ -211,12 +206,11 @@ test "Should error when reading an invalid file" {
     const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/png/notbmp.png");
     defer file.close();
 
-    var fileInStream = file.inStream();
-    var fileSeekStream = file.seekableStream();
+    var stream_source = std.io.StreamSource{ .file = file };
 
     var theBitmap = bmp.Bitmap{};
 
     var pixels: ?color.ColorStorage = null;
-    const invalidFile = theBitmap.read(zigimg_test_allocator, @ptrCast(*ImageInStream, &fileInStream.stream), @ptrCast(*ImageSeekStream, &fileSeekStream.stream), &pixels);
+    const invalidFile = theBitmap.read(zigimg_test_allocator, stream_source.inStream(), stream_source.seekableStream(), &pixels);
     expectError(invalidFile, errors.ImageError.InvalidMagicHeader);
 }

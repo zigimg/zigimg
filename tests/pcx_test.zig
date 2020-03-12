@@ -14,13 +14,12 @@ test "PCX bpp1 (linear)" {
     const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/pcx/test-bpp1.pcx");
     defer file.close();
 
-    var fileInStream = file.inStream();
-    var fileSeekStream = file.seekableStream();
+    var stream_source = std.io.StreamSource{ .file = file };
 
     var pcxFile = pcx.PCX{};
 
     var pixelsOpt: ?color.ColorStorage = null;
-    try pcxFile.read(zigimg_test_allocator, @ptrCast(*ImageInStream, &fileInStream.stream), @ptrCast(*ImageSeekStream, &fileSeekStream.stream), &pixelsOpt);
+    try pcxFile.read(zigimg_test_allocator, stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
         if (pixelsOpt) |pixels| {
@@ -62,13 +61,12 @@ test "PCX bpp4 (linear)" {
     const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/pcx/test-bpp4.pcx");
     defer file.close();
 
-    var fileInStream = file.inStream();
-    var fileSeekStream = file.seekableStream();
+    var stream_source = std.io.StreamSource{ .file = file };
 
     var pcxFile = pcx.PCX{};
 
     var pixelsOpt: ?color.ColorStorage = null;
-    try pcxFile.read(zigimg_test_allocator, @ptrCast(*ImageInStream, &fileInStream.stream), @ptrCast(*ImageSeekStream, &fileSeekStream.stream), &pixelsOpt);
+    try pcxFile.read(zigimg_test_allocator, stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
         if (pixelsOpt) |pixels| {
@@ -111,13 +109,12 @@ test "PCX bpp8 (linear)" {
     const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/pcx/test-bpp8.pcx");
     defer file.close();
 
-    var fileInStream = file.inStream();
-    var fileSeekStream = file.seekableStream();
+    var stream_source = std.io.StreamSource{ .file = file };
 
     var pcxFile = pcx.PCX{};
 
     var pixelsOpt: ?color.ColorStorage = null;
-    try pcxFile.read(zigimg_test_allocator, @ptrCast(*ImageInStream, &fileInStream.stream), @ptrCast(*ImageSeekStream, &fileSeekStream.stream), &pixelsOpt);
+    try pcxFile.read(zigimg_test_allocator, stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
         if (pixelsOpt) |pixels| {
@@ -162,13 +159,12 @@ test "PCX bpp24 (planar)" {
     const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/pcx/test-bpp24.pcx");
     defer file.close();
 
-    var fileInStream = file.inStream();
-    var fileSeekStream = file.seekableStream();
+    var stream_source = std.io.StreamSource{ .file = file };
 
     var pcxFile = pcx.PCX{};
 
     var pixelsOpt: ?color.ColorStorage = null;
-    try pcxFile.read(zigimg_test_allocator, @ptrCast(*ImageInStream, &fileInStream.stream), @ptrCast(*ImageSeekStream, &fileSeekStream.stream), &pixelsOpt);
+    try pcxFile.read(zigimg_test_allocator, stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
         if (pixelsOpt) |pixels| {

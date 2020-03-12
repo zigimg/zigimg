@@ -67,7 +67,6 @@ pub const Image = struct {
 
         var stream_source = io.StreamSource{ .file = file.* };
 
-        // TODO: Replace with something better when available
         try result.internalRead(allocator, stream_source.inStream(), stream_source.seekableStream());
 
         return result;
@@ -76,9 +75,8 @@ pub const Image = struct {
     pub fn fromMemory(allocator: *Allocator, buffer: []const u8) !Image {
         var result = init(allocator);
 
-        var stream_source = io.StreamSource{ .const_buffer = buffer };
+        var stream_source = io.StreamSource{ .const_buffer = io.fixedBufferStream(buffer) };
 
-        // TODO: Replace with something better when available
         try result.internalRead(allocator, stream_source.inStream(), stream_source.seekableStream());
 
         return result;

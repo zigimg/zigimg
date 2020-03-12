@@ -14,13 +14,12 @@ test "Load ASCII PBM image" {
     const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/netpbm/pbm_ascii.pbm");
     defer file.close();
 
-    var fileInStream = file.inStream();
-    var fileSeekStream = file.seekableStream();
+    var stream_source = std.io.StreamSource{ .file = file };
 
     var pbmFile = netpbm.PBM{};
 
     var pixelsOpt: ?color.ColorStorage = null;
-    try pbmFile.read(zigimg_test_allocator, @ptrCast(*ImageInStream, &fileInStream.stream), @ptrCast(*ImageSeekStream, &fileSeekStream.stream), &pixelsOpt);
+    try pbmFile.read(zigimg_test_allocator, stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
         if (pixelsOpt) |pixels| {
@@ -47,13 +46,12 @@ test "Load binary PBM image" {
     const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/netpbm/pbm_binary.pbm");
     defer file.close();
 
-    var fileInStream = file.inStream();
-    var fileSeekStream = file.seekableStream();
+    var stream_source = std.io.StreamSource{ .file = file };
 
     var pbmFile = netpbm.PBM{};
 
     var pixelsOpt: ?color.ColorStorage = null;
-    try pbmFile.read(zigimg_test_allocator, @ptrCast(*ImageInStream, &fileInStream.stream), @ptrCast(*ImageSeekStream, &fileSeekStream.stream), &pixelsOpt);
+    try pbmFile.read(zigimg_test_allocator, stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
         if (pixelsOpt) |pixels| {
@@ -80,13 +78,12 @@ test "Load ASCII PGM 8-bit grayscale image" {
     const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/netpbm/pgm_ascii_grayscale8.pgm");
     defer file.close();
 
-    var fileInStream = file.inStream();
-    var fileSeekStream = file.seekableStream();
+    var stream_source = std.io.StreamSource{ .file = file };
 
     var pgmFile = netpbm.PGM{};
 
     var pixelsOpt: ?color.ColorStorage = null;
-    try pgmFile.read(zigimg_test_allocator, @ptrCast(*ImageInStream, &fileInStream.stream), @ptrCast(*ImageSeekStream, &fileSeekStream.stream), &pixelsOpt);
+    try pgmFile.read(zigimg_test_allocator, stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
         if (pixelsOpt) |pixels| {
@@ -113,13 +110,12 @@ test "Load Binary PGM 8-bit grayscale image" {
     const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/netpbm/pgm_binary_grayscale8.pgm");
     defer file.close();
 
-    var fileInStream = file.inStream();
-    var fileSeekStream = file.seekableStream();
+    var stream_source = std.io.StreamSource{ .file = file };
 
     var pgmFile = netpbm.PGM{};
 
     var pixelsOpt: ?color.ColorStorage = null;
-    try pgmFile.read(zigimg_test_allocator, @ptrCast(*ImageInStream, &fileInStream.stream), @ptrCast(*ImageSeekStream, &fileSeekStream.stream), &pixelsOpt);
+    try pgmFile.read(zigimg_test_allocator, stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
         if (pixelsOpt) |pixels| {
@@ -146,13 +142,12 @@ test "Load ASCII PGM 16-bit grayscale image" {
     const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/netpbm/pgm_ascii_grayscale16.pgm");
     defer file.close();
 
-    var fileInStream = file.inStream();
-    var fileSeekStream = file.seekableStream();
+    var stream_source = std.io.StreamSource{ .file = file };
 
     var pgmFile = netpbm.PGM{};
 
     var pixelsOpt: ?color.ColorStorage = null;
-    try pgmFile.read(zigimg_test_allocator, @ptrCast(*ImageInStream, &fileInStream.stream), @ptrCast(*ImageSeekStream, &fileSeekStream.stream), &pixelsOpt);
+    try pgmFile.read(zigimg_test_allocator, stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
         if (pixelsOpt) |pixels| {
@@ -179,13 +174,12 @@ test "Load Binary PGM 16-bit grayscale image" {
     const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/netpbm/pgm_binary_grayscale16.pgm");
     defer file.close();
 
-    var fileInStream = file.inStream();
-    var fileSeekStream = file.seekableStream();
+    var stream_source = std.io.StreamSource{ .file = file };
 
     var pgmFile = netpbm.PGM{};
 
     var pixelsOpt: ?color.ColorStorage = null;
-    try pgmFile.read(zigimg_test_allocator, @ptrCast(*ImageInStream, &fileInStream.stream), @ptrCast(*ImageSeekStream, &fileSeekStream.stream), &pixelsOpt);
+    try pgmFile.read(zigimg_test_allocator, stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
         if (pixelsOpt) |pixels| {
@@ -212,13 +206,12 @@ test "Load ASCII PPM image" {
     const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/netpbm/ppm_ascii_rgb24.ppm");
     defer file.close();
 
-    var fileInStream = file.inStream();
-    var fileSeekStream = file.seekableStream();
+    var stream_source = std.io.StreamSource{ .file = file };
 
     var ppmFile = netpbm.PPM{};
 
     var pixelsOpt: ?color.ColorStorage = null;
-    try ppmFile.read(zigimg_test_allocator, @ptrCast(*ImageInStream, &fileInStream.stream), @ptrCast(*ImageSeekStream, &fileSeekStream.stream), &pixelsOpt);
+    try ppmFile.read(zigimg_test_allocator, stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
         if (pixelsOpt) |pixels| {
@@ -261,13 +254,12 @@ test "Load binary PPM image" {
     const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/netpbm/ppm_binary_rgb24.ppm");
     defer file.close();
 
-    var fileInStream = file.inStream();
-    var fileSeekStream = file.seekableStream();
+    var stream_source = std.io.StreamSource{ .file = file };
 
     var ppmFile = netpbm.PPM{};
 
     var pixelsOpt: ?color.ColorStorage = null;
-    try ppmFile.read(zigimg_test_allocator, @ptrCast(*ImageInStream, &fileInStream.stream), @ptrCast(*ImageSeekStream, &fileSeekStream.stream), &pixelsOpt);
+    try ppmFile.read(zigimg_test_allocator, stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
         if (pixelsOpt) |pixels| {
