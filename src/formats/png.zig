@@ -44,9 +44,8 @@ pub const IHDR = packed struct {
     pub fn deinit(self: Self, allocator: *Allocator) void {}
 
     pub fn read(self: *Self, readBuffer: []u8) !bool {
-        var slice_stream = std.io.SliceInStream.init(readBuffer);
-        var actualStream = @ptrCast(*ImageInStream, &slice_stream.stream);
-        self.* = try utils.readStructBig(actualStream, Self);
+        var stream = std.io.StreamSource{ .buffer = std.io.fixedBufferStream(readBuffer) };
+        self.* = try utils.readStructBig(stream.inStream(), Self);
         return true;
     }
 };
@@ -93,8 +92,8 @@ pub const gAMA = packed struct {
     pub fn deinit(self: Self, allocator: *Allocator) void {}
 
     pub fn read(self: *Self, readBuffer: []u8) !bool {
-        var slice_stream = std.io.SliceInStream.init(readBuffer);
-        self.iGamma = try slice_stream.stream.readIntBig(u32);
+        var stream = std.io.fixedBufferStream(readBuffer);
+        self.iGamma = try stream.inStream().readIntBig(u32);
         return true;
     }
 
@@ -206,7 +205,7 @@ pub const PNG = struct {
         return ImageFormat.Png;
     }
 
-    pub fn formatDetect(inStream: *ImageInStream, seekStream: *ImageSeekStream) !bool {
+    pub fn formatDetect(inStream: ImageInStream, seekStream: ImageSeekStream) !bool {
         var magicNumberBuffer: [8]u8 = undefined;
         _ = try inStream.read(magicNumberBuffer[0..]);
 
@@ -225,7 +224,7 @@ pub const PNG = struct {
         return null;
     }
 
-    pub fn readForImage(allocator: *Allocator, inStream: *ImageInStream, seekStream: *ImageSeekStream, pixelsOpt: *?color.ColorStorage) !ImageInfo {
+    pub fn readForImage(allocator: *Allocator, inStream: ImageInStream, seekStream: ImageSeekStream, pixelsOpt: *?color.ColorStorage) !ImageInfo {
         var png = PNG.init(allocator);
         defer png.deinit();
 
@@ -239,7 +238,7 @@ pub const PNG = struct {
         return imageInfo;
     }
 
-    pub fn read(self: *Self, allocator: *Allocator, inStream: *ImageInStream, seekStream: *ImageSeekStream, pixelsOpt: *?color.ColorStorage) !void {
+    pub fn read(self: *Self, allocator: *Allocator, inStream: ImageInStream, seekStream: ImageSeekStream, pixelsOpt: *?color.ColorStorage) !void {
         var magicNumberBuffer: [8]u8 = undefined;
         _ = try inStream.read(magicNumberBuffer[0..]);
 
@@ -299,7 +298,7 @@ pub const PNG = struct {
         pixelsOpt.* = try color.ColorStorage.init(allocator, self.pixel_format, self.header.width * self.header.height);
     }
 
-    fn readChunk(self: *Self, allocator: *Allocator, inStream: *ImageInStream) !bool {
+    fn readChunk(self: *Self, allocator: *Allocator, inStream: ImageInStream) !bool {
         const chunkSize = try inStream.readIntBig(u32);
 
         var chunkType: [4]u8 = undefined;

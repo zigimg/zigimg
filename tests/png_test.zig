@@ -14,14 +14,13 @@ test "Should error on non PNG images" {
     const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/bmp/simple_v4.bmp");
     defer file.close();
 
-    var fileInStream = file.inStream();
-    var fileSeekStream = file.seekableStream();
+    var stream_source = std.io.StreamSource{ .file = file };
 
     var pngFile = png.PNG.init(zigimg_test_allocator);
     defer pngFile.deinit();
 
     var pixelsOpt: ?color.ColorStorage = null;
-    const invalidFile = pngFile.read(zigimg_test_allocator, @ptrCast(*ImageInStream, &fileInStream.stream), @ptrCast(*ImageSeekStream, &fileSeekStream.stream), &pixelsOpt);
+    const invalidFile = pngFile.read(zigimg_test_allocator, stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
     defer {
         if (pixelsOpt) |pixels| {
             pixels.deinit(zigimg_test_allocator);
@@ -35,14 +34,13 @@ test "Read PNG header properly" {
     const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/png/basn0g01.png");
     defer file.close();
 
-    var fileInStream = file.inStream();
-    var fileSeekStream = file.seekableStream();
+    var stream_source = std.io.StreamSource{ .file = file };
 
     var pngFile = png.PNG.init(zigimg_test_allocator);
     defer pngFile.deinit();
 
     var pixelsOpt: ?color.ColorStorage = null;
-    try pngFile.read(zigimg_test_allocator, @ptrCast(*ImageInStream, &fileInStream.stream), @ptrCast(*ImageSeekStream, &fileSeekStream.stream), &pixelsOpt);
+    try pngFile.read(zigimg_test_allocator, stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
         if (pixelsOpt) |pixels| {
@@ -71,14 +69,13 @@ test "Read gAMA chunk properly" {
     const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/png/basn0g01.png");
     defer file.close();
 
-    var fileInStream = file.inStream();
-    var fileSeekStream = file.seekableStream();
+    var stream_source = std.io.StreamSource{ .file = file };
 
     var pngFile = png.PNG.init(zigimg_test_allocator);
     defer pngFile.deinit();
 
     var pixelsOpt: ?color.ColorStorage = null;
-    try pngFile.read(zigimg_test_allocator, @ptrCast(*ImageInStream, &fileInStream.stream), @ptrCast(*ImageSeekStream, &fileSeekStream.stream), &pixelsOpt);
+    try pngFile.read(zigimg_test_allocator, stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
         if (pixelsOpt) |pixels| {
