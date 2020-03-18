@@ -1,3 +1,5 @@
+// Implement PNG image format according to W3C Portable Network Graphics (PNG) specification second edition (ISO/IEC 15948:2003 (E))
+// Last version: https://www.w3.org/TR/PNG/
 const Allocator = std.mem.Allocator;
 const crc = std.hash.crc;
 const FormatInterface = @import("../format_interface.zig").FormatInterface;
@@ -11,6 +13,8 @@ const errors = @import("../errors.zig");
 const image = @import("../image.zig");
 const std = @import("std");
 const utils = @import("../utils.zig");
+const zlib = @import("../compression/zlib.zig");
+const deflate = @import("../compression/deflate.zig");
 
 const PNGMagicHeader = "\x89PNG\x0D\x0A\x1A\x0A";
 
@@ -170,11 +174,17 @@ fn ValidBitDepths(color_type: ColorType) []const u8 {
 }
 
 // remember, PNG uses network byte order (aka Big Endian)
+// TODO: Proper validation of chunk order and count
 pub const PNG = struct {
     header: IHDR = undefined,
     chunks: std.ArrayList(ChunkVariant) = undefined,
     pixel_format: PixelFormat = undefined,
     allocator: *Allocator = undefined,
+
+    const DecompressionContext = struct {
+        pixels: *color.ColorStorage,
+        read_checksum: u32,
+    };
 
     const Self = @This();
 
@@ -228,7 +238,7 @@ pub const PNG = struct {
         var png = PNG.init(allocator);
         defer png.deinit();
 
-        try png.read(allocator, inStream, seekStream, pixelsOpt);
+        try png.read(inStream, seekStream, pixelsOpt);
 
         var imageInfo = ImageInfo{};
         imageInfo.width = png.header.width;
@@ -238,7 +248,7 @@ pub const PNG = struct {
         return imageInfo;
     }
 
-    pub fn read(self: *Self, allocator: *Allocator, inStream: ImageInStream, seekStream: ImageSeekStream, pixelsOpt: *?color.ColorStorage) !void {
+    pub fn read(self: *Self, inStream: ImageInStream, seekStream: ImageSeekStream, pixelsOpt: *?color.ColorStorage) !void {
         var magicNumberBuffer: [8]u8 = undefined;
         _ = try inStream.read(magicNumberBuffer[0..]);
 
@@ -246,7 +256,7 @@ pub const PNG = struct {
             return errors.ImageError.InvalidMagicHeader;
         }
 
-        while (try self.readChunk(allocator, inStream)) {}
+        while (try self.readChunk(inStream)) {}
 
         if (!self.validateBitDepth()) {
             return errors.PngError.InvalidBitDepth;
@@ -295,17 +305,30 @@ pub const PNG = struct {
             },
         }
 
-        pixelsOpt.* = try color.ColorStorage.init(allocator, self.pixel_format, self.header.width * self.header.height);
+        pixelsOpt.* = try color.ColorStorage.init(self.allocator, self.pixel_format, self.header.width * self.header.height);
+
+        if (pixelsOpt.*) |*pixels| {
+            var decompression_context: DecompressionContext = undefined;
+            decompression_context.pixels = pixels;
+
+            for (self.chunks.span()) |chunk| {
+                if (chunk.getChunkID() == IDAT.ChunkID) {
+                    try self.readDataChunk(chunk.IDAT, &decompression_context);
+                }
+            }
+        } else {
+            return errors.ImageError.UnsupportedPixelFormat;
+        }
     }
 
-    fn readChunk(self: *Self, allocator: *Allocator, inStream: ImageInStream) !bool {
+    fn readChunk(self: *Self, inStream: ImageInStream) !bool {
         const chunkSize = try inStream.readIntBig(u32);
 
         var chunkType: [4]u8 = undefined;
         _ = try inStream.read(chunkType[0..]);
 
-        var readBuffer = try allocator.alloc(u8, chunkSize);
-        errdefer allocator.free(readBuffer);
+        var readBuffer = try self.allocator.alloc(u8, chunkSize);
+        errdefer self.allocator.free(readBuffer);
 
         _ = try inStream.read(readBuffer);
 
@@ -373,7 +396,7 @@ pub const PNG = struct {
         }
 
         if (deallocateBuffer) {
-            allocator.free(readBuffer);
+            self.allocator.free(readBuffer);
         }
 
         const chunkIsCritical = (chunkType[0] & (1 << 5)) == 0;
@@ -383,6 +406,36 @@ pub const PNG = struct {
         }
 
         return continueReading;
+    }
+
+    fn readDataChunk(self: Self, dataChunk: IDAT, context: *DecompressionContext) !void {
+        // First read ZLIB Compressed Data header
+        var dataStream = std.io.StreamSource{ .buffer = std.io.fixedBufferStream(dataChunk.data) };
+        var zlibHeader: zlib.StreamHeader = undefined;
+        const dataInStream = dataStream.inStream();
+
+        zlibHeader.compression = @bitCast(zlib.StreamHeader.Compression, try dataInStream.readByte());
+        zlibHeader.flags = @bitCast(zlib.StreamHeader.Flags, try dataInStream.readByte());
+
+        if (zlibHeader.compression.method != 8) {
+            return error.ZlibInvalidCompressionMethod;
+        }
+
+        const validityCheck = (@intCast(u16, @bitCast(u8, zlibHeader.compression)) << 8) | @bitCast(u8, zlibHeader.flags);
+        if ((validityCheck) % 31 != 0) {
+            return error.ZlibInvalidCheck;
+        }
+
+        // TODO: Handle preset dictionary in zlib stream
+
+        // Then read deflate stream
+        var decompressed_buffer = try self.allocator.alloc(u8, 64 * 1024);
+        defer self.allocator.free(decompressed_buffer);
+
+        var decompressed_stream = std.io.fixedBufferStream(decompressed_buffer);
+
+        var deflate_reader = deflate.DeflateDecompressor.init(self.allocator);
+        try deflate_reader.read(dataInStream, decompressed_stream.outStream());
     }
 
     fn validateBitDepth(self: Self) bool {
