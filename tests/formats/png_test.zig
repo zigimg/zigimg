@@ -8,7 +8,7 @@ const png = zigimg.png;
 const std = @import("std");
 const testing = std.testing;
 const zigimg = @import("zigimg");
-usingnamespace @import("helpers.zig");
+usingnamespace @import("../helpers.zig");
 
 test "Should error on non PNG images" {
     const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/bmp/simple_v4.bmp");

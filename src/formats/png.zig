@@ -184,6 +184,8 @@ pub const PNG = struct {
     const DecompressionContext = struct {
         pixels: *color.ColorStorage,
         read_checksum: u32,
+        raw_data: ?[]u8,
+        raw_data_position: usize,
     };
 
     const Self = @This();
@@ -310,6 +312,12 @@ pub const PNG = struct {
         if (pixelsOpt.*) |*pixels| {
             var decompression_context: DecompressionContext = undefined;
             decompression_context.pixels = pixels;
+            decompression_context.raw_data_position = 0;
+            defer {
+                if (decompression_context.raw_data) |data| {
+                    self.allocator.free(data);
+                }
+            }
 
             for (self.chunks.span()) |chunk| {
                 if (chunk.getChunkID() == IDAT.ChunkID) {
@@ -410,7 +418,7 @@ pub const PNG = struct {
 
     fn readDataChunk(self: Self, dataChunk: IDAT, context: *DecompressionContext) !void {
         // First read ZLIB Compressed Data header
-        var dataStream = std.io.StreamSource{ .buffer = std.io.fixedBufferStream(dataChunk.data) };
+        var dataStream = std.io.fixedBufferStream(dataChunk.data);
         var zlibHeader: zlib.StreamHeader = undefined;
         const dataInStream = dataStream.inStream();
 
@@ -428,14 +436,32 @@ pub const PNG = struct {
 
         // TODO: Handle preset dictionary in zlib stream
 
-        // Then read deflate stream
-        var decompressed_buffer = try self.allocator.alloc(u8, 64 * 1024);
-        defer self.allocator.free(decompressed_buffer);
+        // Alloc decompression window
+        const window_size = zlibHeader.getCompressionWindowSize();
 
-        var decompressed_stream = std.io.fixedBufferStream(decompressed_buffer);
+        if (context.raw_data) |data| {
+            if (context.raw_data_position >= data.len) {
+                context.raw_data_position = 0;
+            }
 
-        var deflate_reader = deflate.DeflateDecompressor.init(self.allocator);
-        try deflate_reader.read(dataInStream, decompressed_stream.outStream());
+            if (data.len != (window_size * 2)) {
+                const new_data = try self.allocator.alloc(u8, window_size * 2);
+                std.mem.copy(u8, new_data[0..], data[0..]);
+                self.allocator.free(data);
+                context.raw_data = new_data;
+            }
+        } else {
+            context.raw_data = try self.allocator.alloc(u8, window_size * 2);
+            context.raw_data_position = 0;
+        }
+
+        // Read deflate stream
+        if (context.raw_data) |decompressed_buffer| {
+            var deflate_reader = deflate.DeflateDecompressor.init(self.allocator);
+            try deflate_reader.read(dataStream.buffer[dataStream.pos..], decompressed_buffer, &context.raw_data_position);
+        }
+
+        // TODO: Read pixel data
     }
 
     fn validateBitDepth(self: Self) bool {

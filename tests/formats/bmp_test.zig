@@ -8,9 +8,9 @@ const errors = zigimg.errors;
 const std = @import("std");
 const testing = std.testing;
 const zigimg = @import("zigimg");
-usingnamespace @import("helpers.zig");
+usingnamespace @import("../helpers.zig");
 
-const MemoryRGBABitmap = @embedFile("fixtures/bmp/windows_rgba_v5.bmp");
+const MemoryRGBABitmap = @embedFile("../fixtures/bmp/windows_rgba_v5.bmp");
 
 fn verifyBitmapRGBAV5(theBitmap: bmp.Bitmap, pixelsOpt: ?color.ColorStorage) void {
     expectEq(theBitmap.fileHeader.size, 153738);

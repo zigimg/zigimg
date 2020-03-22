@@ -1,9 +1,11 @@
 test "zigimg test suite" {
-    _ = @import("bmp_test.zig");
     _ = @import("color_test.zig");
+    _ = @import("compression/deflate_test.zig");
+    _ = @import("compression/huffman_test.zig");
+    _ = @import("formats/bmp_test.zig");
+    _ = @import("formats/netpbm_test.zig");
+    _ = @import("formats/pcx_test.zig");
+    _ = @import("formats/png_test.zig");
     _ = @import("image_test.zig");
-    _ = @import("netpbm_test.zig");
     _ = @import("octree_quantizer_test.zig");
-    _ = @import("pcx_test.zig");
-    _ = @import("png_test.zig");
 }

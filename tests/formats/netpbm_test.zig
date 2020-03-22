@@ -8,7 +8,7 @@ const std = @import("std");
 const testing = std.testing;
 const netpbm = zigimg.netpbm;
 const zigimg = @import("zigimg");
-usingnamespace @import("helpers.zig");
+usingnamespace @import("../helpers.zig");
 
 test "Load ASCII PBM image" {
     const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/netpbm/pbm_ascii.pbm");

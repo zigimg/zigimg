@@ -10,6 +10,7 @@ pub const bmp = @import("src/formats/bmp.zig");
 pub const color = @import("src/color.zig");
 pub const deflate = @import("src/compression/deflate.zig");
 pub const errors = @import("src/errors.zig");
+pub const huffman = @import("src/compression/huffman.zig");
 pub const image = @import("src/image.zig");
 pub const netpbm = @import("src/formats/netpbm.zig");
 pub const pcx = @import("src/formats/pcx.zig");
