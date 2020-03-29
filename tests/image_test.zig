@@ -233,7 +233,8 @@ test "Should detect PPM properly" {
 
 test "Should detect PNG properly" {
     const imageTests = &[_][]const u8{
-        "tests/fixtures/png/basi0g01.png",
+        "tests/fixtures/png/basn0g01.png",
+        //"tests/fixtures/png/basi0g01.png",
     };
 
     for (imageTests) |image_path| {

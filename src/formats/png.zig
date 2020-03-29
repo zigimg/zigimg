@@ -26,6 +26,14 @@ pub const ColorType = packed enum(u8) {
     TruecolorAlpha = 6,
 };
 
+pub const FilterType = enum(u8) {
+    None,
+    Sub,
+    Up,
+    Average,
+    Paeth,
+};
+
 pub const InterlaceMethod = packed enum(u8) {
     Standard,
     Adam7,
@@ -182,10 +190,14 @@ pub const PNG = struct {
     allocator: *Allocator = undefined,
 
     const DecompressionContext = struct {
-        pixels: *color.ColorStorage,
-        read_checksum: u32,
-        raw_data: ?[]u8,
-        raw_data_position: usize,
+        pixels: *color.ColorStorage = undefined,
+        pixels_index: usize = 0,
+        raw_data: ?[]u8 = null,
+        raw_data_position: usize = 0,
+        line_stride: usize = 0,
+        filter_context: []u8 = undefined,
+        filter_counter: usize = 0,
+        adler_checksum: std.hash.Adler32 = undefined,
     };
 
     const Self = @This();
@@ -310,18 +322,33 @@ pub const PNG = struct {
         pixelsOpt.* = try color.ColorStorage.init(self.allocator, self.pixel_format, self.header.width * self.header.height);
 
         if (pixelsOpt.*) |*pixels| {
-            var decompression_context: DecompressionContext = undefined;
+            var decompression_context = DecompressionContext{};
             decompression_context.pixels = pixels;
-            decompression_context.raw_data_position = 0;
+            decompression_context.line_stride = ((self.header.width * self.header.bit_depth + 31) & ~@as(usize, 31)) / 8;
+            decompression_context.filter_context = try self.allocator.alloc(u8, decompression_context.line_stride * 2);
+            decompression_context.adler_checksum = std.hash.Adler32.init();
             defer {
                 if (decompression_context.raw_data) |data| {
                     self.allocator.free(data);
                 }
             }
 
+            var idat_count: usize = 0;
+
             for (self.chunks.span()) |chunk| {
                 if (chunk.getChunkID() == IDAT.ChunkID) {
-                    try self.readDataChunk(chunk.IDAT, &decompression_context);
+                    idat_count += 1;
+                }
+            }
+
+            var idat_index: usize = 0;
+
+            for (self.chunks.span()) |chunk| {
+                if (chunk.getChunkID() == IDAT.ChunkID) {
+                    idat_index += 1;
+
+                    const is_last_idat = (idat_index == idat_count);
+                    try self.readDataChunk(chunk.IDAT, &decompression_context, is_last_idat);
                 }
             }
         } else {
@@ -416,7 +443,7 @@ pub const PNG = struct {
         return continueReading;
     }
 
-    fn readDataChunk(self: Self, dataChunk: IDAT, context: *DecompressionContext) !void {
+    fn readDataChunk(self: Self, dataChunk: IDAT, context: *DecompressionContext, is_last_idat: bool) !void {
         // First read ZLIB Compressed Data header
         var dataStream = std.io.fixedBufferStream(dataChunk.data);
         var zlibHeader: zlib.StreamHeader = undefined;
@@ -457,11 +484,94 @@ pub const PNG = struct {
 
         // Read deflate stream
         if (context.raw_data) |decompressed_buffer| {
-            var deflate_reader = deflate.DeflateDecompressor.init(self.allocator);
-            try deflate_reader.read(dataStream.buffer[dataStream.pos..], decompressed_buffer, &context.raw_data_position);
-        }
+            const start_position = context.raw_data_position;
 
-        // TODO: Read pixel data
+            var read_compressed_count: usize = 0;
+
+            var deflate_reader = deflate.DeflateDecompressor.init(self.allocator);
+            try deflate_reader.read(dataStream.buffer[dataStream.pos..], &read_compressed_count, decompressed_buffer, &context.raw_data_position);
+
+            var pixel_stream_source = std.io.fixedBufferStream(decompressed_buffer[start_position..context.raw_data_position]);
+            var pixel_stream = pixel_stream_source.inStream();
+
+            context.adler_checksum.update(pixel_stream_source.buffer);
+
+            var scanline = try self.allocator.alloc(u8, context.line_stride);
+            defer self.allocator.free(scanline);
+
+            var pixel_current_pos = try pixel_stream_source.getPos();
+            const pixel_end_pos = try pixel_stream_source.getEndPos();
+
+            const pixels_length = context.pixels.len();
+
+            while (pixel_current_pos < pixel_end_pos and context.pixels_index < pixels_length) {
+                const filter_type = try pixel_stream.readByte();
+
+                _ = try pixel_stream.readAll(scanline);
+
+                const filter_start_position = (context.filter_counter % context.filter_context.len);
+                const filter_slice = context.filter_context[filter_start_position..(filter_start_position + context.line_stride)];
+
+                switch (@intToEnum(FilterType, filter_type)) {
+                    .None => {
+                        std.mem.copy(u8, filter_slice, scanline);
+                    },
+                    .Sub => {
+                        std.debug.panic("TODO Sub filtering", .{});
+                    },
+                    .Up => {
+                        std.debug.panic("TODO Up filtering", .{});
+                    },
+                    .Average => {
+                        std.debug.panic("TODO Average filtering", .{});
+                    },
+                    .Paeth => {
+                        std.debug.panic("TODO Paeth filtering", .{});
+                    },
+                }
+
+                context.filter_counter += context.line_stride;
+
+                var index: usize = 0;
+                var x: usize = 0;
+
+                switch (context.pixels.*) {
+                    .Grayscale1 => |data| {
+                        while (index < filter_slice.len) : (index += 1) {
+                            const current_byte = filter_slice[index];
+
+                            var bit: usize = 0;
+                            while (context.pixels_index < pixels_length and x < self.header.width and bit < 8) {
+                                data[context.pixels_index].value = @intCast(u1, (current_byte >> @intCast(u3, (7 - bit))) & 1);
+
+                                x += 1;
+                                bit += 1;
+                                context.pixels_index += 1;
+                            }
+                        }
+                    },
+                    .Grayscale2 => |data| {},
+                    .Grayscale4 => |data| {},
+                    .Grayscale8 => |data| {},
+                    .Grayscale16 => |data| {},
+                    else => {
+                        return errors.ImageError.UnsupportedPixelFormat;
+                    },
+                }
+
+                pixel_current_pos = try pixel_stream_source.getPos();
+            }
+
+            if (is_last_idat) {
+                try dataStream.seekTo(dataStream.pos + read_compressed_count);
+
+                const read_checksum = try dataInStream.readIntBig(u32);
+
+                if (read_checksum != context.adler_checksum.final()) {
+                    return error.InvalidZlibStream;
+                }
+            }
+        }
     }
 
     fn validateBitDepth(self: Self) bool {

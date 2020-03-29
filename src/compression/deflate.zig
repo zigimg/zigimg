@@ -293,7 +293,7 @@ pub const DeflateDecompressor = struct {
 
     pub fn deinit() void {}
 
-    pub fn read(self: *Self, in_buffer: []const u8, out_buffer: []u8, out_position: *usize) !void {
+    pub fn read(self: *Self, in_buffer: []const u8, in_position: *usize, out_buffer: []u8, out_position: *usize) !void {
         var bit_stream = DeflateBitInStream.init(in_buffer);
         var out_stream = DeflateOutStream.init(out_buffer, out_position);
 
@@ -319,6 +319,9 @@ pub const DeflateDecompressor = struct {
                 },
             }
         }
+
+        _ = try bit_stream.alignToByte();
+        in_position.* = bit_stream.bit_position / 8;
     }
 
     fn readNoCompression(self: *Self, bit_stream: *DeflateBitInStream, out_stream: *DeflateOutStream) !void {

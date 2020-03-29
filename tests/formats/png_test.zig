@@ -91,3 +91,36 @@ test "Read gAMA chunk properly" {
         expectEq(gammaChunk.gAMA.toGammaExponent(), 1.0);
     }
 }
+
+test "Read basn0g01 data properly" {
+    const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/png/basn0g01.png");
+    defer file.close();
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    var pngFile = png.PNG.init(zigimg_test_allocator);
+    defer pngFile.deinit();
+
+    var pixelsOpt: ?color.ColorStorage = null;
+    try pngFile.read(stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
+
+    defer {
+        if (pixelsOpt) |pixels| {
+            pixels.deinit(zigimg_test_allocator);
+        }
+    }
+
+    testing.expect(pixelsOpt != null);
+
+    if (pixelsOpt) |pixels| {
+        testing.expect(pixels == .Grayscale1);
+
+        expectEq(pixels.Grayscale1[0].value, 1);
+        expectEq(pixels.Grayscale1[31].value, 0);
+        expectEq(pixels.Grayscale1[4 * 32 + 3].value, 1);
+        expectEq(pixels.Grayscale1[4 * 32 + 4].value, 0);
+        expectEq(pixels.Grayscale1[18 * 32 + 19].value, 0);
+        expectEq(pixels.Grayscale1[18 * 32 + 20].value, 1);
+        expectEq(pixels.Grayscale1[31 * 32 + 31].value, 0);
+    }
+}

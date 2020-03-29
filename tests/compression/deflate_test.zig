@@ -26,10 +26,11 @@ const NoCompressionBlock = comptime blk: {
 
 test "Test Deflate no compression block" {
     var outBuffer: [256]u8 = undefined;
+    var in_position: usize = 0;
     var out_position: usize = 0;
 
     var deflateDecompressor = deflate.DeflateDecompressor.init(zigimg_test_allocator);
-    try deflateDecompressor.read(NoCompressionBlock[0..], outBuffer[0..], &out_position);
+    try deflateDecompressor.read(NoCompressionBlock[0..], &in_position, outBuffer[0..], &out_position);
 
     testing.expectEqualSlices(u8, @as([]const u8, "HELLOWORLD"[0..]), outBuffer[0..out_position]);
 }
@@ -37,11 +38,13 @@ test "Test Deflate no compression block" {
 test "Test deflate dynamic compression" {
     const dynamic_deflate_block = @embedFile("../fixtures/deflate/dynamic_compression.bin");
 
+    var in_position: usize = 0;
+
     var out_buffer: [1024]u8 = undefined;
     var out_position: usize = 0;
 
     var deflate_decompressor = deflate.DeflateDecompressor.init(zigimg_test_allocator);
-    try deflate_decompressor.read(dynamic_deflate_block[0..], out_buffer[0..], &out_position);
+    try deflate_decompressor.read(dynamic_deflate_block[0..], &in_position, out_buffer[0..], &out_position);
 
     const out_data = out_buffer[0..out_position];
 
