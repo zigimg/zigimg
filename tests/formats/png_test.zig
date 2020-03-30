@@ -191,3 +191,37 @@ test "Read basn0g04 data properly" {
         expectEq(pixels.Grayscale4[31 * 32 + 31].value, 14);
     }
 }
+
+test "Read basn0g08 data properly" {
+    const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/png/basn0g08.png");
+    defer file.close();
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    var pngFile = png.PNG.init(zigimg_test_allocator);
+    defer pngFile.deinit();
+
+    var pixelsOpt: ?color.ColorStorage = null;
+    try pngFile.read(stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
+
+    defer {
+        if (pixelsOpt) |pixels| {
+            pixels.deinit(zigimg_test_allocator);
+        }
+    }
+
+    testing.expect(pixelsOpt != null);
+
+    if (pixelsOpt) |pixels| {
+        testing.expect(pixels == .Grayscale8);
+
+        var i: usize = 0;
+        while (i < 256) : (i += 1) {
+            expectEq(pixels.Grayscale8[i].value, @intCast(u8, i));
+        }
+
+        while (i < 510) : (i += 1) {
+            expectEq(pixels.Grayscale8[i].value, @intCast(u8, 510 - i));
+        }
+    }
+}

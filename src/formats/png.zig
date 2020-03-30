@@ -181,6 +181,132 @@ fn ValidBitDepths(color_type: ColorType) []const u8 {
     };
 }
 
+const PngFilter = struct {
+    context: []u8 = undefined,
+    index: usize = 0,
+    line_stride: usize = 0,
+    pixel_stride: usize = 0,
+
+    const Self = @This();
+
+    pub fn init(allocator: *Allocator, line_stride: usize, bit_depth: usize) !Self {
+        const context = try allocator.alloc(u8, line_stride * 2);
+        std.mem.secureZero(u8, context[0..]);
+        return Self{
+            .context = context,
+            .line_stride = line_stride,
+            .pixel_stride = if (bit_depth >= 8) bit_depth / 8 else 1,
+        };
+    }
+
+    pub fn deinit(self: Self, allocator: *Allocator) void {
+        allocator.free(self.context);
+    }
+
+    pub fn decode(self: *Self, filter_type: FilterType, input: []const u8) !void {
+        const current_start_position = self.startPosition();
+        const previous_start_position: usize = @bitCast(usize, @mod(@bitCast(isize, self.index) - @bitCast(isize, self.line_stride), @bitCast(isize, self.context.len)));
+
+        var current_row = self.context[current_start_position..(current_start_position + self.line_stride)];
+        var previous_row = self.context[previous_start_position..(previous_start_position + self.line_stride)];
+
+        switch (filter_type) {
+            .None => {
+                std.mem.copy(u8, current_row, input);
+            },
+            .Sub => {
+                var i: usize = 0;
+                while (i < input.len) : (i += 1) {
+                    const a = self.getA(i, current_row, previous_row);
+                    current_row[i] = input[i] +% a;
+                }
+            },
+            .Up => {
+                var i: usize = 0;
+                while (i < input.len) : (i += 1) {
+                    const b = self.getB(i, current_row, previous_row);
+                    current_row[i] = input[i] +% b;
+                }
+            },
+            .Average => {
+                var i: usize = 0;
+                while (i < input.len) : (i += 1) {
+                    const a = @intToFloat(f64, self.getA(i, current_row, previous_row));
+                    const b = @intToFloat(f64, self.getB(i, current_row, previous_row));
+                    const result: u8 = @intCast(u8, @floatToInt(u16, std.math.floor((a + b) / 2.0)) % 256);
+
+                    current_row[i] = input[i] + result;
+                }
+            },
+            .Paeth => {
+                var i: usize = 0;
+                while (i < input.len) : (i += 1) {
+                    const a = self.getA(i, current_row, previous_row);
+                    const b = self.getB(i, current_row, previous_row);
+                    const c = self.getC(i, current_row, previous_row);
+
+                    const source = input[i];
+                    const predictor = try paethPredictor(a, b, c);
+                    const result = @intCast(u8, (@as(u16, source) + @as(u16, predictor)) & 0xFF);
+
+                    current_row[i] = result;
+                }
+            },
+        }
+
+        self.index += self.line_stride;
+    }
+
+    pub fn getSlice(self: Self) []u8 {
+        const start = self.startPosition();
+        return self.context[start..(start + self.line_stride)];
+    }
+
+    fn startPosition(self: Self) usize {
+        return self.index % self.context.len;
+    }
+
+    inline fn getA(self: Self, index: usize, current_row: []const u8, previous_row: []const u8) u8 {
+        const step: isize = @bitCast(isize, index) - @bitCast(isize, self.pixel_stride);
+        if (step >= 0) {
+            return current_row[index - self.pixel_stride];
+        } else {
+            return 0;
+        }
+    }
+
+    inline fn getB(self: Self, index: usize, current_row: []const u8, previous_row: []const u8) u8 {
+        return previous_row[index];
+    }
+
+    inline fn getC(self: Self, index: usize, current_row: []const u8, previous_row: []const u8) u8 {
+        const step: isize = @bitCast(isize, index) - @bitCast(isize, self.pixel_stride);
+        if (step >= 0) {
+            return previous_row[index - self.pixel_stride];
+        } else {
+            return 0;
+        }
+    }
+
+    fn paethPredictor(a: u8, b: u8, c: u8) !u8 {
+        const large_a = @intCast(i16, a);
+        const large_b = @intCast(i16, b);
+        const large_c = @intCast(i16, c);
+        const p = large_a + large_b - large_c;
+        const pa = try std.math.absInt(p - large_a);
+        const pb = try std.math.absInt(p - large_b);
+        const pc = try std.math.absInt(p - large_c);
+
+        if (pa <= pb and pa <= pc) {
+            return @intCast(u8, @mod(large_a, 256));
+        } else if (pb <= pc) {
+            return @intCast(u8, @mod(large_b, 256));
+        } else {
+            return @intCast(u8, @mod(large_c, 256));
+        }
+    }
+};
+
 // remember, PNG uses network byte order (aka Big Endian)
 // TODO: Proper validation of chunk order and count
 pub const PNG = struct {
@@ -194,9 +320,7 @@ pub const PNG = struct {
         pixels_index: usize = 0,
         raw_data: ?[]u8 = null,
         raw_data_position: usize = 0,
-        line_stride: usize = 0,
-        filter_context: []u8 = undefined,
-        filter_counter: usize = 0,
+        filter: PngFilter = undefined,
         adler_checksum: std.hash.Adler32 = undefined,
     };
 
@@ -324,8 +448,8 @@ pub const PNG = struct {
         if (pixelsOpt.*) |*pixels| {
             var decompression_context = DecompressionContext{};
             decompression_context.pixels = pixels;
-            decompression_context.line_stride = ((self.header.width * self.header.bit_depth + 31) & ~@as(usize, 31)) / 8;
-            decompression_context.filter_context = try self.allocator.alloc(u8, decompression_context.line_stride * 2);
+            const line_stride = ((self.header.width * self.header.bit_depth + 31) & ~@as(usize, 31)) / 8;
+            decompression_context.filter = try PngFilter.init(self.allocator, line_stride, self.header.bit_depth);
             decompression_context.adler_checksum = std.hash.Adler32.init();
             defer {
                 if (decompression_context.raw_data) |data| {
@@ -496,7 +620,7 @@ pub const PNG = struct {
 
             context.adler_checksum.update(pixel_stream_source.buffer);
 
-            var scanline = try self.allocator.alloc(u8, context.line_stride);
+            var scanline = try self.allocator.alloc(u8, context.filter.line_stride);
             defer self.allocator.free(scanline);
 
             var pixel_current_pos = try pixel_stream_source.getPos();
@@ -509,28 +633,9 @@ pub const PNG = struct {
 
                 _ = try pixel_stream.readAll(scanline);
 
-                const filter_start_position = (context.filter_counter % context.filter_context.len);
-                const filter_slice = context.filter_context[filter_start_position..(filter_start_position + context.line_stride)];
+                const filter_slice = context.filter.getSlice();
 
-                switch (@intToEnum(FilterType, filter_type)) {
-                    .None => {
-                        std.mem.copy(u8, filter_slice, scanline);
-                    },
-                    .Sub => {
-                        std.debug.panic("TODO Sub filtering", .{});
-                    },
-                    .Up => {
-                        std.debug.panic("TODO Up filtering", .{});
-                    },
-                    .Average => {
-                        std.debug.panic("TODO Average filtering", .{});
-                    },
-                    .Paeth => {
-                        std.debug.panic("TODO Paeth filtering", .{});
-                    },
-                }
-
-                context.filter_counter += context.line_stride;
+                try context.filter.decode(@intToEnum(FilterType, filter_type), scanline);
 
                 var index: usize = 0;
                 var x: usize = 0;
@@ -578,8 +683,16 @@ pub const PNG = struct {
                             }
                         }
                     },
-                    .Grayscale8 => |data| {},
-                    .Grayscale16 => |data| {},
+                    .Grayscale8 => |data| {
+                        while (index < filter_slice.len and context.pixels_index < pixels_length and x < self.header.width) {
+                            data[context.pixels_index].value = filter_slice[index];
+
+                            index += 1;
+                            x += 1;
+                            context.pixels_index += 1;
+                        }
+                    },
+                    //.Grayscale16 => |data| {},
                     else => {
                         return errors.ImageError.UnsupportedPixelFormat;
                     },

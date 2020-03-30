@@ -24,12 +24,6 @@
             "type": "shell",
             "command": "zig build test",
             "problemMatcher": "$gcc"
-        },
-        {
-            "label": "Format current file",
-            "type": "shell",
-            "command": "zig fmt ${file}",
-            "problemMatcher": []
         }
     ]
 }
