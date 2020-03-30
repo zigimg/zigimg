@@ -181,6 +181,7 @@ fn ValidBitDepths(color_type: ColorType) []const u8 {
     };
 }
 
+/// Implement filtering defined by https://www.w3.org/TR/2003/REC-PNG-20031110/#9Filters
 const PngFilter = struct {
     context: []u8 = undefined,
     index: usize = 0,
@@ -205,7 +206,7 @@ const PngFilter = struct {
 
     pub fn decode(self: *Self, filter_type: FilterType, input: []const u8) !void {
         const current_start_position = self.startPosition();
-        const previous_start_position: usize = @bitCast(usize, @mod(@bitCast(isize, self.index) - @bitCast(isize, self.line_stride), @bitCast(isize, self.context.len)));
+        const previous_start_position: usize = if (self.index < self.line_stride) 0 else ((self.index - self.line_stride) % self.context.len);
 
         var current_row = self.context[current_start_position..(current_start_position + self.line_stride)];
         var previous_row = self.context[previous_start_position..(previous_start_position + self.line_stride)];
@@ -233,7 +234,7 @@ const PngFilter = struct {
                 while (i < input.len) : (i += 1) {
                     const a = @intToFloat(f64, self.getA(i, current_row, previous_row));
                     const b = @intToFloat(f64, self.getB(i, current_row, previous_row));
-                    const result: u8 = @intCast(u8, @floatToInt(u16, std.math.floor((a + b) / 2.0)) % 256);
+                    const result: u8 = @intCast(u8, @floatToInt(u16, std.math.floor((a + b) / 2.0)) & 0xFF);
 
                     current_row[i] = input[i] + result;
                 }
@@ -267,8 +268,7 @@ const PngFilter = struct {
     }
 
     inline fn getA(self: Self, index: usize, current_row: []const u8, previous_row: []const u8) u8 {
-        const step: isize = @bitCast(isize, index) - @bitCast(isize, self.pixel_stride);
-        if (step >= 0) {
+        if (index >= self.pixel_stride) {
             return current_row[index - self.pixel_stride];
         } else {
             return 0;
@@ -280,8 +280,7 @@ const PngFilter = struct {
     }
 
     inline fn getC(self: Self, index: usize, current_row: []const u8, previous_row: []const u8) u8 {
-        const step: isize = @bitCast(isize, index) - @bitCast(isize, self.pixel_stride);
-        if (step >= 0) {
+        if (index >= self.pixel_stride) {
             return previous_row[index - self.pixel_stride];
         } else {
             return 0;
@@ -289,20 +288,20 @@ const PngFilter = struct {
     }
 
     fn paethPredictor(a: u8, b: u8, c: u8) !u8 {
-        const large_a = @intCast(i16, a);
-        const large_b = @intCast(i16, b);
-        const large_c = @intCast(i16, c);
+        const large_a = @intCast(isize, a);
+        const large_b = @intCast(isize, b);
+        const large_c = @intCast(isize, c);
         const p = large_a + large_b - large_c;
         const pa = try std.math.absInt(p - large_a);
         const pb = try std.math.absInt(p - large_b);
         const pc = try std.math.absInt(p - large_c);
 
         if (pa <= pb and pa <= pc) {
-            return @intCast(u8, @mod(large_a, 256));
+            return @intCast(u8, large_a & 0xFF);
         } else if (pb <= pc) {
-            return @intCast(u8, @mod(large_b, 256));
+            return @intCast(u8, large_b & 0xFF);
         } else {
-            return @intCast(u8, @mod(large_c, 256));
+            return @intCast(u8, large_c & 0xFF);
         }
     }
 };
@@ -455,6 +454,8 @@ pub const PNG = struct {
                 if (decompression_context.raw_data) |data| {
                     self.allocator.free(data);
                 }
+
+                decompression_context.filter.deinit(self.allocator);
             }
 
             var idat_count: usize = 0;
