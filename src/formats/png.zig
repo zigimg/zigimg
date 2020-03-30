@@ -693,7 +693,16 @@ pub const PNG = struct {
                             context.pixels_index += 1;
                         }
                     },
-                    //.Grayscale16 => |data| {},
+                    .Grayscale16 => |data| {
+                        while (index < filter_slice.len and context.pixels_index < pixels_length and x < self.header.width) {
+                            const read_value = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[index]));
+                            data[context.pixels_index].value = read_value;
+
+                            index += 2;
+                            x += 1;
+                            context.pixels_index += 1;
+                        }
+                    },
                     else => {
                         return errors.ImageError.UnsupportedPixelFormat;
                     },
