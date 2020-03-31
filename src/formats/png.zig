@@ -871,6 +871,18 @@ pub const PNG = struct {
                             context.pixels_index += 1;
                         }
                     },
+                    .Grayscale8Alpha => |grey_alpha| {
+                        var count: usize = 0;
+                        const count_end = filter_slice.len;
+                        while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
+                            grey_alpha[context.pixels_index].value = filter_slice[count];
+                            grey_alpha[context.pixels_index].alpha = filter_slice[count + 1];
+
+                            count += 2;
+                            x += 1;
+                            context.pixels_index += 1;
+                        }
+                    },
                     else => {
                         return errors.ImageError.UnsupportedPixelFormat;
                     },

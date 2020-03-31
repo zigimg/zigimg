@@ -644,3 +644,40 @@ test "Read basn3p08 data properly" {
         expectEq(pixels.Bpp8.indices[31 * 32 + 31], 80);
     }
 }
+
+test "Read basn4a08 data properly" {
+    const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/png/basn4a08.png");
+    defer file.close();
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    var pngFile = png.PNG.init(zigimg_test_allocator);
+    defer pngFile.deinit();
+
+    var pixelsOpt: ?color.ColorStorage = null;
+    try pngFile.read(stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
+
+    defer {
+        if (pixelsOpt) |pixels| {
+            pixels.deinit(zigimg_test_allocator);
+        }
+    }
+
+    testing.expect(pixelsOpt != null);
+
+    if (pixelsOpt) |pixels| {
+        testing.expect(pixels == .Grayscale8Alpha);
+
+        expectEq(pixels.Grayscale8Alpha[0].value, 255);
+        expectEq(pixels.Grayscale8Alpha[0].alpha, 0);
+
+        expectEq(pixels.Grayscale8Alpha[8].value, 255);
+        expectEq(pixels.Grayscale8Alpha[8].alpha, 65);
+
+        expectEq(pixels.Grayscale8Alpha[31].value, 255);
+        expectEq(pixels.Grayscale8Alpha[31].alpha, 255);
+
+        expectEq(pixels.Grayscale8Alpha[31 * 32 + 31].value, 0);
+        expectEq(pixels.Grayscale8Alpha[31 * 32 + 31].alpha, 255);
+    }
+}
