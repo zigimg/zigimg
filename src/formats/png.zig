@@ -716,16 +716,27 @@ pub const PNG = struct {
                         }
                     },
                     .Rgb24 => |data| {
-                        var data_stream_source = std.io.StreamSource{ .buffer = std.io.fixedBufferStream(filter_slice) };
-                        var data_stream = data_stream_source.inStream();
                         var count: usize = 0;
-                        const count_end = filter_slice.len / 3;
+                        const count_end = filter_slice.len;
                         while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
-                            data[context.pixels_index].R = filter_slice[(count * 3) + 0];
-                            data[context.pixels_index].G = filter_slice[(count * 3) + 1];
-                            data[context.pixels_index].B = filter_slice[(count * 3) + 2];
+                            data[context.pixels_index].R = filter_slice[count];
+                            data[context.pixels_index].G = filter_slice[count + 1];
+                            data[context.pixels_index].B = filter_slice[count + 2];
 
-                            count += 1;
+                            count += 3;
+                            x += 1;
+                            context.pixels_index += 1;
+                        }
+                    },
+                    .Rgb48 => |data| {
+                        var count: usize = 0;
+                        const count_end = filter_slice.len;
+                        while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
+                            data[context.pixels_index].R = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count]));
+                            data[context.pixels_index].G = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 2]));
+                            data[context.pixels_index].B = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 4]));
+
+                            count += 6;
                             x += 1;
                             context.pixels_index += 1;
                         }
@@ -742,8 +753,9 @@ pub const PNG = struct {
                 try dataStream.seekTo(dataStream.pos + read_compressed_count);
 
                 const read_checksum = try dataInStream.readIntBig(u32);
+                const computed_checksum = context.adler_checksum.final();
 
-                if (read_checksum != context.adler_checksum.final()) {
+                if (read_checksum != computed_checksum) {
                     return error.InvalidZlibStream;
                 }
             }
