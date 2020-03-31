@@ -834,20 +834,20 @@ pub const PNG = struct {
                             }
                         }
                     },
-                    // .Grayscale2 => |data| {
-                    //     while (index < filter_slice.len) : (index += 1) {
-                    //         const current_byte = filter_slice[index];
+                    .Bpp2 => |indexed| {
+                        while (index < filter_slice.len) : (index += 1) {
+                            const current_byte = filter_slice[index];
 
-                    //         var bit: usize = 1;
-                    //         while (context.pixels_index < pixels_length and x < self.header.width and bit < 8) {
-                    //             data[context.pixels_index].value = @intCast(u2, (current_byte >> @intCast(u3, (7 - bit))) & 0b00000011);
+                            var bit: usize = 1;
+                            while (context.pixels_index < pixels_length and x < self.header.width and bit < 8) {
+                                indexed.indices[context.pixels_index] = @intCast(u2, (current_byte >> @intCast(u3, (7 - bit))) & 0b00000011);
 
-                    //             x += 1;
-                    //             bit += 2;
-                    //             context.pixels_index += 1;
-                    //         }
-                    //     }
-                    // },
+                                x += 1;
+                                bit += 2;
+                                context.pixels_index += 1;
+                            }
+                        }
+                    },
                     // .Grayscale4 => |data| {
                     //     while (index < filter_slice.len) : (index += 1) {
                     //         const current_byte = filter_slice[index];

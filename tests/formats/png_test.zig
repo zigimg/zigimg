@@ -402,3 +402,61 @@ test "Read basn3p01 data properly" {
         }
     }
 }
+
+test "Read basn3p02 data properly" {
+    const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/png/basn3p02.png");
+    defer file.close();
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    var pngFile = png.PNG.init(zigimg_test_allocator);
+    defer pngFile.deinit();
+
+    var pixelsOpt: ?color.ColorStorage = null;
+    try pngFile.read(stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
+
+    defer {
+        if (pixelsOpt) |pixels| {
+            pixels.deinit(zigimg_test_allocator);
+        }
+    }
+
+    testing.expect(pixelsOpt != null);
+
+    var palette_chunk_opt = pngFile.getPalette();
+
+    testing.expect(palette_chunk_opt != null);
+
+    if (pixelsOpt) |pixels| {
+        testing.expect(pixels == .Bpp2);
+        expectEq(pixels.Bpp2.palette.len, 4);
+
+        const color0 = pixels.Bpp2.palette[0].toIntegerColor8();
+        const color1 = pixels.Bpp2.palette[1].toIntegerColor8();
+        const color2 = pixels.Bpp2.palette[2].toIntegerColor8();
+        const color3 = pixels.Bpp2.palette[3].toIntegerColor8();
+
+        expectEq(color0.R, 0x00);
+        expectEq(color0.G, 0xff);
+        expectEq(color0.B, 0x00);
+
+        expectEq(color1.R, 0xff);
+        expectEq(color1.G, 0x00);
+        expectEq(color1.B, 0x00);
+
+        expectEq(color2.R, 0xff);
+        expectEq(color2.G, 0xff);
+        expectEq(color2.B, 0x00);
+
+        expectEq(color3.R, 0x00);
+        expectEq(color3.G, 0x00);
+        expectEq(color3.B, 0xff);
+
+        expectEq(pixels.Bpp2.indices[0], 3);
+        expectEq(pixels.Bpp2.indices[4], 1);
+        expectEq(pixels.Bpp2.indices[8], 2);
+        expectEq(pixels.Bpp2.indices[12], 0);
+
+        expectEq(pixels.Bpp2.indices[31 * 32 + 31], 3);
+    }
+}
