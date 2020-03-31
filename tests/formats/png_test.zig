@@ -681,3 +681,43 @@ test "Read basn4a08 data properly" {
         expectEq(pixels.Grayscale8Alpha[31 * 32 + 31].alpha, 255);
     }
 }
+
+test "Read basn4a16 data properly" {
+    const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/png/basn4a16.png");
+    defer file.close();
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    var pngFile = png.PNG.init(zigimg_test_allocator);
+    defer pngFile.deinit();
+
+    var pixelsOpt: ?color.ColorStorage = null;
+    try pngFile.read(stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
+
+    defer {
+        if (pixelsOpt) |pixels| {
+            pixels.deinit(zigimg_test_allocator);
+        }
+    }
+
+    testing.expect(pixelsOpt != null);
+
+    if (pixelsOpt) |pixels| {
+        testing.expect(pixels == .Grayscale16Alpha);
+
+        expectEq(pixels.Grayscale16Alpha[0].value, 0);
+        expectEq(pixels.Grayscale16Alpha[0].alpha, 0);
+
+        expectEq(pixels.Grayscale16Alpha[8].value, 33824);
+        expectEq(pixels.Grayscale16Alpha[8].alpha, 0);
+
+        expectEq(pixels.Grayscale16Alpha[9 * 32 + 8].value, 8737);
+        expectEq(pixels.Grayscale16Alpha[9 * 32 + 8].alpha, 33825);
+
+        expectEq(pixels.Grayscale16Alpha[31].value, 0);
+        expectEq(pixels.Grayscale16Alpha[31].alpha, 0);
+
+        expectEq(pixels.Grayscale16Alpha[31 * 32 + 31].value, 0);
+        expectEq(pixels.Grayscale16Alpha[31 * 32 + 31].alpha, 0);
+    }
+}
