@@ -862,15 +862,15 @@ pub const PNG = struct {
                             }
                         }
                     },
-                    // .Grayscale8 => |data| {
-                    //     while (index < filter_slice.len and context.pixels_index < pixels_length and x < self.header.width) {
-                    //         data[context.pixels_index].value = filter_slice[index];
+                    .Bpp8 => |indexed| {
+                        while (index < filter_slice.len and context.pixels_index < pixels_length and x < self.header.width) {
+                            indexed.indices[context.pixels_index] = filter_slice[index];
 
-                    //         index += 1;
-                    //         x += 1;
-                    //         context.pixels_index += 1;
-                    //     }
-                    // },
+                            index += 1;
+                            x += 1;
+                            context.pixels_index += 1;
+                        }
+                    },
                     else => {
                         return errors.ImageError.UnsupportedPixelFormat;
                     },

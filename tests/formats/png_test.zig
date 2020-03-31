@@ -580,3 +580,67 @@ test "Read basn3p04 data properly" {
         expectEq(pixels.Bpp4.indices[31 * 32 + 31], 11);
     }
 }
+
+test "Read basn3p08 data properly" {
+    const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/png/basn3p08.png");
+    defer file.close();
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    var pngFile = png.PNG.init(zigimg_test_allocator);
+    defer pngFile.deinit();
+
+    var pixelsOpt: ?color.ColorStorage = null;
+    try pngFile.read(stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
+
+    defer {
+        if (pixelsOpt) |pixels| {
+            pixels.deinit(zigimg_test_allocator);
+        }
+    }
+
+    testing.expect(pixelsOpt != null);
+
+    var palette_chunk_opt = pngFile.getPalette();
+
+    testing.expect(palette_chunk_opt != null);
+
+    if (palette_chunk_opt) |palette_chunk| {
+        expectEq(palette_chunk.palette.len, 256);
+    }
+
+    if (pixelsOpt) |pixels| {
+        testing.expect(pixels == .Bpp8);
+
+        const color0 = pixels.Bpp8.palette[0].toIntegerColor8();
+        const color64 = pixels.Bpp8.palette[64].toIntegerColor8();
+        const color128 = pixels.Bpp8.palette[128].toIntegerColor8();
+        const color192 = pixels.Bpp8.palette[192].toIntegerColor8();
+        const color255 = pixels.Bpp8.palette[255].toIntegerColor8();
+
+        expectEq(color0.R, 0x22);
+        expectEq(color0.G, 0x44);
+        expectEq(color0.B, 0x00);
+
+        expectEq(color64.R, 0x66);
+        expectEq(color64.G, 0x00);
+        expectEq(color64.B, 0x00);
+
+        expectEq(color128.R, 0xff);
+        expectEq(color128.G, 0xff);
+        expectEq(color128.B, 0x44);
+
+        expectEq(color192.R, 0xba);
+        expectEq(color192.G, 0x00);
+        expectEq(color192.B, 0x00);
+
+        expectEq(color255.R, 0xff);
+        expectEq(color255.G, 0x33);
+        expectEq(color255.B, 0xff);
+
+        expectEq(pixels.Bpp8.indices[0], 165);
+        expectEq(pixels.Bpp8.indices[16 * 32], 107);
+        expectEq(pixels.Bpp8.indices[16 * 32 + 16], 65);
+        expectEq(pixels.Bpp8.indices[31 * 32 + 31], 80);
+    }
+}
