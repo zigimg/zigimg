@@ -895,6 +895,20 @@ pub const PNG = struct {
                             context.pixels_index += 1;
                         }
                     },
+                    .Rgba32 => |data| {
+                        var count: usize = 0;
+                        const count_end = filter_slice.len;
+                        while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
+                            data[context.pixels_index].R = filter_slice[count];
+                            data[context.pixels_index].G = filter_slice[count + 1];
+                            data[context.pixels_index].B = filter_slice[count + 2];
+                            data[context.pixels_index].A = filter_slice[count + 3];
+
+                            count += 4;
+                            x += 1;
+                            context.pixels_index += 1;
+                        }
+                    },
                     else => {
                         return errors.ImageError.UnsupportedPixelFormat;
                     },

@@ -721,3 +721,53 @@ test "Read basn4a16 data properly" {
         expectEq(pixels.Grayscale16Alpha[31 * 32 + 31].alpha, 0);
     }
 }
+
+test "Read basn6a08 data properly" {
+    const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/png/basn6a08.png");
+    defer file.close();
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    var pngFile = png.PNG.init(zigimg_test_allocator);
+    defer pngFile.deinit();
+
+    var pixelsOpt: ?color.ColorStorage = null;
+    try pngFile.read(stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
+
+    defer {
+        if (pixelsOpt) |pixels| {
+            pixels.deinit(zigimg_test_allocator);
+        }
+    }
+
+    testing.expect(pixelsOpt != null);
+
+    if (pixelsOpt) |pixels| {
+        testing.expect(pixels == .Rgba32);
+
+        const color0 = pixels.Rgba32[0];
+        const color16 = pixels.Rgba32[16];
+        const color31 = pixels.Rgba32[31];
+        const color16_16 = pixels.Rgba32[16 * 32 + 16];
+
+        expectEq(color0.R, 0xFF);
+        expectEq(color0.G, 0x00);
+        expectEq(color0.B, 0x08);
+        expectEq(color0.A, 0x00);
+
+        expectEq(color16.R, 0xFF);
+        expectEq(color16.G, 0x00);
+        expectEq(color16.B, 0x08);
+        expectEq(color16.A, 131);
+
+        expectEq(color31.R, 0xFF);
+        expectEq(color31.G, 0x00);
+        expectEq(color31.B, 0x08);
+        expectEq(color31.A, 0xFF);
+
+        expectEq(color16_16.R, 0x04);
+        expectEq(color16_16.G, 0xFF);
+        expectEq(color16_16.B, 0x00);
+        expectEq(color16_16.A, 131);
+    }
+}
