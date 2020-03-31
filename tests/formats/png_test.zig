@@ -335,3 +335,70 @@ test "Read basn2c16 data properly" {
         expectEq(pixels.Rgb48[31 * 32 + 31].B, 0xFFFF);
     }
 }
+
+test "Read basn3p01 data properly" {
+    const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/png/basn3p01.png");
+    defer file.close();
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    var pngFile = png.PNG.init(zigimg_test_allocator);
+    defer pngFile.deinit();
+
+    var pixelsOpt: ?color.ColorStorage = null;
+    try pngFile.read(stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
+
+    defer {
+        if (pixelsOpt) |pixels| {
+            pixels.deinit(zigimg_test_allocator);
+        }
+    }
+
+    testing.expect(pixelsOpt != null);
+
+    var palette_chunk_opt = pngFile.getPalette();
+
+    testing.expect(palette_chunk_opt != null);
+
+    if (palette_chunk_opt) |palette_chunk| {
+        const first_color = palette_chunk.palette[0].toIntegerColor8();
+        const second_color = palette_chunk.palette[1].toIntegerColor8();
+
+        expectEq(first_color.R, 0xee);
+        expectEq(first_color.G, 0xff);
+        expectEq(first_color.B, 0x22);
+
+        expectEq(second_color.R, 0x22);
+        expectEq(second_color.G, 0x66);
+        expectEq(second_color.B, 0xff);
+    }
+
+    if (pixelsOpt) |pixels| {
+        testing.expect(pixels == .Bpp1);
+        expectEq(pixels.Bpp1.palette.len, 2);
+
+        const first_color = pixels.Bpp1.palette[0].toIntegerColor8();
+        const second_color = pixels.Bpp1.palette[1].toIntegerColor8();
+
+        expectEq(first_color.R, 0xee);
+        expectEq(first_color.G, 0xff);
+        expectEq(first_color.B, 0x22);
+
+        expectEq(second_color.R, 0x22);
+        expectEq(second_color.G, 0x66);
+        expectEq(second_color.B, 0xff);
+
+        var i: usize = 0;
+        while (i < pixels.Bpp1.indices.len) : (i += 1) {
+            const x = i % 32;
+            const y = i / 32;
+
+            const temp1 = (x / 4);
+            const temp2 = (y / 4);
+
+            const final_pixel: u1 = @intCast(u1, (temp1 + temp2) & 1);
+
+            expectEq(pixels.Bpp1.indices[i], final_pixel);
+        }
+    }
+}

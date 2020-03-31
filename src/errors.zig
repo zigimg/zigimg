@@ -10,6 +10,7 @@ pub const PngError = error{
     InvalidChunk,
     InvalidBitDepth,
     InvalidCRC,
+    InvalidPalette,
 };
 
 pub const ImageFormatInvalid = error.ImageFormatInvalid;

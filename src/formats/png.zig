@@ -67,9 +67,43 @@ pub const IHDR = packed struct {
 
     pub fn deinit(self: Self, allocator: *Allocator) void {}
 
-    pub fn read(self: *Self, readBuffer: []u8) !bool {
-        var stream = std.io.StreamSource{ .buffer = std.io.fixedBufferStream(readBuffer) };
+    pub fn read(self: *Self, allocator: *Allocator, read_buffer: []u8) !bool {
+        var stream = std.io.StreamSource{ .buffer = std.io.fixedBufferStream(read_buffer) };
         self.* = try utils.readStructBig(stream.inStream(), Self);
+        return true;
+    }
+};
+
+pub const PLTE = struct {
+    palette: []color.Color,
+
+    pub const ChunkType = "PLTE";
+    pub const ChunkID = utils.toMagicNumberBig(ChunkType);
+
+    const Self = @This();
+
+    pub fn deinit(self: Self, allocator: *Allocator) void {
+        allocator.free(self.palette);
+    }
+
+    pub fn read(self: *Self, allocator: *Allocator, read_buffer: []u8) !bool {
+        if (read_buffer.len % 3 != 0) {
+            return errors.PngError.InvalidPalette;
+        }
+
+        self.palette = try allocator.alloc(color.Color, read_buffer.len / 3);
+
+        var palette_index: usize = 0;
+        var buffer_index: usize = 0;
+        while (buffer_index < read_buffer.len) {
+            self.palette[palette_index].R = color.toColorFloat(read_buffer[buffer_index]);
+            self.palette[palette_index].G = color.toColorFloat(read_buffer[buffer_index + 1]);
+            self.palette[palette_index].B = color.toColorFloat(read_buffer[buffer_index + 2]);
+
+            palette_index += 1;
+            buffer_index += 3;
+        }
+
         return true;
     }
 };
@@ -86,8 +120,8 @@ pub const IDAT = struct {
         allocator.free(self.data);
     }
 
-    pub fn read(self: *Self, readBuffer: []u8) !bool {
-        self.data = readBuffer;
+    pub fn read(self: *Self, allocator: *Allocator, read_buffer: []u8) !bool {
+        self.data = read_buffer;
         return false;
     }
 };
@@ -100,7 +134,7 @@ pub const IEND = packed struct {
 
     pub fn deinit(self: Self, allocator: *Allocator) void {}
 
-    pub fn read(self: *Self, readBuffer: []u8) !bool {
+    pub fn read(self: *Self, allocator: *Allocator, read_buffer: []u8) !bool {
         return true;
     }
 };
@@ -115,8 +149,8 @@ pub const gAMA = packed struct {
 
     pub fn deinit(self: Self, allocator: *Allocator) void {}
 
-    pub fn read(self: *Self, readBuffer: []u8) !bool {
-        var stream = std.io.fixedBufferStream(readBuffer);
+    pub fn read(self: *Self, allocator: *Allocator, read_buffer: []u8) !bool {
+        var stream = std.io.fixedBufferStream(read_buffer);
         self.iGamma = try stream.inStream().readIntBig(u32);
         return true;
     }
@@ -127,6 +161,7 @@ pub const gAMA = packed struct {
 };
 
 pub const ChunkVariant = union(enum) {
+    PLTE: PLTE,
     IDAT: IDAT,
     gAMA: gAMA,
 
@@ -134,6 +169,7 @@ pub const ChunkVariant = union(enum) {
 
     pub fn deinit(self: Self, allocator: *Allocator) void {
         switch (self) {
+            .PLTE => |instance| instance.deinit(allocator),
             .IDAT => |instance| instance.deinit(allocator),
             .gAMA => |instance| instance.deinit(allocator),
         }
@@ -141,6 +177,7 @@ pub const ChunkVariant = union(enum) {
 
     pub fn getChunkID(self: Self) u32 {
         return switch (self) {
+            .PLTE => |instance| @field(@TypeOf(instance), "ChunkID"),
             .IDAT => |instance| @field(@TypeOf(instance), "ChunkID"),
             .gAMA => |instance| @field(@TypeOf(instance), "ChunkID"),
         };
@@ -165,6 +202,11 @@ const AllChunks = [_]ChunkInfo{
         .chunk_type = IHDR,
         .allowed = .OnlyOne,
         .store = false,
+    },
+    .{
+        .chunk_type = PLTE,
+        .allowed = .ZeroOrOne,
+        .store = true,
     },
     .{
         .chunk_type = IDAT,
@@ -383,6 +425,16 @@ pub const PNG = struct {
         return null;
     }
 
+    pub fn getPalette(self: Self) ?PLTE {
+        const palette_variant_opt = self.findFirstChunk(PLTE.ChunkType);
+
+        if (palette_variant_opt) |variant| {
+            return variant.PLTE;
+        }
+
+        return null;
+    }
+
     pub fn readForImage(allocator: *Allocator, inStream: ImageInStream, seekStream: ImageSeekStream, pixelsOpt: *?color.ColorStorage) !ImageInfo {
         var png = PNG.init(allocator);
         defer png.deinit();
@@ -457,6 +509,27 @@ pub const PNG = struct {
         pixelsOpt.* = try color.ColorStorage.init(self.allocator, self.pixel_format, self.header.width * self.header.height);
 
         if (pixelsOpt.*) |*pixels| {
+            if (self.header.color_type == .Indexed) {
+                if (self.getPalette()) |palette_chunk| {
+                    switch (pixels.*) {
+                        .Bpp1 => |instance| {
+                            std.mem.copy(color.Color, instance.palette, palette_chunk.palette);
+                        },
+                        .Bpp2 => |instance| {
+                            std.mem.copy(color.Color, instance.palette, palette_chunk.palette);
+                        },
+                        .Bpp4 => |instance| {
+                            std.mem.copy(color.Color, instance.palette, palette_chunk.palette);
+                        },
+                        .Bpp8 => |instance| {
+                            std.mem.copy(color.Color, instance.palette, palette_chunk.palette);
+                        },
+                        else => {
+                            return error.NotIndexedPixelFormat;
+                        },
+                    }
+                }
+            }
             var decompression_context = DecompressionContext{};
             decompression_context.pixels = pixels;
             const line_stride = (((self.header.width * self.header.bit_depth + 31) & ~@as(usize, 31)) / 8) * self.header.color_type.getChannelCount();
@@ -494,90 +567,96 @@ pub const PNG = struct {
     }
 
     fn readChunk(self: *Self, inStream: ImageInStream) !bool {
-        const chunkSize = try inStream.readIntBig(u32);
+        const chunk_size = try inStream.readIntBig(u32);
 
-        var chunkType: [4]u8 = undefined;
-        _ = try inStream.read(chunkType[0..]);
+        var chunk_type: [4]u8 = undefined;
+        _ = try inStream.read(chunk_type[0..]);
 
-        var readBuffer = try self.allocator.alloc(u8, chunkSize);
-        errdefer self.allocator.free(readBuffer);
+        var read_buffer = try self.allocator.alloc(u8, chunk_size);
+        errdefer self.allocator.free(read_buffer);
 
-        _ = try inStream.read(readBuffer);
+        _ = try inStream.read(read_buffer);
 
-        const readCrc = try inStream.readIntBig(u32);
+        const read_crc = try inStream.readIntBig(u32);
 
-        var crcHash = crc.Crc32.init();
-        crcHash.update(chunkType[0..]);
-        crcHash.update(readBuffer[0..]);
+        var crc_hash = crc.Crc32.init();
+        crc_hash.update(chunk_type[0..]);
+        crc_hash.update(read_buffer[0..]);
 
-        const computedCrc = crcHash.final();
+        const computed_crc = crc_hash.final();
 
-        if (computedCrc != readCrc) {
+        if (computed_crc != read_crc) {
             return errors.PngError.InvalidCRC;
         }
 
         var found = false;
-        var deallocateBuffer = true;
-        var continueReading = true;
+        var deallocate_buffer = true;
+        var continue_reading = true;
 
-        const readChunkID = utils.toMagicNumberBig(chunkType[0..]);
+        const read_chunk_id = utils.toMagicNumberBig(chunk_type[0..]);
 
         // TODO: fix the bug in Zig to make this works
         // inline for (AllChunks) |chunkInfo| {
         //     const typeChunkID = @field(chunkInfo.chunk_type, "ChunkID");
 
-        //     if (readChunkID == typeChunkID) {
+        //     if (read_chunk_id == typeChunkID) {
         //         found = true;
 
-        //         if (readChunkID == IHDR.ChunkID) {
-        //             deallocateBuffer = try self.header.read(readBuffer);
-        //         } else if (readChunkID == IEND.ChunkID) {
-        //             continueReading = false;
+        //         if (read_chunk_id == IHDR.ChunkID) {
+        //             deallocate_buffer = try self.header.read(self.allocator, read_buffer);
+        //         } else if (read_chunk_id == IEND.ChunkID) {
+        //             continue_reading = false;
         //         } else if (chunkInfo.store) {
         //             const finalChunk = try self.chunks.addOne();
         //             finalChunk.* = @unionInit(ChunkVariant, @typeName(chunkInfo.chunk_type), undefined);
-        //             deallocateBuffer = try @field(finalChunk, @typeName(chunkInfo.chunk_type)).read(readBuffer);
+        //             deallocate_buffer = try @field(finalChunk, @typeName(chunkInfo.chunk_type)).read(self.allocator, read_buffer);
         //         }
         //         break;
         //     }
         // }
 
         // Remove this when the code below works
-        switch (readChunkID) {
+        switch (read_chunk_id) {
             IHDR.ChunkID => {
-                deallocateBuffer = try self.header.read(readBuffer);
+                deallocate_buffer = try self.header.read(self.allocator, read_buffer);
                 found = true;
             },
             IEND.ChunkID => {
-                continueReading = false;
+                continue_reading = false;
+                found = true;
+            },
+            PLTE.ChunkID => {
+                const plteChunk = try self.chunks.addOne();
+                plteChunk.* = @unionInit(ChunkVariant, PLTE.ChunkType, undefined);
+                deallocate_buffer = try @field(plteChunk, PLTE.ChunkType).read(self.allocator, read_buffer);
                 found = true;
             },
             gAMA.ChunkID => {
                 const gammaChunk = try self.chunks.addOne();
                 gammaChunk.* = @unionInit(ChunkVariant, gAMA.ChunkType, undefined);
-                deallocateBuffer = try @field(gammaChunk, gAMA.ChunkType).read(readBuffer);
+                deallocate_buffer = try @field(gammaChunk, gAMA.ChunkType).read(self.allocator, read_buffer);
                 found = true;
             },
             IDAT.ChunkID => {
                 const dataChunk = try self.chunks.addOne();
                 dataChunk.* = @unionInit(ChunkVariant, IDAT.ChunkType, undefined);
-                deallocateBuffer = try @field(dataChunk, IDAT.ChunkType).read(readBuffer);
+                deallocate_buffer = try @field(dataChunk, IDAT.ChunkType).read(self.allocator, read_buffer);
                 found = true;
             },
             else => {},
         }
 
-        if (deallocateBuffer) {
-            self.allocator.free(readBuffer);
+        if (deallocate_buffer) {
+            self.allocator.free(read_buffer);
         }
 
-        const chunkIsCritical = (chunkType[0] & (1 << 5)) == 0;
+        const chunkIsCritical = (chunk_type[0] & (1 << 5)) == 0;
 
         if (chunkIsCritical and !found) {
             return errors.PngError.InvalidChunk;
         }
 
-        return continueReading;
+        return continue_reading;
     }
 
     fn readDataChunk(self: Self, dataChunk: IDAT, context: *DecompressionContext, is_last_idat: bool) !void {
@@ -741,6 +820,57 @@ pub const PNG = struct {
                             context.pixels_index += 1;
                         }
                     },
+                    .Bpp1 => |indexed| {
+                        while (index < filter_slice.len) : (index += 1) {
+                            const current_byte = filter_slice[index];
+
+                            var bit: usize = 0;
+                            while (context.pixels_index < pixels_length and x < self.header.width and bit < 8) {
+                                indexed.indices[context.pixels_index] = @intCast(u1, (current_byte >> @intCast(u3, (7 - bit))) & 1);
+
+                                x += 1;
+                                bit += 1;
+                                context.pixels_index += 1;
+                            }
+                        }
+                    },
+                    // .Grayscale2 => |data| {
+                    //     while (index < filter_slice.len) : (index += 1) {
+                    //         const current_byte = filter_slice[index];
+
+                    //         var bit: usize = 1;
+                    //         while (context.pixels_index < pixels_length and x < self.header.width and bit < 8) {
+                    //             data[context.pixels_index].value = @intCast(u2, (current_byte >> @intCast(u3, (7 - bit))) & 0b00000011);
+
+                    //             x += 1;
+                    //             bit += 2;
+                    //             context.pixels_index += 1;
+                    //         }
+                    //     }
+                    // },
+                    // .Grayscale4 => |data| {
+                    //     while (index < filter_slice.len) : (index += 1) {
+                    //         const current_byte = filter_slice[index];
+
+                    //         var bit: usize = 3;
+                    //         while (context.pixels_index < pixels_length and x < self.header.width and bit < 8) {
+                    //             data[context.pixels_index].value = @intCast(u4, (current_byte >> @intCast(u3, (7 - bit))) & 0b00001111);
+
+                    //             x += 1;
+                    //             bit += 4;
+                    //             context.pixels_index += 1;
+                    //         }
+                    //     }
+                    // },
+                    // .Grayscale8 => |data| {
+                    //     while (index < filter_slice.len and context.pixels_index < pixels_length and x < self.header.width) {
+                    //         data[context.pixels_index].value = filter_slice[index];
+
+                    //         index += 1;
+                    //         x += 1;
+                    //         context.pixels_index += 1;
+                    //     }
+                    // },
                     else => {
                         return errors.ImageError.UnsupportedPixelFormat;
                     },

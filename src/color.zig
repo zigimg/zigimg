@@ -483,6 +483,17 @@ pub const ColorStorage = union(PixelFormat) {
             .Rgba64 => |data| data.len,
         };
     }
+
+    pub fn isIndexed(self: Self) bool {
+        return switch (self) {
+            .Bpp1 => true,
+            .Bpp2 => true,
+            .Bpp4 => true,
+            .Bpp8 => true,
+            .Bpp16 => true,
+            else => false,
+        };
+    }
 };
 
 pub const ColorStorageIterator = struct {
