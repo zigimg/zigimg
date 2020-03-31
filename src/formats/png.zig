@@ -909,6 +909,20 @@ pub const PNG = struct {
                             context.pixels_index += 1;
                         }
                     },
+                    .Rgba64 => |data| {
+                        var count: usize = 0;
+                        const count_end = filter_slice.len;
+                        while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
+                            data[context.pixels_index].R = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count]));
+                            data[context.pixels_index].G = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 2]));
+                            data[context.pixels_index].B = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 4]));
+                            data[context.pixels_index].A = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 6]));
+
+                            count += 8;
+                            x += 1;
+                            context.pixels_index += 1;
+                        }
+                    },
                     else => {
                         return errors.ImageError.UnsupportedPixelFormat;
                     },
