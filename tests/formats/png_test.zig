@@ -460,3 +460,123 @@ test "Read basn3p02 data properly" {
         expectEq(pixels.Bpp2.indices[31 * 32 + 31], 3);
     }
 }
+
+test "Read basn3p04 data properly" {
+    const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/png/basn3p04.png");
+    defer file.close();
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    var pngFile = png.PNG.init(zigimg_test_allocator);
+    defer pngFile.deinit();
+
+    var pixelsOpt: ?color.ColorStorage = null;
+    try pngFile.read(stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
+
+    defer {
+        if (pixelsOpt) |pixels| {
+            pixels.deinit(zigimg_test_allocator);
+        }
+    }
+
+    testing.expect(pixelsOpt != null);
+
+    var palette_chunk_opt = pngFile.getPalette();
+
+    testing.expect(palette_chunk_opt != null);
+
+    if (palette_chunk_opt) |palette_chunk| {
+        expectEq(palette_chunk.palette.len, 15);
+    }
+
+    if (pixelsOpt) |pixels| {
+        testing.expect(pixels == .Bpp4);
+
+        const color0 = pixels.Bpp4.palette[0].toIntegerColor8();
+        const color1 = pixels.Bpp4.palette[1].toIntegerColor8();
+        const color2 = pixels.Bpp4.palette[2].toIntegerColor8();
+        const color3 = pixels.Bpp4.palette[3].toIntegerColor8();
+        const color4 = pixels.Bpp4.palette[4].toIntegerColor8();
+        const color5 = pixels.Bpp4.palette[5].toIntegerColor8();
+        const color6 = pixels.Bpp4.palette[6].toIntegerColor8();
+        const color7 = pixels.Bpp4.palette[7].toIntegerColor8();
+        const color8 = pixels.Bpp4.palette[8].toIntegerColor8();
+        const color9 = pixels.Bpp4.palette[9].toIntegerColor8();
+        const color10 = pixels.Bpp4.palette[10].toIntegerColor8();
+        const color11 = pixels.Bpp4.palette[11].toIntegerColor8();
+        const color12 = pixels.Bpp4.palette[12].toIntegerColor8();
+        const color13 = pixels.Bpp4.palette[13].toIntegerColor8();
+        const color14 = pixels.Bpp4.palette[14].toIntegerColor8();
+
+        expectEq(color0.R, 0x22);
+        expectEq(color0.G, 0x00);
+        expectEq(color0.B, 0xff);
+
+        expectEq(color1.R, 0x00);
+        expectEq(color1.G, 0xff);
+        expectEq(color1.B, 0xff);
+
+        expectEq(color2.R, 0x88);
+        expectEq(color2.G, 0x00);
+        expectEq(color2.B, 0xff);
+
+        expectEq(color3.R, 0x22);
+        expectEq(color3.G, 0xff);
+        expectEq(color3.B, 0x00);
+
+        expectEq(color4.R, 0x00);
+        expectEq(color4.G, 0x99);
+        expectEq(color4.B, 0xff);
+
+        expectEq(color5.R, 0xff);
+        expectEq(color5.G, 0x66);
+        expectEq(color5.B, 0x00);
+
+        expectEq(color6.R, 0xdd);
+        expectEq(color6.G, 0x00);
+        expectEq(color6.B, 0xff);
+
+        expectEq(color7.R, 0x77);
+        expectEq(color7.G, 0xff);
+        expectEq(color7.B, 0x00);
+
+        expectEq(color8.R, 0xff);
+        expectEq(color8.G, 0x00);
+        expectEq(color8.B, 0x00);
+
+        expectEq(color9.R, 0x00);
+        expectEq(color9.G, 0xff);
+        expectEq(color9.B, 0x99);
+
+        expectEq(color10.R, 0xdd);
+        expectEq(color10.G, 0xff);
+        expectEq(color10.B, 0x00);
+
+        expectEq(color11.R, 0xff);
+        expectEq(color11.G, 0x00);
+        expectEq(color11.B, 0xbb);
+
+        expectEq(color12.R, 0xff);
+        expectEq(color12.G, 0xbb);
+        expectEq(color12.B, 0x00);
+
+        expectEq(color13.R, 0x00);
+        expectEq(color13.G, 0x44);
+        expectEq(color13.B, 0xff);
+
+        expectEq(color14.R, 0x00);
+        expectEq(color14.G, 0xff);
+        expectEq(color14.B, 0x44);
+
+        expectEq(pixels.Bpp4.indices[0], 8);
+        expectEq(pixels.Bpp4.indices[4], 5);
+        expectEq(pixels.Bpp4.indices[8], 12);
+        expectEq(pixels.Bpp4.indices[12], 10);
+        expectEq(pixels.Bpp4.indices[16], 7);
+        expectEq(pixels.Bpp4.indices[20], 3);
+        expectEq(pixels.Bpp4.indices[24], 14);
+        expectEq(pixels.Bpp4.indices[28], 9);
+
+        expectEq(pixels.Bpp4.indices[31 * 32 + 31], 11);
+    }
+}
