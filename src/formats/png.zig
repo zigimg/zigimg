@@ -24,6 +24,18 @@ pub const ColorType = packed enum(u8) {
     Indexed = 3,
     GrayscaleAlpha = 4,
     TruecolorAlpha = 6,
+
+    const Self = @This();
+
+    pub fn getChannelCount(self: Self) u8 {
+        return switch (self) {
+            .Grayscale => 1,
+            .Truecolor => 3,
+            .Indexed => 1,
+            .GrayscaleAlpha => 2,
+            .TruecolorAlpha => 4,
+        };
+    }
 };
 
 pub const FilterType = enum(u8) {
@@ -447,8 +459,8 @@ pub const PNG = struct {
         if (pixelsOpt.*) |*pixels| {
             var decompression_context = DecompressionContext{};
             decompression_context.pixels = pixels;
-            const line_stride = ((self.header.width * self.header.bit_depth + 31) & ~@as(usize, 31)) / 8;
-            decompression_context.filter = try PngFilter.init(self.allocator, line_stride, self.header.bit_depth);
+            const line_stride = (((self.header.width * self.header.bit_depth + 31) & ~@as(usize, 31)) / 8) * self.header.color_type.getChannelCount();
+            decompression_context.filter = try PngFilter.init(self.allocator, line_stride, self.header.bit_depth * self.header.color_type.getChannelCount());
             decompression_context.adler_checksum = std.hash.Adler32.init();
             defer {
                 if (decompression_context.raw_data) |data| {
@@ -699,6 +711,21 @@ pub const PNG = struct {
                             data[context.pixels_index].value = read_value;
 
                             index += 2;
+                            x += 1;
+                            context.pixels_index += 1;
+                        }
+                    },
+                    .Rgb24 => |data| {
+                        var data_stream_source = std.io.StreamSource{ .buffer = std.io.fixedBufferStream(filter_slice) };
+                        var data_stream = data_stream_source.inStream();
+                        var count: usize = 0;
+                        const count_end = filter_slice.len / 3;
+                        while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
+                            data[context.pixels_index].R = filter_slice[(count * 3) + 0];
+                            data[context.pixels_index].G = filter_slice[(count * 3) + 1];
+                            data[context.pixels_index].B = filter_slice[(count * 3) + 2];
+
+                            count += 1;
                             x += 1;
                             context.pixels_index += 1;
                         }

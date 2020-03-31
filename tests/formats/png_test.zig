@@ -253,3 +253,48 @@ test "Read basn0g16 data properly" {
         expectEq(pixels.Grayscale16[31].value, 47871);
     }
 }
+
+test "Read basn2c08 data properly" {
+    const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/png/basn2c08.png");
+    defer file.close();
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    var pngFile = png.PNG.init(zigimg_test_allocator);
+    defer pngFile.deinit();
+
+    var pixelsOpt: ?color.ColorStorage = null;
+    try pngFile.read(stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
+
+    defer {
+        if (pixelsOpt) |pixels| {
+            pixels.deinit(zigimg_test_allocator);
+        }
+    }
+
+    testing.expect(pixelsOpt != null);
+
+    if (pixelsOpt) |pixels| {
+        testing.expect(pixels == .Rgb24);
+
+        expectEq(pixels.Rgb24[0].R, 0xFF);
+        expectEq(pixels.Rgb24[0].G, 0xFF);
+        expectEq(pixels.Rgb24[0].B, 0xFF);
+
+        expectEq(pixels.Rgb24[7 * 32 + 31].R, 0xFF);
+        expectEq(pixels.Rgb24[7 * 32 + 31].G, 0xFF);
+        expectEq(pixels.Rgb24[7 * 32 + 31].B, 0);
+
+        expectEq(pixels.Rgb24[15 * 32 + 31].R, 0xFF);
+        expectEq(pixels.Rgb24[15 * 32 + 31].G, 0);
+        expectEq(pixels.Rgb24[15 * 32 + 31].B, 0xFF);
+
+        expectEq(pixels.Rgb24[23 * 32 + 31].R, 0x0);
+        expectEq(pixels.Rgb24[23 * 32 + 31].G, 0xFF);
+        expectEq(pixels.Rgb24[23 * 32 + 31].B, 0xFF);
+
+        expectEq(pixels.Rgb24[31 * 32 + 31].R, 0x0);
+        expectEq(pixels.Rgb24[31 * 32 + 31].G, 0x0);
+        expectEq(pixels.Rgb24[31 * 32 + 31].B, 0x0);
+    }
+}
