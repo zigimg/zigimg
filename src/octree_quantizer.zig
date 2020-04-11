@@ -56,7 +56,7 @@ pub const OctTreeQuantizer = struct {
 
         var rootLeafNodes = try self.rootNode.getLeafNodes(self.arenaAllocator.child_allocator);
         defer rootLeafNodes.deinit();
-        var leafCount = rootLeafNodes.len;
+        var leafCount = rootLeafNodes.items.len;
 
         var level: usize = MaxDepth - 1;
         while (level >= 0) : (level -= 1) {
