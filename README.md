@@ -6,7 +6,7 @@ This is a work in progress library to create, process, read and write different 
 
 ## Build
 
-This project assume current Zig master (0.5.0+378bf1c3b). 
+This project assume current Zig master (0.5.0+11df0d0cf). 
 
 Build tests
 ```
