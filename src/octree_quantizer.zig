@@ -60,7 +60,7 @@ pub const OctTreeQuantizer = struct {
 
         var level: usize = MaxDepth - 1;
         while (level >= 0) : (level -= 1) {
-            for (self.levels[level].toSlice()) |node| {
+            for (self.levels[level].items) |node| {
                 leafCount -= @intCast(usize, node.removeLeaves());
                 if (leafCount <= colorCount) {
                     break;
@@ -75,7 +75,7 @@ pub const OctTreeQuantizer = struct {
         var processedRoofLeafNodes = try self.rootNode.getLeafNodes(self.arenaAllocator.child_allocator);
         defer processedRoofLeafNodes.deinit();
 
-        for (processedRoofLeafNodes.toSlice()) |node| {
+        for (processedRoofLeafNodes.items) |node| {
             if (paletteIndex >= colorCount) {
                 break;
             }
@@ -176,7 +176,7 @@ const OctTreeQuantizerNode = struct {
                 } else {
                     var childNodes = try child.getLeafNodes(allocator);
                     defer childNodes.deinit();
-                    for (childNodes.toSlice()) |childNode| {
+                    for (childNodes.items) |childNode| {
                         try leafNodes.append(childNode);
                     }
                 }
