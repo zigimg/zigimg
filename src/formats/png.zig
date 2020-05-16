@@ -375,6 +375,9 @@ pub const PNG = struct {
         raw_data_position: usize = 0,
         filter: PngFilter = undefined,
         adler_checksum: std.hash.Adler32 = undefined,
+        pass: i8 = -1,
+        x: usize = 0,
+        y: usize = 0,
     };
 
     const Self = @This();
@@ -532,9 +535,16 @@ pub const PNG = struct {
             }
             var decompression_context = DecompressionContext{};
             decompression_context.pixels = pixels;
-            const line_stride = (((self.header.width * self.header.bit_depth + 31) & ~@as(usize, 31)) / 8) * self.header.color_type.getChannelCount();
-            decompression_context.filter = try PngFilter.init(self.allocator, line_stride, self.header.bit_depth * self.header.color_type.getChannelCount());
+
+            if (self.header.interlace_method == .Standard) {
+                const line_stride = (((self.header.width * self.header.bit_depth + 31) & ~@as(usize, 31)) / 8) * self.header.color_type.getChannelCount();
+                decompression_context.filter = try PngFilter.init(self.allocator, line_stride, self.header.bit_depth * self.header.color_type.getChannelCount());
+            }
             decompression_context.adler_checksum = std.hash.Adler32.init();
+            decompression_context.pass = -1;
+            decompression_context.x = self.header.width;
+            decompression_context.y = self.header.height;
+
             defer {
                 if (decompression_context.raw_data) |data| {
                     self.allocator.free(data);
@@ -712,223 +722,9 @@ pub const PNG = struct {
 
             context.adler_checksum.update(pixel_stream_source.buffer);
 
-            var scanline = try self.allocator.alloc(u8, context.filter.line_stride);
-            defer self.allocator.free(scanline);
-
-            var pixel_current_pos = try pixel_stream_source.getPos();
-            const pixel_end_pos = try pixel_stream_source.getEndPos();
-
-            const pixels_length = context.pixels.len();
-
-            while (pixel_current_pos < pixel_end_pos and context.pixels_index < pixels_length) {
-                const filter_type = try pixel_stream.readByte();
-
-                _ = try pixel_stream.readAll(scanline);
-
-                const filter_slice = context.filter.getSlice();
-
-                try context.filter.decode(@intToEnum(FilterType, filter_type), scanline);
-
-                var index: usize = 0;
-                var x: usize = 0;
-
-                switch (context.pixels.*) {
-                    .Grayscale1 => |data| {
-                        while (index < filter_slice.len) : (index += 1) {
-                            const current_byte = filter_slice[index];
-
-                            var bit: usize = 0;
-                            while (context.pixels_index < pixels_length and x < self.header.width and bit < 8) {
-                                data[context.pixels_index].value = @intCast(u1, (current_byte >> @intCast(u3, (7 - bit))) & 1);
-
-                                x += 1;
-                                bit += 1;
-                                context.pixels_index += 1;
-                            }
-                        }
-                    },
-                    .Grayscale2 => |data| {
-                        while (index < filter_slice.len) : (index += 1) {
-                            const current_byte = filter_slice[index];
-
-                            var bit: usize = 1;
-                            while (context.pixels_index < pixels_length and x < self.header.width and bit < 8) {
-                                data[context.pixels_index].value = @intCast(u2, (current_byte >> @intCast(u3, (7 - bit))) & 0b00000011);
-
-                                x += 1;
-                                bit += 2;
-                                context.pixels_index += 1;
-                            }
-                        }
-                    },
-                    .Grayscale4 => |data| {
-                        while (index < filter_slice.len) : (index += 1) {
-                            const current_byte = filter_slice[index];
-
-                            var bit: usize = 3;
-                            while (context.pixels_index < pixels_length and x < self.header.width and bit < 8) {
-                                data[context.pixels_index].value = @intCast(u4, (current_byte >> @intCast(u3, (7 - bit))) & 0b00001111);
-
-                                x += 1;
-                                bit += 4;
-                                context.pixels_index += 1;
-                            }
-                        }
-                    },
-                    .Grayscale8 => |data| {
-                        while (index < filter_slice.len and context.pixels_index < pixels_length and x < self.header.width) {
-                            data[context.pixels_index].value = filter_slice[index];
-
-                            index += 1;
-                            x += 1;
-                            context.pixels_index += 1;
-                        }
-                    },
-                    .Grayscale16 => |data| {
-                        while (index < filter_slice.len and context.pixels_index < pixels_length and x < self.header.width) {
-                            const read_value = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[index]));
-                            data[context.pixels_index].value = read_value;
-
-                            index += 2;
-                            x += 1;
-                            context.pixels_index += 1;
-                        }
-                    },
-                    .Rgb24 => |data| {
-                        var count: usize = 0;
-                        const count_end = filter_slice.len;
-                        while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
-                            data[context.pixels_index].R = filter_slice[count];
-                            data[context.pixels_index].G = filter_slice[count + 1];
-                            data[context.pixels_index].B = filter_slice[count + 2];
-
-                            count += 3;
-                            x += 1;
-                            context.pixels_index += 1;
-                        }
-                    },
-                    .Rgb48 => |data| {
-                        var count: usize = 0;
-                        const count_end = filter_slice.len;
-                        while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
-                            data[context.pixels_index].R = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count]));
-                            data[context.pixels_index].G = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 2]));
-                            data[context.pixels_index].B = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 4]));
-
-                            count += 6;
-                            x += 1;
-                            context.pixels_index += 1;
-                        }
-                    },
-                    .Bpp1 => |indexed| {
-                        while (index < filter_slice.len) : (index += 1) {
-                            const current_byte = filter_slice[index];
-
-                            var bit: usize = 0;
-                            while (context.pixels_index < pixels_length and x < self.header.width and bit < 8) {
-                                indexed.indices[context.pixels_index] = @intCast(u1, (current_byte >> @intCast(u3, (7 - bit))) & 1);
-
-                                x += 1;
-                                bit += 1;
-                                context.pixels_index += 1;
-                            }
-                        }
-                    },
-                    .Bpp2 => |indexed| {
-                        while (index < filter_slice.len) : (index += 1) {
-                            const current_byte = filter_slice[index];
-
-                            var bit: usize = 1;
-                            while (context.pixels_index < pixels_length and x < self.header.width and bit < 8) {
-                                indexed.indices[context.pixels_index] = @intCast(u2, (current_byte >> @intCast(u3, (7 - bit))) & 0b00000011);
-
-                                x += 1;
-                                bit += 2;
-                                context.pixels_index += 1;
-                            }
-                        }
-                    },
-                    .Bpp4 => |indexed| {
-                        while (index < filter_slice.len) : (index += 1) {
-                            const current_byte = filter_slice[index];
-
-                            var bit: usize = 3;
-                            while (context.pixels_index < pixels_length and x < self.header.width and bit < 8) {
-                                indexed.indices[context.pixels_index] = @intCast(u4, (current_byte >> @intCast(u3, (7 - bit))) & 0b00001111);
-
-                                x += 1;
-                                bit += 4;
-                                context.pixels_index += 1;
-                            }
-                        }
-                    },
-                    .Bpp8 => |indexed| {
-                        while (index < filter_slice.len and context.pixels_index < pixels_length and x < self.header.width) {
-                            indexed.indices[context.pixels_index] = filter_slice[index];
-
-                            index += 1;
-                            x += 1;
-                            context.pixels_index += 1;
-                        }
-                    },
-                    .Grayscale8Alpha => |grey_alpha| {
-                        var count: usize = 0;
-                        const count_end = filter_slice.len;
-                        while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
-                            grey_alpha[context.pixels_index].value = filter_slice[count];
-                            grey_alpha[context.pixels_index].alpha = filter_slice[count + 1];
-
-                            count += 2;
-                            x += 1;
-                            context.pixels_index += 1;
-                        }
-                    },
-                    .Grayscale16Alpha => |grey_alpha| {
-                        var count: usize = 0;
-                        const count_end = filter_slice.len;
-                        while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
-                            grey_alpha[context.pixels_index].value = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count]));
-                            grey_alpha[context.pixels_index].alpha = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 2]));
-
-                            count += 4;
-                            x += 1;
-                            context.pixels_index += 1;
-                        }
-                    },
-                    .Rgba32 => |data| {
-                        var count: usize = 0;
-                        const count_end = filter_slice.len;
-                        while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
-                            data[context.pixels_index].R = filter_slice[count];
-                            data[context.pixels_index].G = filter_slice[count + 1];
-                            data[context.pixels_index].B = filter_slice[count + 2];
-                            data[context.pixels_index].A = filter_slice[count + 3];
-
-                            count += 4;
-                            x += 1;
-                            context.pixels_index += 1;
-                        }
-                    },
-                    .Rgba64 => |data| {
-                        var count: usize = 0;
-                        const count_end = filter_slice.len;
-                        while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
-                            data[context.pixels_index].R = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count]));
-                            data[context.pixels_index].G = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 2]));
-                            data[context.pixels_index].B = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 4]));
-                            data[context.pixels_index].A = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 6]));
-
-                            count += 8;
-                            x += 1;
-                            context.pixels_index += 1;
-                        }
-                    },
-                    else => {
-                        return errors.ImageError.UnsupportedPixelFormat;
-                    },
-                }
-
-                pixel_current_pos = try pixel_stream_source.getPos();
+            switch (self.header.interlace_method) {
+                .Standard => try self.readPixelsNonInterlaced(context, &pixel_stream_source, &pixel_stream),
+                .Adam7 => try self.readPixelsInterlaced(context, &pixel_stream_source, &pixel_stream),
             }
 
             if (is_last_idat) {
@@ -941,6 +737,512 @@ pub const PNG = struct {
                     return error.InvalidZlibStream;
                 }
             }
+        }
+    }
+
+    fn readPixelsNonInterlaced(self: Self, context: *DecompressionContext, pixel_stream_source: var, pixel_stream: var) !void {
+        var scanline = try self.allocator.alloc(u8, context.filter.line_stride);
+        defer self.allocator.free(scanline);
+
+        var pixel_current_pos = try pixel_stream_source.getPos();
+        const pixel_end_pos = try pixel_stream_source.getEndPos();
+
+        const pixels_length = context.pixels.len();
+
+        while (pixel_current_pos < pixel_end_pos and context.pixels_index < pixels_length) {
+            const filter_type = try pixel_stream.readByte();
+
+            _ = try pixel_stream.readAll(scanline);
+
+            const filter_slice = context.filter.getSlice();
+
+            try context.filter.decode(@intToEnum(FilterType, filter_type), scanline);
+
+            var index: usize = 0;
+            var x: usize = 0;
+
+            switch (context.pixels.*) {
+                .Grayscale1 => |data| {
+                    while (index < filter_slice.len) : (index += 1) {
+                        const current_byte = filter_slice[index];
+
+                        var bit: usize = 0;
+                        while (context.pixels_index < pixels_length and x < self.header.width and bit < 8) {
+                            data[context.pixels_index].value = @intCast(u1, (current_byte >> @intCast(u3, (7 - bit))) & 1);
+
+                            x += 1;
+                            bit += 1;
+                            context.pixels_index += 1;
+                        }
+                    }
+                },
+                .Grayscale2 => |data| {
+                    while (index < filter_slice.len) : (index += 1) {
+                        const current_byte = filter_slice[index];
+
+                        var bit: usize = 1;
+                        while (context.pixels_index < pixels_length and x < self.header.width and bit < 8) {
+                            data[context.pixels_index].value = @intCast(u2, (current_byte >> @intCast(u3, (7 - bit))) & 0b00000011);
+
+                            x += 1;
+                            bit += 2;
+                            context.pixels_index += 1;
+                        }
+                    }
+                },
+                .Grayscale4 => |data| {
+                    while (index < filter_slice.len) : (index += 1) {
+                        const current_byte = filter_slice[index];
+
+                        var bit: usize = 3;
+                        while (context.pixels_index < pixels_length and x < self.header.width and bit < 8) {
+                            data[context.pixels_index].value = @intCast(u4, (current_byte >> @intCast(u3, (7 - bit))) & 0b00001111);
+
+                            x += 1;
+                            bit += 4;
+                            context.pixels_index += 1;
+                        }
+                    }
+                },
+                .Grayscale8 => |data| {
+                    while (index < filter_slice.len and context.pixels_index < pixels_length and x < self.header.width) {
+                        data[context.pixels_index].value = filter_slice[index];
+
+                        index += 1;
+                        x += 1;
+                        context.pixels_index += 1;
+                    }
+                },
+                .Grayscale16 => |data| {
+                    while (index < filter_slice.len and context.pixels_index < pixels_length and x < self.header.width) {
+                        const read_value = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[index]));
+                        data[context.pixels_index].value = read_value;
+
+                        index += 2;
+                        x += 1;
+                        context.pixels_index += 1;
+                    }
+                },
+                .Rgb24 => |data| {
+                    var count: usize = 0;
+                    const count_end = filter_slice.len;
+                    while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
+                        data[context.pixels_index].R = filter_slice[count];
+                        data[context.pixels_index].G = filter_slice[count + 1];
+                        data[context.pixels_index].B = filter_slice[count + 2];
+
+                        count += 3;
+                        x += 1;
+                        context.pixels_index += 1;
+                    }
+                },
+                .Rgb48 => |data| {
+                    var count: usize = 0;
+                    const count_end = filter_slice.len;
+                    while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
+                        data[context.pixels_index].R = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count]));
+                        data[context.pixels_index].G = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 2]));
+                        data[context.pixels_index].B = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 4]));
+
+                        count += 6;
+                        x += 1;
+                        context.pixels_index += 1;
+                    }
+                },
+                .Bpp1 => |indexed| {
+                    while (index < filter_slice.len) : (index += 1) {
+                        const current_byte = filter_slice[index];
+
+                        var bit: usize = 0;
+                        while (context.pixels_index < pixels_length and x < self.header.width and bit < 8) {
+                            indexed.indices[context.pixels_index] = @intCast(u1, (current_byte >> @intCast(u3, (7 - bit))) & 1);
+
+                            x += 1;
+                            bit += 1;
+                            context.pixels_index += 1;
+                        }
+                    }
+                },
+                .Bpp2 => |indexed| {
+                    while (index < filter_slice.len) : (index += 1) {
+                        const current_byte = filter_slice[index];
+
+                        var bit: usize = 1;
+                        while (context.pixels_index < pixels_length and x < self.header.width and bit < 8) {
+                            indexed.indices[context.pixels_index] = @intCast(u2, (current_byte >> @intCast(u3, (7 - bit))) & 0b00000011);
+
+                            x += 1;
+                            bit += 2;
+                            context.pixels_index += 1;
+                        }
+                    }
+                },
+                .Bpp4 => |indexed| {
+                    while (index < filter_slice.len) : (index += 1) {
+                        const current_byte = filter_slice[index];
+
+                        var bit: usize = 3;
+                        while (context.pixels_index < pixels_length and x < self.header.width and bit < 8) {
+                            indexed.indices[context.pixels_index] = @intCast(u4, (current_byte >> @intCast(u3, (7 - bit))) & 0b00001111);
+
+                            x += 1;
+                            bit += 4;
+                            context.pixels_index += 1;
+                        }
+                    }
+                },
+                .Bpp8 => |indexed| {
+                    while (index < filter_slice.len and context.pixels_index < pixels_length and x < self.header.width) {
+                        indexed.indices[context.pixels_index] = filter_slice[index];
+
+                        index += 1;
+                        x += 1;
+                        context.pixels_index += 1;
+                    }
+                },
+                .Grayscale8Alpha => |grey_alpha| {
+                    var count: usize = 0;
+                    const count_end = filter_slice.len;
+                    while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
+                        grey_alpha[context.pixels_index].value = filter_slice[count];
+                        grey_alpha[context.pixels_index].alpha = filter_slice[count + 1];
+
+                        count += 2;
+                        x += 1;
+                        context.pixels_index += 1;
+                    }
+                },
+                .Grayscale16Alpha => |grey_alpha| {
+                    var count: usize = 0;
+                    const count_end = filter_slice.len;
+                    while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
+                        grey_alpha[context.pixels_index].value = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count]));
+                        grey_alpha[context.pixels_index].alpha = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 2]));
+
+                        count += 4;
+                        x += 1;
+                        context.pixels_index += 1;
+                    }
+                },
+                .Rgba32 => |data| {
+                    var count: usize = 0;
+                    const count_end = filter_slice.len;
+                    while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
+                        data[context.pixels_index].R = filter_slice[count];
+                        data[context.pixels_index].G = filter_slice[count + 1];
+                        data[context.pixels_index].B = filter_slice[count + 2];
+                        data[context.pixels_index].A = filter_slice[count + 3];
+
+                        count += 4;
+                        x += 1;
+                        context.pixels_index += 1;
+                    }
+                },
+                .Rgba64 => |data| {
+                    var count: usize = 0;
+                    const count_end = filter_slice.len;
+                    while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
+                        data[context.pixels_index].R = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count]));
+                        data[context.pixels_index].G = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 2]));
+                        data[context.pixels_index].B = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 4]));
+                        data[context.pixels_index].A = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 6]));
+
+                        count += 8;
+                        x += 1;
+                        context.pixels_index += 1;
+                    }
+                },
+                else => {
+                    return errors.ImageError.UnsupportedPixelFormat;
+                },
+            }
+
+            pixel_current_pos = try pixel_stream_source.getPos();
+        }
+    }
+
+    const InterlacedStartingWidth = [7]usize{ 0, 4, 0, 2, 0, 1, 0 };
+    const InterlacedStartingHeight = [7]usize{ 0, 0, 4, 0, 2, 0, 1 };
+    const InterlacedWidthIncrement = [7]usize{ 8, 8, 4, 4, 2, 2, 1 };
+    const InterlacedHeightIncrement = [7]usize{ 8, 8, 8, 4, 4, 2, 2 };
+    const InterlacedBlockWidth = [7]usize{ 8, 4, 4, 2, 2, 1, 1 };
+    const InterlacedBlockHeight = [7]usize{ 8, 8, 4, 4, 2, 2, 1 };
+
+    fn readPixelsInterlaced(self: Self, context: *DecompressionContext, pixel_stream_source: var, pixel_stream: var) !void {
+        var scanline: ?[]u8 = null;
+        defer {
+            if (scanline) |scan| {
+                self.allocator.free(scan);
+            }
+        }
+        var pixel_current_pos = try pixel_stream_source.getPos();
+        const pixel_end_pos = try pixel_stream_source.getEndPos();
+
+        const pixel_stride = self.header.bit_depth * self.header.color_type.getChannelCount();
+
+        while (context.pass < 7 and pixel_current_pos < pixel_end_pos) {
+            var current_pass = @intCast(usize, @bitCast(u8, context.pass));
+
+            if (context.y >= self.header.height) {
+                context.pass += 1;
+                current_pass = @intCast(usize, @bitCast(u8, context.pass));
+
+                if (current_pass < 7) {
+                    const current_pass_width = self.header.width / InterlacedWidthIncrement[current_pass];
+                    const line_stride = std.mem.alignForward(current_pass_width * self.header.bit_depth * self.header.color_type.getChannelCount(), 8) / 8;
+
+                    if (context.filter.context.len > 0) {
+                        context.filter.deinit(self.allocator);
+                    }
+
+                    context.filter = try PngFilter.init(self.allocator, line_stride, pixel_stride);
+
+                    if (scanline) |scan| {
+                        self.allocator.free(scan);
+                    }
+
+                    scanline = try self.allocator.alloc(u8, context.filter.line_stride);
+                } else {
+                    continue;
+                }
+
+                context.y = InterlacedStartingHeight[@intCast(usize, context.pass)];
+            }
+
+            const filter_type = try pixel_stream.readByte();
+
+            _ = try pixel_stream.readAll(scanline.?);
+
+            const filter_slice = context.filter.getSlice();
+
+            try context.filter.decode(@intToEnum(FilterType, filter_type), scanline.?);
+
+            var slice_index: usize = 0;
+            var pixel_index: usize = 0;
+
+            const current_pass_width = self.header.width / InterlacedWidthIncrement[current_pass];
+
+            context.x = InterlacedStartingWidth[current_pass];
+
+            while (slice_index < filter_slice.len and context.x < self.header.width and pixel_index < current_pass_width) {
+                const block_width = std.math.min(InterlacedBlockWidth[current_pass], self.header.width - context.x);
+                const block_height = std.math.min(InterlacedBlockHeight[current_pass], self.header.height - context.y);
+
+                try self.writePixel(filter_slice[slice_index..], pixel_index, context, block_width, block_height);
+
+                pixel_index += 1;
+                if ((pixel_index % 8) == 0) {
+                    slice_index += 1;
+                }
+                context.x += InterlacedWidthIncrement[current_pass];
+            }
+
+            pixel_current_pos = try pixel_stream_source.getPos();
+
+            context.y += InterlacedHeightIncrement[current_pass];
+        }
+    }
+
+    fn writePixel(self: Self, bytes: []const u8, pixel_index: usize, context: *DecompressionContext, block_width: usize, block_height: usize) !void {
+        switch (context.pixels.*) {
+            .Grayscale1 => |data| {
+                const value = @intCast(u1, (bytes[0] >> @intCast(u3, 7 - (pixel_index & 7))) & 1);
+
+                var height: usize = 0;
+                while (height < block_height) : (height += 1) {
+                    if ((context.y + height) < self.header.height) {
+                        var width: usize = 0;
+
+                        var scanline = (context.y + height) * self.header.width;
+
+                        while (width < block_width) : (width += 1) {
+                            const data_index = scanline + context.x + width;
+                            if ((context.x + width) < self.header.width and data_index < data.len) {
+                                data[data_index].value = value;
+                            }
+                        }
+                    }
+                }
+            },
+            //         .Grayscale2 => |data| {
+            //             while (index < filter_slice.len) : (index += 1) {
+            //                 const current_byte = filter_slice[index];
+
+            //                 var bit: usize = 1;
+            //                 while (context.pixels_index < pixels_length and x < self.header.width and bit < 8) {
+            //                     data[context.pixels_index].value = @intCast(u2, (current_byte >> @intCast(u3, (7 - bit))) & 0b00000011);
+
+            //                     x += 1;
+            //                     bit += 2;
+            //                     context.pixels_index += 1;
+            //                 }
+            //             }
+            //         },
+            //         .Grayscale4 => |data| {
+            //             while (index < filter_slice.len) : (index += 1) {
+            //                 const current_byte = filter_slice[index];
+
+            //                 var bit: usize = 3;
+            //                 while (context.pixels_index < pixels_length and x < self.header.width and bit < 8) {
+            //                     data[context.pixels_index].value = @intCast(u4, (current_byte >> @intCast(u3, (7 - bit))) & 0b00001111);
+
+            //                     x += 1;
+            //                     bit += 4;
+            //                     context.pixels_index += 1;
+            //                 }
+            //             }
+            //         },
+            //         .Grayscale8 => |data| {
+            //             while (index < filter_slice.len and context.pixels_index < pixels_length and x < self.header.width) {
+            //                 data[context.pixels_index].value = filter_slice[index];
+
+            //                 index += 1;
+            //                 x += 1;
+            //                 context.pixels_index += 1;
+            //             }
+            //         },
+            //         .Grayscale16 => |data| {
+            //             while (index < filter_slice.len and context.pixels_index < pixels_length and x < self.header.width) {
+            //                 const read_value = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[index]));
+            //                 data[context.pixels_index].value = read_value;
+
+            //                 index += 2;
+            //                 x += 1;
+            //                 context.pixels_index += 1;
+            //             }
+            //         },
+            //         .Rgb24 => |data| {
+            //             var count: usize = 0;
+            //             const count_end = filter_slice.len;
+            //             while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
+            //                 data[context.pixels_index].R = filter_slice[count];
+            //                 data[context.pixels_index].G = filter_slice[count + 1];
+            //                 data[context.pixels_index].B = filter_slice[count + 2];
+
+            //                 count += 3;
+            //                 x += 1;
+            //                 context.pixels_index += 1;
+            //             }
+            //         },
+            //         .Rgb48 => |data| {
+            //             var count: usize = 0;
+            //             const count_end = filter_slice.len;
+            //             while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
+            //                 data[context.pixels_index].R = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count]));
+            //                 data[context.pixels_index].G = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 2]));
+            //                 data[context.pixels_index].B = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 4]));
+
+            //                 count += 6;
+            //                 x += 1;
+            //                 context.pixels_index += 1;
+            //             }
+            //         },
+            //         .Bpp1 => |indexed| {
+            //             while (index < filter_slice.len) : (index += 1) {
+            //                 const current_byte = filter_slice[index];
+
+            //                 var bit: usize = 0;
+            //                 while (context.pixels_index < pixels_length and x < self.header.width and bit < 8) {
+            //                     indexed.indices[context.pixels_index] = @intCast(u1, (current_byte >> @intCast(u3, (7 - bit))) & 1);
+
+            //                     x += 1;
+            //                     bit += 1;
+            //                     context.pixels_index += 1;
+            //                 }
+            //             }
+            //         },
+            //         .Bpp2 => |indexed| {
+            //             while (index < filter_slice.len) : (index += 1) {
+            //                 const current_byte = filter_slice[index];
+
+            //                 var bit: usize = 1;
+            //                 while (context.pixels_index < pixels_length and x < self.header.width and bit < 8) {
+            //                     indexed.indices[context.pixels_index] = @intCast(u2, (current_byte >> @intCast(u3, (7 - bit))) & 0b00000011);
+
+            //                     x += 1;
+            //                     bit += 2;
+            //                     context.pixels_index += 1;
+            //                 }
+            //             }
+            //         },
+            //         .Bpp4 => |indexed| {
+            //             while (index < filter_slice.len) : (index += 1) {
+            //                 const current_byte = filter_slice[index];
+
+            //                 var bit: usize = 3;
+            //                 while (context.pixels_index < pixels_length and x < self.header.width and bit < 8) {
+            //                     indexed.indices[context.pixels_index] = @intCast(u4, (current_byte >> @intCast(u3, (7 - bit))) & 0b00001111);
+
+            //                     x += 1;
+            //                     bit += 4;
+            //                     context.pixels_index += 1;
+            //                 }
+            //             }
+            //         },
+            //         .Bpp8 => |indexed| {
+            //             while (index < filter_slice.len and context.pixels_index < pixels_length and x < self.header.width) {
+            //                 indexed.indices[context.pixels_index] = filter_slice[index];
+
+            //                 index += 1;
+            //                 x += 1;
+            //                 context.pixels_index += 1;
+            //             }
+            //         },
+            //         .Grayscale8Alpha => |grey_alpha| {
+            //             var count: usize = 0;
+            //             const count_end = filter_slice.len;
+            //             while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
+            //                 grey_alpha[context.pixels_index].value = filter_slice[count];
+            //                 grey_alpha[context.pixels_index].alpha = filter_slice[count + 1];
+
+            //                 count += 2;
+            //                 x += 1;
+            //                 context.pixels_index += 1;
+            //             }
+            //         },
+            //         .Grayscale16Alpha => |grey_alpha| {
+            //             var count: usize = 0;
+            //             const count_end = filter_slice.len;
+            //             while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
+            //                 grey_alpha[context.pixels_index].value = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count]));
+            //                 grey_alpha[context.pixels_index].alpha = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 2]));
+
+            //                 count += 4;
+            //                 x += 1;
+            //                 context.pixels_index += 1;
+            //             }
+            //         },
+            //         .Rgba32 => |data| {
+            //             var count: usize = 0;
+            //             const count_end = filter_slice.len;
+            //             while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
+            //                 data[context.pixels_index].R = filter_slice[count];
+            //                 data[context.pixels_index].G = filter_slice[count + 1];
+            //                 data[context.pixels_index].B = filter_slice[count + 2];
+            //                 data[context.pixels_index].A = filter_slice[count + 3];
+
+            //                 count += 4;
+            //                 x += 1;
+            //                 context.pixels_index += 1;
+            //             }
+            //         },
+            //         .Rgba64 => |data| {
+            //             var count: usize = 0;
+            //             const count_end = filter_slice.len;
+            //             while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
+            //                 data[context.pixels_index].R = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count]));
+            //                 data[context.pixels_index].G = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 2]));
+            //                 data[context.pixels_index].B = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 4]));
+            //                 data[context.pixels_index].A = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 6]));
+
+            //                 count += 8;
+            //                 x += 1;
+            //                 context.pixels_index += 1;
+            //             }
+            //         },
+            else => {
+                return errors.ImageError.UnsupportedPixelFormat;
+            },
         }
     }
 
