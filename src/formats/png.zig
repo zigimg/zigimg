@@ -1087,20 +1087,26 @@ pub const PNG = struct {
                     }
                 }
             },
-            //         .Grayscale4 => |data| {
-            //             while (index < filter_slice.len) : (index += 1) {
-            //                 const current_byte = filter_slice[index];
+            .Grayscale4 => |data| {
+                const bit = (pixel_index & 0b1) * 4 + 3;
+                const value = @intCast(u4, (bytes[0] >> @intCast(u3, (7 - bit))) & 0b00001111);
 
-            //                 var bit: usize = 3;
-            //                 while (context.pixels_index < pixels_length and x < self.header.width and bit < 8) {
-            //                     data[context.pixels_index].value = @intCast(u4, (current_byte >> @intCast(u3, (7 - bit))) & 0b00001111);
+                var height: usize = 0;
+                while (height < block_height) : (height += 1) {
+                    if ((context.y + height) < self.header.height) {
+                        var width: usize = 0;
 
-            //                     x += 1;
-            //                     bit += 4;
-            //                     context.pixels_index += 1;
-            //                 }
-            //             }
-            //         },
+                        var scanline = (context.y + height) * self.header.width;
+
+                        while (width < block_width) : (width += 1) {
+                            const data_index = scanline + context.x + width;
+                            if ((context.x + width) < self.header.width and data_index < data.len) {
+                                data[data_index].value = value;
+                            }
+                        }
+                    }
+                }
+            },
             //         .Grayscale8 => |data| {
             //             while (index < filter_slice.len and context.pixels_index < pixels_length and x < self.header.width) {
             //                 data[context.pixels_index].value = filter_slice[index];
