@@ -1316,20 +1316,30 @@ pub const PNG = struct {
                     }
                 }
             },
-            //         .Rgba32 => |data| {
-            //             var count: usize = 0;
-            //             const count_end = filter_slice.len;
-            //             while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
-            //                 data[context.pixels_index].R = filter_slice[count];
-            //                 data[context.pixels_index].G = filter_slice[count + 1];
-            //                 data[context.pixels_index].B = filter_slice[count + 2];
-            //                 data[context.pixels_index].A = filter_slice[count + 3];
+            .Rgba32 => |data| {
+                const pixel = color.Rgba32{
+                    .R = bytes[0],
+                    .G = bytes[1],
+                    .B = bytes[2],
+                    .A = bytes[3],
+                };
 
-            //                 count += 4;
-            //                 x += 1;
-            //                 context.pixels_index += 1;
-            //             }
-            //         },
+                var height: usize = 0;
+                while (height < block_height) : (height += 1) {
+                    if ((context.y + height) < self.header.height) {
+                        var width: usize = 0;
+
+                        var scanline = (context.y + height) * self.header.width;
+
+                        while (width < block_width) : (width += 1) {
+                            const data_index = scanline + context.x + width;
+                            if ((context.x + width) < self.header.width and data_index < data.len) {
+                                data[data_index] = pixel;
+                            }
+                        }
+                    }
+                }
+            },
             //         .Rgba64 => |data| {
             //             var count: usize = 0;
             //             const count_end = filter_slice.len;
