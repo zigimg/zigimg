@@ -1019,6 +1019,7 @@ pub const PNG = struct {
 
             var slice_index: usize = 0;
             var pixel_index: usize = 0;
+            var bit_index: usize = 0;
 
             const current_pass_width = self.header.width / InterlacedWidthIncrement[current_pass];
 
@@ -1031,7 +1032,8 @@ pub const PNG = struct {
                 try self.writePixel(filter_slice[slice_index..], pixel_index, context, block_width, block_height);
 
                 pixel_index += 1;
-                if ((pixel_index % 8) == 0) {
+                bit_index += pixel_stride;
+                if ((bit_index % 8) == 0) {
                     slice_index += 1;
                 }
                 context.x += InterlacedWidthIncrement[current_pass];
@@ -1046,7 +1048,8 @@ pub const PNG = struct {
     fn writePixel(self: Self, bytes: []const u8, pixel_index: usize, context: *DecompressionContext, block_width: usize, block_height: usize) !void {
         switch (context.pixels.*) {
             .Grayscale1 => |data| {
-                const value = @intCast(u1, (bytes[0] >> @intCast(u3, 7 - (pixel_index & 7))) & 1);
+                const bit = (pixel_index & 0b111);
+                const value = @intCast(u1, (bytes[0] >> @intCast(u3, 7 - bit)) & 1);
 
                 var height: usize = 0;
                 while (height < block_height) : (height += 1) {
@@ -1064,20 +1067,26 @@ pub const PNG = struct {
                     }
                 }
             },
-            //         .Grayscale2 => |data| {
-            //             while (index < filter_slice.len) : (index += 1) {
-            //                 const current_byte = filter_slice[index];
+            .Grayscale2 => |data| {
+                const bit = (pixel_index & 0b011) * 2 + 1;
+                const value = @intCast(u2, (bytes[0] >> @intCast(u3, (7 - bit))) & 0b00000011);
 
-            //                 var bit: usize = 1;
-            //                 while (context.pixels_index < pixels_length and x < self.header.width and bit < 8) {
-            //                     data[context.pixels_index].value = @intCast(u2, (current_byte >> @intCast(u3, (7 - bit))) & 0b00000011);
+                var height: usize = 0;
+                while (height < block_height) : (height += 1) {
+                    if ((context.y + height) < self.header.height) {
+                        var width: usize = 0;
 
-            //                     x += 1;
-            //                     bit += 2;
-            //                     context.pixels_index += 1;
-            //                 }
-            //             }
-            //         },
+                        var scanline = (context.y + height) * self.header.width;
+
+                        while (width < block_width) : (width += 1) {
+                            const data_index = scanline + context.x + width;
+                            if ((context.x + width) < self.header.width and data_index < data.len) {
+                                data[data_index].value = value;
+                            }
+                        }
+                    }
+                }
+            },
             //         .Grayscale4 => |data| {
             //             while (index < filter_slice.len) : (index += 1) {
             //                 const current_byte = filter_slice[index];
