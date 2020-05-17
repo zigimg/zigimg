@@ -1107,15 +1107,25 @@ pub const PNG = struct {
                     }
                 }
             },
-            //         .Grayscale8 => |data| {
-            //             while (index < filter_slice.len and context.pixels_index < pixels_length and x < self.header.width) {
-            //                 data[context.pixels_index].value = filter_slice[index];
+            .Grayscale8 => |data| {
+                const value = bytes[0];
 
-            //                 index += 1;
-            //                 x += 1;
-            //                 context.pixels_index += 1;
-            //             }
-            //         },
+                var height: usize = 0;
+                while (height < block_height) : (height += 1) {
+                    if ((context.y + height) < self.header.height) {
+                        var width: usize = 0;
+
+                        var scanline = (context.y + height) * self.header.width;
+
+                        while (width < block_width) : (width += 1) {
+                            const data_index = scanline + context.x + width;
+                            if ((context.x + width) < self.header.width and data_index < data.len) {
+                                data[data_index].value = value;
+                            }
+                        }
+                    }
+                }
+            },
             //         .Grayscale16 => |data| {
             //             while (index < filter_slice.len and context.pixels_index < pixels_length and x < self.header.width) {
             //                 const read_value = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[index]));
