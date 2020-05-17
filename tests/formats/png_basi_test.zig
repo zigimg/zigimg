@@ -144,33 +144,33 @@ test "Read basi0g08 data properly" {
     }
 }
 
-// test "Read basi0g16 data properly" {
-//     const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/png/basi0g16.png");
-//     defer file.close();
+test "Read basi0g16 data properly" {
+    const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/png/basi0g16.png");
+    defer file.close();
 
-//     var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.io.StreamSource{ .file = file };
 
-//     var pngFile = png.PNG.init(zigimg_test_allocator);
-//     defer pngFile.deinit();
+    var pngFile = png.PNG.init(zigimg_test_allocator);
+    defer pngFile.deinit();
 
-//     var pixelsOpt: ?color.ColorStorage = null;
-//     try pngFile.read(stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
+    var pixelsOpt: ?color.ColorStorage = null;
+    try pngFile.read(stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
 
-//     defer {
-//         if (pixelsOpt) |pixels| {
-//             pixels.deinit(zigimg_test_allocator);
-//         }
-//     }
+    defer {
+        if (pixelsOpt) |pixels| {
+            pixels.deinit(zigimg_test_allocator);
+        }
+    }
 
-//     testing.expect(pixelsOpt != null);
+    testing.expect(pixelsOpt != null);
 
-//     if (pixelsOpt) |pixels| {
-//         testing.expect(pixels == .Grayscale16);
+    if (pixelsOpt) |pixels| {
+        testing.expect(pixels == .Grayscale16);
 
-//         expectEq(pixels.Grayscale16[0].value, 0);
-//         expectEq(pixels.Grayscale16[31].value, 47871);
-//     }
-// }
+        expectEq(pixels.Grayscale16[0].value, 0);
+        expectEq(pixels.Grayscale16[31].value, 47871);
+    }
+}
 
 // test "Read basi2c08 data properly" {
 //     const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/png/basi2c08.png");

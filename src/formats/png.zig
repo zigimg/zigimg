@@ -979,6 +979,8 @@ pub const PNG = struct {
         const pixel_end_pos = try pixel_stream_source.getEndPos();
 
         const pixel_stride = self.header.bit_depth * self.header.color_type.getChannelCount();
+        const bytes_per_pixel = std.math.max(1, pixel_stride / 8);
+        const bit_per_bytes = bytes_per_pixel * 8;
 
         while (context.pass < 7 and pixel_current_pos < pixel_end_pos) {
             var current_pass = @intCast(usize, @bitCast(u8, context.pass));
@@ -1029,12 +1031,12 @@ pub const PNG = struct {
                 const block_width = std.math.min(InterlacedBlockWidth[current_pass], self.header.width - context.x);
                 const block_height = std.math.min(InterlacedBlockHeight[current_pass], self.header.height - context.y);
 
-                try self.writePixel(filter_slice[slice_index..], pixel_index, context, block_width, block_height);
+                try self.writePixelInterlaced(filter_slice[slice_index..], pixel_index, context, block_width, block_height);
 
                 pixel_index += 1;
                 bit_index += pixel_stride;
-                if ((bit_index % 8) == 0) {
-                    slice_index += 1;
+                if ((bit_index % bit_per_bytes) == 0) {
+                    slice_index += bytes_per_pixel;
                 }
                 context.x += InterlacedWidthIncrement[current_pass];
             }
@@ -1045,7 +1047,7 @@ pub const PNG = struct {
         }
     }
 
-    fn writePixel(self: Self, bytes: []const u8, pixel_index: usize, context: *DecompressionContext, block_width: usize, block_height: usize) !void {
+    fn writePixelInterlaced(self: Self, bytes: []const u8, pixel_index: usize, context: *DecompressionContext, block_width: usize, block_height: usize) !void {
         switch (context.pixels.*) {
             .Grayscale1 => |data| {
                 const bit = (pixel_index & 0b111);
@@ -1126,16 +1128,25 @@ pub const PNG = struct {
                     }
                 }
             },
-            //         .Grayscale16 => |data| {
-            //             while (index < filter_slice.len and context.pixels_index < pixels_length and x < self.header.width) {
-            //                 const read_value = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[index]));
-            //                 data[context.pixels_index].value = read_value;
+            .Grayscale16 => |data| {
+                const value = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, bytes));
 
-            //                 index += 2;
-            //                 x += 1;
-            //                 context.pixels_index += 1;
-            //             }
-            //         },
+                var height: usize = 0;
+                while (height < block_height) : (height += 1) {
+                    if ((context.y + height) < self.header.height) {
+                        var width: usize = 0;
+
+                        var scanline = (context.y + height) * self.header.width;
+
+                        while (width < block_width) : (width += 1) {
+                            const data_index = scanline + context.x + width;
+                            if ((context.x + width) < self.header.width and data_index < data.len) {
+                                data[data_index].value = value;
+                            }
+                        }
+                    }
+                }
+            },
             //         .Rgb24 => |data| {
             //             var count: usize = 0;
             //             const count_end = filter_slice.len;
