@@ -1147,19 +1147,29 @@ pub const PNG = struct {
                     }
                 }
             },
-            //         .Rgb24 => |data| {
-            //             var count: usize = 0;
-            //             const count_end = filter_slice.len;
-            //             while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
-            //                 data[context.pixels_index].R = filter_slice[count];
-            //                 data[context.pixels_index].G = filter_slice[count + 1];
-            //                 data[context.pixels_index].B = filter_slice[count + 2];
+            .Rgb24 => |data| {
+                const pixel = color.Rgb24{
+                    .R = bytes[0],
+                    .G = bytes[1],
+                    .B = bytes[2],
+                };
 
-            //                 count += 3;
-            //                 x += 1;
-            //                 context.pixels_index += 1;
-            //             }
-            //         },
+                var height: usize = 0;
+                while (height < block_height) : (height += 1) {
+                    if ((context.y + height) < self.header.height) {
+                        var width: usize = 0;
+
+                        var scanline = (context.y + height) * self.header.width;
+
+                        while (width < block_width) : (width += 1) {
+                            const data_index = scanline + context.x + width;
+                            if ((context.x + width) < self.header.width and data_index < data.len) {
+                                data[data_index] = pixel;
+                            }
+                        }
+                    }
+                }
+            },
             //         .Rgb48 => |data| {
             //             var count: usize = 0;
             //             const count_end = filter_slice.len;
