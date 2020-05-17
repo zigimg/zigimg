@@ -290,7 +290,7 @@ const PngFilter = struct {
                     const b = @intToFloat(f64, self.getB(i, current_row, previous_row));
                     const result: u8 = @intCast(u8, @floatToInt(u16, std.math.floor((a + b) / 2.0)) & 0xFF);
 
-                    current_row[i] = input[i] + result;
+                    current_row[i] = input[i] +% result;
                 }
             },
             .Paeth => {
@@ -1294,18 +1294,28 @@ pub const PNG = struct {
                     }
                 }
             },
-            //         .Grayscale16Alpha => |grey_alpha| {
-            //             var count: usize = 0;
-            //             const count_end = filter_slice.len;
-            //             while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
-            //                 grey_alpha[context.pixels_index].value = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count]));
-            //                 grey_alpha[context.pixels_index].alpha = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 2]));
+            .Grayscale16Alpha => |grey_alpha| {
+                const value = color.Grayscale16Alpha{
+                    .value = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &bytes[0])),
+                    .alpha = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &bytes[2])),
+                };
 
-            //                 count += 4;
-            //                 x += 1;
-            //                 context.pixels_index += 1;
-            //             }
-            //         },
+                var height: usize = 0;
+                while (height < block_height) : (height += 1) {
+                    if ((context.y + height) < self.header.height) {
+                        var width: usize = 0;
+
+                        var scanline = (context.y + height) * self.header.width;
+
+                        while (width < block_width) : (width += 1) {
+                            const data_index = scanline + context.x + width;
+                            if ((context.x + width) < self.header.width and data_index < grey_alpha.len) {
+                                grey_alpha[data_index] = value;
+                            }
+                        }
+                    }
+                }
+            },
             //         .Rgba32 => |data| {
             //             var count: usize = 0;
             //             const count_end = filter_slice.len;
