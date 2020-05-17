@@ -1272,18 +1272,28 @@ pub const PNG = struct {
                     }
                 }
             },
-            //         .Grayscale8Alpha => |grey_alpha| {
-            //             var count: usize = 0;
-            //             const count_end = filter_slice.len;
-            //             while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
-            //                 grey_alpha[context.pixels_index].value = filter_slice[count];
-            //                 grey_alpha[context.pixels_index].alpha = filter_slice[count + 1];
+            .Grayscale8Alpha => |grey_alpha| {
+                const value = color.Grayscale8Alpha{
+                    .value = bytes[0],
+                    .alpha = bytes[1],
+                };
 
-            //                 count += 2;
-            //                 x += 1;
-            //                 context.pixels_index += 1;
-            //             }
-            //         },
+                var height: usize = 0;
+                while (height < block_height) : (height += 1) {
+                    if ((context.y + height) < self.header.height) {
+                        var width: usize = 0;
+
+                        var scanline = (context.y + height) * self.header.width;
+
+                        while (width < block_width) : (width += 1) {
+                            const data_index = scanline + context.x + width;
+                            if ((context.x + width) < self.header.width and data_index < grey_alpha.len) {
+                                grey_alpha[data_index] = value;
+                            }
+                        }
+                    }
+                }
+            },
             //         .Grayscale16Alpha => |grey_alpha| {
             //             var count: usize = 0;
             //             const count_end = filter_slice.len;
