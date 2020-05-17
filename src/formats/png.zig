@@ -1193,20 +1193,26 @@ pub const PNG = struct {
                     }
                 }
             },
-            //         .Bpp1 => |indexed| {
-            //             while (index < filter_slice.len) : (index += 1) {
-            //                 const current_byte = filter_slice[index];
+            .Bpp1 => |indexed| {
+                const bit = (pixel_index & 0b111);
+                const value = @intCast(u1, (bytes[0] >> @intCast(u3, 7 - bit)) & 1);
 
-            //                 var bit: usize = 0;
-            //                 while (context.pixels_index < pixels_length and x < self.header.width and bit < 8) {
-            //                     indexed.indices[context.pixels_index] = @intCast(u1, (current_byte >> @intCast(u3, (7 - bit))) & 1);
+                var height: usize = 0;
+                while (height < block_height) : (height += 1) {
+                    if ((context.y + height) < self.header.height) {
+                        var width: usize = 0;
 
-            //                     x += 1;
-            //                     bit += 1;
-            //                     context.pixels_index += 1;
-            //                 }
-            //             }
-            //         },
+                        var scanline = (context.y + height) * self.header.width;
+
+                        while (width < block_width) : (width += 1) {
+                            const data_index = scanline + context.x + width;
+                            if ((context.x + width) < self.header.width and data_index < indexed.indices.len) {
+                                indexed.indices[data_index] = value;
+                            }
+                        }
+                    }
+                }
+            },
             //         .Bpp2 => |indexed| {
             //             while (index < filter_slice.len) : (index += 1) {
             //                 const current_byte = filter_slice[index];
