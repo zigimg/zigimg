@@ -690,58 +690,58 @@ test "Read basi6a08 data properly" {
     }
 }
 
-// test "Read basi6a16 data properly" {
-//     const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/png/basi6a16.png");
-//     defer file.close();
+test "Read basi6a16 data properly" {
+    const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/png/basi6a16.png");
+    defer file.close();
 
-//     var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.io.StreamSource{ .file = file };
 
-//     var pngFile = png.PNG.init(zigimg_test_allocator);
-//     defer pngFile.deinit();
+    var pngFile = png.PNG.init(zigimg_test_allocator);
+    defer pngFile.deinit();
 
-//     var pixelsOpt: ?color.ColorStorage = null;
-//     try pngFile.read(stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
+    var pixelsOpt: ?color.ColorStorage = null;
+    try pngFile.read(stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
 
-//     defer {
-//         if (pixelsOpt) |pixels| {
-//             pixels.deinit(zigimg_test_allocator);
-//         }
-//     }
+    defer {
+        if (pixelsOpt) |pixels| {
+            pixels.deinit(zigimg_test_allocator);
+        }
+    }
 
-//     testing.expect(pixelsOpt != null);
+    testing.expect(pixelsOpt != null);
 
-//     if (pixelsOpt) |pixels| {
-//         testing.expect(pixels == .Rgba64);
+    if (pixelsOpt) |pixels| {
+        testing.expect(pixels == .Rgba64);
 
-//         const color0 = pixels.Rgba64[0];
-//         const color16 = pixels.Rgba64[16];
-//         const color31 = pixels.Rgba64[31];
-//         const color16_16 = pixels.Rgba64[16 * 32 + 16];
-//         const color25_17 = pixels.Rgba64[17 * 32 + 25];
+        const color0 = pixels.Rgba64[0];
+        const color16 = pixels.Rgba64[16];
+        const color31 = pixels.Rgba64[31];
+        const color16_16 = pixels.Rgba64[16 * 32 + 16];
+        const color25_17 = pixels.Rgba64[17 * 32 + 25];
 
-//         expectEq(color0.R, 0xFFFF);
-//         expectEq(color0.G, 0xFFFF);
-//         expectEq(color0.B, 0x0000);
-//         expectEq(color0.A, 0x0000);
+        expectEq(color0.R, 0xFFFF);
+        expectEq(color0.G, 0xFFFF);
+        expectEq(color0.B, 0x0000);
+        expectEq(color0.A, 0x0000);
 
-//         expectEq(color16.R, 0x7BDE);
-//         expectEq(color16.G, 0xFFFF);
-//         expectEq(color16.B, 0x0000);
-//         expectEq(color16.A, 0x0000);
+        expectEq(color16.R, 0x7BDE);
+        expectEq(color16.G, 0xFFFF);
+        expectEq(color16.B, 0x0000);
+        expectEq(color16.A, 0x0000);
 
-//         expectEq(color31.R, 0x0000);
-//         expectEq(color31.G, 0xFFFF);
-//         expectEq(color31.B, 0x0000);
-//         expectEq(color31.A, 0x0000);
+        expectEq(color31.R, 0x0000);
+        expectEq(color31.G, 0xFFFF);
+        expectEq(color31.B, 0x0000);
+        expectEq(color31.A, 0x0000);
 
-//         expectEq(color16_16.R, 0x0000);
-//         expectEq(color16_16.G, 0x0000);
-//         expectEq(color16_16.B, 0xFFFF);
-//         expectEq(color16_16.A, 0xF7BD);
+        expectEq(color16_16.R, 0x0000);
+        expectEq(color16_16.G, 0x0000);
+        expectEq(color16_16.B, 0xFFFF);
+        expectEq(color16_16.A, 0xF7BD);
 
-//         expectEq(color25_17.R, 0x0000);
-//         expectEq(color25_17.G, 0x6BC9);
-//         expectEq(color25_17.B, 0x9435);
-//         expectEq(color25_17.A, 0x6319);
-//     }
-// }
+        expectEq(color25_17.R, 0x0000);
+        expectEq(color25_17.G, 0x6BC9);
+        expectEq(color25_17.B, 0x9435);
+        expectEq(color25_17.A, 0x6319);
+    }
+}
