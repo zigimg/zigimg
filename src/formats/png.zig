@@ -740,7 +740,7 @@ pub const PNG = struct {
         }
     }
 
-    fn readPixelsNonInterlaced(self: Self, context: *DecompressionContext, pixel_stream_source: var, pixel_stream: var) !void {
+    fn readPixelsNonInterlaced(self: Self, context: *DecompressionContext, pixel_stream_source: anytype, pixel_stream: anytype) !void {
         var scanline = try self.allocator.alloc(u8, context.filter.line_stride);
         defer self.allocator.free(scanline);
 
@@ -968,7 +968,7 @@ pub const PNG = struct {
     const InterlacedBlockWidth = [7]usize{ 8, 4, 4, 2, 2, 1, 1 };
     const InterlacedBlockHeight = [7]usize{ 8, 8, 4, 4, 2, 2, 1 };
 
-    fn readPixelsInterlaced(self: Self, context: *DecompressionContext, pixel_stream_source: var, pixel_stream: var) !void {
+    fn readPixelsInterlaced(self: Self, context: *DecompressionContext, pixel_stream_source: anytype, pixel_stream: anytype) !void {
         var scanline: ?[]u8 = null;
         defer {
             if (scanline) |scan| {
