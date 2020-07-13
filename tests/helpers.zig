@@ -7,7 +7,7 @@ pub var zigimg_test_allocator_instance = testing.LeakCountAllocator.init(&zigimg
 pub var zigimg_base_allocator_instance = std.heap.ThreadSafeFixedBufferAllocator.init(zigimg_allocator_mem[0..]);
 var zigimg_allocator_mem: [4 * 1024 * 1024]u8 = undefined;
 
-pub fn expectEq(actual: var, expected: var) void {
+pub fn expectEq(actual: anytype, expected: anytype) void {
     testing.expectEqual(@as(@TypeOf(actual), expected), actual);
 }
 
@@ -15,7 +15,7 @@ pub fn expectEqSlice(comptime T: type, actual: []const T, expected: []const T) v
     testing.expectEqualSlices(T, expected, actual);
 }
 
-pub fn expectError(actual: var, expected: anyerror) void {
+pub fn expectError(actual: anytype, expected: anyerror) void {
     testing.expectError(expected, actual);
 }
 

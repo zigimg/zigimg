@@ -282,7 +282,7 @@ pub const Bitmap = struct {
         };
     }
 
-    fn readPixelsInternal(pixels: var, inStream: ImageInStream, pixelWidth: i32, pixelHeight: i32) !void {
+    fn readPixelsInternal(pixels: anytype, inStream: ImageInStream, pixelWidth: i32, pixelHeight: i32) !void {
         const ColorBufferType = @typeInfo(@TypeOf(pixels)).Pointer.child;
 
         var x: i32 = 0;
