@@ -539,7 +539,6 @@ pub const ColorStorageIterator = struct {
             .Argb32 => |data| data[self.currentIndex].toColor(),
             .Rgb48 => |data| data[self.currentIndex].toColor(),
             .Rgba64 => |data| data[self.currentIndex].toColor(),
-            else => null,
         };
 
         self.currentIndex += 1;
