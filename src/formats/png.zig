@@ -371,10 +371,8 @@ pub const PNG = struct {
     const DecompressionContext = struct {
         pixels: *color.ColorStorage = undefined,
         pixels_index: usize = 0,
-        raw_data: ?[]u8 = null,
-        raw_data_position: usize = 0,
+        all_idat_data: std.ArrayList(u8) = undefined,
         filter: PngFilter = undefined,
-        adler_checksum: std.hash.Adler32 = undefined,
         pass: i8 = -1,
         x: usize = 0,
         y: usize = 0,
@@ -540,18 +538,11 @@ pub const PNG = struct {
                 const line_stride = (((self.header.width * self.header.bit_depth + 31) & ~@as(usize, 31)) / 8) * self.header.color_type.getChannelCount();
                 decompression_context.filter = try PngFilter.init(self.allocator, line_stride, self.header.bit_depth * self.header.color_type.getChannelCount());
             }
-            decompression_context.adler_checksum = std.hash.Adler32.init();
             decompression_context.pass = -1;
             decompression_context.x = self.header.width;
             decompression_context.y = self.header.height;
-
-            defer {
-                if (decompression_context.raw_data) |data| {
-                    self.allocator.free(data);
-                }
-
-                decompression_context.filter.deinit(self.allocator);
-            }
+            
+            decompression_context.all_idat_data = std.ArrayList(u8).init(self.allocator);
 
             var idat_count: usize = 0;
 
@@ -670,73 +661,26 @@ pub const PNG = struct {
     }
 
     fn readDataChunk(self: Self, dataChunk: IDAT, context: *DecompressionContext, is_last_idat: bool) !void {
-        // First read ZLIB Compressed Data header
-        var dataStream = std.io.fixedBufferStream(dataChunk.data);
-        var zlibHeader: zlib.StreamHeader = undefined;
-        const dataInStream = dataStream.inStream();
+        try context.all_idat_data.appendSlice(dataChunk.data);
+        errdefer context.all_idat_data.deinit();
 
-        zlibHeader.compression = @bitCast(zlib.StreamHeader.Compression, try dataInStream.readByte());
-        zlibHeader.flags = @bitCast(zlib.StreamHeader.Flags, try dataInStream.readByte());
+        if (is_last_idat) {
+            var dataStream = std.io.fixedBufferStream(context.all_idat_data.items);
+            
+            var uncompressStream = try std.compress.zlib.zlibStream(self.allocator, dataStream.reader());
+            defer uncompressStream.deinit();
 
-        if (zlibHeader.compression.method != 8) {
-            return error.ZlibInvalidCompressionMethod;
-        }
-
-        const validityCheck = (@intCast(u16, @bitCast(u8, zlibHeader.compression)) << 8) | @bitCast(u8, zlibHeader.flags);
-        if ((validityCheck) % 31 != 0) {
-            return error.ZlibInvalidCheck;
-        }
-
-        // TODO: Handle preset dictionary in zlib stream
-
-        // Alloc decompression window
-        const window_size = zlibHeader.getCompressionWindowSize();
-
-        if (context.raw_data) |data| {
-            if (context.raw_data_position >= data.len) {
-                context.raw_data_position = 0;
-            }
-
-            if (data.len != (window_size * 2)) {
-                const new_data = try self.allocator.alloc(u8, window_size * 2);
-                std.mem.copy(u8, new_data[0..], data[0..]);
-                self.allocator.free(data);
-                context.raw_data = new_data;
-            }
-        } else {
-            context.raw_data = try self.allocator.alloc(u8, window_size * 2);
-            context.raw_data_position = 0;
-        }
-
-        // Read deflate stream
-        if (context.raw_data) |decompressed_buffer| {
-            const start_position = context.raw_data_position;
-
-            var read_compressed_count: usize = 0;
-
-            var deflate_reader = deflate.DeflateDecompressor.init(self.allocator);
-            try deflate_reader.read(dataStream.buffer[dataStream.pos..], &read_compressed_count, decompressed_buffer, &context.raw_data_position);
-
-            var pixel_stream_source = std.io.fixedBufferStream(decompressed_buffer[start_position..context.raw_data_position]);
-            var pixel_stream = pixel_stream_source.inStream();
-
-            context.adler_checksum.update(pixel_stream_source.buffer);
-
+            const finalData = try uncompressStream.reader().readAllAlloc(self.allocator, 100000);
+            defer self.allocator.free(finalData);
+            
+            var finalDataStream = std.io.fixedBufferStream(finalData);
+            
             switch (self.header.interlace_method) {
-                .Standard => try self.readPixelsNonInterlaced(context, &pixel_stream_source, &pixel_stream),
-                .Adam7 => try self.readPixelsInterlaced(context, &pixel_stream_source, &pixel_stream),
+                .Standard => try self.readPixelsNonInterlaced(context, &finalDataStream, &finalDataStream.reader()),
+                .Adam7 => try self.readPixelsInterlaced(context, &finalDataStream, &finalDataStream.reader()),
             }
 
-            if (is_last_idat) {
-                try dataStream.seekTo(dataStream.pos + read_compressed_count);
-
-                const read_checksum = try dataInStream.readIntBig(u32);
-                const computed_checksum = context.adler_checksum.final();
-
-                if (read_checksum != computed_checksum) {
-                    return error.InvalidZlibStream;
-                }
-            }
+            context.all_idat_data.deinit();
         }
     }
 
