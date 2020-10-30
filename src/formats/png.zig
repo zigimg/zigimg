@@ -681,6 +681,7 @@ pub const PNG = struct {
             }
 
             context.all_idat_data.deinit();
+            context.filter.deinit(self.allocator);
         }
     }
 
