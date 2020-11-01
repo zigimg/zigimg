@@ -371,7 +371,7 @@ pub const PNG = struct {
     const DecompressionContext = struct {
         pixels: *color.ColorStorage = undefined,
         pixels_index: usize = 0,
-        all_idat_data: std.ArrayList(u8) = undefined,
+        compressed_data: std.ArrayList(u8) = undefined,
         filter: PngFilter = undefined,
         pass: i8 = -1,
         x: usize = 0,
@@ -534,34 +534,29 @@ pub const PNG = struct {
             var decompression_context = DecompressionContext{};
             decompression_context.pixels = pixels;
 
+            // With standard interlace method, we can allocate the filter once.
+            // When doing Adam7 interlacing, the filter will be reinit on each pass
             if (self.header.interlace_method == .Standard) {
                 const line_stride = (((self.header.width * self.header.bit_depth + 31) & ~@as(usize, 31)) / 8) * self.header.color_type.getChannelCount();
                 decompression_context.filter = try PngFilter.init(self.allocator, line_stride, self.header.bit_depth * self.header.color_type.getChannelCount());
             }
+            defer decompression_context.filter.deinit(self.allocator);
+
             decompression_context.pass = -1;
             decompression_context.x = self.header.width;
             decompression_context.y = self.header.height;
-            
-            decompression_context.all_idat_data = std.ArrayList(u8).init(self.allocator);
 
-            var idat_count: usize = 0;
+            decompression_context.compressed_data = std.ArrayList(u8).init(self.allocator);
+            defer decompression_context.compressed_data.deinit();
 
+            // Concatenate all IDAT chunks into a single buffer
             for (self.chunks.span()) |chunk| {
                 if (chunk.getChunkID() == IDAT.ChunkID) {
-                    idat_count += 1;
+                    try decompression_context.compressed_data.appendSlice(chunk.IDAT.data);
                 }
             }
 
-            var idat_index: usize = 0;
-
-            for (self.chunks.span()) |chunk| {
-                if (chunk.getChunkID() == IDAT.ChunkID) {
-                    idat_index += 1;
-
-                    const is_last_idat = (idat_index == idat_count);
-                    try self.readDataChunk(chunk.IDAT, &decompression_context, is_last_idat);
-                }
-            }
+            try self.readPixelsFromCompressedData(&decompression_context);
         } else {
             return errors.ImageError.UnsupportedPixelFormat;
         }
@@ -660,28 +655,20 @@ pub const PNG = struct {
         return continue_reading;
     }
 
-    fn readDataChunk(self: Self, dataChunk: IDAT, context: *DecompressionContext, is_last_idat: bool) !void {
-        try context.all_idat_data.appendSlice(dataChunk.data);
-        errdefer context.all_idat_data.deinit();
+    fn readPixelsFromCompressedData(self: Self, context: *DecompressionContext) !void {
+        var dataStream = std.io.fixedBufferStream(context.compressed_data.items);
 
-        if (is_last_idat) {
-            var dataStream = std.io.fixedBufferStream(context.all_idat_data.items);
-            
-            var uncompressStream = try std.compress.zlib.zlibStream(self.allocator, dataStream.reader());
-            defer uncompressStream.deinit();
+        var uncompressStream = try std.compress.zlib.zlibStream(self.allocator, dataStream.reader());
+        defer uncompressStream.deinit();
 
-            const finalData = try uncompressStream.reader().readAllAlloc(self.allocator, 100000);
-            defer self.allocator.free(finalData);
-            
-            var finalDataStream = std.io.fixedBufferStream(finalData);
-            
-            switch (self.header.interlace_method) {
-                .Standard => try self.readPixelsNonInterlaced(context, &finalDataStream, &finalDataStream.reader()),
-                .Adam7 => try self.readPixelsInterlaced(context, &finalDataStream, &finalDataStream.reader()),
-            }
+        const finalData = try uncompressStream.reader().readAllAlloc(self.allocator, std.math.maxInt(usize));
+        defer self.allocator.free(finalData);
 
-            context.all_idat_data.deinit();
-            context.filter.deinit(self.allocator);
+        var finalDataStream = std.io.fixedBufferStream(finalData);
+
+        switch (self.header.interlace_method) {
+            .Standard => try self.readPixelsNonInterlaced(context, &finalDataStream, &finalDataStream.reader()),
+            .Adam7 => try self.readPixelsInterlaced(context, &finalDataStream, &finalDataStream.reader()),
         }
     }
 
