@@ -990,7 +990,7 @@ pub const PNG = struct {
                 current_pass = @intCast(usize, @bitCast(u8, context.pass));
 
                 if (current_pass < 7) {
-                    const current_pass_width = self.header.width / InterlacedWidthIncrement[current_pass];
+                    const current_pass_width = std.math.max(1, self.header.width / InterlacedWidthIncrement[current_pass]);
                     const line_stride = std.mem.alignForward(current_pass_width * self.header.bit_depth * self.header.color_type.getChannelCount(), 8) / 8;
 
                     if (context.filter.context.len > 0) {
