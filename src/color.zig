@@ -126,9 +126,9 @@ fn RgbColor(comptime red_bits: comptime_int, comptime green_bits: comptime_int, 
         G: GreenType,
         R: RedType,
 
-        const RedType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .is_signed = false, .bits = red_bits } });
-        const GreenType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .is_signed = false, .bits = green_bits } });
-        const BlueType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .is_signed = false, .bits = blue_bits } });
+        const RedType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = red_bits } });
+        const GreenType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = green_bits } });
+        const BlueType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = blue_bits } });
 
         const Self = @This();
 
@@ -158,10 +158,10 @@ fn ARgbColor(comptime red_bits: comptime_int, comptime green_bits: comptime_int,
         R: RedType,
         A: AlphaType,
 
-        const RedType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .is_signed = false, .bits = red_bits } });
-        const GreenType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .is_signed = false, .bits = green_bits } });
-        const BlueType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .is_signed = false, .bits = blue_bits } });
-        const AlphaType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .is_signed = false, .bits = alpha_bits } });
+        const RedType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = red_bits } });
+        const GreenType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = green_bits } });
+        const BlueType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = blue_bits } });
+        const AlphaType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = alpha_bits } });
 
         const Self = @This();
 
@@ -201,10 +201,10 @@ fn RgbaColor(comptime red_bits: comptime_int, comptime green_bits: comptime_int,
         G: GreenType,
         R: RedType,
 
-        const RedType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .is_signed = false, .bits = red_bits } });
-        const GreenType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .is_signed = false, .bits = green_bits } });
-        const BlueType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .is_signed = false, .bits = blue_bits } });
-        const AlphaType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .is_signed = false, .bits = alpha_bits } });
+        const RedType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = red_bits } });
+        const GreenType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = green_bits } });
+        const BlueType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = blue_bits } });
+        const AlphaType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = alpha_bits } });
 
         const Self = @This();
 

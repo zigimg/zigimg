@@ -246,7 +246,7 @@ const PngFilter = struct {
 
     pub fn init(allocator: *Allocator, line_stride: usize, bit_depth: usize) !Self {
         const context = try allocator.alloc(u8, line_stride * 2);
-        std.mem.secureZero(u8, context[0..]);
+        std.mem.set(u8, context[0..], 0);
         return Self{
             .context = context,
             .line_stride = line_stride,
@@ -388,7 +388,7 @@ pub const PNG = struct {
     }
 
     pub fn deinit(self: Self) void {
-        for (self.chunks.span()) |chunk| {
+        for (self.chunks.items) |chunk| {
             chunk.deinit(self.allocator);
         }
 
@@ -417,7 +417,7 @@ pub const PNG = struct {
     pub fn findFirstChunk(self: Self, chunk_type: []const u8) ?ChunkVariant {
         const chunkID = utils.toMagicNumberBig(chunk_type);
 
-        for (self.chunks.span()) |chunk| {
+        for (self.chunks.items) |chunk| {
             if (chunk.getChunkID() == chunkID) {
                 return chunk;
             }
@@ -537,7 +537,7 @@ pub const PNG = struct {
             // With standard interlace method, we can allocate the filter once.
             // When doing Adam7 interlacing, the filter will be reinit on each pass
             if (self.header.interlace_method == .Standard) {
-                const line_stride = (((self.header.width * self.header.bit_depth + 31) & ~@as(usize, 31)) / 8) * self.header.color_type.getChannelCount();
+                const line_stride = ((self.header.width * self.header.bit_depth + 7) / 8) * self.header.color_type.getChannelCount();
                 decompression_context.filter = try PngFilter.init(self.allocator, line_stride, self.header.bit_depth * self.header.color_type.getChannelCount());
             }
             defer decompression_context.filter.deinit(self.allocator);
@@ -550,7 +550,7 @@ pub const PNG = struct {
             defer decompression_context.compressed_data.deinit();
 
             // Concatenate all IDAT chunks into a single buffer
-            for (self.chunks.span()) |chunk| {
+            for (self.chunks.items) |chunk| {
                 if (chunk.getChunkID() == IDAT.ChunkID) {
                     try decompression_context.compressed_data.appendSlice(chunk.IDAT.data);
                 }
@@ -923,7 +923,7 @@ pub const PNG = struct {
 
                 if (current_pass < 7) {
                     const current_pass_width = std.math.max(1, self.header.width / InterlacedWidthIncrement[current_pass]);
-                    const line_stride = std.mem.alignForward(current_pass_width * self.header.bit_depth * self.header.color_type.getChannelCount(), 8) / 8;
+                    const line_stride = ((current_pass_width * self.header.bit_depth + 7) / 8) * self.header.color_type.getChannelCount(); //std.mem.alignForward(current_pass_width * self.header.bit_depth * self.header.color_type.getChannelCount(), 8) / 8;
 
                     if (context.filter.context.len > 0) {
                         context.filter.deinit(self.allocator);
