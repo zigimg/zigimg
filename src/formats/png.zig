@@ -373,7 +373,6 @@ pub const PNG = struct {
         pixels_index: usize = 0,
         compressed_data: std.ArrayList(u8) = undefined,
         filter: PngFilter = undefined,
-        pass: i8 = -1,
         x: usize = 0,
         y: usize = 0,
     };
@@ -533,19 +532,6 @@ pub const PNG = struct {
             }
             var decompression_context = DecompressionContext{};
             decompression_context.pixels = pixels;
-
-            // With standard interlace method, we can allocate the filter once.
-            // When doing Adam7 interlacing, the filter will be reinit on each pass
-            if (self.header.interlace_method == .Standard) {
-                const line_stride = ((self.header.width * self.header.bit_depth + 7) / 8) * self.header.color_type.getChannelCount();
-                decompression_context.filter = try PngFilter.init(self.allocator, line_stride, self.header.bit_depth * self.header.color_type.getChannelCount());
-            }
-            defer decompression_context.filter.deinit(self.allocator);
-
-            decompression_context.pass = -1;
-            decompression_context.x = self.header.width;
-            decompression_context.y = self.header.height;
-
             decompression_context.compressed_data = std.ArrayList(u8).init(self.allocator);
             defer decompression_context.compressed_data.deinit();
 
@@ -667,7 +653,13 @@ pub const PNG = struct {
         var finalDataStream = std.io.fixedBufferStream(finalData);
 
         switch (self.header.interlace_method) {
-            .Standard => try self.readPixelsNonInterlaced(context, &finalDataStream, &finalDataStream.reader()),
+            .Standard => {
+                const line_stride = ((self.header.width * self.header.bit_depth + 7) / 8) * self.header.color_type.getChannelCount();
+                context.filter = try PngFilter.init(self.allocator, line_stride, self.header.bit_depth * self.header.color_type.getChannelCount());
+                defer context.filter.deinit(self.allocator);
+
+                try self.readPixelsNonInterlaced(context, &finalDataStream, &finalDataStream.reader());
+            },
             .Adam7 => try self.readPixelsInterlaced(context, &finalDataStream, &finalDataStream.reader()),
         }
     }
@@ -900,13 +892,33 @@ pub const PNG = struct {
     const InterlacedBlockWidth = [7]usize{ 8, 4, 4, 2, 2, 1, 1 };
     const InterlacedBlockHeight = [7]usize{ 8, 8, 4, 4, 2, 2, 1 };
 
+    fn adam7Width(self: Self, pass: usize) usize {
+        return switch (pass) {
+            0 => (self.header.width + 7) / 8,
+            1 => (self.header.width + 3) / 8,
+            2 => (self.header.width + 3) / 4,
+            3 => (self.header.width + 1) / 4,
+            4 => (self.header.width + 1) / 2,
+            5 => self.header.width / 2,
+            6 => self.header.width,
+            else => unreachable,
+        };
+    }
+
+    fn adam7Height(self: Self, pass: usize) usize {
+        return switch (pass) {
+            0 => (self.header.height + 7) / 8,
+            1 => (self.header.height + 7) / 8,
+            2 => (self.header.height + 3) / 8,
+            3 => (self.header.height + 3) / 4,
+            4 => (self.header.height + 1) / 4,
+            5 => (self.header.height + 1) / 2,
+            6 => self.header.height / 2,
+            else => unreachable,
+        };
+    }
+
     fn readPixelsInterlaced(self: Self, context: *DecompressionContext, pixel_stream_source: anytype, pixel_stream: anytype) !void {
-        var scanline: ?[]u8 = null;
-        defer {
-            if (scanline) |scan| {
-                self.allocator.free(scan);
-            }
-        }
         var pixel_current_pos = try pixel_stream_source.getPos();
         const pixel_end_pos = try pixel_stream_source.getEndPos();
 
@@ -914,68 +926,57 @@ pub const PNG = struct {
         const bytes_per_pixel = std.math.max(1, pixel_stride / 8);
         const bit_per_bytes = bytes_per_pixel * 8;
 
-        while (context.pass < 7 and pixel_current_pos < pixel_end_pos) {
-            var current_pass = @intCast(usize, @bitCast(u8, context.pass));
+        var current_pass: usize = 0;
 
-            if (context.y >= self.header.height) {
-                context.pass += 1;
-                current_pass = @intCast(usize, @bitCast(u8, context.pass));
+        while (current_pass < 7) : (current_pass += 1) {
+            const current_pass_width = self.adam7Width(current_pass);
+            const current_pass_height = self.adam7Height(current_pass);
 
-                if (current_pass < 7) {
-                    const current_pass_width = std.math.max(1, self.header.width / InterlacedWidthIncrement[current_pass]);
-                    const line_stride = ((current_pass_width * self.header.bit_depth + 7) / 8) * self.header.color_type.getChannelCount(); //std.mem.alignForward(current_pass_width * self.header.bit_depth * self.header.color_type.getChannelCount(), 8) / 8;
-
-                    if (context.filter.context.len > 0) {
-                        context.filter.deinit(self.allocator);
-                    }
-
-                    context.filter = try PngFilter.init(self.allocator, line_stride, pixel_stride);
-
-                    if (scanline) |scan| {
-                        self.allocator.free(scan);
-                    }
-
-                    scanline = try self.allocator.alloc(u8, context.filter.line_stride);
-                } else {
-                    continue;
-                }
-
-                context.y = InterlacedStartingHeight[@intCast(usize, context.pass)];
+            if (current_pass_width == 0 or current_pass_height == 0) {
+                continue;
             }
 
-            const filter_type = try pixel_stream.readByte();
+            const line_stride = ((current_pass_width * self.header.bit_depth * self.header.color_type.getChannelCount()) + 7) / 8;
+            context.filter = try PngFilter.init(self.allocator, line_stride, pixel_stride);
+            defer context.filter.deinit(self.allocator);
 
-            _ = try pixel_stream.readAll(scanline.?);
+            var scanline = try self.allocator.alloc(u8, context.filter.line_stride);
+            defer self.allocator.free(scanline);
 
-            const filter_slice = context.filter.getSlice();
+            context.y = InterlacedStartingHeight[current_pass];
 
-            try context.filter.decode(@intToEnum(FilterType, filter_type), scanline.?);
+            var current_line: usize = 0;
+            while (current_line < current_pass_height) : (current_line += 1) {
+                const filter_type = try pixel_stream.readByte();
 
-            var slice_index: usize = 0;
-            var pixel_index: usize = 0;
-            var bit_index: usize = 0;
+                _ = try pixel_stream.readAll(scanline);
 
-            const current_pass_width = self.header.width / InterlacedWidthIncrement[current_pass];
+                const filter_slice = context.filter.getSlice();
 
-            context.x = InterlacedStartingWidth[current_pass];
+                try context.filter.decode(@intToEnum(FilterType, filter_type), scanline);
 
-            while (slice_index < filter_slice.len and context.x < self.header.width and pixel_index < current_pass_width) {
-                const block_width = std.math.min(InterlacedBlockWidth[current_pass], self.header.width - context.x);
-                const block_height = std.math.min(InterlacedBlockHeight[current_pass], self.header.height - context.y);
+                var slice_index: usize = 0;
+                var pixel_index: usize = 0;
+                var bit_index: usize = 0;
 
-                try self.writePixelInterlaced(filter_slice[slice_index..], pixel_index, context, block_width, block_height);
+                context.x = InterlacedStartingWidth[current_pass];
 
-                pixel_index += 1;
-                bit_index += pixel_stride;
-                if ((bit_index % bit_per_bytes) == 0) {
-                    slice_index += bytes_per_pixel;
+                while (slice_index < filter_slice.len and context.x < self.header.width and pixel_index < current_pass_width) {
+                    const block_width = std.math.min(InterlacedBlockWidth[current_pass], if (context.x < self.header.width) self.header.width - context.x else self.header.width);
+                    const block_height = std.math.min(InterlacedBlockHeight[current_pass], if (context.y < self.header.height) self.header.height - context.y else self.header.height);
+
+                    try self.writePixelInterlaced(filter_slice[slice_index..], pixel_index, context, block_width, block_height);
+
+                    pixel_index += 1;
+                    bit_index += pixel_stride;
+                    if ((bit_index % bit_per_bytes) == 0) {
+                        slice_index += bytes_per_pixel;
+                    }
+                    context.x += InterlacedWidthIncrement[current_pass];
                 }
-                context.x += InterlacedWidthIncrement[current_pass];
+
+                context.y += InterlacedHeightIncrement[current_pass];
             }
-
-            pixel_current_pos = try pixel_stream_source.getPos();
-
-            context.y += InterlacedHeightIncrement[current_pass];
         }
     }
 
