@@ -97,3 +97,7 @@ test "Png Suite" {
     _ = @import("png_basi_test.zig");
     _ = @import("png_odd_sizes_test.zig");
 }
+
+test "Misc tests" {
+    _ = @import("png_misc_test.zig");
+}

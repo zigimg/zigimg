@@ -38,6 +38,15 @@ pub const Color = struct {
         };
     }
 
+    pub fn fromHtmlHex(value: u32) Self {
+        return Self{
+            .R = toColorFloat((value >> 16) & 0xFF),
+            .G = toColorFloat((value >> 8) & 0xFF),
+            .B = toColorFloat(value & 0xFF),
+            .A = 1.0,
+        };
+    }
+
     pub fn premultipliedAlpha(self: Self) Self {
         return Self{
             .R = self.R * self.A,
