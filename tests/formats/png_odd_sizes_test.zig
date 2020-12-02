@@ -773,3 +773,141 @@ test "Read s07n3p02 data properly" {
         }
     }
 }
+
+test "Read s08i3p02 data properly" {
+    const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/png/s08i3p02.png");
+    defer file.close();
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    var pngFile = png.PNG.init(zigimg_test_allocator);
+    defer pngFile.deinit();
+
+    var pixelsOpt: ?color.ColorStorage = null;
+    try pngFile.read(stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
+
+    defer {
+        if (pixelsOpt) |pixels| {
+            pixels.deinit(zigimg_test_allocator);
+        }
+    }
+
+    expectEq(pngFile.header.width, 8);
+    expectEq(pngFile.header.height, 8);
+
+    const total_size = 8 * 8;
+
+    testing.expect(pixelsOpt != null);
+
+    if (pixelsOpt) |pixels| {
+        testing.expect(pixels == PixelFormat.Bpp2);
+
+        expectEq(pixels.Bpp2.palette.len, 4);
+
+        const color0 = pixels.Bpp2.palette[0].toIntegerColor8();
+        expectEq(color0.R, 0);
+        expectEq(color0.G, 255);
+        expectEq(color0.B, 255);
+
+        const color1 = pixels.Bpp2.palette[1].toIntegerColor8();
+        expectEq(color1.R, 119);
+        expectEq(color1.G, 0);
+        expectEq(color1.B, 255);
+
+        const color2 = pixels.Bpp2.palette[2].toIntegerColor8();
+        expectEq(color2.R, 119);
+        expectEq(color2.G, 255);
+        expectEq(color2.B, 0);
+
+        const color3 = pixels.Bpp2.palette[3].toIntegerColor8();
+        expectEq(color3.R, 255);
+        expectEq(color3.G, 0);
+        expectEq(color3.B, 0);
+
+        expectEq(pixels.Bpp2.indices.len, total_size);
+
+        const expected = [_]u8{
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 2, 2, 2, 2, 2, 2, 0,
+            0, 2, 3, 3, 3, 3, 2, 0,
+            0, 2, 3, 1, 1, 3, 2, 0,
+            0, 2, 3, 1, 1, 3, 2, 0,
+            0, 2, 3, 3, 3, 3, 2, 0,
+            0, 2, 2, 2, 2, 2, 2, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+        };
+        var index: usize = 0;
+        while (index < total_size) : (index += 1) {
+            expectEq(pixels.Bpp2.indices[index], @intCast(u2, expected[index]));
+        }
+    }
+}
+
+test "Read s08n3p02 data properly" {
+    const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/png/s08n3p02.png");
+    defer file.close();
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    var pngFile = png.PNG.init(zigimg_test_allocator);
+    defer pngFile.deinit();
+
+    var pixelsOpt: ?color.ColorStorage = null;
+    try pngFile.read(stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
+
+    defer {
+        if (pixelsOpt) |pixels| {
+            pixels.deinit(zigimg_test_allocator);
+        }
+    }
+
+    expectEq(pngFile.header.width, 8);
+    expectEq(pngFile.header.height, 8);
+
+    const total_size = 8 * 8;
+
+    testing.expect(pixelsOpt != null);
+
+    if (pixelsOpt) |pixels| {
+        testing.expect(pixels == PixelFormat.Bpp2);
+
+        expectEq(pixels.Bpp2.palette.len, 4);
+
+        const color0 = pixels.Bpp2.palette[0].toIntegerColor8();
+        expectEq(color0.R, 0);
+        expectEq(color0.G, 255);
+        expectEq(color0.B, 255);
+
+        const color1 = pixels.Bpp2.palette[1].toIntegerColor8();
+        expectEq(color1.R, 119);
+        expectEq(color1.G, 0);
+        expectEq(color1.B, 255);
+
+        const color2 = pixels.Bpp2.palette[2].toIntegerColor8();
+        expectEq(color2.R, 119);
+        expectEq(color2.G, 255);
+        expectEq(color2.B, 0);
+
+        const color3 = pixels.Bpp2.palette[3].toIntegerColor8();
+        expectEq(color3.R, 255);
+        expectEq(color3.G, 0);
+        expectEq(color3.B, 0);
+
+        expectEq(pixels.Bpp2.indices.len, total_size);
+
+        const expected = [_]u8{
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 2, 2, 2, 2, 2, 2, 0,
+            0, 2, 3, 3, 3, 3, 2, 0,
+            0, 2, 3, 1, 1, 3, 2, 0,
+            0, 2, 3, 1, 1, 3, 2, 0,
+            0, 2, 3, 3, 3, 3, 2, 0,
+            0, 2, 2, 2, 2, 2, 2, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+        };
+        var index: usize = 0;
+        while (index < total_size) : (index += 1) {
+            expectEq(pixels.Bpp2.indices[index], @intCast(u2, expected[index]));
+        }
+    }
+}
