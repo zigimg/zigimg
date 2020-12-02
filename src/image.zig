@@ -17,6 +17,7 @@ pub const ImageFormat = enum {
     Png,
     Ppm,
     Raw,
+    Tga,
 };
 
 pub const ImageInStream = io.StreamSource.InStream;
