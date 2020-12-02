@@ -4,20 +4,20 @@ This is a work in progress library to create, process, read and write different 
 
 ![License](https://img.shields.io/github/license/mlarouche/zigimg) ![Issue](https://img.shields.io/github/issues-raw/mlarouche/zigimg?style=flat) ![Commit](https://img.shields.io/github/last-commit/mlarouche/zigimg) ![CI](https://github.com/mlarouche/zigimg/workflows/CI/badge.svg)
 
-## Build
+## Install & BUild
 
 This project assume current Zig master (0.7.0+a1fb10b76).
-
-Build tests
-```
-zig build test
-```
 
 How to add to your project:
 1. Clone this repository or add as a submodule
 1. Add to your `build.zig`
 ```
 exe.addPackagePath("zigimg", "zigimg/zigimg.zig");
+```
+
+To run the test suite, checkout the [test suite](https://github.com/zigimg/test-suite) and run
+```
+zig build test
 ```
 
 ## Supported image formats
