@@ -100,3 +100,12 @@ test "Convert Grayscale16 to Color" {
     expectEq(result.B, 85);
     expectEq(result.A, 255);
 }
+
+test "From HTMl hex to IntegerColor" {
+    const actual = color.IntegerColor8.fromHtmlHex(0x876347);
+
+    expectEq(actual.R, 0x87);
+    expectEq(actual.G, 0x63);
+    expectEq(actual.B, 0x47);
+    expectEq(actual.A, 0xFF);
+}

@@ -911,3 +911,537 @@ test "Read s08n3p02 data properly" {
         }
     }
 }
+
+test "Read s09i3p02 data properly" {
+    const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/png/s09i3p02.png");
+    defer file.close();
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    var pngFile = png.PNG.init(zigimg_test_allocator);
+    defer pngFile.deinit();
+
+    var pixelsOpt: ?color.ColorStorage = null;
+    try pngFile.read(stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
+
+    defer {
+        if (pixelsOpt) |pixels| {
+            pixels.deinit(zigimg_test_allocator);
+        }
+    }
+
+    expectEq(pngFile.header.width, 9);
+    expectEq(pngFile.header.height, 9);
+
+    const total_size = 9 * 9;
+
+    testing.expect(pixelsOpt != null);
+
+    if (pixelsOpt) |pixels| {
+        testing.expect(pixels == PixelFormat.Bpp2);
+
+        expectEq(pixels.Bpp2.palette.len, 4);
+
+        const color0 = pixels.Bpp2.palette[0].toIntegerColor8();
+        expectEq(color0.R, 0);
+        expectEq(color0.G, 255);
+        expectEq(color0.B, 0);
+
+        const color1 = pixels.Bpp2.palette[1].toIntegerColor8();
+        expectEq(color1.R, 0);
+        expectEq(color1.G, 119);
+        expectEq(color1.B, 255);
+
+        const color2 = pixels.Bpp2.palette[2].toIntegerColor8();
+        expectEq(color2.R, 255);
+        expectEq(color2.G, 0);
+        expectEq(color2.B, 255);
+
+        const color3 = pixels.Bpp2.palette[3].toIntegerColor8();
+        expectEq(color3.R, 255);
+        expectEq(color3.G, 119);
+        expectEq(color3.B, 0);
+
+        expectEq(pixels.Bpp2.indices.len, total_size);
+
+        const expected = [_]u8{
+            0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 3, 3, 3, 3, 3, 3, 3, 0,
+            0, 3, 2, 2, 2, 2, 2, 3, 0,
+            0, 3, 2, 1, 1, 1, 2, 3, 0,
+            0, 3, 2, 1, 0, 1, 2, 3, 0,
+            0, 3, 2, 1, 1, 1, 2, 3, 0,
+            0, 3, 2, 2, 2, 2, 2, 3, 0,
+            0, 3, 3, 3, 3, 3, 3, 3, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0,
+        };
+        var index: usize = 0;
+        while (index < total_size) : (index += 1) {
+            expectEq(pixels.Bpp2.indices[index], @intCast(u2, expected[index]));
+        }
+    }
+}
+
+test "Read s09n3p02 data properly" {
+    const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/png/s09n3p02.png");
+    defer file.close();
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    var pngFile = png.PNG.init(zigimg_test_allocator);
+    defer pngFile.deinit();
+
+    var pixelsOpt: ?color.ColorStorage = null;
+    try pngFile.read(stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
+
+    defer {
+        if (pixelsOpt) |pixels| {
+            pixels.deinit(zigimg_test_allocator);
+        }
+    }
+
+    expectEq(pngFile.header.width, 9);
+    expectEq(pngFile.header.height, 9);
+
+    const total_size = 9 * 9;
+
+    testing.expect(pixelsOpt != null);
+
+    if (pixelsOpt) |pixels| {
+        testing.expect(pixels == PixelFormat.Bpp2);
+
+        expectEq(pixels.Bpp2.palette.len, 4);
+
+        const color0 = pixels.Bpp2.palette[0].toIntegerColor8();
+        expectEq(color0.R, 0);
+        expectEq(color0.G, 255);
+        expectEq(color0.B, 0);
+
+        const color1 = pixels.Bpp2.palette[1].toIntegerColor8();
+        expectEq(color1.R, 0);
+        expectEq(color1.G, 119);
+        expectEq(color1.B, 255);
+
+        const color2 = pixels.Bpp2.palette[2].toIntegerColor8();
+        expectEq(color2.R, 255);
+        expectEq(color2.G, 0);
+        expectEq(color2.B, 255);
+
+        const color3 = pixels.Bpp2.palette[3].toIntegerColor8();
+        expectEq(color3.R, 255);
+        expectEq(color3.G, 119);
+        expectEq(color3.B, 0);
+
+        expectEq(pixels.Bpp2.indices.len, total_size);
+
+        const expected = [_]u8{
+            0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 3, 3, 3, 3, 3, 3, 3, 0,
+            0, 3, 2, 2, 2, 2, 2, 3, 0,
+            0, 3, 2, 1, 1, 1, 2, 3, 0,
+            0, 3, 2, 1, 0, 1, 2, 3, 0,
+            0, 3, 2, 1, 1, 1, 2, 3, 0,
+            0, 3, 2, 2, 2, 2, 2, 3, 0,
+            0, 3, 3, 3, 3, 3, 3, 3, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0,
+        };
+        var index: usize = 0;
+        while (index < total_size) : (index += 1) {
+            expectEq(pixels.Bpp2.indices[index], @intCast(u2, expected[index]));
+        }
+    }
+}
+
+test "Read s32i3p04 data properly" {
+    const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/png/s32i3p04.png");
+    defer file.close();
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    var pngFile = png.PNG.init(zigimg_test_allocator);
+    defer pngFile.deinit();
+
+    var pixelsOpt: ?color.ColorStorage = null;
+    try pngFile.read(stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
+
+    defer {
+        if (pixelsOpt) |pixels| {
+            pixels.deinit(zigimg_test_allocator);
+        }
+    }
+
+    expectEq(pngFile.header.width, 32);
+    expectEq(pngFile.header.height, 32);
+
+    const total_size = 32 * 32;
+
+    testing.expect(pixelsOpt != null);
+
+    if (pixelsOpt) |pixels| {
+        testing.expect(pixels == PixelFormat.Bpp4);
+
+        expectEq(pixels.Bpp4.palette.len, 16);
+
+        const palette = [_]u32{
+            0x000000,
+            0xff0077,
+            0x00ffff,
+            0x00ff00,
+            0x7700ff,
+            0x0077ff,
+            0x77ff00,
+            0xff00ff,
+            0xff0000,
+            0x00ff77,
+            0xffff00,
+            0xff7700,
+            0x0000ff,
+        };
+
+        for (palette) |raw_color, i| {
+            const expected = color.IntegerColor8.fromHtmlHex(raw_color);
+
+            expectEq(pixels.Bpp4.palette[i].toIntegerColor8(), expected);
+        }
+
+        expectEq(pixels.Bpp4.indices.len, total_size);
+
+        const expected = [_]u8{
+            0, 0,  0,  0, 0, 0, 0, 0, 0,  0, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            0, 0,  0,  0, 0, 0, 0, 0, 0,  0, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            8, 11, 10, 6, 3, 9, 0, 0, 0,  4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            8, 11, 10, 6, 3, 0, 0, 0, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            8, 11, 10, 6, 0, 0, 0, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            8, 11, 10, 0, 0, 0, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            8, 11, 0,  0, 0, 0, 0, 0, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            8, 11, 0,  0, 3, 9, 0, 0, 0,  4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            8, 11, 10, 6, 3, 9, 2, 0, 0,  0, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            8, 11, 10, 6, 3, 9, 2, 5, 0,  0, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            8, 11, 10, 6, 3, 9, 2, 5, 0,  0, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            8, 11, 10, 6, 3, 9, 2, 5, 0,  0, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            0, 0,  10, 6, 3, 9, 2, 5, 0,  0, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            0, 0,  0,  6, 3, 9, 2, 0, 0,  0, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            8, 0,  0,  0, 0, 0, 0, 0, 0,  4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            8, 11, 0,  0, 0, 0, 0, 0, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 0, 0,  0,  0, 0, 0, 2, 5,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 0, 0, 0,  0,  0, 0, 0, 0, 5,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 0, 0, 0, 11, 10, 6, 3, 0, 0, 0,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 0, 0, 8, 11, 10, 6, 3, 9, 0, 0,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 0, 0, 8, 11, 10, 6, 3, 9, 0, 0,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 0, 0,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 0, 0,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 0, 0, 0,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 0, 0, 0, 5,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 0, 0, 0, 2, 5,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 0,  0, 0, 9, 2, 5,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 0,  0,  0, 3, 9, 2, 5,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 0, 0,  0,  6, 3, 9, 2, 5,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 0, 0, 0,  10, 6, 3, 9, 2, 5,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 0, 0, 0, 0,  0,  0, 0, 0, 0, 0,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 0, 0, 0, 0,  0,  0, 0, 0, 0, 0,
+        };
+
+        expectEq(pixels.Bpp4.indices.len, expected.len);
+
+        var index: usize = 0;
+        while (index < total_size) : (index += 1) {
+            expectEq(pixels.Bpp4.indices[index], @intCast(u4, expected[index]));
+        }
+    }
+}
+
+test "Read s32n3p04 data properly" {
+    const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/png/s32n3p04.png");
+    defer file.close();
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    var pngFile = png.PNG.init(zigimg_test_allocator);
+    defer pngFile.deinit();
+
+    var pixelsOpt: ?color.ColorStorage = null;
+    try pngFile.read(stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
+
+    defer {
+        if (pixelsOpt) |pixels| {
+            pixels.deinit(zigimg_test_allocator);
+        }
+    }
+
+    expectEq(pngFile.header.width, 32);
+    expectEq(pngFile.header.height, 32);
+
+    const total_size = 32 * 32;
+
+    testing.expect(pixelsOpt != null);
+
+    if (pixelsOpt) |pixels| {
+        testing.expect(pixels == PixelFormat.Bpp4);
+
+        expectEq(pixels.Bpp4.palette.len, 16);
+
+        const palette = [_]u32{
+            0x000000,
+            0xff0077,
+            0x00ffff,
+            0x00ff00,
+            0x7700ff,
+            0x0077ff,
+            0x77ff00,
+            0xff00ff,
+            0xff0000,
+            0x00ff77,
+            0xffff00,
+            0xff7700,
+            0x0000ff,
+        };
+
+        for (palette) |raw_color, i| {
+            const expected = color.IntegerColor8.fromHtmlHex(raw_color);
+
+            expectEq(pixels.Bpp4.palette[i].toIntegerColor8(), expected);
+        }
+
+        expectEq(pixels.Bpp4.indices.len, total_size);
+
+        const expected = [_]u8{
+            0, 0,  0,  0, 0, 0, 0, 0, 0,  0, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            0, 0,  0,  0, 0, 0, 0, 0, 0,  0, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            8, 11, 10, 6, 3, 9, 0, 0, 0,  4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            8, 11, 10, 6, 3, 0, 0, 0, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            8, 11, 10, 6, 0, 0, 0, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            8, 11, 10, 0, 0, 0, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            8, 11, 0,  0, 0, 0, 0, 0, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            8, 11, 0,  0, 3, 9, 0, 0, 0,  4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            8, 11, 10, 6, 3, 9, 2, 0, 0,  0, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            8, 11, 10, 6, 3, 9, 2, 5, 0,  0, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            8, 11, 10, 6, 3, 9, 2, 5, 0,  0, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            8, 11, 10, 6, 3, 9, 2, 5, 0,  0, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            0, 0,  10, 6, 3, 9, 2, 5, 0,  0, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            0, 0,  0,  6, 3, 9, 2, 0, 0,  0, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            8, 0,  0,  0, 0, 0, 0, 0, 0,  4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            8, 11, 0,  0, 0, 0, 0, 0, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 0, 0,  0,  0, 0, 0, 2, 5,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 0, 0, 0,  0,  0, 0, 0, 0, 5,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 0, 0, 0, 11, 10, 6, 3, 0, 0, 0,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 0, 0, 8, 11, 10, 6, 3, 9, 0, 0,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 0, 0, 8, 11, 10, 6, 3, 9, 0, 0,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 0, 0,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 0, 0,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 0, 0, 0,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 0, 0, 0, 5,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 0, 0, 0, 2, 5,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 0,  0, 0, 9, 2, 5,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 0,  0,  0, 3, 9, 2, 5,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 0, 0,  0,  6, 3, 9, 2, 5,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 0, 0, 0,  10, 6, 3, 9, 2, 5,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 0, 0, 0, 0,  0,  0, 0, 0, 0, 0,
+            8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 0, 0, 0, 0,  0,  0, 0, 0, 0, 0,
+        };
+
+        expectEq(pixels.Bpp4.indices.len, expected.len);
+
+        var index: usize = 0;
+        while (index < total_size) : (index += 1) {
+            expectEq(pixels.Bpp4.indices[index], @intCast(u4, expected[index]));
+        }
+    }
+}
+
+test "Read s33i3p04 data properly" {
+    const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/png/s33i3p04.png");
+    defer file.close();
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    var pngFile = png.PNG.init(zigimg_test_allocator);
+    defer pngFile.deinit();
+
+    var pixelsOpt: ?color.ColorStorage = null;
+    try pngFile.read(stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
+
+    defer {
+        if (pixelsOpt) |pixels| {
+            pixels.deinit(zigimg_test_allocator);
+        }
+    }
+
+    expectEq(pngFile.header.width, 33);
+    expectEq(pngFile.header.height, 33);
+
+    const total_size = 33 * 33;
+
+    testing.expect(pixelsOpt != null);
+
+    if (pixelsOpt) |pixels| {
+        testing.expect(pixels == PixelFormat.Bpp4);
+
+        expectEq(pixels.Bpp4.palette.len, 16);
+
+        const palette = [_]u32{
+            0x000000,
+            0xff0077,
+            0x00ffff,
+            0x00ff00,
+            0x7700ff,
+            0x0077ff,
+            0x77ff00,
+            0xff00ff,
+            0xff0000,
+            0x00ff77,
+            0xffff00,
+            0xff7700,
+            0x0000ff,
+        };
+
+        for (palette) |raw_color, i| {
+            const expected = color.IntegerColor8.fromHtmlHex(raw_color);
+
+            expectEq(pixels.Bpp4.palette[i].toIntegerColor8(), expected);
+        }
+
+        expectEq(pixels.Bpp4.indices.len, total_size);
+
+        const expected = [_]u8{
+            0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,
+            0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
+            10, 10, 10, 10, 10, 10, 0,  0,  0,  10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
+            6,  6,  6,  6,  6,  0,  0,  0,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,
+            3,  3,  3,  3,  0,  0,  0,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,
+            9,  9,  9,  0,  0,  0,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,
+            2,  2,  0,  0,  0,  0,  0,  0,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,
+            5,  5,  0,  0,  5,  5,  0,  0,  0,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,
+            12, 12, 12, 12, 12, 12, 12, 0,  0,  0,  12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
+            4,  4,  4,  4,  4,  4,  4,  4,  0,  0,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,
+            7,  7,  7,  7,  7,  7,  7,  7,  0,  0,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,
+            1,  1,  1,  1,  1,  1,  1,  1,  0,  0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
+            0,  0,  8,  8,  8,  8,  8,  8,  0,  0,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,
+            0,  0,  0,  11, 11, 11, 11, 0,  0,  0,  11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
+            10, 0,  0,  0,  0,  0,  0,  0,  0,  10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
+            6,  6,  0,  0,  0,  0,  0,  0,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,
+            3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,
+            9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+            2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+            5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  0,  0,  0,  5,
+            12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 0,  0,  0,  12, 12,
+            4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  0,  0,  0,  4,  4,  4,
+            7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  0,  0,  0,  7,  7,  7,  7,
+            1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0,  0,  0,  0,  0,  0,  1,  1,
+            8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  0,  0,  8,  8,  0,  0,  0,  8,
+            11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 0,  0,  0,
+            10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 0,  0,
+            6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  0,  0,
+            3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  0,  0,
+            9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  0,  0,  9,  9,  9,  9,  9,  9,  0,  0,
+            2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  0,  0,  0,  2,  2,  2,  2,  0,  0,  0,
+            5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  0,  0,  0,  0,  0,  0,  0,  0,  5,
+            12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 0,  0,  0,  0,  0,  0,  12, 12,
+        };
+
+        expectEq(pixels.Bpp4.indices.len, expected.len);
+
+        var index: usize = 0;
+        while (index < total_size) : (index += 1) {
+            expectEq(pixels.Bpp4.indices[index], @intCast(u4, expected[index]));
+        }
+    }
+}
+
+test "Read s33n3p04 data properly" {
+    const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/png/s33n3p04.png");
+    defer file.close();
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    var pngFile = png.PNG.init(zigimg_test_allocator);
+    defer pngFile.deinit();
+
+    var pixelsOpt: ?color.ColorStorage = null;
+    try pngFile.read(stream_source.inStream(), stream_source.seekableStream(), &pixelsOpt);
+
+    defer {
+        if (pixelsOpt) |pixels| {
+            pixels.deinit(zigimg_test_allocator);
+        }
+    }
+
+    expectEq(pngFile.header.width, 33);
+    expectEq(pngFile.header.height, 33);
+
+    const total_size = 33 * 33;
+
+    testing.expect(pixelsOpt != null);
+
+    if (pixelsOpt) |pixels| {
+        testing.expect(pixels == PixelFormat.Bpp4);
+
+        expectEq(pixels.Bpp4.palette.len, 16);
+
+        const palette = [_]u32{
+            0x000000,
+            0xff0077,
+            0x00ffff,
+            0x00ff00,
+            0x7700ff,
+            0x0077ff,
+            0x77ff00,
+            0xff00ff,
+            0xff0000,
+            0x00ff77,
+            0xffff00,
+            0xff7700,
+            0x0000ff,
+        };
+
+        for (palette) |raw_color, i| {
+            const expected = color.IntegerColor8.fromHtmlHex(raw_color);
+
+            expectEq(pixels.Bpp4.palette[i].toIntegerColor8(), expected);
+        }
+
+        expectEq(pixels.Bpp4.indices.len, total_size);
+
+        const expected = [_]u8{
+            0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,
+            0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
+            10, 10, 10, 10, 10, 10, 0,  0,  0,  10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
+            6,  6,  6,  6,  6,  0,  0,  0,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,
+            3,  3,  3,  3,  0,  0,  0,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,
+            9,  9,  9,  0,  0,  0,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,
+            2,  2,  0,  0,  0,  0,  0,  0,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,
+            5,  5,  0,  0,  5,  5,  0,  0,  0,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,
+            12, 12, 12, 12, 12, 12, 12, 0,  0,  0,  12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
+            4,  4,  4,  4,  4,  4,  4,  4,  0,  0,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,
+            7,  7,  7,  7,  7,  7,  7,  7,  0,  0,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,
+            1,  1,  1,  1,  1,  1,  1,  1,  0,  0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
+            0,  0,  8,  8,  8,  8,  8,  8,  0,  0,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,
+            0,  0,  0,  11, 11, 11, 11, 0,  0,  0,  11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
+            10, 0,  0,  0,  0,  0,  0,  0,  0,  10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
+            6,  6,  0,  0,  0,  0,  0,  0,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,
+            3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,
+            9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+            2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+            5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  0,  0,  0,  5,
+            12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 0,  0,  0,  12, 12,
+            4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  0,  0,  0,  4,  4,  4,
+            7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  0,  0,  0,  7,  7,  7,  7,
+            1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0,  0,  0,  0,  0,  0,  1,  1,
+            8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  0,  0,  8,  8,  0,  0,  0,  8,
+            11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 0,  0,  0,
+            10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 0,  0,
+            6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  0,  0,
+            3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  0,  0,
+            9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  0,  0,  9,  9,  9,  9,  9,  9,  0,  0,
+            2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  0,  0,  0,  2,  2,  2,  2,  0,  0,  0,
+            5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  0,  0,  0,  0,  0,  0,  0,  0,  5,
+            12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 0,  0,  0,  0,  0,  0,  12, 12,
+        };
+
+        expectEq(pixels.Bpp4.indices.len, expected.len);
+
+        var index: usize = 0;
+        while (index < total_size) : (index += 1) {
+            expectEq(pixels.Bpp4.indices[index], @intCast(u4, expected[index]));
+        }
+    }
+}

@@ -99,6 +99,7 @@ pub const PLTE = struct {
             self.palette[palette_index].R = color.toColorFloat(read_buffer[buffer_index]);
             self.palette[palette_index].G = color.toColorFloat(read_buffer[buffer_index + 1]);
             self.palette[palette_index].B = color.toColorFloat(read_buffer[buffer_index + 2]);
+            self.palette[palette_index].A = 1.0;
 
             palette_index += 1;
             buffer_index += 3;

@@ -92,6 +92,15 @@ pub fn IntegerColor(comptime storage_type: type) type {
             };
         }
 
+        pub fn fromHtmlHex(value: u32) Self {
+            return Self{
+                .R = @intCast(storage_type, (value >> 16) & 0xFF),
+                .G = @intCast(storage_type, (value >> 8) & 0xFF),
+                .B = @intCast(storage_type, value & 0xFF),
+                .A = math.maxInt(storage_type),
+            };
+        }
+
         pub fn premultipliedAlpha(self: Self) Self {
             var floatR: f32 = toColorFloat(self.R);
             var floatG: f32 = toColorFloat(self.G);
