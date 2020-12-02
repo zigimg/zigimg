@@ -6,7 +6,7 @@ This is a work in progress library to create, process, read and write different 
 
 ## Build
 
-This project assume current Zig master (0.6.0+2e1bdd0d1).
+This project assume current Zig master (0.7.0+a1fb10b76).
 
 Build tests
 ```
@@ -19,7 +19,6 @@ How to add to your project:
 ```
 exe.addPackagePath("zigimg", "zigimg/zigimg.zig");
 ```
-
 
 ## Supported image formats
 
@@ -35,7 +34,7 @@ exe.addPackagePath("zigimg", "zigimg/zigimg.zig");
 | PBM           | ✔️            |❌     |
 | PCX           | ✔️            |❌     |
 | PGM           | ✔️ (Partial)  |❌     |
-| PNG           | ❌            |❌     |
+| PNG           | ✔️           |❌     |
 | PPM           | ✔️ (Partial)  |❌     |
 | TGA           | ❌            |❌     |
 | TIFF          | ❌            |❌     |
@@ -63,6 +62,12 @@ exe.addPackagePath("zigimg", "zigimg/zigimg.zig");
 
 * Support 8-bit grayscale images
 * Missing 16-bit grayscale support for now
+
+### PNG - Portable Network Graphics
+
+* Support all pixel formats supported by PNG (grayscale, grayscale+alpha, indexed, truecolor, truecolor with alpha) in 8-bit or 16-bit.
+* Support the mininal chunks in order to decode the image.
+* Not all images in Png Test Suite is covered but should be good enough for now.
 
 ### PPM - Portable Pixmap format
 

@@ -16,7 +16,7 @@
         {
             "label": "Build_Test",
             "type": "shell",
-            "command": "zig test tests/tests.zig --output-dir zig-cache/tests --pkg-begin zigimg zigimg.zig --pkg-end",
+            "command": "$outdir=zig test tests/tests.zig --pkg-begin zigimg zigimg.zig --pkg-end --enable-cache; mkdir -Force zig-cache/tests; cp \"$outdir\\test.exe\" -Destination \"zig-cache/tests\"",
             "problemMatcher": "$gcc"
         },
         {
@@ -24,12 +24,6 @@
             "type": "shell",
             "command": "zig build test",
             "problemMatcher": "$gcc"
-        },
-        {
-            "label": "Format current file",
-            "type": "shell",
-            "command": "zig fmt ${file}",
-            "problemMatcher": []
         }
     ]
 }

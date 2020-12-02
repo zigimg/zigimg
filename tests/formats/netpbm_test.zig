@@ -8,7 +8,7 @@ const std = @import("std");
 const testing = std.testing;
 const netpbm = zigimg.netpbm;
 const zigimg = @import("zigimg");
-usingnamespace @import("helpers.zig");
+usingnamespace @import("../helpers.zig");
 
 test "Load ASCII PBM image" {
     const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/netpbm/pbm_ascii.pbm");
@@ -29,16 +29,16 @@ test "Load ASCII PBM image" {
 
     expectEq(pbmFile.header.width, 8);
     expectEq(pbmFile.header.height, 16);
-    expectEq(pbmFile.pixel_format, PixelFormat.Monochrome);
+    expectEq(pbmFile.pixel_format, PixelFormat.Grayscale1);
 
     testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        testing.expect(pixels == .Monochrome);
+        testing.expect(pixels == .Grayscale1);
 
-        expectEq(pixels.Monochrome[0].value, 0);
-        expectEq(pixels.Monochrome[1].value, 1);
-        expectEq(pixels.Monochrome[15 * 8 + 7].value, 1);
+        expectEq(pixels.Grayscale1[0].value, 0);
+        expectEq(pixels.Grayscale1[1].value, 1);
+        expectEq(pixels.Grayscale1[15 * 8 + 7].value, 1);
     }
 }
 
@@ -61,16 +61,16 @@ test "Load binary PBM image" {
 
     expectEq(pbmFile.header.width, 8);
     expectEq(pbmFile.header.height, 16);
-    expectEq(pbmFile.pixel_format, PixelFormat.Monochrome);
+    expectEq(pbmFile.pixel_format, PixelFormat.Grayscale1);
 
     testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        testing.expect(pixels == .Monochrome);
+        testing.expect(pixels == .Grayscale1);
 
-        expectEq(pixels.Monochrome[0].value, 0);
-        expectEq(pixels.Monochrome[1].value, 1);
-        expectEq(pixels.Monochrome[15 * 8 + 7].value, 1);
+        expectEq(pixels.Grayscale1[0].value, 0);
+        expectEq(pixels.Grayscale1[1].value, 1);
+        expectEq(pixels.Grayscale1[15 * 8 + 7].value, 1);
     }
 }
 

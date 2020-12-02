@@ -8,7 +8,7 @@ const pcx = zigimg.pcx;
 const std = @import("std");
 const testing = std.testing;
 const zigimg = @import("zigimg");
-usingnamespace @import("helpers.zig");
+usingnamespace @import("../helpers.zig");
 
 test "PCX bpp1 (linear)" {
     const file = try testOpenFile(zigimg_test_allocator, "tests/fixtures/pcx/test-bpp1.pcx");

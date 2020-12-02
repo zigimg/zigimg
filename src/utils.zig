@@ -1,18 +1,20 @@
-const builtin = @import("builtin");
-const io = @import("std").io;
+const builtin = std.builtin;
+const std = @import("std");
+const io = std.io;
+const meta = std.meta;
 
-pub fn toMagicNumberNative(comptime magic: []const u8) u32 {
+pub fn toMagicNumberNative(magic: []const u8) u32 {
     var result: u32 = 0;
-    inline for (magic) |character, index| {
-        result |= (@as(u32, character) << (index * 8));
+    for (magic) |character, index| {
+        result |= (@as(u32, character) << @intCast(u5, (index * 8)));
     }
     return result;
 }
 
-pub fn toMagicNumberForeign(comptime magic: []const u8) u32 {
+pub fn toMagicNumberForeign(magic: []const u8) u32 {
     var result: u32 = 0;
-    inline for (magic) |character, index| {
-        result |= (@as(u32, character) << ((magic.len - 1 - index) * 8));
+    for (magic) |character, index| {
+        result |= (@as(u32, character) << @intCast(u5, (magic.len - 1 - index) * 8));
     }
     return result;
 }
@@ -32,23 +34,26 @@ pub fn readStructNative(inStream: io.StreamSource.InStream, comptime T: type) !T
 }
 
 pub fn readStructForeign(inStream: io.StreamSource.InStream, comptime T: type) !T {
-    comptime assert(@typeInfo(T).Struct.layout != builtin.TypeInfo.ContainerLayout.Auto);
+    comptime std.debug.assert(@typeInfo(T).Struct.layout != builtin.TypeInfo.ContainerLayout.Auto);
 
     var result: T = undefined;
-    inline while (field_i < @memberCount(T)) : (field_i += 1) {
-        const currentType = @TypeOf(@field(result, @memberName(T, field_i)));
-        switch (@typeInfo(currentType)) {
+
+    inline for (meta.fields(T)) |entry| {
+        switch (@typeInfo(entry.field_type)) {
             .ComptimeInt, .Int => {
-                @field(result, @memberName(T, field_i)) = try inStream.readIntForeign(currentType);
+                @field(result, entry.name) = try inStream.readIntForeign(entry.field_type);
             },
             .Struct => {
-                @field(result, @memberName(T, field_i)) = try readStructForeign(inStream, currentType);
+                @field(result, entry.name) = try readStructForeign(inStream, entry.field_type);
             },
             .Enum => {
-                @field(result, @memberName(T, field_i)) = try inStream.readEnum(currentType, switch (builtin.endian) {
+                @field(result, entry.name) = try inStream.readEnum(entry.field_type, switch (builtin.endian) {
                     builtin.Endian.Little => builtin.Endian.Big,
                     builtin.Endian.Big => builtin.Endian.Little,
                 });
+            },
+            else => {
+                std.debug.panic("Add support for type {} in readStructForeign", .{@typeName(entry.field_type)});
             },
         }
     }
