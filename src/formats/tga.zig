@@ -104,6 +104,130 @@ comptime {
     std.debug.assert(@sizeOf(TGAExtension) == 495);
 }
 
+const TargaRLEDecoder = struct {
+    source_stream: ImageInStream,
+    allocator: *Allocator,
+    bytes_per_pixel: usize,
+
+    state: State = .ReadHeader,
+    repeat_count: usize = 0,
+    repeat_data: []u8 = undefined,
+    data_stream: std.io.FixedBufferStream([]u8) = undefined,
+
+    const Self = @This();
+
+    pub const ReadError = std.fs.File.ReadError;
+
+    const State = enum {
+        ReadHeader,
+        Repeated,
+        Raw,
+    };
+
+    const PacketType = packed enum(u1) {
+        Raw = 0,
+        Repeated = 1,
+    };
+    const PacketHeader = packed struct {
+        pixel_count: u7,
+        packet_type: PacketType,
+    };
+
+    pub fn init(allocator: *Allocator, source_stream: ImageInStream, bytes_per_pixels: usize) !Self {
+        var result = Self{
+            .allocator = allocator,
+            .source_stream = source_stream,
+            .bytes_per_pixel = bytes_per_pixels,
+        };
+
+        result.repeat_data = try allocator.alloc(u8, bytes_per_pixels);
+        result.data_stream = std.io.fixedBufferStream(result.repeat_data);
+        return result;
+    }
+
+    pub fn deinit(self: Self) void {
+        self.allocator.free(self.repeat_data);
+    }
+
+    pub fn read(self: *Self, dest: []u8) ReadError!usize {
+        var read_count: usize = 0;
+
+        if (self.state == .ReadHeader) {
+            const packet_header = readStructLittle(self.source_stream, PacketHeader) catch |err| {
+                return ReadError.InputOutput;
+            };
+
+            if (packet_header.packet_type == .Repeated) {
+                self.state = .Repeated;
+
+                self.repeat_count = packet_header.pixel_count + 1;
+
+                _ = try self.source_stream.read(self.repeat_data);
+
+                self.data_stream.reset();
+            } else if (packet_header.packet_type == .Raw) {
+                self.state = .Raw;
+
+                self.repeat_count = (packet_header.pixel_count + 1) * self.bytes_per_pixel;
+            }
+        }
+
+        switch (self.state) {
+            .Repeated => {
+                const read_bytes = try self.data_stream.read(dest);
+
+                const end_pos = try self.data_stream.getEndPos();
+                if (self.data_stream.pos >= end_pos) {
+                    self.data_stream.reset();
+
+                    self.repeat_count -= 1;
+                }
+
+                read_count = dest.len;
+            },
+            .Raw => {
+                const read_bytes = try self.source_stream.read(dest);
+
+                self.repeat_count -= read_bytes;
+
+                read_count = read_bytes;
+            },
+            else => {
+                return ReadError.BrokenPipe;
+            },
+        }
+
+        if (self.repeat_count == 0) {
+            self.state = .ReadHeader;
+        }
+
+        return read_count;
+    }
+
+    pub fn reader(self: *Self) Reader {
+        return .{ .context = @ptrCast(*std.io.StreamSource, self) };
+    }
+};
+
+pub const TargaStream = union(enum) {
+    image: ImageInStream,
+    rle: TargaRLEDecoder,
+
+    pub const ReadError = std.fs.File.ReadError;
+    pub const Reader = std.io.Reader(*TargaStream, ReadError, read);
+
+    pub fn read(self: *TargaStream, dest: []u8) ReadError!usize {
+        switch (self.*) {
+            .image => |*x| return x.read(dest),
+            .rle => |*x| return x.read(dest),
+        }
+    }
+
+    pub fn reader(self: *TargaStream) Reader {
+        return .{ .context = self };
+    }
+};
+
 pub const TGA = struct {
     header: TGAHeader = .{},
     extension: TGAExtension = .{},
@@ -226,31 +350,51 @@ pub const TGA = struct {
         pixelsOpt.* = try color.ColorStorage.init(allocator, pixel_format, self.header.width * self.header.height);
 
         if (pixelsOpt.*) |pixels| {
+            const is_compressed = self.header.image_type.run_length;
+
+            var targa_stream: TargaStream = TargaStream{ .image = inStream };
+            var rle_decoder: ?TargaRLEDecoder = null;
+
+            defer {
+                if (rle_decoder) |rle| {
+                    rle.deinit();
+                }
+            }
+
+            if (is_compressed) {
+                const bytes_per_pixel = (self.header.bit_per_pixel + 7) / 8;
+
+                rle_decoder = try TargaRLEDecoder.init(allocator, inStream, bytes_per_pixel);
+                if (rle_decoder) |rle| {
+                    targa_stream = TargaStream{ .rle = rle };
+                }
+            }
+
             switch (pixel_format) {
                 .Grayscale8 => {
-                    try self.readGrayscale8(pixels.Grayscale8, inStream);
+                    try self.readGrayscale8(pixels.Grayscale8, targa_stream.reader());
                 },
                 .Bpp8 => {
                     // Read color map
                     switch (self.header.color_map_bit_depth) {
                         15, 16 => {
-                            try self.readColorMap16(pixels.Bpp8, inStream);
+                            try self.readColorMap16(pixels.Bpp8, (TargaStream{ .image = inStream }).reader());
                         },
                         else => {
                             return errors.ImageError.UnsupportedPixelFormat;
                         },
                     }
                     // Read indices
-                    try self.readIndexed8(pixels.Bpp8, inStream);
+                    try self.readIndexed8(pixels.Bpp8, targa_stream.reader());
                 },
                 .Rgb555 => {
-                    try self.readTruecolor16(pixels.Rgb555, inStream);
+                    try self.readTruecolor16(pixels.Rgb555, targa_stream.reader());
                 },
                 .Rgb24 => {
-                    try self.readTruecolor24(pixels.Rgb24, inStream);
+                    try self.readTruecolor24(pixels.Rgb24, targa_stream.reader());
                 },
                 .Rgba32 => {
-                    try self.readTruecolor32(pixels.Rgba32, inStream);
+                    try self.readTruecolor32(pixels.Rgba32, targa_stream.reader());
                 },
                 else => {
                     return errors.ImageError.UnsupportedPixelFormat;
@@ -261,7 +405,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readGrayscale8(self: *Self, data: []color.Grayscale8, stream: ImageInStream) !void {
+    fn readGrayscale8(self: *Self, data: []color.Grayscale8, stream: TargaStream.Reader) !void {
         var dataIndex: usize = 0;
         const dataEnd = self.header.width * self.header.height;
 
@@ -270,7 +414,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readIndexed8(self: *Self, data: color.IndexedStorage8, stream: ImageInStream) !void {
+    fn readIndexed8(self: *Self, data: color.IndexedStorage8, stream: TargaStream.Reader) !void {
         var dataIndex: usize = 0;
         const dataEnd = self.header.width * self.header.height;
 
@@ -279,7 +423,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readColorMap16(self: *Self, data: color.IndexedStorage8, stream: ImageInStream) !void {
+    fn readColorMap16(self: *Self, data: color.IndexedStorage8, stream: TargaStream.Reader) !void {
         var dataIndex: usize = self.header.first_entry_index;
         const dataEnd = self.header.first_entry_index + self.header.color_map_length;
 
@@ -293,7 +437,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readTruecolor16(self: *Self, data: []color.Rgb555, stream: ImageInStream) !void {
+    fn readTruecolor16(self: *Self, data: []color.Rgb555, stream: TargaStream.Reader) !void {
         var dataIndex: usize = 0;
         const dataEnd = self.header.width * self.header.height;
 
@@ -306,7 +450,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readTruecolor24(self: *Self, data: []color.Rgb24, stream: ImageInStream) !void {
+    fn readTruecolor24(self: *Self, data: []color.Rgb24, stream: TargaStream.Reader) !void {
         var dataIndex: usize = 0;
         const dataEnd = self.header.width * self.header.height;
 
@@ -317,7 +461,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readTruecolor32(self: *Self, data: []color.Rgba32, stream: ImageInStream) !void {
+    fn readTruecolor32(self: *Self, data: []color.Rgba32, stream: TargaStream.Reader) !void {
         var dataIndex: usize = 0;
         const dataEnd = self.header.width * self.header.height;
 
