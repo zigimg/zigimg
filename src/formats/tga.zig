@@ -64,6 +64,14 @@ pub const TGAHeader = packed struct {
     //image_spec: TGAImageSpec,
 };
 
+pub const TGAAttributeType = packed enum(u8) {
+    NoAlpha = 0,
+    UndefinedAlphaIgnore = 1,
+    UndefinedAlphaRetained = 2,
+    UsefulAlphaChannel = 3,
+    PremultipledAlpha = 4,
+};
+
 pub const TGAExtension = packed struct {
     extension_size: u16,
     author_name: [41]u8,
@@ -79,7 +87,7 @@ pub const TGAExtension = packed struct {
     color_correction_offset: u32,
     postage_stamp_offset: u32,
     scanline_offset: u32,
-    attributes: u8,
+    attributes: TGAAttributeType,
 };
 
 pub const TGAFooter = packed struct {
@@ -241,8 +249,11 @@ pub const TGA = struct {
                 .Rgb24 => {
                     try self.readTruecolor24(pixels.Rgb24, inStream);
                 },
+                .Rgba32 => {
+                    try self.readTruecolor32(pixels.Rgba32, inStream);
+                },
                 else => {
-                    // Do nothing for now
+                    return errors.ImageError.UnsupportedPixelFormat;
                 },
             }
         } else {
@@ -303,6 +314,22 @@ pub const TGA = struct {
             data[dataIndex].B = try stream.readByte();
             data[dataIndex].G = try stream.readByte();
             data[dataIndex].R = try stream.readByte();
+        }
+    }
+
+    fn readTruecolor32(self: *Self, data: []color.Rgba32, stream: ImageInStream) !void {
+        var dataIndex: usize = 0;
+        const dataEnd = self.header.width * self.header.height;
+
+        while (dataIndex < dataEnd) : (dataIndex += 1) {
+            data[dataIndex].B = try stream.readByte();
+            data[dataIndex].G = try stream.readByte();
+            data[dataIndex].R = try stream.readByte();
+            data[dataIndex].A = try stream.readByte();
+
+            if (self.extension.attributes != TGAAttributeType.UsefulAlphaChannel) {
+                data[dataIndex].A = 0xFF;
+            }
         }
     }
 };
