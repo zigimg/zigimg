@@ -160,7 +160,7 @@ const TargaRLEDecoder = struct {
             if (packet_header.packet_type == .Repeated) {
                 self.state = .Repeated;
 
-                self.repeat_count = packet_header.pixel_count + 1;
+                self.repeat_count = @intCast(usize, packet_header.pixel_count) + 1;
 
                 _ = try self.source_stream.read(self.repeat_data);
 
@@ -168,7 +168,7 @@ const TargaRLEDecoder = struct {
             } else if (packet_header.packet_type == .Raw) {
                 self.state = .Raw;
 
-                self.repeat_count = (packet_header.pixel_count + 1) * self.bytes_per_pixel;
+                self.repeat_count = (@intCast(usize, packet_header.pixel_count) + 1) * self.bytes_per_pixel;
             }
         }
 
@@ -230,7 +230,7 @@ pub const TargaStream = union(enum) {
 
 pub const TGA = struct {
     header: TGAHeader = .{},
-    extension: TGAExtension = .{},
+    extension: ?TGAExtension = null,
 
     const Self = @This();
 
@@ -476,8 +476,10 @@ pub const TGA = struct {
             data[dataIndex].R = try stream.readByte();
             data[dataIndex].A = try stream.readByte();
 
-            if (self.extension.attributes != TGAAttributeType.UsefulAlphaChannel) {
-                data[dataIndex].A = 0xFF;
+            if (self.extension) |extended_info| {
+                if (extended_info.attributes != TGAAttributeType.UsefulAlphaChannel) {
+                    data[dataIndex].A = 0xFF;
+                }
             }
         }
     }
