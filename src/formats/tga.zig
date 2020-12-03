@@ -165,15 +165,7 @@ pub const TGA = struct {
                 return PixelFormat.Grayscale8;
             }
 
-            // TODO: Figure out the supported indexed formats
             return PixelFormat.Bpp8;
-            // switch (self.header.color_map_spec.color_map_bit_depth) {
-            //     1 => return PixelFormat.Bpp1,
-            //     2 => return PixelFormat.Bpp2,
-            //     4 => return PixelFormat.Bpp4,
-            //     8 => return PixelFormat.Bpp8,
-            //     else => unreachable,
-            // }
         } else if (self.header.image_type.truecolor) {
             return PixelFormat.Rgb24;
         }
@@ -194,9 +186,11 @@ pub const TGA = struct {
         const footer: TGAFooter = try readStructLittle(inStream, TGAFooter);
 
         // Read extension
-        const extension_pos = @intCast(u64, footer.extension_offset);
-        try seekStream.seekTo(extension_pos);
-        self.extension = try readStructLittle(inStream, TGAExtension);
+        if (footer.extension_offset > 0) {
+            const extension_pos = @intCast(u64, footer.extension_offset);
+            try seekStream.seekTo(extension_pos);
+            self.extension = try readStructLittle(inStream, TGAExtension);
+        }
 
         // Read header
         try seekStream.seekTo(0);
@@ -223,6 +217,19 @@ pub const TGA = struct {
                 .Grayscale8 => {
                     try self.readGrayscale8(pixels.Grayscale8, inStream);
                 },
+                .Bpp8 => {
+                    // Read color map
+                    switch (self.header.color_map_bit_depth) {
+                        15, 16 => {
+                            try self.readColorMap16(pixels.Bpp8, inStream);
+                        },
+                        else => {
+                            return errors.ImageError.UnsupportedPixelFormat;
+                        },
+                    }
+                    // Read indices
+                    try self.readIndexed8(pixels.Bpp8, inStream);
+                },
                 else => {
                     // Do nothing for now
                 },
@@ -238,6 +245,29 @@ pub const TGA = struct {
 
         while (dataIndex < dataEnd) : (dataIndex += 1) {
             data[dataIndex] = color.Grayscale8{ .value = try stream.readByte() };
+        }
+    }
+
+    fn readIndexed8(self: *Self, data: color.IndexedStorage8, stream: ImageInStream) !void {
+        var dataIndex: usize = 0;
+        const dataEnd = self.header.width * self.header.height;
+
+        while (dataIndex < dataEnd) : (dataIndex += 1) {
+            data.indices[dataIndex] = try stream.readByte();
+        }
+    }
+
+    fn readColorMap16(self: *Self, data: color.IndexedStorage8, stream: ImageInStream) !void {
+        var dataIndex: usize = self.header.first_entry_index;
+        const dataEnd = self.header.first_entry_index + self.header.color_map_length;
+
+        while (dataIndex < dataEnd) : (dataIndex += 1) {
+            const raw_color = try stream.readIntLittle(u16);
+
+            data.palette[dataIndex].R = color.toColorFloat(@intCast(u5, (raw_color >> (5 * 2)) & 0x1F));
+            data.palette[dataIndex].G = color.toColorFloat(@intCast(u5, (raw_color >> 5) & 0x1F));
+            data.palette[dataIndex].B = color.toColorFloat(@intCast(u5, raw_color & 0x1F));
+            data.palette[dataIndex].A = 1.0;
         }
     }
 };
