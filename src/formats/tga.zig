@@ -17,48 +17,48 @@ const std = @import("std");
 usingnamespace @import("../utils.zig");
 
 pub const TGAImageType = packed struct {
-    indexed: bool,
-    truecolor: bool,
-    pad0: bool,
-    run_length: bool,
-    pad1: u4,
+    indexed: bool = false,
+    truecolor: bool = false,
+    pad0: bool = false,
+    run_length: bool = false,
+    pad1: u4 = 0,
 };
 
 pub const TGAColorMapSpec = packed struct {
-    first_entry_index: u16,
-    color_map_length: u16,
-    color_map_bit_depth: u8,
+    first_entry_index: u16 = 0,
+    color_map_length: u16 = 0,
+    color_map_bit_depth: u8 = 0,
 };
 
 pub const TGAImageSpec = packed struct {
-    origin_x: u16,
-    origin_y: u16,
-    width: u16,
-    height: u16,
-    bit_per_pixel: u8,
-    descriptor: u8, // This field seems to not be used anymore
+    origin_x: u16 = 0,
+    origin_y: u16 = 0,
+    width: u16 = 0,
+    height: u16 = 0,
+    bit_per_pixel: u8 = 0,
+    descriptor: u8 = 0,
 };
 
 pub const TGAHeader = packed struct {
-    id_length: u8,
-    has_color_map: u8,
-    image_type: TGAImageType,
+    id_length: u8 = 0,
+    has_color_map: u8 = 0,
+    image_type: TGAImageType = .{},
 
     // BEGIN: TGAColorMapSpec
-    first_entry_index: u16,
-    color_map_length: u16,
-    color_map_bit_depth: u8,
+    first_entry_index: u16 = 0,
+    color_map_length: u16 = 0,
+    color_map_bit_depth: u8 = 0,
     // END TGAColorMapSpec
     // TODO: Use TGAColorMapSpec once all packed struct bugs are fixed
     // color_map_spec: TGAColorMapSpec,
 
     // BEGIN TGAImageSpec
-    origin_x: u16,
-    origin_y: u16,
-    width: u16,
-    height: u16,
-    bit_per_pixel: u8,
-    descriptor: u8,
+    origin_x: u16 = 0,
+    origin_y: u16 = 0,
+    width: u16 = 0,
+    height: u16 = 0,
+    bit_per_pixel: u8 = 0,
+    descriptor: u8 = 0,
     // END TGAImageSpec
     //TODO: Use TGAImageSpec once all packed struct bugs are fixed
     //image_spec: TGAImageSpec,
@@ -73,21 +73,21 @@ pub const TGAAttributeType = packed enum(u8) {
 };
 
 pub const TGAExtension = packed struct {
-    extension_size: u16,
-    author_name: [41]u8,
-    author_comment: [324]u8,
-    timestamp: [12]u8,
-    job_id: [41]u8,
-    job_time: [6]u8,
-    software_id: [41]u8,
-    software_version: [3]u8,
-    key_color: [4]u8,
-    pixel_aspect: [4]u8,
-    gamma_value: [4]u8,
-    color_correction_offset: u32,
-    postage_stamp_offset: u32,
-    scanline_offset: u32,
-    attributes: TGAAttributeType,
+    extension_size: u16 = 0,
+    author_name: [41]u8 = undefined,
+    author_comment: [324]u8 = undefined,
+    timestamp: [12]u8 = undefined,
+    job_id: [41]u8 = undefined,
+    job_time: [6]u8 = undefined,
+    software_id: [41]u8 = undefined,
+    software_version: [3]u8 = undefined,
+    key_color: [4]u8 = undefined,
+    pixel_aspect: [4]u8 = undefined,
+    gamma_value: [4]u8 = undefined,
+    color_correction_offset: u32 = 0,
+    postage_stamp_offset: u32 = 0,
+    scanline_offset: u32 = 0,
+    attributes: TGAAttributeType = .NoAlpha,
 };
 
 pub const TGAFooter = packed struct {
@@ -105,8 +105,8 @@ comptime {
 }
 
 pub const TGA = struct {
-    header: TGAHeader = undefined,
-    extension: TGAExtension = undefined,
+    header: TGAHeader = .{},
+    extension: TGAExtension = .{},
 
     const Self = @This();
 
