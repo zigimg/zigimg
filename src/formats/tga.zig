@@ -167,7 +167,12 @@ pub const TGA = struct {
 
             return PixelFormat.Bpp8;
         } else if (self.header.image_type.truecolor) {
-            return PixelFormat.Rgb24;
+            switch (self.header.bit_per_pixel) {
+                16 => return PixelFormat.Rgb555,
+                24 => return PixelFormat.Rgb24,
+                32 => return PixelFormat.Rgba32,
+                else => {},
+            }
         }
 
         return errors.ImageError.UnsupportedPixelFormat;
@@ -230,6 +235,9 @@ pub const TGA = struct {
                     // Read indices
                     try self.readIndexed8(pixels.Bpp8, inStream);
                 },
+                .Rgb555 => {
+                    try self.readTruecolor16(pixels.Rgb555, inStream);
+                },
                 else => {
                     // Do nothing for now
                 },
@@ -268,6 +276,19 @@ pub const TGA = struct {
             data.palette[dataIndex].G = color.toColorFloat(@intCast(u5, (raw_color >> 5) & 0x1F));
             data.palette[dataIndex].B = color.toColorFloat(@intCast(u5, raw_color & 0x1F));
             data.palette[dataIndex].A = 1.0;
+        }
+    }
+
+    fn readTruecolor16(self: *Self, data: []color.Rgb555, stream: ImageInStream) !void {
+        var dataIndex: usize = 0;
+        const dataEnd = self.header.width * self.header.height;
+
+        while (dataIndex < dataEnd) : (dataIndex += 1) {
+            const raw_color = try stream.readIntLittle(u16);
+
+            data[dataIndex].R = @intCast(u5, (raw_color >> (5 * 2)) & 0x1F);
+            data[dataIndex].G = @intCast(u5, (raw_color >> 5) & 0x1F);
+            data[dataIndex].B = @intCast(u5, raw_color & 0x1F);
         }
     }
 };
