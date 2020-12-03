@@ -322,6 +322,10 @@ pub const TGA = struct {
         try seekStream.seekTo(endPos - @sizeOf(TGAFooter));
         const footer: TGAFooter = try readStructLittle(inStream, TGAFooter);
 
+        if (!std.mem.eql(u8, footer.signature[0..], TGASignature[0..])) {
+            return errors.ImageError.InvalidMagicHeader;
+        }
+
         // Read extension
         if (footer.extension_offset > 0) {
             const extension_pos = @intCast(u64, footer.extension_offset);
@@ -384,6 +388,7 @@ pub const TGA = struct {
                             return errors.ImageError.UnsupportedPixelFormat;
                         },
                     }
+
                     // Read indices
                     try self.readIndexed8(pixels.Bpp8, targa_stream.reader());
                 },
