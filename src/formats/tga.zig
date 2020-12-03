@@ -238,6 +238,9 @@ pub const TGA = struct {
                 .Rgb555 => {
                     try self.readTruecolor16(pixels.Rgb555, inStream);
                 },
+                .Rgb24 => {
+                    try self.readTruecolor24(pixels.Rgb24, inStream);
+                },
                 else => {
                     // Do nothing for now
                 },
@@ -289,6 +292,17 @@ pub const TGA = struct {
             data[dataIndex].R = @intCast(u5, (raw_color >> (5 * 2)) & 0x1F);
             data[dataIndex].G = @intCast(u5, (raw_color >> 5) & 0x1F);
             data[dataIndex].B = @intCast(u5, raw_color & 0x1F);
+        }
+    }
+
+    fn readTruecolor24(self: *Self, data: []color.Rgb24, stream: ImageInStream) !void {
+        var dataIndex: usize = 0;
+        const dataEnd = self.header.width * self.header.height;
+
+        while (dataIndex < dataEnd) : (dataIndex += 1) {
+            data[dataIndex].B = try stream.readByte();
+            data[dataIndex].G = try stream.readByte();
+            data[dataIndex].R = try stream.readByte();
         }
     }
 };
