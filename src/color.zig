@@ -263,7 +263,7 @@ pub const Argb32 = ARgbColor(8, 8, 8, 8);
 pub const Rgb48 = RgbColor(16, 16, 16);
 pub const Rgba64 = RgbaColor(16, 16, 16, 16);
 
-fn IndexedStorage(comptime T: type) type {
+pub fn IndexedStorage(comptime T: type) type {
     return struct {
         palette: []Color,
         indices: []T,
@@ -286,7 +286,13 @@ fn IndexedStorage(comptime T: type) type {
     };
 }
 
-fn Grayscale(comptime T: type) type {
+pub const IndexedStorage1 = IndexedStorage(u1);
+pub const IndexedStorage2 = IndexedStorage(u2);
+pub const IndexedStorage4 = IndexedStorage(u4);
+pub const IndexedStorage8 = IndexedStorage(u8);
+pub const IndexedStorage16 = IndexedStorage(u16);
+
+pub fn Grayscale(comptime T: type) type {
     return struct {
         value: T,
 
@@ -304,7 +310,7 @@ fn Grayscale(comptime T: type) type {
     };
 }
 
-fn GrayscaleAlpha(comptime T: type) type {
+pub fn GrayscaleAlpha(comptime T: type) type {
     return struct {
         value: T,
         alpha: T,
@@ -332,11 +338,11 @@ pub const Grayscale8Alpha = GrayscaleAlpha(u8);
 pub const Grayscale16Alpha = GrayscaleAlpha(u16);
 
 pub const ColorStorage = union(PixelFormat) {
-    Bpp1: IndexedStorage(u1),
-    Bpp2: IndexedStorage(u2),
-    Bpp4: IndexedStorage(u4),
-    Bpp8: IndexedStorage(u8),
-    Bpp16: IndexedStorage(u16),
+    Bpp1: IndexedStorage1,
+    Bpp2: IndexedStorage2,
+    Bpp4: IndexedStorage4,
+    Bpp8: IndexedStorage8,
+    Bpp16: IndexedStorage16,
     Grayscale1: []Grayscale1,
     Grayscale2: []Grayscale2,
     Grayscale4: []Grayscale4,

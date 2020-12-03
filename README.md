@@ -4,7 +4,7 @@ This is a work in progress library to create, process, read and write different 
 
 ![License](https://img.shields.io/github/license/mlarouche/zigimg) ![Issue](https://img.shields.io/github/issues-raw/mlarouche/zigimg?style=flat) ![Commit](https://img.shields.io/github/last-commit/mlarouche/zigimg) ![CI](https://github.com/mlarouche/zigimg/workflows/CI/badge.svg)
 
-## Install & BUild
+## Install & Build
 
 This project assume current Zig master (0.7.0+a1fb10b76).
 
@@ -34,9 +34,9 @@ zig build test
 | PBM           | ✔️            |❌     |
 | PCX           | ✔️            |❌     |
 | PGM           | ✔️ (Partial)  |❌     |
-| PNG           | ✔️           |❌     |
+| PNG           | ✔️            |❌     |
 | PPM           | ✔️ (Partial)  |❌     |
-| TGA           | ❌            |❌     |
+| TGA           | ✔️            |❌     |
 | TIFF          | ❌            |❌     |
 | XBM           | ❌            |❌     |
 | XPM           | ❌            |❌     |
@@ -73,3 +73,7 @@ zig build test
 
 * Support 24-bit RGB (8-bit per channel)
 * Missing 48-bit RGB (16-bit per channel)
+
+### TGA - Truevision TGA format
+
+* Supports uncompressed and compressed 8-bit grayscale, indexed with 16-bit colormap, truecolor with 24-bit or 32-bit bit depth.
