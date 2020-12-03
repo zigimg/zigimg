@@ -351,7 +351,7 @@ pub const TGA = struct {
 
         const pixel_format = try self.pixelFormat();
 
-        pixelsOpt.* = try color.ColorStorage.init(allocator, pixel_format, self.header.width * self.header.height);
+        pixelsOpt.* = try color.ColorStorage.init(allocator, pixel_format, self.width() * self.height());
 
         if (pixelsOpt.*) |pixels| {
             const is_compressed = self.header.image_type.run_length;
@@ -412,7 +412,7 @@ pub const TGA = struct {
 
     fn readGrayscale8(self: *Self, data: []color.Grayscale8, stream: TargaStream.Reader) !void {
         var dataIndex: usize = 0;
-        const dataEnd = self.header.width * self.header.height;
+        const dataEnd: usize = self.width() * self.height();
 
         while (dataIndex < dataEnd) : (dataIndex += 1) {
             data[dataIndex] = color.Grayscale8{ .value = try stream.readByte() };
@@ -421,7 +421,7 @@ pub const TGA = struct {
 
     fn readIndexed8(self: *Self, data: color.IndexedStorage8, stream: TargaStream.Reader) !void {
         var dataIndex: usize = 0;
-        const dataEnd = self.header.width * self.header.height;
+        const dataEnd: usize = self.width() * self.height();
 
         while (dataIndex < dataEnd) : (dataIndex += 1) {
             data.indices[dataIndex] = try stream.readByte();
@@ -430,7 +430,7 @@ pub const TGA = struct {
 
     fn readColorMap16(self: *Self, data: color.IndexedStorage8, stream: TargaStream.Reader) !void {
         var dataIndex: usize = self.header.first_entry_index;
-        const dataEnd = self.header.first_entry_index + self.header.color_map_length;
+        const dataEnd: usize = self.header.first_entry_index + self.header.color_map_length;
 
         while (dataIndex < dataEnd) : (dataIndex += 1) {
             const raw_color = try stream.readIntLittle(u16);
@@ -444,7 +444,7 @@ pub const TGA = struct {
 
     fn readTruecolor16(self: *Self, data: []color.Rgb555, stream: TargaStream.Reader) !void {
         var dataIndex: usize = 0;
-        const dataEnd = self.header.width * self.header.height;
+        const dataEnd: usize = self.width() * self.height();
 
         while (dataIndex < dataEnd) : (dataIndex += 1) {
             const raw_color = try stream.readIntLittle(u16);
@@ -457,7 +457,7 @@ pub const TGA = struct {
 
     fn readTruecolor24(self: *Self, data: []color.Rgb24, stream: TargaStream.Reader) !void {
         var dataIndex: usize = 0;
-        const dataEnd = self.header.width * self.header.height;
+        const dataEnd: usize = self.width() * self.height();
 
         while (dataIndex < dataEnd) : (dataIndex += 1) {
             data[dataIndex].B = try stream.readByte();
@@ -468,7 +468,7 @@ pub const TGA = struct {
 
     fn readTruecolor32(self: *Self, data: []color.Rgba32, stream: TargaStream.Reader) !void {
         var dataIndex: usize = 0;
-        const dataEnd = self.header.width * self.header.height;
+        const dataEnd: usize = self.width() * self.height();
 
         while (dataIndex < dataEnd) : (dataIndex += 1) {
             data[dataIndex].B = try stream.readByte();
