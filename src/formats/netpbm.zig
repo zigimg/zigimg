@@ -137,19 +137,13 @@ fn loadBinaryBitmap(header: Header, data: []color.Grayscale1, stream: ImageInStr
     var dataIndex: usize = 0;
     const dataEnd = header.width * header.height;
 
+    var bit_reader = std.io.bitReader(.Big, stream);
+
     while (dataIndex < dataEnd) : (dataIndex += 1) {
-        var b = try stream.readByte();
-
-        var i: usize = 0;
-        while (dataIndex < dataEnd and i < 8) {
-            const pixel = if ((b & (@as(u8, 1) << @truncate(u3, 7 - i))) != 0) @as(u1, 0) else @as(u1, 1);
-
-            // set bit is black, cleared bit is white
-            // bits are "left to right" (so msb to lsb)
-            data[dataIndex] = color.Grayscale1{ .value = pixel };
-            dataIndex += 1;
-            i += 1;
-        }
+        // set bit is black, cleared bit is white
+        // bits are "left to right" (so msb to lsb)
+        const read_bit = try bit_reader.readBitsNoEof(u1, 1);
+        data[dataIndex] = color.Grayscale1{ .value = ~read_bit };
     }
 }
 
@@ -239,11 +233,16 @@ fn Netpbm(comptime imageFormat: ImageFormat, comptime headerNumbers: []const u8)
 
         const Self = @This();
 
+        pub const EncoderOptions = struct {
+            binary: bool,
+        };
+
         pub fn formatInterface() FormatInterface {
             return FormatInterface{
                 .format = @ptrCast(FormatInterface.FormatFn, format),
                 .formatDetect = @ptrCast(FormatInterface.FormatDetectFn, formatDetect),
                 .readForImage = @ptrCast(FormatInterface.ReadForImageFn, readForImage),
+                .writeForImage = @ptrCast(FormatInterface.WriteForImageFn, writeForImage),
             };
         }
 
@@ -284,6 +283,33 @@ fn Netpbm(comptime imageFormat: ImageFormat, comptime headerNumbers: []const u8)
             return imageInfo;
         }
 
+        pub fn writeForImage(allocator: *Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
+            var netpbmFile = Self{};
+            netpbmFile.header.binary = switch (save_info.encoder_options) {
+                .pbm => |options| options.binary,
+                .pgm => |options| options.binary,
+                .ppm => |options| options.binary,
+                else => false,
+            };
+
+            netpbmFile.header.width = save_info.width;
+            netpbmFile.header.height = save_info.height;
+            netpbmFile.header.format = switch (pixels) {
+                .Grayscale1 => Format.Bitmap,
+                .Grayscale8, .Grayscale16 => Format.Grayscale,
+                .Rgb24 => Format.Rgb,
+                else => return errors.ImageError.UnsupportedPixelFormat,
+            };
+
+            netpbmFile.header.max_value = switch (pixels) {
+                .Grayscale16 => std.math.maxInt(u16),
+                .Grayscale1 => 1,
+                else => std.math.maxInt(u8),
+            };
+
+            try netpbmFile.write(write_stream, seek_stream, pixels);
+        }
+
         pub fn read(self: *Self, allocator: *Allocator, inStream: ImageInStream, seekStream: ImageSeekStream, pixelsOpt: *?color.ColorStorage) !void {
             self.header = try parseHeader(inStream);
 
@@ -316,6 +342,127 @@ fn Netpbm(comptime imageFormat: ImageFormat, comptime headerNumbers: []const u8)
                             try loadBinaryRgbmap(self.header, pixels.Rgb24, inStream);
                         } else {
                             try loadAsciiRgbmap(self.header, pixels.Rgb24, inStream);
+                        }
+                    },
+                }
+            }
+        }
+
+        pub fn write(self: *Self, write_stream: image.ImageWriterStream, seek_stream: image.ImageSeekStream, pixels: color.ColorStorage) !void {
+            const image_type = if (self.header.binary) headerNumbers[1] else headerNumbers[0];
+            try write_stream.print("P{c}\n", .{image_type});
+            _ = try write_stream.write("# Created by zigimg\n");
+
+            try write_stream.print("{} {}\n", .{ self.header.width, self.header.height });
+
+            if (self.header.format != .Bitmap) {
+                try write_stream.print("{}\n", .{self.header.max_value});
+            }
+
+            if (self.header.binary) {
+                switch (self.header.format) {
+                    .Bitmap => {
+                        switch (pixels) {
+                            .Grayscale1 => {
+                                var bit_writer = std.io.bitWriter(.Big, write_stream);
+
+                                for (pixels.Grayscale1) |entry| {
+                                    try bit_writer.writeBits(~entry.value, 1);
+                                }
+
+                                try bit_writer.flushBits();
+                            },
+                            else => {
+                                return errors.ImageError.UnsupportedPixelFormat;
+                            },
+                        }
+                    },
+                    .Grayscale => {
+                        switch (pixels) {
+                            .Grayscale16 => {
+                                for (pixels.Grayscale16) |entry| {
+                                    try write_stream.writeIntLittle(u16, entry.value);
+                                }
+                            },
+                            .Grayscale8 => {
+                                for (pixels.Grayscale8) |entry| {
+                                    try write_stream.writeIntLittle(u8, entry.value);
+                                }
+                            },
+                            else => {
+                                return errors.ImageError.UnsupportedPixelFormat;
+                            },
+                        }
+                    },
+                    .Rgb => {
+                        switch (pixels) {
+                            .Rgb24 => {
+                                for (pixels.Rgb24) |entry| {
+                                    try write_stream.writeByte(entry.R);
+                                    try write_stream.writeByte(entry.G);
+                                    try write_stream.writeByte(entry.B);
+                                }
+                            },
+                            else => {
+                                return errors.ImageError.UnsupportedPixelFormat;
+                            },
+                        }
+                    },
+                }
+            } else {
+                switch (self.header.format) {
+                    .Bitmap => {
+                        switch (pixels) {
+                            .Grayscale1 => {
+                                for (pixels.Grayscale1) |entry| {
+                                    try write_stream.print("{}", .{~entry.value});
+                                }
+                                _ = try write_stream.write("\n");
+                            },
+                            else => {
+                                return errors.ImageError.UnsupportedPixelFormat;
+                            },
+                        }
+                    },
+                    .Grayscale => {
+                        switch (pixels) {
+                            .Grayscale16 => {
+                                const pixels_len = pixels.len();
+                                for (pixels.Grayscale16) |entry, index| {
+                                    try write_stream.print("{}", .{entry.value});
+
+                                    if (index != (pixels_len - 1)) {
+                                        _ = try write_stream.write(" ");
+                                    }
+                                }
+                                _ = try write_stream.write("\n");
+                            },
+                            .Grayscale8 => {
+                                const pixels_len = pixels.len();
+                                for (pixels.Grayscale8) |entry, index| {
+                                    try write_stream.print("{}", .{entry.value});
+
+                                    if (index != (pixels_len - 1)) {
+                                        _ = try write_stream.write(" ");
+                                    }
+                                }
+                                _ = try write_stream.write("\n");
+                            },
+                            else => {
+                                return errors.ImageError.UnsupportedPixelFormat;
+                            },
+                        }
+                    },
+                    .Rgb => {
+                        switch (pixels) {
+                            .Rgb24 => {
+                                for (pixels.Rgb24) |entry| {
+                                    try write_stream.print("{} {} {}\n", .{ entry.R, entry.G, entry.B });
+                                }
+                            },
+                            else => {
+                                return errors.ImageError.UnsupportedPixelFormat;
+                            },
                         }
                     },
                 }

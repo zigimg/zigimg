@@ -107,6 +107,7 @@ pub const PCX = struct {
             .format = @ptrCast(FormatInterface.FormatFn, format),
             .formatDetect = @ptrCast(FormatInterface.FormatDetectFn, formatDetect),
             .readForImage = @ptrCast(FormatInterface.ReadForImageFn, readForImage),
+            .writeForImage = @ptrCast(FormatInterface.WriteForImageFn, writeForImage),
         };
     }
 
@@ -141,6 +142,8 @@ pub const PCX = struct {
 
         return imageInfo;
     }
+
+    pub fn writeForImage(allocator: *Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {}
 
     pub fn read(self: *Self, allocator: *Allocator, inStream: ImageInStream, seekStream: ImageSeekStream, pixelsOpt: *?color.ColorStorage) !void {
         self.header = try utils.readStructLittle(inStream, PCXHeader);

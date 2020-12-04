@@ -153,6 +153,7 @@ pub const Bitmap = struct {
             .format = @ptrCast(FormatInterface.FormatFn, format),
             .formatDetect = @ptrCast(FormatInterface.FormatDetectFn, formatDetect),
             .readForImage = @ptrCast(FormatInterface.ReadForImageFn, readForImage),
+            .writeForImage = @ptrCast(FormatInterface.WriteForImageFn, writeForImage),
         };
     }
 
@@ -181,6 +182,8 @@ pub const Bitmap = struct {
         imageInfo.pixel_format = bmp.pixel_format;
         return imageInfo;
     }
+
+    pub fn writeForImage(allocator: *Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {}
 
     pub fn width(self: Self) i32 {
         return switch (self.infoHeader) {
