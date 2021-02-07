@@ -3,7 +3,7 @@
 const Allocator = std.mem.Allocator;
 const FormatInterface = @import("../format_interface.zig").FormatInterface;
 const ImageFormat = image.ImageFormat;
-const ImageInStream = image.ImageInStream;
+const ImageReader = image.ImageReader;
 const ImageInfo = image.ImageInfo;
 const ImageSeekStream = image.ImageSeekStream;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
@@ -46,10 +46,10 @@ const RLEDecoder = struct {
         remaining: usize,
     };
 
-    stream: ImageInStream,
+    stream: ImageReader,
     currentRun: ?Run,
 
-    fn init(stream: ImageInStream) RLEDecoder {
+    fn init(stream: ImageReader) RLEDecoder {
         return RLEDecoder{
             .stream = stream,
             .currentRun = null,
@@ -115,9 +115,9 @@ pub const PCX = struct {
         return ImageFormat.Pcx;
     }
 
-    pub fn formatDetect(inStream: ImageInStream, seekStream: ImageSeekStream) !bool {
+    pub fn formatDetect(reader: ImageReader, seekStream: ImageSeekStream) !bool {
         var magicNumberBuffer: [2]u8 = undefined;
-        _ = try inStream.read(magicNumberBuffer[0..]);
+        _ = try reader.read(magicNumberBuffer[0..]);
 
         if (magicNumberBuffer[0] != 0x0A) {
             return false;
@@ -130,10 +130,10 @@ pub const PCX = struct {
         return true;
     }
 
-    pub fn readForImage(allocator: *Allocator, inStream: ImageInStream, seekStream: ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
+    pub fn readForImage(allocator: *Allocator, reader: ImageReader, seekStream: ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
         var pcx = PCX{};
 
-        try pcx.read(allocator, inStream, seekStream, pixels);
+        try pcx.read(allocator, reader, seekStream, pixels);
 
         var imageInfo = ImageInfo{};
         imageInfo.width = pcx.width;
@@ -145,9 +145,9 @@ pub const PCX = struct {
 
     pub fn writeForImage(allocator: *Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {}
 
-    pub fn read(self: *Self, allocator: *Allocator, inStream: ImageInStream, seekStream: ImageSeekStream, pixelsOpt: *?color.ColorStorage) !void {
-        self.header = try utils.readStructLittle(inStream, PCXHeader);
-        _ = try inStream.read(PCXHeader.padding[0..]);
+    pub fn read(self: *Self, allocator: *Allocator, reader: ImageReader, seekStream: ImageSeekStream, pixelsOpt: *?color.ColorStorage) !void {
+        self.header = try utils.readStructLittle(reader, PCXHeader);
+        _ = try reader.read(PCXHeader.padding[0..]);
 
         if (self.header.id != 0x0A) {
             return errors.ImageError.InvalidMagicHeader;
@@ -188,7 +188,7 @@ pub const PCX = struct {
         pixelsOpt.* = try color.ColorStorage.init(allocator, self.pixel_format, self.width * self.height);
 
         if (pixelsOpt.*) |pixels| {
-            var decoder = RLEDecoder.init(inStream);
+            var decoder = RLEDecoder.init(reader);
 
             const scanlineLength = (self.header.stride * self.header.planes);
 
@@ -279,13 +279,13 @@ pub const PCX = struct {
                     const endPos = try seekStream.getEndPos();
                     try seekStream.seekTo(endPos - 769);
 
-                    if ((try inStream.readByte()) != 0x0C)
+                    if ((try reader.readByte()) != 0x0C)
                         return error.MissingPalette;
 
                     for (pal) |*c| {
-                        c.R = color.toColorFloat(try inStream.readByte());
-                        c.G = color.toColorFloat(try inStream.readByte());
-                        c.B = color.toColorFloat(try inStream.readByte());
+                        c.R = color.toColorFloat(try reader.readByte());
+                        c.G = color.toColorFloat(try reader.readByte());
+                        c.B = color.toColorFloat(try reader.readByte());
                         c.A = 1.0;
                     }
                 }

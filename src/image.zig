@@ -20,7 +20,7 @@ pub const ImageFormat = enum {
     Tga,
 };
 
-pub const ImageInStream = io.StreamSource.InStream;
+pub const ImageReader = io.StreamSource.Reader;
 pub const ImageSeekStream = io.StreamSource.SeekableStream;
 pub const ImageWriterStream = io.StreamSource.Writer;
 
@@ -104,7 +104,7 @@ pub const Image = struct {
 
         var stream_source = io.StreamSource{ .file = file.* };
 
-        try result.internalRead(allocator, stream_source.inStream(), stream_source.seekableStream());
+        try result.internalRead(allocator, stream_source.reader(), stream_source.seekableStream());
 
         return result;
     }
@@ -114,7 +114,7 @@ pub const Image = struct {
 
         var stream_source = io.StreamSource{ .const_buffer = io.fixedBufferStream(buffer) };
 
-        try result.internalRead(allocator, stream_source.inStream(), stream_source.seekableStream());
+        try result.internalRead(allocator, stream_source.reader(), stream_source.seekableStream());
 
         return result;
     }
@@ -198,25 +198,25 @@ pub const Image = struct {
         return color.ColorStorageIterator.initNull();
     }
 
-    fn internalRead(self: *Self, allocator: *Allocator, inStream: ImageInStream, seekStream: ImageSeekStream) !void {
-        var formatInterface = try findImageInterfaceFromStream(inStream, seekStream);
+    fn internalRead(self: *Self, allocator: *Allocator, reader: ImageReader, seekStream: ImageSeekStream) !void {
+        var formatInterface = try findImageInterfaceFromStream(reader, seekStream);
         self.image_format = formatInterface.format();
 
         try seekStream.seekTo(0);
 
-        const imageInfo = try formatInterface.readForImage(allocator, inStream, seekStream, &self.pixels);
+        const imageInfo = try formatInterface.readForImage(allocator, reader, seekStream, &self.pixels);
 
         self.width = imageInfo.width;
         self.height = imageInfo.height;
         self.pixel_format = imageInfo.pixel_format;
     }
 
-    fn findImageInterfaceFromStream(inStream: ImageInStream, seekStream: ImageSeekStream) !FormatInterface {
+    fn findImageInterfaceFromStream(reader: ImageReader, seekStream: ImageSeekStream) !FormatInterface {
         for (allInterfaceFuncs) |intefaceFn| {
             const formatInterface = intefaceFn();
 
             try seekStream.seekTo(0);
-            const found = try formatInterface.formatDetect(inStream, seekStream);
+            const found = try formatInterface.formatDetect(reader, seekStream);
             if (found) {
                 return formatInterface;
             }

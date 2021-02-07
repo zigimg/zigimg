@@ -4,7 +4,7 @@ const Allocator = std.mem.Allocator;
 const crc = std.hash.crc;
 const FormatInterface = @import("../format_interface.zig").FormatInterface;
 const ImageFormat = image.ImageFormat;
-const ImageInStream = image.ImageInStream;
+const ImageReader = image.ImageReader;
 const ImageInfo = image.ImageInfo;
 const ImageSeekStream = image.ImageSeekStream;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
@@ -69,7 +69,7 @@ pub const IHDR = packed struct {
 
     pub fn read(self: *Self, allocator: *Allocator, read_buffer: []u8) !bool {
         var stream = std.io.StreamSource{ .buffer = std.io.fixedBufferStream(read_buffer) };
-        self.* = try utils.readStructBig(stream.inStream(), Self);
+        self.* = try utils.readStructBig(stream.reader(), Self);
         return true;
     }
 };
@@ -152,7 +152,7 @@ pub const gAMA = packed struct {
 
     pub fn read(self: *Self, allocator: *Allocator, read_buffer: []u8) !bool {
         var stream = std.io.fixedBufferStream(read_buffer);
-        self.iGamma = try stream.inStream().readIntBig(u32);
+        self.iGamma = try stream.reader().readIntBig(u32);
         return true;
     }
 
@@ -408,9 +408,9 @@ pub const PNG = struct {
         return ImageFormat.Png;
     }
 
-    pub fn formatDetect(inStream: ImageInStream, seekStream: ImageSeekStream) !bool {
+    pub fn formatDetect(reader: ImageReader, seekStream: ImageSeekStream) !bool {
         var magicNumberBuffer: [8]u8 = undefined;
-        _ = try inStream.read(magicNumberBuffer[0..]);
+        _ = try reader.read(magicNumberBuffer[0..]);
 
         return std.mem.eql(u8, magicNumberBuffer[0..], PNGMagicHeader);
     }
@@ -437,11 +437,11 @@ pub const PNG = struct {
         return null;
     }
 
-    pub fn readForImage(allocator: *Allocator, inStream: ImageInStream, seekStream: ImageSeekStream, pixelsOpt: *?color.ColorStorage) !ImageInfo {
+    pub fn readForImage(allocator: *Allocator, reader: ImageReader, seekStream: ImageSeekStream, pixelsOpt: *?color.ColorStorage) !ImageInfo {
         var png = PNG.init(allocator);
         defer png.deinit();
 
-        try png.read(inStream, seekStream, pixelsOpt);
+        try png.read(reader, seekStream, pixelsOpt);
 
         var imageInfo = ImageInfo{};
         imageInfo.width = png.header.width;
@@ -453,15 +453,15 @@ pub const PNG = struct {
 
     pub fn writeForImage(allocator: *Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {}
 
-    pub fn read(self: *Self, inStream: ImageInStream, seekStream: ImageSeekStream, pixelsOpt: *?color.ColorStorage) !void {
+    pub fn read(self: *Self, reader: ImageReader, seekStream: ImageSeekStream, pixelsOpt: *?color.ColorStorage) !void {
         var magicNumberBuffer: [8]u8 = undefined;
-        _ = try inStream.read(magicNumberBuffer[0..]);
+        _ = try reader.read(magicNumberBuffer[0..]);
 
         if (!std.mem.eql(u8, magicNumberBuffer[0..], PNGMagicHeader)) {
             return errors.ImageError.InvalidMagicHeader;
         }
 
-        while (try self.readChunk(inStream)) {}
+        while (try self.readChunk(reader)) {}
 
         if (!self.validateBitDepth()) {
             return errors.PngError.InvalidBitDepth;
@@ -552,18 +552,18 @@ pub const PNG = struct {
         }
     }
 
-    fn readChunk(self: *Self, inStream: ImageInStream) !bool {
-        const chunk_size = try inStream.readIntBig(u32);
+    fn readChunk(self: *Self, reader: ImageReader) !bool {
+        const chunk_size = try reader.readIntBig(u32);
 
         var chunk_type: [4]u8 = undefined;
-        _ = try inStream.read(chunk_type[0..]);
+        _ = try reader.read(chunk_type[0..]);
 
         var read_buffer = try self.allocator.alloc(u8, chunk_size);
         errdefer self.allocator.free(read_buffer);
 
-        _ = try inStream.read(read_buffer);
+        _ = try reader.read(read_buffer);
 
-        const read_crc = try inStream.readIntBig(u32);
+        const read_crc = try reader.readIntBig(u32);
 
         var crc_hash = crc.Crc32.init();
         crc_hash.update(chunk_type[0..]);

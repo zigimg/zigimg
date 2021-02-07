@@ -2,7 +2,7 @@ const Allocator = std.mem.Allocator;
 const File = std.fs.File;
 const FormatInterface = @import("../format_interface.zig").FormatInterface;
 const ImageFormat = image.ImageFormat;
-const ImageInStream = image.ImageInStream;
+const ImageReader = image.ImageReader;
 const ImageInfo = image.ImageInfo;
 const ImageSeekStream = image.ImageSeekStream;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
@@ -161,9 +161,9 @@ pub const Bitmap = struct {
         return ImageFormat.Bmp;
     }
 
-    pub fn formatDetect(inStream: ImageInStream, seekStream: ImageSeekStream) !bool {
+    pub fn formatDetect(reader: ImageReader, seekStream: ImageSeekStream) !bool {
         var magicNumberBuffer: [2]u8 = undefined;
-        _ = try inStream.read(magicNumberBuffer[0..]);
+        _ = try reader.read(magicNumberBuffer[0..]);
         if (std.mem.eql(u8, magicNumberBuffer[0..], BitmapMagicHeader[0..])) {
             return true;
         }
@@ -171,10 +171,10 @@ pub const Bitmap = struct {
         return false;
     }
 
-    pub fn readForImage(allocator: *Allocator, inStream: ImageInStream, seekStream: ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
+    pub fn readForImage(allocator: *Allocator, reader: ImageReader, seekStream: ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
         var bmp = Self{};
 
-        try bmp.read(allocator, inStream, seekStream, pixels);
+        try bmp.read(allocator, reader, seekStream, pixels);
 
         var imageInfo = ImageInfo{};
         imageInfo.width = @intCast(usize, bmp.width());
@@ -213,23 +213,23 @@ pub const Bitmap = struct {
         };
     }
 
-    pub fn read(self: *Self, allocator: *Allocator, inStream: ImageInStream, seekStream: ImageSeekStream, pixelsOpt: *?color.ColorStorage) !void {
+    pub fn read(self: *Self, allocator: *Allocator, reader: ImageReader, seekStream: ImageSeekStream, pixelsOpt: *?color.ColorStorage) !void {
         // Read file header
-        self.fileHeader = try readStructLittle(inStream, BitmapFileHeader);
+        self.fileHeader = try readStructLittle(reader, BitmapFileHeader);
         if (!mem.eql(u8, self.fileHeader.magicHeader[0..], BitmapMagicHeader[0..])) {
             return errors.ImageError.InvalidMagicHeader;
         }
 
         // Read header size to figure out the header type, also TODO: Use PeekableStream when I understand how to use it
         const currentHeaderPos = try seekStream.getPos();
-        var headerSize = try inStream.readIntLittle(u32);
+        var headerSize = try reader.readIntLittle(u32);
         try seekStream.seekTo(currentHeaderPos);
 
         // Read info header
         self.infoHeader = switch (headerSize) {
-            BitmapInfoHeaderWindows31.HeaderSize => BitmapInfoHeader{ .Windows31 = try readStructLittle(inStream, BitmapInfoHeaderWindows31) },
-            BitmapInfoHeaderV4.HeaderSize => BitmapInfoHeader{ .V4 = try readStructLittle(inStream, BitmapInfoHeaderV4) },
-            BitmapInfoHeaderV5.HeaderSize => BitmapInfoHeader{ .V5 = try readStructLittle(inStream, BitmapInfoHeaderV5) },
+            BitmapInfoHeaderWindows31.HeaderSize => BitmapInfoHeader{ .Windows31 = try readStructLittle(reader, BitmapInfoHeaderWindows31) },
+            BitmapInfoHeaderV4.HeaderSize => BitmapInfoHeader{ .V4 = try readStructLittle(reader, BitmapInfoHeaderV4) },
+            BitmapInfoHeaderV5.HeaderSize => BitmapInfoHeader{ .V5 = try readStructLittle(reader, BitmapInfoHeaderV5) },
             else => return errors.ImageError.UnsupportedBitmapType,
         };
 
@@ -243,7 +243,7 @@ pub const Bitmap = struct {
                 pixelsOpt.* = try color.ColorStorage.init(allocator, self.pixel_format, @intCast(usize, pixelWidth * pixelHeight));
 
                 if (pixelsOpt.*) |*pixels| {
-                    try readPixels(inStream, pixelWidth, pixelHeight, self.pixel_format, pixels);
+                    try readPixels(reader, pixelWidth, pixelHeight, self.pixel_format, pixels);
                 }
             },
             .V5 => |v5Header| {
@@ -254,7 +254,7 @@ pub const Bitmap = struct {
                 pixelsOpt.* = try color.ColorStorage.init(allocator, self.pixel_format, @intCast(usize, pixelWidth * pixelHeight));
 
                 if (pixelsOpt.*) |*pixels| {
-                    try readPixels(inStream, pixelWidth, pixelHeight, self.pixel_format, pixels);
+                    try readPixels(reader, pixelWidth, pixelHeight, self.pixel_format, pixels);
                 }
             },
             else => return errors.ImageError.UnsupportedBitmapType,
@@ -271,13 +271,13 @@ pub const Bitmap = struct {
         }
     }
 
-    fn readPixels(inStream: ImageInStream, pixelWidth: i32, pixelHeight: i32, pixelFormat: PixelFormat, pixels: *color.ColorStorage) !void {
+    fn readPixels(reader: ImageReader, pixelWidth: i32, pixelHeight: i32, pixelFormat: PixelFormat, pixels: *color.ColorStorage) !void {
         return switch (pixelFormat) {
             PixelFormat.Rgb24 => {
-                return readPixelsInternal(pixels.Rgb24, inStream, pixelWidth, pixelHeight);
+                return readPixelsInternal(pixels.Rgb24, reader, pixelWidth, pixelHeight);
             },
             PixelFormat.Argb32 => {
-                return readPixelsInternal(pixels.Argb32, inStream, pixelWidth, pixelHeight);
+                return readPixelsInternal(pixels.Argb32, reader, pixelWidth, pixelHeight);
             },
             else => {
                 return errors.ImageError.UnsupportedPixelFormat;
@@ -285,7 +285,7 @@ pub const Bitmap = struct {
         };
     }
 
-    fn readPixelsInternal(pixels: anytype, inStream: ImageInStream, pixelWidth: i32, pixelHeight: i32) !void {
+    fn readPixelsInternal(pixels: anytype, reader: ImageReader, pixelWidth: i32, pixelHeight: i32) !void {
         const ColorBufferType = @typeInfo(@TypeOf(pixels)).Pointer.child;
 
         var x: i32 = 0;
@@ -295,7 +295,7 @@ pub const Bitmap = struct {
 
             x = 0;
             while (x < pixelWidth) : (x += 1) {
-                pixels[@intCast(usize, scanline + x)] = try readStructLittle(inStream, ColorBufferType);
+                pixels[@intCast(usize, scanline + x)] = try readStructLittle(reader, ColorBufferType);
             }
         }
     }

@@ -3,7 +3,7 @@
 const Allocator = std.mem.Allocator;
 const FormatInterface = @import("../format_interface.zig").FormatInterface;
 const ImageFormat = image.ImageFormat;
-const ImageInStream = image.ImageInStream;
+const ImageReader = image.ImageReader;
 const ImageInfo = image.ImageInfo;
 const ImageSeekStream = image.ImageSeekStream;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
@@ -38,7 +38,7 @@ pub const Header = struct {
     max_value: usize,
 };
 
-fn parseHeader(stream: ImageInStream) !Header {
+fn parseHeader(stream: ImageReader) !Header {
     var hdr: Header = undefined;
 
     var magic: [2]u8 = undefined;
@@ -87,7 +87,7 @@ fn isWhitespace(b: u8) bool {
     };
 }
 
-fn readNextByte(stream: ImageInStream) !u8 {
+fn readNextByte(stream: ImageReader) !u8 {
     while (true) {
         var b = try stream.readByte();
         switch (b) {
@@ -114,7 +114,7 @@ fn readNextByte(stream: ImageInStream) !u8 {
 
 /// skips whitespace and comments, then reads a number from the stream.
 /// this function reads one whitespace behind the number as a terminator.
-fn parseNumber(stream: ImageInStream, buffer: []u8) !usize {
+fn parseNumber(stream: ImageReader, buffer: []u8) !usize {
     var inputLength: usize = 0;
     while (true) {
         var b = try readNextByte(stream);
@@ -133,7 +133,7 @@ fn parseNumber(stream: ImageInStream, buffer: []u8) !usize {
     }
 }
 
-fn loadBinaryBitmap(header: Header, data: []color.Grayscale1, stream: ImageInStream) !void {
+fn loadBinaryBitmap(header: Header, data: []color.Grayscale1, stream: ImageReader) !void {
     var dataIndex: usize = 0;
     const dataEnd = header.width * header.height;
 
@@ -147,7 +147,7 @@ fn loadBinaryBitmap(header: Header, data: []color.Grayscale1, stream: ImageInStr
     }
 }
 
-fn loadAsciiBitmap(header: Header, data: []color.Grayscale1, stream: ImageInStream) !void {
+fn loadAsciiBitmap(header: Header, data: []color.Grayscale1, stream: ImageReader) !void {
     var dataIndex: usize = 0;
     const dataEnd = header.width * header.height;
 
@@ -166,14 +166,14 @@ fn loadAsciiBitmap(header: Header, data: []color.Grayscale1, stream: ImageInStre
     }
 }
 
-fn readLinearizedValue(stream: ImageInStream, maxValue: usize) !u8 {
+fn readLinearizedValue(stream: ImageReader, maxValue: usize) !u8 {
     return if (maxValue > 255)
         @truncate(u8, 255 * @as(usize, try stream.readIntBig(u16)) / maxValue)
     else
         @truncate(u8, 255 * @as(usize, try stream.readByte()) / maxValue);
 }
 
-fn loadBinaryGraymap(header: Header, data: []color.Grayscale8, stream: ImageInStream) !void {
+fn loadBinaryGraymap(header: Header, data: []color.Grayscale8, stream: ImageReader) !void {
     var dataIndex: usize = 0;
     const dataEnd = header.width * header.height;
     while (dataIndex < dataEnd) : (dataIndex += 1) {
@@ -181,7 +181,7 @@ fn loadBinaryGraymap(header: Header, data: []color.Grayscale8, stream: ImageInSt
     }
 }
 
-fn loadAsciiGraymap(header: Header, data: []color.Grayscale8, stream: ImageInStream) !void {
+fn loadAsciiGraymap(header: Header, data: []color.Grayscale8, stream: ImageReader) !void {
     var readBuffer: [16]u8 = undefined;
 
     var dataIndex: usize = 0;
@@ -194,7 +194,7 @@ fn loadAsciiGraymap(header: Header, data: []color.Grayscale8, stream: ImageInStr
     }
 }
 
-fn loadBinaryRgbmap(header: Header, data: []color.Rgb24, stream: ImageInStream) !void {
+fn loadBinaryRgbmap(header: Header, data: []color.Rgb24, stream: ImageReader) !void {
     var dataIndex: usize = 0;
     const dataEnd = header.width * header.height;
 
@@ -207,7 +207,7 @@ fn loadBinaryRgbmap(header: Header, data: []color.Rgb24, stream: ImageInStream) 
     }
 }
 
-fn loadAsciiRgbmap(header: Header, data: []color.Rgb24, stream: ImageInStream) !void {
+fn loadAsciiRgbmap(header: Header, data: []color.Rgb24, stream: ImageReader) !void {
     var readBuffer: [16]u8 = undefined;
 
     var dataIndex: usize = 0;
@@ -250,9 +250,9 @@ fn Netpbm(comptime imageFormat: ImageFormat, comptime headerNumbers: []const u8)
             return imageFormat;
         }
 
-        pub fn formatDetect(inStream: ImageInStream, seekStream: ImageSeekStream) !bool {
+        pub fn formatDetect(reader: ImageReader, seekStream: ImageSeekStream) !bool {
             var magicNumberBuffer: [2]u8 = undefined;
-            _ = try inStream.read(magicNumberBuffer[0..]);
+            _ = try reader.read(magicNumberBuffer[0..]);
 
             if (magicNumberBuffer[0] != 'P') {
                 return false;
@@ -270,10 +270,10 @@ fn Netpbm(comptime imageFormat: ImageFormat, comptime headerNumbers: []const u8)
             return found;
         }
 
-        pub fn readForImage(allocator: *Allocator, inStream: ImageInStream, seekStream: ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
+        pub fn readForImage(allocator: *Allocator, reader: ImageReader, seekStream: ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
             var netpbmFile = Self{};
 
-            try netpbmFile.read(allocator, inStream, seekStream, pixels);
+            try netpbmFile.read(allocator, reader, seekStream, pixels);
 
             var imageInfo = ImageInfo{};
             imageInfo.width = netpbmFile.header.width;
@@ -310,8 +310,8 @@ fn Netpbm(comptime imageFormat: ImageFormat, comptime headerNumbers: []const u8)
             try netpbmFile.write(write_stream, seek_stream, pixels);
         }
 
-        pub fn read(self: *Self, allocator: *Allocator, inStream: ImageInStream, seekStream: ImageSeekStream, pixelsOpt: *?color.ColorStorage) !void {
-            self.header = try parseHeader(inStream);
+        pub fn read(self: *Self, allocator: *Allocator, reader: ImageReader, seekStream: ImageSeekStream, pixelsOpt: *?color.ColorStorage) !void {
+            self.header = try parseHeader(reader);
 
             self.pixel_format = switch (self.header.format) {
                 .Bitmap => PixelFormat.Grayscale1,
@@ -325,23 +325,23 @@ fn Netpbm(comptime imageFormat: ImageFormat, comptime headerNumbers: []const u8)
                 switch (self.header.format) {
                     .Bitmap => {
                         if (self.header.binary) {
-                            try loadBinaryBitmap(self.header, pixels.Grayscale1, inStream);
+                            try loadBinaryBitmap(self.header, pixels.Grayscale1, reader);
                         } else {
-                            try loadAsciiBitmap(self.header, pixels.Grayscale1, inStream);
+                            try loadAsciiBitmap(self.header, pixels.Grayscale1, reader);
                         }
                     },
                     .Grayscale => {
                         if (self.header.binary) {
-                            try loadBinaryGraymap(self.header, pixels.Grayscale8, inStream);
+                            try loadBinaryGraymap(self.header, pixels.Grayscale8, reader);
                         } else {
-                            try loadAsciiGraymap(self.header, pixels.Grayscale8, inStream);
+                            try loadAsciiGraymap(self.header, pixels.Grayscale8, reader);
                         }
                     },
                     .Rgb => {
                         if (self.header.binary) {
-                            try loadBinaryRgbmap(self.header, pixels.Rgb24, inStream);
+                            try loadBinaryRgbmap(self.header, pixels.Rgb24, reader);
                         } else {
-                            try loadAsciiRgbmap(self.header, pixels.Rgb24, inStream);
+                            try loadAsciiRgbmap(self.header, pixels.Rgb24, reader);
                         }
                     },
                 }

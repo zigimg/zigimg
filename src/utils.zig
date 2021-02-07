@@ -29,11 +29,11 @@ pub const toMagicNumberLittle = switch (builtin.endian) {
     builtin.Endian.Big => toMagicNumberForeign,
 };
 
-pub fn readStructNative(inStream: io.StreamSource.InStream, comptime T: type) !T {
-    return try inStream.readStruct(T);
+pub fn readStructNative(reader: io.StreamSource.Reader, comptime T: type) !T {
+    return try reader.readStruct(T);
 }
 
-pub fn readStructForeign(inStream: io.StreamSource.InStream, comptime T: type) !T {
+pub fn readStructForeign(reader: io.StreamSource.Reader, comptime T: type) !T {
     comptime std.debug.assert(@typeInfo(T).Struct.layout != builtin.TypeInfo.ContainerLayout.Auto);
 
     var result: T = undefined;
@@ -41,13 +41,13 @@ pub fn readStructForeign(inStream: io.StreamSource.InStream, comptime T: type) !
     inline for (meta.fields(T)) |entry| {
         switch (@typeInfo(entry.field_type)) {
             .ComptimeInt, .Int => {
-                @field(result, entry.name) = try inStream.readIntForeign(entry.field_type);
+                @field(result, entry.name) = try reader.readIntForeign(entry.field_type);
             },
             .Struct => {
-                @field(result, entry.name) = try readStructForeign(inStream, entry.field_type);
+                @field(result, entry.name) = try readStructForeign(reader, entry.field_type);
             },
             .Enum => {
-                @field(result, entry.name) = try inStream.readEnum(entry.field_type, switch (builtin.endian) {
+                @field(result, entry.name) = try reader.readEnum(entry.field_type, switch (builtin.endian) {
                     builtin.Endian.Little => builtin.Endian.Big,
                     builtin.Endian.Big => builtin.Endian.Little,
                 });
