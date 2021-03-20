@@ -322,7 +322,7 @@ const PngFilter = struct {
         return self.index % self.context.len;
     }
 
-    inline fn getA(self: Self, index: usize, current_row: []const u8, previous_row: []const u8) u8 {
+    fn getA(self: Self, index: usize, current_row: []const u8, previous_row: []const u8) callconv(.Inline) u8 {
         if (index >= self.pixel_stride) {
             return current_row[index - self.pixel_stride];
         } else {
@@ -330,11 +330,11 @@ const PngFilter = struct {
         }
     }
 
-    inline fn getB(self: Self, index: usize, current_row: []const u8, previous_row: []const u8) u8 {
+    fn getB(self: Self, index: usize, current_row: []const u8, previous_row: []const u8) callconv(.Inline) u8 {
         return previous_row[index];
     }
 
-    inline fn getC(self: Self, index: usize, current_row: []const u8, previous_row: []const u8) u8 {
+    fn getC(self: Self, index: usize, current_row: []const u8, previous_row: []const u8) callconv(.Inline) u8 {
         if (index >= self.pixel_stride) {
             return previous_row[index - self.pixel_stride];
         } else {

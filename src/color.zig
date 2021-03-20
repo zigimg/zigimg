@@ -4,11 +4,11 @@ const Allocator = std.mem.Allocator;
 const PixelFormat = @import("pixel_format.zig").PixelFormat;
 const TypeInfo = std.builtin.TypeInfo;
 
-pub inline fn toColorInt(comptime T: type, value: f32) T {
+pub fn toColorInt(comptime T: type, value: f32) callconv(.Inline) T {
     return math.max(math.minInt(T), math.min(math.maxInt(T), @floatToInt(T, math.round(value * @intToFloat(f32, math.maxInt(T))))));
 }
 
-pub inline fn toColorFloat(value: anytype) f32 {
+pub fn toColorFloat(value: anytype) callconv(.Inline) f32 {
     return @intToFloat(f32, value) / @intToFloat(f32, math.maxInt(@TypeOf(value)));
 }
 
