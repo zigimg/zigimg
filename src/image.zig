@@ -119,13 +119,13 @@ pub const Image = struct {
         return result;
     }
 
-    pub fn create(allocator: *Allocator, width: usize, height: usize, pixel_format: PixelFormat) !Self {
+    pub fn create(allocator: *Allocator, width: usize, height: usize, pixel_format: PixelFormat, image_format: ImageFormat) !Self {
         var result = Self{
             .allocator = allocator,
             .width = width,
             .height = height,
             .pixel_format = pixel_format,
-            .image_format = .Raw,
+            .image_format = image_format,
             .pixels = try ColorStorage.init(allocator, pixel_format, width * height),
         };
 

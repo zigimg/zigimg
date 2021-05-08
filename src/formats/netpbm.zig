@@ -173,11 +173,17 @@ fn readLinearizedValue(stream: ImageReader, maxValue: usize) !u8 {
         @truncate(u8, 255 * @as(usize, try stream.readByte()) / maxValue);
 }
 
-fn loadBinaryGraymap(header: Header, data: []color.Grayscale8, stream: ImageReader) !void {
+fn loadBinaryGraymap(header: Header, pixels: *color.ColorStorage, stream: ImageReader) !void {
     var dataIndex: usize = 0;
     const dataEnd = header.width * header.height;
-    while (dataIndex < dataEnd) : (dataIndex += 1) {
-        data[dataIndex] = color.Grayscale8{ .value = try readLinearizedValue(stream, header.max_value) };
+    if (header.max_value <= 255) {
+        while (dataIndex < dataEnd) : (dataIndex += 1) {
+            pixels.Grayscale8[dataIndex] = color.Grayscale8{ .value = try readLinearizedValue(stream, header.max_value) };
+        }
+    } else {
+        while (dataIndex < dataEnd) : (dataIndex += 1) {
+            pixels.Grayscale16[dataIndex] = color.Grayscale16{ .value = try stream.readIntBig(u16) };
+        }
     }
 }
 
@@ -315,13 +321,16 @@ fn Netpbm(comptime imageFormat: ImageFormat, comptime headerNumbers: []const u8)
 
             self.pixel_format = switch (self.header.format) {
                 .Bitmap => PixelFormat.Grayscale1,
-                .Grayscale => PixelFormat.Grayscale8,
+                .Grayscale => switch (self.header.max_value) {
+                    0...255 => PixelFormat.Grayscale8,
+                    else => PixelFormat.Grayscale16,
+                },
                 .Rgb => PixelFormat.Rgb24,
             };
 
             pixelsOpt.* = try color.ColorStorage.init(allocator, self.pixel_format, self.header.width * self.header.height);
 
-            if (pixelsOpt.*) |pixels| {
+            if (pixelsOpt.*) |*pixels| {
                 switch (self.header.format) {
                     .Bitmap => {
                         if (self.header.binary) {
@@ -332,7 +341,7 @@ fn Netpbm(comptime imageFormat: ImageFormat, comptime headerNumbers: []const u8)
                     },
                     .Grayscale => {
                         if (self.header.binary) {
-                            try loadBinaryGraymap(self.header, pixels.Grayscale8, reader);
+                            try loadBinaryGraymap(self.header, pixels, reader);
                         } else {
                             try loadAsciiGraymap(self.header, pixels.Grayscale8, reader);
                         }
@@ -381,7 +390,8 @@ fn Netpbm(comptime imageFormat: ImageFormat, comptime headerNumbers: []const u8)
                         switch (pixels) {
                             .Grayscale16 => {
                                 for (pixels.Grayscale16) |entry| {
-                                    try write_stream.writeIntLittle(u16, entry.value);
+                                    // Big due to 16-bit PGM being semi standardized as big-endian
+                                    try write_stream.writeIntBig(u16, entry.value);
                                 }
                             },
                             .Grayscale8 => {

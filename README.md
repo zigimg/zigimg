@@ -22,24 +22,24 @@ zig build test
 
 ## Supported image formats
 
-| Image Format  | Read          | Write  |
-| ------------- |:-------------:|:------:|
-| ANIM          | ❌            |❌     |
-| BMP           | ✔️ (Partial)  |❌     |
-| GIF           | ❌            |❌     |
-| ICO           | ❌            |❌     |
-| IILBM         | ❌            |❌     |
-| JPEG          | ❌            |❌     |
-| PAM           | ❌            |❌     |
-| PBM           | ✔️            |❌     |
-| PCX           | ✔️            |❌     |
-| PGM           | ✔️ (Partial)  |❌     |
-| PNG           | ✔️            |❌     |
-| PPM           | ✔️ (Partial)  |❌     |
-| TGA           | ✔️            |❌     |
-| TIFF          | ❌            |❌     |
-| XBM           | ❌            |❌     |
-| XPM           | ❌            |❌     |
+| Image Format  | Read          | Write          |
+| ------------- |:-------------:|:--------------:|
+| ANIM          | ❌            | ❌            |
+| BMP           | ✔️ (Partial)  | ❌            |
+| GIF           | ❌            | ❌            |
+| ICO           | ❌            | ❌            |
+| IILBM         | ❌            | ❌            |
+| JPEG          | ❌            | ❌            |
+| PAM           | ❌            | ❌            |
+| PBM           | ✔️            | ❌            |
+| PCX           | ✔️            | ❌            |
+| PGM           | ✔️ (Partial)  | ✔️ (Partial)  |
+| PNG           | ✔️            | ❌            |
+| PPM           | ✔️ (Partial)  | ❌            |
+| TGA           | ✔️            | ❌            |
+| TIFF          | ❌            | ❌            |
+| XBM           | ❌            | ❌            |
+| XPM           | ❌            | ❌            |
 
 ### BMP - Bitmap
 
@@ -60,8 +60,8 @@ zig build test
 
 ### PGM - Portable Graymap format
 
-* Support 8-bit grayscale images
-* Missing 16-bit grayscale support for now
+* Support 8-bit and 16-bit grayscale images
+* 16-bit ascii grayscale loading not tested
 
 ### PNG - Portable Network Graphics
 
