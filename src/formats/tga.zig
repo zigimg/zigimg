@@ -1,5 +1,4 @@
 const Allocator = std.mem.Allocator;
-const File = std.fs.File;
 const FormatInterface = @import("../format_interface.zig").FormatInterface;
 const ImageFormat = image.ImageFormat;
 const ImageReader = image.ImageReader;
@@ -116,7 +115,7 @@ const TargaRLEDecoder = struct {
 
     const Self = @This();
 
-    pub const ReadError = std.fs.File.ReadError;
+    pub const ReadError = error{ InputOutput, BrokenPipe } || std.io.StreamSource.ReadError;
 
     const State = enum {
         ReadHeader,
@@ -213,7 +212,7 @@ pub const TargaStream = union(enum) {
     image: ImageReader,
     rle: TargaRLEDecoder,
 
-    pub const ReadError = std.fs.File.ReadError;
+    pub const ReadError = ImageReader.Error || TargaRLEDecoder.ReadError;
     pub const Reader = std.io.Reader(*TargaStream, ReadError, read);
 
     pub fn read(self: *TargaStream, dest: []u8) ReadError!usize {
