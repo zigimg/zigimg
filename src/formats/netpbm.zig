@@ -187,16 +187,20 @@ fn loadBinaryGraymap(header: Header, pixels: *color.ColorStorage, stream: ImageR
     }
 }
 
-fn loadAsciiGraymap(header: Header, data: []color.Grayscale8, stream: ImageReader) !void {
+fn loadAsciiGraymap(header: Header, pixels: *color.ColorStorage, stream: ImageReader) !void {
     var readBuffer: [16]u8 = undefined;
 
     var dataIndex: usize = 0;
     const dataEnd = header.width * header.height;
 
-    while (dataIndex < dataEnd) : (dataIndex += 1) {
-        var b = try parseNumber(stream, readBuffer[0..]);
-
-        data[dataIndex] = color.Grayscale8{ .value = @truncate(u8, 255 * b / header.max_value) };
+    if (header.max_value <= 255) {
+        while (dataIndex < dataEnd) : (dataIndex += 1) {
+            pixels.Grayscale8[dataIndex] = color.Grayscale8{ .value = @truncate(u8, try parseNumber(stream, readBuffer[0..])) };
+        }
+    } else {
+        while (dataIndex < dataEnd) : (dataIndex += 1) {
+            pixels.Grayscale16[dataIndex] = color.Grayscale16{ .value = @truncate(u16, try parseNumber(stream, readBuffer[0..])) };
+        }
     }
 }
 
@@ -343,7 +347,7 @@ fn Netpbm(comptime imageFormat: ImageFormat, comptime headerNumbers: []const u8)
                         if (self.header.binary) {
                             try loadBinaryGraymap(self.header, pixels, reader);
                         } else {
-                            try loadAsciiGraymap(self.header, pixels.Grayscale8, reader);
+                            try loadAsciiGraymap(self.header, pixels, reader);
                         }
                     },
                     .Rgb => {
