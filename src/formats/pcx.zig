@@ -247,7 +247,7 @@ pub const PCX = struct {
                                 x += 1;
                             }
                         },
-                        else => std.debug.panic("{s} pixel format not supported yet!", .{@tagName(pixels)}),
+                        else => return error.UnsupportedPixelFormat,
                     }
                 }
 

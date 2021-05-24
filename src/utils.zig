@@ -55,7 +55,7 @@ pub fn readStructForeign(reader: io.StreamSource.Reader, comptime T: type) !T {
                 });
             },
             else => {
-                std.debug.panic("Add support for type {} in readStructForeign", .{@typeName(entry.field_type)});
+                @compileError(std.fmt.comptimePrint("Add support for type {} in readStructForeign", .{@typeName(entry.field_type)}));
             },
         }
     }
