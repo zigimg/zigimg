@@ -3,6 +3,8 @@ const std = @import("std");
 const io = std.io;
 const meta = std.meta;
 
+const native_endian = std.Target.current.cpu.arch.endian();
+
 pub fn toMagicNumberNative(magic: []const u8) u32 {
     var result: u32 = 0;
     for (magic) |character, index| {
@@ -19,12 +21,12 @@ pub fn toMagicNumberForeign(magic: []const u8) u32 {
     return result;
 }
 
-pub const toMagicNumberBig = switch (builtin.endian) {
+pub const toMagicNumberBig = switch (native_endian) {
     builtin.Endian.Little => toMagicNumberForeign,
     builtin.Endian.Big => toMagicNumberNative,
 };
 
-pub const toMagicNumberLittle = switch (builtin.endian) {
+pub const toMagicNumberLittle = switch (native_endian) {
     builtin.Endian.Little => toMagicNumberNative,
     builtin.Endian.Big => toMagicNumberForeign,
 };
@@ -47,13 +49,13 @@ pub fn readStructForeign(reader: io.StreamSource.Reader, comptime T: type) !T {
                 @field(result, entry.name) = try readStructForeign(reader, entry.field_type);
             },
             .Enum => {
-                @field(result, entry.name) = try reader.readEnum(entry.field_type, switch (builtin.endian) {
+                @field(result, entry.name) = try reader.readEnum(entry.field_type, switch (native_endian) {
                     builtin.Endian.Little => builtin.Endian.Big,
                     builtin.Endian.Big => builtin.Endian.Little,
                 });
             },
             else => {
-                std.debug.panic("Add support for type {} in readStructForeign", .{@typeName(entry.field_type)});
+                @compileError(std.fmt.comptimePrint("Add support for type {} in readStructForeign", .{@typeName(entry.field_type)}));
             },
         }
     }
@@ -61,12 +63,12 @@ pub fn readStructForeign(reader: io.StreamSource.Reader, comptime T: type) !T {
     return result;
 }
 
-pub const readStructLittle = switch (builtin.endian) {
+pub const readStructLittle = switch (native_endian) {
     builtin.Endian.Little => readStructNative,
     builtin.Endian.Big => readStructForeign,
 };
 
-pub const readStructBig = switch (builtin.endian) {
+pub const readStructBig = switch (native_endian) {
     builtin.Endian.Little => readStructForeign,
     builtin.Endian.Big => readStructNative,
 };
