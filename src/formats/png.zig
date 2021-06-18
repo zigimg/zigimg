@@ -161,10 +161,43 @@ pub const gAMA = packed struct {
     }
 };
 
+pub const tRNS = struct {
+    data: []u8,
+
+    pub const ChunkType = "tRNS";
+    pub const ChunkID = utils.toMagicNumberBig(ChunkType);
+
+    const Self = @This();
+
+    pub fn deinit(self: Self, allocator: *Allocator) void {}
+
+    pub fn read(self: *Self, allocator: *Allocator, read_buffer: []u8) !bool {
+        self.data = read_buffer;
+        return false;
+    }
+
+    pub fn toGrayValue(self: Self) !color.Grayscale16 {
+        var stream = std.io.fixedBufferStream(self.data);
+        return color.Grayscale16{
+            .value = try stream.reader().readIntBig(u16),
+        };
+    }
+
+    pub fn toRgbValue(self: Self) !color.Rgb48 {
+        var stream = std.io.fixedBufferStream(self.data);
+        return color.Rgb48{
+            .R = try stream.reader().readIntBig(u16),
+            .G = try stream.reader().readIntBig(u16),
+            .B = try stream.reader().readIntBig(u16),
+        };
+    }
+};
+
 pub const ChunkVariant = union(enum) {
     PLTE: PLTE,
     IDAT: IDAT,
     gAMA: gAMA,
+    tRNS: tRNS,
 
     const Self = @This();
 
@@ -173,14 +206,16 @@ pub const ChunkVariant = union(enum) {
             .PLTE => |instance| instance.deinit(allocator),
             .IDAT => |instance| instance.deinit(allocator),
             .gAMA => |instance| instance.deinit(allocator),
+            .tRNS => |instance| instance.deinit(allocator),
         }
     }
 
     pub fn getChunkID(self: Self) u32 {
         return switch (self) {
-            .PLTE => |instance| @field(@TypeOf(instance), "ChunkID"),
-            .IDAT => |instance| @field(@TypeOf(instance), "ChunkID"),
-            .gAMA => |instance| @field(@TypeOf(instance), "ChunkID"),
+            .PLTE => PLTE.ChunkID,
+            .IDAT => IDAT.ChunkID,
+            .gAMA => gAMA.ChunkID,
+            .tRNS => tRNS.ChunkID,
         };
     }
 };
@@ -216,6 +251,11 @@ const AllChunks = [_]ChunkInfo{
     },
     .{
         .chunk_type = gAMA,
+        .allowed = .ZeroOrOne,
+        .store = true,
+    },
+    .{
+        .chunk_type = tRNS,
         .allowed = .ZeroOrOne,
         .store = true,
     },
@@ -322,7 +362,7 @@ const PngFilter = struct {
         return self.index % self.context.len;
     }
 
-    fn getA(self: Self, index: usize, current_row: []const u8, previous_row: []const u8) callconv(.Inline) u8 {
+    inline fn getA(self: Self, index: usize, current_row: []const u8, previous_row: []const u8) u8 {
         if (index >= self.pixel_stride) {
             return current_row[index - self.pixel_stride];
         } else {
@@ -330,11 +370,11 @@ const PngFilter = struct {
         }
     }
 
-    fn getB(self: Self, index: usize, current_row: []const u8, previous_row: []const u8) callconv(.Inline) u8 {
+    inline fn getB(self: Self, index: usize, current_row: []const u8, previous_row: []const u8) u8 {
         return previous_row[index];
     }
 
-    fn getC(self: Self, index: usize, current_row: []const u8, previous_row: []const u8) callconv(.Inline) u8 {
+    inline fn getC(self: Self, index: usize, current_row: []const u8, previous_row: []const u8) u8 {
         if (index >= self.pixel_stride) {
             return previous_row[index - self.pixel_stride];
         } else {
@@ -432,6 +472,16 @@ pub const PNG = struct {
 
         if (palette_variant_opt) |variant| {
             return variant.PLTE;
+        }
+
+        return null;
+    }
+
+    pub fn getTransparency(self: Self) ?tRNS {
+        const transparency_variant_opt = self.findFirstChunk(tRNS.ChunkType);
+
+        if (transparency_variant_opt) |variant| {
+            return variant.tRNS;
         }
 
         return null;
@@ -539,6 +589,28 @@ pub const PNG = struct {
             decompression_context.compressed_data = std.ArrayList(u8).init(self.allocator);
             defer decompression_context.compressed_data.deinit();
 
+            if (self.getTransparency()) |transparency| {
+                switch (self.header.color_type) {
+                    .Indexed => {
+                        const palette = switch (pixels.*) {
+                            .Bpp1 => |instance| instance.palette,
+                            .Bpp2 => |instance| instance.palette,
+                            .Bpp4 => |instance| instance.palette,
+                            .Bpp8 => |instance| instance.palette,
+                            else => unreachable, // Checked above
+                        };
+
+                        for (palette) |*c, i| {
+                            if (i >= transparency.data.len) break;
+                            c.A = color.toColorFloat(transparency.data[i]);
+                        }
+                    },
+
+                    .Grayscale, .Truecolor => {}, // TODO: implement tRNS transparency for grayscale and rgb
+                    .GrayscaleAlpha, .TruecolorAlpha => {},
+                }
+            }
+
             // Concatenate all IDAT chunks into a single buffer
             for (self.chunks.items) |chunk| {
                 if (chunk.getChunkID() == IDAT.ChunkID) {
@@ -621,6 +693,12 @@ pub const PNG = struct {
                 const gammaChunk = try self.chunks.addOne();
                 gammaChunk.* = @unionInit(ChunkVariant, gAMA.ChunkType, undefined);
                 deallocate_buffer = try @field(gammaChunk, gAMA.ChunkType).read(self.allocator, read_buffer);
+                found = true;
+            },
+            tRNS.ChunkID => {
+                const trnsChunk = try self.chunks.addOne();
+                trnsChunk.* = @unionInit(ChunkVariant, tRNS.ChunkType, undefined);
+                deallocate_buffer = try @field(trnsChunk, tRNS.ChunkType).read(self.allocator, read_buffer);
                 found = true;
             },
             IDAT.ChunkID => {
