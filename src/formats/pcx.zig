@@ -144,13 +144,13 @@ pub const PCX = struct {
         return imageInfo;
     }
 
-pub fn writeForImage(allocator: *Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
-    _ = allocator;
-    _ = write_stream;
-    _ = seek_stream;
-    _ = pixels;
-    _ = save_info;
-}
+    pub fn writeForImage(allocator: *Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
+        _ = allocator;
+        _ = write_stream;
+        _ = seek_stream;
+        _ = pixels;
+        _ = save_info;
+    }
 
     pub fn read(self: *Self, allocator: *Allocator, reader: ImageReader, seekStream: ImageSeekStream, pixelsOpt: *?color.ColorStorage) !void {
         self.header = try utils.readStructLittle(reader, PCXHeader);

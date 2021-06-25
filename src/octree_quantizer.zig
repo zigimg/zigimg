@@ -201,7 +201,7 @@ const OctTreeQuantizerNode = struct {
         return result - 1;
     }
 
-    fn getColorIndex(color: IntegerColor8, level: i32) callconv(.Inline) usize {
+    inline fn getColorIndex(color: IntegerColor8, level: i32) usize {
         var index: usize = 0;
         var mask = @intCast(u8, 0b10000000) >> @intCast(u3, level);
         if (color.R & mask != 0) {
