@@ -261,6 +261,8 @@ fn Netpbm(comptime imageFormat: ImageFormat, comptime headerNumbers: []const u8)
         }
 
         pub fn formatDetect(reader: ImageReader, seekStream: ImageSeekStream) !bool {
+            _ = seekStream;
+
             var magicNumberBuffer: [2]u8 = undefined;
             _ = try reader.read(magicNumberBuffer[0..]);
 
@@ -294,6 +296,7 @@ fn Netpbm(comptime imageFormat: ImageFormat, comptime headerNumbers: []const u8)
         }
 
         pub fn writeForImage(allocator: *Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
+            _ = allocator;
             var netpbmFile = Self{};
             netpbmFile.header.binary = switch (save_info.encoder_options) {
                 .pbm => |options| options.binary,
@@ -321,6 +324,7 @@ fn Netpbm(comptime imageFormat: ImageFormat, comptime headerNumbers: []const u8)
         }
 
         pub fn read(self: *Self, allocator: *Allocator, reader: ImageReader, seekStream: ImageSeekStream, pixelsOpt: *?color.ColorStorage) !void {
+            _ = seekStream;
             self.header = try parseHeader(reader);
 
             self.pixel_format = switch (self.header.format) {
@@ -362,6 +366,7 @@ fn Netpbm(comptime imageFormat: ImageFormat, comptime headerNumbers: []const u8)
         }
 
         pub fn write(self: *Self, write_stream: image.ImageWriterStream, seek_stream: image.ImageSeekStream, pixels: color.ColorStorage) !void {
+            _ = seek_stream;
             const image_type = if (self.header.binary) headerNumbers[1] else headerNumbers[0];
             try write_stream.print("P{c}\n", .{image_type});
             _ = try write_stream.write("# Created by zigimg\n");

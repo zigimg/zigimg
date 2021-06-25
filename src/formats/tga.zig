@@ -63,7 +63,7 @@ pub const TGAHeader = packed struct {
     //image_spec: TGAImageSpec,
 };
 
-pub const TGAAttributeType = packed enum(u8) {
+pub const TGAAttributeType = enum(u8) {
     NoAlpha = 0,
     UndefinedAlphaIgnore = 1,
     UndefinedAlphaRetained = 2,
@@ -123,7 +123,7 @@ const TargaRLEDecoder = struct {
         Raw,
     };
 
-    const PacketType = packed enum(u1) {
+    const PacketType = enum(u1) {
         Raw = 0,
         Repeated = 1,
     };
@@ -152,9 +152,7 @@ const TargaRLEDecoder = struct {
         var read_count: usize = 0;
 
         if (self.state == .ReadHeader) {
-            const packet_header = readStructLittle(self.source_stream, PacketHeader) catch |err| {
-                return ReadError.InputOutput;
-            };
+            const packet_header = readStructLittle(self.source_stream, PacketHeader) catch return ReadError.InputOutput;
 
             if (packet_header.packet_type == .Repeated) {
                 self.state = .Repeated;
@@ -173,7 +171,7 @@ const TargaRLEDecoder = struct {
 
         switch (self.state) {
             .Repeated => {
-                const read_bytes = try self.data_stream.read(dest);
+                _ = try self.data_stream.read(dest);
 
                 const end_pos = try self.data_stream.getEndPos();
                 if (self.data_stream.pos >= end_pos) {
@@ -283,7 +281,13 @@ pub const TGA = struct {
         return imageInfo;
     }
 
-    pub fn writeForImage(allocator: *Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {}
+    pub fn writeForImage(allocator: *Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
+        _ = allocator;
+        _ = write_stream;
+        _ = seek_stream;
+        _ = pixels;
+        _ = save_info;
+    }
 
     pub fn width(self: Self) usize {
         return self.header.width;
@@ -320,7 +324,7 @@ pub const TGA = struct {
             return errors.ImageFormatInvalid;
         }
 
-        const footer_position = endPos - @sizeOf(TGAFooter);
+        _ = endPos - @sizeOf(TGAFooter);
         try seekStream.seekTo(endPos - @sizeOf(TGAFooter));
         const footer: TGAFooter = try readStructLittle(reader, TGAFooter);
 
