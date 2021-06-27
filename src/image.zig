@@ -50,7 +50,7 @@ pub const Image = struct {
     const Self = @This();
 
     const FormatInteraceFnType = fn () FormatInterface;
-    const allInterfaceFuncs = comptime blk: {
+    const allInterfaceFuncs = blk: {
         const allFormatDecls = std.meta.declarations(AllImageFormats);
         var result: [allFormatDecls.len]FormatInteraceFnType = undefined;
         var index: usize = 0;

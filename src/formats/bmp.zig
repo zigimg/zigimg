@@ -162,6 +162,7 @@ pub const Bitmap = struct {
     }
 
     pub fn formatDetect(reader: ImageReader, seekStream: ImageSeekStream) !bool {
+        _ = seekStream;
         var magicNumberBuffer: [2]u8 = undefined;
         _ = try reader.read(magicNumberBuffer[0..]);
         if (std.mem.eql(u8, magicNumberBuffer[0..], BitmapMagicHeader[0..])) {
@@ -183,7 +184,13 @@ pub const Bitmap = struct {
         return imageInfo;
     }
 
-    pub fn writeForImage(allocator: *Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {}
+    pub fn writeForImage(allocator: *Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
+        _ = allocator;
+        _ = write_stream;
+        _ = seek_stream;
+        _ = pixels;
+        _ = save_info;
+    }
 
     pub fn width(self: Self) i32 {
         return switch (self.infoHeader) {

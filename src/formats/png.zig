@@ -13,12 +13,12 @@ const errors = @import("../errors.zig");
 const image = @import("../image.zig");
 const std = @import("std");
 const utils = @import("../utils.zig");
-const zlib = @import("../compression/zlib.zig");
-const deflate = @import("../compression/deflate.zig");
+// const zlib = @import("../compression/zlib.zig");
+// const deflate = @import("../compression/deflate.zig");
 
 const PNGMagicHeader = "\x89PNG\x0D\x0A\x1A\x0A";
 
-pub const ColorType = packed enum(u8) {
+pub const ColorType = enum(u8) {
     Grayscale = 0,
     Truecolor = 2,
     Indexed = 3,
@@ -46,7 +46,7 @@ pub const FilterType = enum(u8) {
     Paeth,
 };
 
-pub const InterlaceMethod = packed enum(u8) {
+pub const InterlaceMethod = enum(u8) {
     Standard,
     Adam7,
 };
@@ -65,9 +65,13 @@ pub const IHDR = packed struct {
 
     const Self = @This();
 
-    pub fn deinit(self: Self, allocator: *Allocator) void {}
+    pub fn deinit(self: Self, allocator: *Allocator) void {
+        _ = self;
+        _ = allocator;
+    }
 
     pub fn read(self: *Self, allocator: *Allocator, read_buffer: []u8) !bool {
+        _ = allocator;
         var stream = std.io.StreamSource{ .buffer = std.io.fixedBufferStream(read_buffer) };
         self.* = try utils.readStructBig(stream.reader(), Self);
         return true;
@@ -122,6 +126,7 @@ pub const IDAT = struct {
     }
 
     pub fn read(self: *Self, allocator: *Allocator, read_buffer: []u8) !bool {
+        _ = allocator;
         self.data = read_buffer;
         return false;
     }
@@ -133,9 +138,15 @@ pub const IEND = packed struct {
 
     const Self = @This();
 
-    pub fn deinit(self: Self, allocator: *Allocator) void {}
+    pub fn deinit(self: Self, allocator: *Allocator) void {
+        _ = self;
+        _ = allocator;
+    }
 
     pub fn read(self: *Self, allocator: *Allocator, read_buffer: []u8) !bool {
+        _ = self;
+        _ = allocator;
+        _ = read_buffer;
         return true;
     }
 };
@@ -148,9 +159,13 @@ pub const gAMA = packed struct {
 
     const Self = @This();
 
-    pub fn deinit(self: Self, allocator: *Allocator) void {}
+    pub fn deinit(self: Self, allocator: *Allocator) void {
+        _ = self;
+        _ = allocator;
+    }
 
     pub fn read(self: *Self, allocator: *Allocator, read_buffer: []u8) !bool {
+        _ = allocator;
         var stream = std.io.fixedBufferStream(read_buffer);
         self.iGamma = try stream.reader().readIntBig(u32);
         return true;
@@ -322,7 +337,8 @@ const PngFilter = struct {
         return self.index % self.context.len;
     }
 
-    fn getA(self: Self, index: usize, current_row: []const u8, previous_row: []const u8) callconv(.Inline) u8 {
+    inline fn getA(self: Self, index: usize, current_row: []const u8, previous_row: []const u8) u8 {
+        _ = previous_row;
         if (index >= self.pixel_stride) {
             return current_row[index - self.pixel_stride];
         } else {
@@ -330,11 +346,14 @@ const PngFilter = struct {
         }
     }
 
-    fn getB(self: Self, index: usize, current_row: []const u8, previous_row: []const u8) callconv(.Inline) u8 {
+    inline fn getB(self: Self, index: usize, current_row: []const u8, previous_row: []const u8) u8 {
+        _ = self;
+        _ = current_row;
         return previous_row[index];
     }
 
-    fn getC(self: Self, index: usize, current_row: []const u8, previous_row: []const u8) callconv(.Inline) u8 {
+    inline fn getC(self: Self, index: usize, current_row: []const u8, previous_row: []const u8) u8 {
+        _ = current_row;
         if (index >= self.pixel_stride) {
             return previous_row[index - self.pixel_stride];
         } else {
@@ -409,6 +428,7 @@ pub const PNG = struct {
     }
 
     pub fn formatDetect(reader: ImageReader, seekStream: ImageSeekStream) !bool {
+        _ = seekStream;
         var magicNumberBuffer: [8]u8 = undefined;
         _ = try reader.read(magicNumberBuffer[0..]);
 
@@ -451,9 +471,16 @@ pub const PNG = struct {
         return imageInfo;
     }
 
-    pub fn writeForImage(allocator: *Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {}
+    pub fn writeForImage(allocator: *Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
+        _ = allocator;
+        _ = write_stream;
+        _ = seek_stream;
+        _ = pixels;
+        _ = save_info;
+    }
 
     pub fn read(self: *Self, reader: ImageReader, seekStream: ImageSeekStream, pixelsOpt: *?color.ColorStorage) !void {
+        _ = seekStream;
         var magicNumberBuffer: [8]u8 = undefined;
         _ = try reader.read(magicNumberBuffer[0..]);
 
@@ -925,6 +952,8 @@ pub const PNG = struct {
     fn readPixelsInterlaced(self: Self, context: *DecompressionContext, pixel_stream_source: anytype, pixel_stream: anytype) !void {
         var pixel_current_pos = try pixel_stream_source.getPos();
         const pixel_end_pos = try pixel_stream_source.getEndPos();
+        _ = pixel_current_pos;
+        _ = pixel_end_pos;
 
         const pixel_stride = self.header.bit_depth * self.header.color_type.getChannelCount();
         const bytes_per_pixel = std.math.max(1, pixel_stride / 8);
