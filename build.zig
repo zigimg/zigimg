@@ -2,8 +2,10 @@ const Builder = @import("std").build.Builder;
 
 pub fn build(b: *Builder) void {
     const buildMode = b.standardReleaseOptions();
-    const lib = b.addStaticLibrary("zigimg", "zigimg.zig");
-    lib.setBuildMode(buildMode);
-    lib.addPackagePath("zigimg", "zigimg.zig");
-    lib.install();
+
+    const zigimg_test = b.addTest("zigimg.zig");
+    zigimg_test.setBuildMode(buildMode);
+
+    const test_step = b.step("check_semantics", "Verifies that all declarations are kinda sane.");
+    test_step.dependOn(&zigimg_test.step);
 }

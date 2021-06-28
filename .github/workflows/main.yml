@@ -14,5 +14,7 @@ jobs:
         uses: goto-bus-stop/setup-zig@v1
         with:
           version: master
-      - name: Run tests
-        run: zig build test
+      - name: AST Verify
+        run: zig fmt --check --ast-check src/
+      - name: Run test suite
+        run: zig build check_semantics
