@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Setup Zig
-        uses: goto-bus-stop/setup-zig@v1.2.2
+        uses: goto-bus-stop/setup-zig@v1
         with:
           version: master
       - name: Run tests
