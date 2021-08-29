@@ -15,7 +15,8 @@ pub const PixelFormat = enum {
     Rgba32,
     Rgb565,
     Rgb555,
-    Argb32,
+    Bgr24,
+    Bgra32,
     Rgb48,
     Rgba64,
 };

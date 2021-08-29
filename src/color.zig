@@ -140,6 +140,116 @@ pub const IntegerColor16 = IntegerColor(u16);
 
 fn RgbColor(comptime red_bits: comptime_int, comptime green_bits: comptime_int, comptime blue_bits: comptime_int) type {
     return packed struct {
+        R: RedType,
+        G: GreenType,
+        B: BlueType,
+
+        const RedType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = red_bits } });
+        const GreenType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = green_bits } });
+        const BlueType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = blue_bits } });
+
+        const Self = @This();
+
+        pub fn initRGB(r: RedType, g: GreenType, b: BlueType) Self {
+            return Self{
+                .R = r,
+                .G = g,
+                .B = b,
+            };
+        }
+
+        pub fn toColor(self: Self) Color {
+            return Color{
+                .R = toColorFloat(self.R),
+                .G = toColorFloat(self.G),
+                .B = toColorFloat(self.B),
+                .A = 1.0,
+            };
+        }
+    };
+}
+
+fn RgbaColor(comptime red_bits: comptime_int, comptime green_bits: comptime_int, comptime blue_bits: comptime_int, comptime alpha_bits: comptime_int) type {
+    return packed struct {
+        R: RedType,
+        G: GreenType,
+        B: BlueType,
+        A: AlphaType,
+
+        const RedType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = red_bits } });
+        const GreenType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = green_bits } });
+        const BlueType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = blue_bits } });
+        const AlphaType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = alpha_bits } });
+
+        const Self = @This();
+
+        pub fn initRGB(r: RedType, g: GreenType, b: BlueType) Self {
+            return Self{
+                .R = r,
+                .G = g,
+                .B = b,
+                .A = math.maxInt(AlphaType),
+            };
+        }
+
+        pub fn initRGBA(r: RedType, g: GreenType, b: BlueType, a: AlphaType) Self {
+            return Self{
+                .R = r,
+                .G = g,
+                .B = b,
+                .A = a,
+            };
+        }
+
+        pub fn toColor(self: Self) Color {
+            return Color{
+                .R = toColorFloat(self.R),
+                .G = toColorFloat(self.G),
+                .B = toColorFloat(self.B),
+                .A = toColorFloat(self.A),
+            };
+        }
+    };
+}
+
+// Rgb24
+// OpenGL: GL_RGB
+// Vulkan: VK_FORMAT_R8G8B8_UNORM
+// Direct3D/DXGI: n/a
+pub const Rgb24 = RgbColor(8, 8, 8);
+
+// Rgba32
+// OpenGL: GL_RGBA
+// Vulkan: VK_FORMAT_R8G8B8A8_UNORM
+// Direct3D/DXGI: DXGI_FORMAT_R8G8B8A8_UNORM
+pub const Rgba32 = RgbaColor(8, 8, 8, 8);
+
+// Rgb565
+// OpenGL: n/a
+// Vulkan: n/a
+// Direct3D/DXGI: n/a
+pub const Rgb565 = RgbColor(5, 6, 5);
+
+// Rgb555
+// OpenGL: GL_RGB5
+// Vulkan: VK_FORMAT_R5G6B5_UNORM_PACK16
+// Direct3D/DXGI: n/a
+pub const Rgb555 = RgbColor(5, 5, 5);
+
+// Rgb48
+// OpenGL: GL_RGB16
+// Vulkan: VK_FORMAT_R16G16B16_UNORM
+// Direct3D/DXGI: n/a
+pub const Rgb48 = RgbColor(16, 16, 16);
+
+// Rgba64
+// OpenGL: GL_RGBA16
+// Vulkan: VK_FORMAT_R16G16B16A16_UNORM
+// Direct3D/DXGI: DXGI_FORMAT_R16G16B16A16_UNORM
+pub const Rgba64 = RgbaColor(16, 16, 16, 16);
+
+fn BgrColor(comptime red_bits: comptime_int, comptime green_bits: comptime_int, comptime blue_bits: comptime_int) type {
+    return packed struct {
         B: BlueType,
         G: GreenType,
         R: RedType,
@@ -169,7 +279,7 @@ fn RgbColor(comptime red_bits: comptime_int, comptime green_bits: comptime_int, 
     };
 }
 
-fn ARgbColor(comptime red_bits: comptime_int, comptime green_bits: comptime_int, comptime blue_bits: comptime_int, comptime alpha_bits: comptime_int) type {
+fn BgraColor(comptime red_bits: comptime_int, comptime green_bits: comptime_int, comptime blue_bits: comptime_int, comptime alpha_bits: comptime_int) type {
     return packed struct {
         B: BlueType,
         G: GreenType,
@@ -212,56 +322,17 @@ fn ARgbColor(comptime red_bits: comptime_int, comptime green_bits: comptime_int,
     };
 }
 
-fn RgbaColor(comptime red_bits: comptime_int, comptime green_bits: comptime_int, comptime blue_bits: comptime_int, comptime alpha_bits: comptime_int) type {
-    return packed struct {
-        A: AlphaType,
-        B: BlueType,
-        G: GreenType,
-        R: RedType,
+// Bgr24
+// OpenGL: GL_BGR
+// Vulkan: VK_FORMAT_B8G8R8_UNORM
+// Direct3D/DXGI: n/a
+pub const Bgr24 = BgrColor(8, 8, 8);
 
-        const RedType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = red_bits } });
-        const GreenType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = green_bits } });
-        const BlueType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = blue_bits } });
-        const AlphaType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = alpha_bits } });
-
-        const Self = @This();
-
-        pub fn initRGB(r: RedType, g: GreenType, b: BlueType) Self {
-            return Self{
-                .R = r,
-                .G = g,
-                .B = b,
-                .A = math.maxInt(AlphaType),
-            };
-        }
-
-        pub fn initRGBA(r: RedType, g: GreenType, b: BlueType, a: AlphaType) Self {
-            return Self{
-                .R = r,
-                .G = g,
-                .B = b,
-                .A = a,
-            };
-        }
-
-        pub fn toColor(self: Self) Color {
-            return Color{
-                .R = toColorFloat(self.R),
-                .G = toColorFloat(self.G),
-                .B = toColorFloat(self.B),
-                .A = toColorFloat(self.A),
-            };
-        }
-    };
-}
-
-pub const Rgb24 = RgbColor(8, 8, 8);
-pub const Rgba32 = RgbaColor(8, 8, 8, 8);
-pub const Rgb565 = RgbColor(5, 6, 5);
-pub const Rgb555 = RgbColor(5, 5, 5);
-pub const Argb32 = ARgbColor(8, 8, 8, 8);
-pub const Rgb48 = RgbColor(16, 16, 16);
-pub const Rgba64 = RgbaColor(16, 16, 16, 16);
+// Bgra32
+// OpenGL: GL_BGRA
+// Vulkan: VK_FORMAT_B8G8R8A8_UNORM
+// Direct3D/DXGI: DXGI_FORMAT_B8G8R8A8_UNORM
+pub const Bgra32 = BgraColor(8, 8, 8, 8);
 
 pub fn IndexedStorage(comptime T: type) type {
     return struct {
@@ -354,7 +425,8 @@ pub const ColorStorage = union(PixelFormat) {
     Rgba32: []Rgba32,
     Rgb565: []Rgb565,
     Rgb555: []Rgb555,
-    Argb32: []Argb32,
+    Bgr24: []Bgr24,
+    Bgra32: []Bgra32,
     Rgb48: []Rgb48,
     Rgba64: []Rgba64,
 
@@ -442,9 +514,14 @@ pub const ColorStorage = union(PixelFormat) {
                     .Rgb555 = try allocator.alloc(Rgb555, pixel_count),
                 };
             },
-            .Argb32 => {
+            .Bgr24 => {
                 return Self{
-                    .Argb32 = try allocator.alloc(Argb32, pixel_count),
+                    .Bgr24 = try allocator.alloc(Bgr24, pixel_count),
+                };
+            },
+            .Bgra32 => {
+                return Self{
+                    .Bgra32 = try allocator.alloc(Bgra32, pixel_count),
                 };
             },
             .Rgb48 => {
@@ -478,7 +555,8 @@ pub const ColorStorage = union(PixelFormat) {
             .Rgba32 => |data| allocator.free(data),
             .Rgb565 => |data| allocator.free(data),
             .Rgb555 => |data| allocator.free(data),
-            .Argb32 => |data| allocator.free(data),
+            .Bgr24 => |data| allocator.free(data),
+            .Bgra32 => |data| allocator.free(data),
             .Rgb48 => |data| allocator.free(data),
             .Rgba64 => |data| allocator.free(data),
         }
@@ -502,7 +580,8 @@ pub const ColorStorage = union(PixelFormat) {
             .Rgba32 => |data| data.len,
             .Rgb565 => |data| data.len,
             .Rgb555 => |data| data.len,
-            .Argb32 => |data| data.len,
+            .Bgr24 => |data| data.len,
+            .Bgra32 => |data| data.len,
             .Rgb48 => |data| data.len,
             .Rgba64 => |data| data.len,
         };
@@ -522,7 +601,7 @@ pub const ColorStorage = union(PixelFormat) {
 
 pub const ColorStorageIterator = struct {
     pixels: *const ColorStorage = undefined,
-    currentIndex: usize = 0,
+    current_index: usize = 0,
     end: usize = 0,
 
     const Self = @This();
@@ -539,33 +618,34 @@ pub const ColorStorageIterator = struct {
     }
 
     pub fn next(self: *Self) ?Color {
-        if (self.currentIndex >= self.end) {
+        if (self.current_index >= self.end) {
             return null;
         }
 
         const result: ?Color = switch (self.pixels.*) {
-            .Bpp1 => |data| data.palette[data.indices[self.currentIndex]],
-            .Bpp2 => |data| data.palette[data.indices[self.currentIndex]],
-            .Bpp4 => |data| data.palette[data.indices[self.currentIndex]],
-            .Bpp8 => |data| data.palette[data.indices[self.currentIndex]],
-            .Bpp16 => |data| data.palette[data.indices[self.currentIndex]],
-            .Grayscale1 => |data| data[self.currentIndex].toColor(),
-            .Grayscale2 => |data| data[self.currentIndex].toColor(),
-            .Grayscale4 => |data| data[self.currentIndex].toColor(),
-            .Grayscale8 => |data| data[self.currentIndex].toColor(),
-            .Grayscale8Alpha => |data| data[self.currentIndex].toColor(),
-            .Grayscale16 => |data| data[self.currentIndex].toColor(),
-            .Grayscale16Alpha => |data| data[self.currentIndex].toColor(),
-            .Rgb24 => |data| data[self.currentIndex].toColor(),
-            .Rgba32 => |data| data[self.currentIndex].toColor(),
-            .Rgb565 => |data| data[self.currentIndex].toColor(),
-            .Rgb555 => |data| data[self.currentIndex].toColor(),
-            .Argb32 => |data| data[self.currentIndex].toColor(),
-            .Rgb48 => |data| data[self.currentIndex].toColor(),
-            .Rgba64 => |data| data[self.currentIndex].toColor(),
+            .Bpp1 => |data| data.palette[data.indices[self.current_index]],
+            .Bpp2 => |data| data.palette[data.indices[self.current_index]],
+            .Bpp4 => |data| data.palette[data.indices[self.current_index]],
+            .Bpp8 => |data| data.palette[data.indices[self.current_index]],
+            .Bpp16 => |data| data.palette[data.indices[self.current_index]],
+            .Grayscale1 => |data| data[self.current_index].toColor(),
+            .Grayscale2 => |data| data[self.current_index].toColor(),
+            .Grayscale4 => |data| data[self.current_index].toColor(),
+            .Grayscale8 => |data| data[self.current_index].toColor(),
+            .Grayscale8Alpha => |data| data[self.current_index].toColor(),
+            .Grayscale16 => |data| data[self.current_index].toColor(),
+            .Grayscale16Alpha => |data| data[self.current_index].toColor(),
+            .Rgb24 => |data| data[self.current_index].toColor(),
+            .Rgba32 => |data| data[self.current_index].toColor(),
+            .Rgb565 => |data| data[self.current_index].toColor(),
+            .Rgb555 => |data| data[self.current_index].toColor(),
+            .Bgr24 => |data| data[self.current_index].toColor(),
+            .Bgra32 => |data| data[self.current_index].toColor(),
+            .Rgb48 => |data| data[self.current_index].toColor(),
+            .Rgba64 => |data| data[self.current_index].toColor(),
         };
 
-        self.currentIndex += 1;
+        self.current_index += 1;
         return result;
     }
 };

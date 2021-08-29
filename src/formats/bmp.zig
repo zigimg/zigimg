@@ -270,9 +270,9 @@ pub const Bitmap = struct {
 
     fn getPixelFormat(bitCount: u32, compression: CompressionMethod) !PixelFormat {
         if (bitCount == 32 and compression == CompressionMethod.Bitfields) {
-            return PixelFormat.Argb32;
+            return PixelFormat.Bgra32;
         } else if (bitCount == 24 and compression == CompressionMethod.None) {
-            return PixelFormat.Rgb24;
+            return PixelFormat.Bgr24;
         } else {
             return errors.ImageError.UnsupportedPixelFormat;
         }
@@ -280,11 +280,11 @@ pub const Bitmap = struct {
 
     fn readPixels(reader: ImageReader, pixelWidth: i32, pixelHeight: i32, pixelFormat: PixelFormat, pixels: *color.ColorStorage) !void {
         return switch (pixelFormat) {
-            PixelFormat.Rgb24 => {
-                return readPixelsInternal(pixels.Rgb24, reader, pixelWidth, pixelHeight);
+            PixelFormat.Bgr24 => {
+                return readPixelsInternal(pixels.Bgr24, reader, pixelWidth, pixelHeight);
             },
-            PixelFormat.Argb32 => {
-                return readPixelsInternal(pixels.Argb32, reader, pixelWidth, pixelHeight);
+            PixelFormat.Bgra32 => {
+                return readPixelsInternal(pixels.Bgra32, reader, pixelWidth, pixelHeight);
             },
             else => {
                 return errors.ImageError.UnsupportedPixelFormat;
