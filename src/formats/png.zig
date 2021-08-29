@@ -13,8 +13,6 @@ const errors = @import("../errors.zig");
 const image = @import("../image.zig");
 const std = @import("std");
 const utils = @import("../utils.zig");
-// const zlib = @import("../compression/zlib.zig");
-// const deflate = @import("../compression/deflate.zig");
 
 const PNGMagicHeader = "\x89PNG\x0D\x0A\x1A\x0A";
 
@@ -90,7 +88,9 @@ pub const PLTE = struct {
         allocator.free(self.palette);
     }
 
-    pub fn read(self: *Self, allocator: *Allocator, read_buffer: []u8) !bool {
+    pub fn read(self: *Self, header: IHDR, allocator: *Allocator, read_buffer: []u8) !bool {
+        _ = header;
+
         if (read_buffer.len % 3 != 0) {
             return errors.PngError.InvalidPalette;
         }
@@ -125,7 +125,8 @@ pub const IDAT = struct {
         allocator.free(self.data);
     }
 
-    pub fn read(self: *Self, allocator: *Allocator, read_buffer: []u8) !bool {
+    pub fn read(self: *Self, header: IHDR, allocator: *Allocator, read_buffer: []u8) !bool {
+        _ = header;
         _ = allocator;
         self.data = read_buffer;
         return false;
@@ -143,8 +144,9 @@ pub const IEND = packed struct {
         _ = allocator;
     }
 
-    pub fn read(self: *Self, allocator: *Allocator, read_buffer: []u8) !bool {
+    pub fn read(self: *Self, header: IHDR, allocator: *Allocator, read_buffer: []u8) !bool {
         _ = self;
+        _ = header;
         _ = allocator;
         _ = read_buffer;
         return true;
@@ -164,7 +166,8 @@ pub const gAMA = packed struct {
         _ = allocator;
     }
 
-    pub fn read(self: *Self, allocator: *Allocator, read_buffer: []u8) !bool {
+    pub fn read(self: *Self, header: IHDR, allocator: *Allocator, read_buffer: []u8) !bool {
+        _ = header;
         _ = allocator;
         var stream = std.io.fixedBufferStream(read_buffer);
         self.iGamma = try stream.reader().readIntBig(u32);
@@ -176,10 +179,59 @@ pub const gAMA = packed struct {
     }
 };
 
+pub const bKGD = packed struct {
+    // TODO: Use a union(enum) once Zig support a union(enum) inside another union(enum)
+    color: enum(u8) {
+        Grayscale,
+        Palette,
+        TrueColor,
+    },
+    grayscale: u16,
+    palette: u8,
+    red: u16,
+    green: u16,
+    blue: u16,
+
+    pub const ChunkType = "bKGD";
+    pub const ChunkID = utils.toMagicNumberBig(ChunkType);
+
+    const Self = @This();
+
+    pub fn deinit(self: Self, allocator: *Allocator) void {
+        _ = self;
+        _ = allocator;
+    }
+
+    pub fn read(self: *Self, header: IHDR, allocator: *Allocator, read_buffer: []u8) !bool {
+        _ = allocator;
+        var stream = std.io.fixedBufferStream(read_buffer);
+
+        switch (header.color_type) {
+            .Grayscale, .GrayscaleAlpha => {
+                self.color = .Grayscale;
+                self.grayscale = try stream.reader().readIntBig(u16);
+            },
+            .Indexed => {
+                self.color = .Palette;
+                self.palette = try stream.reader().readIntBig(u8);
+            },
+            .Truecolor, .TruecolorAlpha => {
+                self.color = .TrueColor;
+                self.red = try stream.reader().readIntBig(u16);
+                self.green = try stream.reader().readIntBig(u16);
+                self.blue = try stream.reader().readIntBig(u16);
+            },
+        }
+
+        return true;
+    }
+};
+
 pub const ChunkVariant = union(enum) {
     PLTE: PLTE,
     IDAT: IDAT,
     gAMA: gAMA,
+    bKGD: bKGD,
 
     const Self = @This();
 
@@ -188,6 +240,7 @@ pub const ChunkVariant = union(enum) {
             .PLTE => |instance| instance.deinit(allocator),
             .IDAT => |instance| instance.deinit(allocator),
             .gAMA => |instance| instance.deinit(allocator),
+            .bKGD => |instance| instance.deinit(allocator),
         }
     }
 
@@ -196,6 +249,7 @@ pub const ChunkVariant = union(enum) {
             .PLTE => |instance| @field(@TypeOf(instance), "ChunkID"),
             .IDAT => |instance| @field(@TypeOf(instance), "ChunkID"),
             .gAMA => |instance| @field(@TypeOf(instance), "ChunkID"),
+            .bKGD => |instance| @field(@TypeOf(instance), "ChunkID"),
         };
     }
 };
@@ -221,6 +275,11 @@ const AllChunks = [_]ChunkInfo{
     },
     .{
         .chunk_type = PLTE,
+        .allowed = .ZeroOrOne,
+        .store = true,
+    },
+    .{
+        .chunk_type = bKGD,
         .allowed = .ZeroOrOne,
         .store = true,
     },
@@ -380,7 +439,7 @@ const PngFilter = struct {
     }
 };
 
-// remember, PNG uses network byte order (aka Big Endian)
+// Remember, PNG uses network byte order (aka Big Endian)
 // TODO: Proper validation of chunk order and count
 pub const PNG = struct {
     header: IHDR = undefined,
@@ -452,6 +511,16 @@ pub const PNG = struct {
 
         if (palette_variant_opt) |variant| {
             return variant.PLTE;
+        }
+
+        return null;
+    }
+
+    pub fn getBackgroundColorChunk(self: Self) ?bKGD {
+        const bkgd_variant_opt = self.findFirstChunk(bKGD.ChunkType);
+
+        if (bkgd_variant_opt) |variant| {
+            return variant.bKGD;
         }
 
         return null;
@@ -622,7 +691,7 @@ pub const PNG = struct {
         //         } else if (chunkInfo.store) {
         //             const finalChunk = try self.chunks.addOne();
         //             finalChunk.* = @unionInit(ChunkVariant, @typeName(chunkInfo.chunk_type), undefined);
-        //             deallocate_buffer = try @field(finalChunk, @typeName(chunkInfo.chunk_type)).read(self.allocator, read_buffer);
+        //             deallocate_buffer = try @field(finalChunk, @typeName(chunkInfo.chunk_type)).read(self.header, self.allocator, read_buffer);
         //         }
         //         break;
         //     }
@@ -641,19 +710,25 @@ pub const PNG = struct {
             PLTE.ChunkID => {
                 const plteChunk = try self.chunks.addOne();
                 plteChunk.* = @unionInit(ChunkVariant, PLTE.ChunkType, undefined);
-                deallocate_buffer = try @field(plteChunk, PLTE.ChunkType).read(self.allocator, read_buffer);
+                deallocate_buffer = try @field(plteChunk, PLTE.ChunkType).read(self.header, self.allocator, read_buffer);
+                found = true;
+            },
+            bKGD.ChunkID => {
+                const bkgdChunk = try self.chunks.addOne();
+                bkgdChunk.* = @unionInit(ChunkVariant, bKGD.ChunkType, undefined);
+                deallocate_buffer = try @field(bkgdChunk, bKGD.ChunkType).read(self.header, self.allocator, read_buffer);
                 found = true;
             },
             gAMA.ChunkID => {
                 const gammaChunk = try self.chunks.addOne();
                 gammaChunk.* = @unionInit(ChunkVariant, gAMA.ChunkType, undefined);
-                deallocate_buffer = try @field(gammaChunk, gAMA.ChunkType).read(self.allocator, read_buffer);
+                deallocate_buffer = try @field(gammaChunk, gAMA.ChunkType).read(self.header, self.allocator, read_buffer);
                 found = true;
             },
             IDAT.ChunkID => {
                 const dataChunk = try self.chunks.addOne();
                 dataChunk.* = @unionInit(ChunkVariant, IDAT.ChunkType, undefined);
-                deallocate_buffer = try @field(dataChunk, IDAT.ChunkType).read(self.allocator, read_buffer);
+                deallocate_buffer = try @field(dataChunk, IDAT.ChunkType).read(self.header, self.allocator, read_buffer);
                 found = true;
             },
             else => {},
