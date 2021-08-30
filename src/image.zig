@@ -44,13 +44,12 @@ pub const Image = struct {
     width: usize = 0,
     height: usize = 0,
     pixels: ?ColorStorage = null,
-    pixel_format: PixelFormat = undefined,
     image_format: ImageFormat = undefined,
 
     const Self = @This();
 
     const FormatInteraceFnType = fn () FormatInterface;
-    const allInterfaceFuncs = blk: {
+    const all_interface_funcs = blk: {
         const allFormatDecls = std.meta.declarations(AllImageFormats);
         var result: [allFormatDecls.len]FormatInteraceFnType = undefined;
         var index: usize = 0;
@@ -109,7 +108,7 @@ pub const Image = struct {
         return result;
     }
 
-    pub fn fromMemory(allocator: *Allocator, buffer: []const u8) !Image {
+    pub fn fromMemory(allocator: *Allocator, buffer: []const u8) !Self {
         var result = init(allocator);
 
         var stream_source = io.StreamSource{ .const_buffer = io.fixedBufferStream(buffer) };
@@ -124,12 +123,19 @@ pub const Image = struct {
             .allocator = allocator,
             .width = width,
             .height = height,
-            .pixel_format = pixel_format,
             .image_format = image_format,
             .pixels = try ColorStorage.init(allocator, pixel_format, width * height),
         };
 
         return result;
+    }
+
+    pub fn getPixelFormat(self: Self) ?PixelFormat {
+        if (self.pixels) |pixels| {
+            return std.meta.activeTag(pixels);
+        }
+
+        return null;
     }
 
     pub fn writeToFilePath(self: Self, file_path: []const u8, image_format: ImageFormat, encoder_options: ImageEncoderOptions) !void {
@@ -198,25 +204,24 @@ pub const Image = struct {
         return color.ColorStorageIterator.initNull();
     }
 
-    fn internalRead(self: *Self, allocator: *Allocator, reader: ImageReader, seekStream: ImageSeekStream) !void {
-        var formatInterface = try findImageInterfaceFromStream(reader, seekStream);
-        self.image_format = formatInterface.format();
+    fn internalRead(self: *Self, allocator: *Allocator, reader: ImageReader, seek_stream: ImageSeekStream) !void {
+        var format_interface = try findImageInterfaceFromStream(reader, seek_stream);
+        self.image_format = format_interface.format();
 
-        try seekStream.seekTo(0);
+        try seek_stream.seekTo(0);
 
-        const imageInfo = try formatInterface.readForImage(allocator, reader, seekStream, &self.pixels);
+        const image_info = try format_interface.readForImage(allocator, reader, seek_stream, &self.pixels);
 
-        self.width = imageInfo.width;
-        self.height = imageInfo.height;
-        self.pixel_format = imageInfo.pixel_format;
+        self.width = image_info.width;
+        self.height = image_info.height;
     }
 
-    fn findImageInterfaceFromStream(reader: ImageReader, seekStream: ImageSeekStream) !FormatInterface {
-        for (allInterfaceFuncs) |intefaceFn| {
+    fn findImageInterfaceFromStream(reader: ImageReader, seek_stream: ImageSeekStream) !FormatInterface {
+        for (all_interface_funcs) |intefaceFn| {
             const formatInterface = intefaceFn();
 
-            try seekStream.seekTo(0);
-            const found = try formatInterface.formatDetect(reader, seekStream);
+            try seek_stream.seekTo(0);
+            const found = try formatInterface.formatDetect(reader, seek_stream);
             if (found) {
                 return formatInterface;
             }
@@ -226,11 +231,11 @@ pub const Image = struct {
     }
 
     fn findImageInterfaceFromImageFormat(image_format: ImageFormat) !FormatInterface {
-        for (allInterfaceFuncs) |intefaceFn| {
-            const formatInterface = intefaceFn();
+        for (all_interface_funcs) |interface_fn| {
+            const format_interface = interface_fn();
 
-            if (formatInterface.format() == image_format) {
-                return formatInterface;
+            if (format_interface.format() == image_format) {
+                return format_interface;
             }
         }
 
