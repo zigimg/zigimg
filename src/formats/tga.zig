@@ -277,7 +277,6 @@ pub const TGA = struct {
         var imageInfo = ImageInfo{};
         imageInfo.width = tga.width();
         imageInfo.height = tga.height();
-        imageInfo.pixel_format = try tga.pixelFormat();
         return imageInfo;
     }
 

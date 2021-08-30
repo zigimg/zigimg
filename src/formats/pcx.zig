@@ -22,15 +22,15 @@ pub const PCXHeader = packed struct {
     ymin: u16,
     xmax: u16,
     ymax: u16,
-    horizontalDPI: u16,
-    verticalDPI: u16,
-    builtinPalette: [48]u8,
+    horizontal_dpi: u16,
+    vertical_dpi: u16,
+    builtin_palette: [48]u8,
     _reserved0: u8 = 0,
     planes: u8,
     stride: u16,
-    paletteInformation: u16,
-    screenWidth: u16,
-    screenHeight: u16,
+    palette_information: u16,
+    screen_width: u16,
+    screen_height: u16,
 
     // HACK: For some reason, padding as field does not report 128 bytes for the header.
     var padding: [54]u8 = undefined;
@@ -47,21 +47,22 @@ const RLEDecoder = struct {
     };
 
     stream: ImageReader,
-    currentRun: ?Run,
+    current_run: ?Run,
 
     fn init(stream: ImageReader) RLEDecoder {
         return RLEDecoder{
             .stream = stream,
-            .currentRun = null,
+            .current_run = null,
         };
     }
 
     fn readByte(self: *RLEDecoder) !u8 {
-        if (self.currentRun) |*run| {
+        if (self.current_run) |*run| {
             var result = run.value;
             run.remaining -= 1;
-            if (run.remaining == 0)
-                self.currentRun = null;
+            if (run.remaining == 0) {
+                self.current_run = null;
+            }
             return result;
         } else {
             while (true) {
@@ -74,7 +75,7 @@ const RLEDecoder = struct {
                     const result = try self.stream.readByte();
                     if (len > 1) {
                         // we only need to store a run in the decoder if it is longer than 1
-                        self.currentRun = .{
+                        self.current_run = .{
                             .value = result,
                             .remaining = len - 1,
                         };
@@ -88,7 +89,7 @@ const RLEDecoder = struct {
     }
 
     fn finish(decoder: RLEDecoder) !void {
-        if (decoder.currentRun != null) {
+        if (decoder.current_run != null) {
             return error.RLEStreamIncomplete;
         }
     }
@@ -98,7 +99,6 @@ pub const PCX = struct {
     header: PCXHeader = undefined,
     width: usize = 0,
     height: usize = 0,
-    pixel_format: PixelFormat = undefined,
 
     const Self = @This();
 
@@ -115,33 +115,32 @@ pub const PCX = struct {
         return ImageFormat.Pcx;
     }
 
-    pub fn formatDetect(reader: ImageReader, seekStream: ImageSeekStream) !bool {
-        _ = seekStream;
-        var magicNumberBuffer: [2]u8 = undefined;
-        _ = try reader.read(magicNumberBuffer[0..]);
+    pub fn formatDetect(reader: ImageReader, seek_stream: ImageSeekStream) !bool {
+        _ = seek_stream;
+        var magic_number_bufffer: [2]u8 = undefined;
+        _ = try reader.read(magic_number_bufffer[0..]);
 
-        if (magicNumberBuffer[0] != 0x0A) {
+        if (magic_number_bufffer[0] != 0x0A) {
             return false;
         }
 
-        if (magicNumberBuffer[1] > 0x05) {
+        if (magic_number_bufffer[1] > 0x05) {
             return false;
         }
 
         return true;
     }
 
-    pub fn readForImage(allocator: *Allocator, reader: ImageReader, seekStream: ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
+    pub fn readForImage(allocator: *Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
         var pcx = PCX{};
 
-        try pcx.read(allocator, reader, seekStream, pixels);
+        try pcx.read(allocator, reader, seek_stream, pixels);
 
-        var imageInfo = ImageInfo{};
-        imageInfo.width = pcx.width;
-        imageInfo.height = pcx.height;
-        imageInfo.pixel_format = pcx.pixel_format;
+        var image_info = ImageInfo{};
+        image_info.width = pcx.width;
+        image_info.height = pcx.height;
 
-        return imageInfo;
+        return image_info;
     }
 
     pub fn writeForImage(allocator: *Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
@@ -152,7 +151,25 @@ pub const PCX = struct {
         _ = save_info;
     }
 
-    pub fn read(self: *Self, allocator: *Allocator, reader: ImageReader, seekStream: ImageSeekStream, pixelsOpt: *?color.ColorStorage) !void {
+    pub fn pixelFormat(self: Self) !PixelFormat {
+        if (self.header.planes == 1) {
+            switch (self.header.bpp) {
+                1 => return PixelFormat.Bpp1,
+                4 => return PixelFormat.Bpp4,
+                8 => return PixelFormat.Bpp8,
+                else => return errors.ImageError.UnsupportedPixelFormat,
+            }
+        } else if (self.header.planes == 3) {
+            switch (self.header.bpp) {
+                8 => return PixelFormat.Rgb24,
+                else => return errors.ImageError.UnsupportedPixelFormat,
+            }
+        } else {
+            return errors.ImageError.UnsupportedPixelFormat;
+        }
+    }
+
+    pub fn read(self: *Self, allocator: *Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.ColorStorage) !void {
         self.header = try utils.readStructLittle(reader, PCXHeader);
         _ = try reader.read(PCXHeader.padding[0..]);
 
@@ -168,89 +185,73 @@ pub const PCX = struct {
             return errors.ImageError.UnsupportedPixelFormat;
         }
 
-        self.pixel_format = blk: {
-            if (self.header.planes == 1) {
-                switch (self.header.bpp) {
-                    1 => break :blk PixelFormat.Bpp1,
-                    4 => break :blk PixelFormat.Bpp4,
-                    8 => break :blk PixelFormat.Bpp8,
-                    else => return errors.ImageError.UnsupportedPixelFormat,
-                }
-            } else if (self.header.planes == 3) {
-                switch (self.header.bpp) {
-                    8 => break :blk PixelFormat.Rgb24,
-                    else => return errors.ImageError.UnsupportedPixelFormat,
-                }
-            } else {
-                return errors.ImageError.UnsupportedPixelFormat;
-            }
-        };
+        const pixel_format = try self.pixelFormat();
 
         self.width = @as(usize, self.header.xmax - self.header.xmin + 1);
         self.height = @as(usize, self.header.ymax - self.header.ymin + 1);
 
-        const hasDummyByte = (@bitCast(i16, self.header.stride) - @bitCast(isize, self.width)) == 1;
-        const actualWidth = if (hasDummyByte) self.width + 1 else self.width;
+        const has_dummy_byte = (@bitCast(i16, self.header.stride) - @bitCast(isize, self.width)) == 1;
+        const actual_width = if (has_dummy_byte) self.width + 1 else self.width;
 
-        pixelsOpt.* = try color.ColorStorage.init(allocator, self.pixel_format, self.width * self.height);
+        pixels_opt.* = try color.ColorStorage.init(allocator, pixel_format, self.width * self.height);
 
-        if (pixelsOpt.*) |pixels| {
+        if (pixels_opt.*) |pixels| {
             var decoder = RLEDecoder.init(reader);
 
-            const scanlineLength = (self.header.stride * self.header.planes);
+            const scanline_length = (self.header.stride * self.header.planes);
 
             var y: usize = 0;
             while (y < self.height) : (y += 1) {
                 var offset: usize = 0;
                 var x: usize = 0;
 
-                const yStride = y * self.width;
+                const y_stride = y * self.width;
 
                 // read all pixels from the current row
-                while (offset < scanlineLength and x < self.width) : (offset += 1) {
+                while (offset < scanline_length and x < self.width) : (offset += 1) {
                     const byte = try decoder.readByte();
                     switch (pixels) {
                         .Bpp1 => |storage| {
                             var i: usize = 0;
                             while (i < 8) : (i += 1) {
                                 if (x < self.width) {
-                                    storage.indices[yStride + x] = @intCast(u1, (byte >> (7 - @intCast(u3, i))) & 0x01);
+                                    storage.indices[y_stride + x] = @intCast(u1, (byte >> (7 - @intCast(u3, i))) & 0x01);
                                     x += 1;
                                 }
                             }
                         },
                         .Bpp4 => |storage| {
-                            storage.indices[yStride + x] = @truncate(u4, byte >> 4);
+                            storage.indices[y_stride + x] = @truncate(u4, byte >> 4);
                             x += 1;
                             if (x < self.width) {
-                                storage.indices[yStride + x] = @truncate(u4, byte);
+                                storage.indices[y_stride + x] = @truncate(u4, byte);
                                 x += 1;
                             }
                         },
                         .Bpp8 => |storage| {
-                            storage.indices[yStride + x] = byte;
+                            storage.indices[y_stride + x] = byte;
                             x += 1;
                         },
                         .Rgb24 => |storage| {
-                            if (hasDummyByte and byte == 0x00) {
+                            if (has_dummy_byte and byte == 0x00) {
                                 continue;
                             }
-                            const pixelX = offset % (actualWidth);
-                            const currentColor = offset / (actualWidth);
-                            switch (currentColor) {
+                            const pixel_x = offset % (actual_width);
+                            const current_color = offset / (actual_width);
+                            switch (current_color) {
                                 0 => {
-                                    storage[yStride + pixelX].R = byte;
+                                    storage[y_stride + pixel_x].R = byte;
                                 },
                                 1 => {
-                                    storage[yStride + pixelX].G = byte;
+                                    storage[y_stride + pixel_x].G = byte;
                                 },
                                 2 => {
-                                    storage[yStride + pixelX].B = byte;
+                                    storage[y_stride + pixel_x].B = byte;
                                 },
                                 else => {},
                             }
 
-                            if (pixelX > 0 and (pixelX % self.header.planes) == 0) {
+                            if (pixel_x > 0 and (pixel_x % self.header.planes) == 0) {
                                 x += 1;
                             }
                         },
@@ -266,7 +267,7 @@ pub const PCX = struct {
 
             try decoder.finish();
 
-            if (self.pixel_format == .Bpp1 or self.pixel_format == .Bpp4 or self.pixel_format == .Bpp8) {
+            if (pixel_format == .Bpp1 or pixel_format == .Bpp4 or pixel_format == .Bpp8) {
                 var pal = switch (pixels) {
                     .Bpp1 => |*storage| storage.palette[0..],
                     .Bpp4 => |*storage| storage.palette[0..],
@@ -275,16 +276,16 @@ pub const PCX = struct {
                 };
 
                 var i: usize = 0;
-                while (i < std.math.min(pal.len, self.header.builtinPalette.len / 3)) : (i += 1) {
-                    pal[i].R = color.toColorFloat(self.header.builtinPalette[3 * i + 0]);
-                    pal[i].G = color.toColorFloat(self.header.builtinPalette[3 * i + 1]);
-                    pal[i].B = color.toColorFloat(self.header.builtinPalette[3 * i + 2]);
+                while (i < std.math.min(pal.len, self.header.builtin_palette.len / 3)) : (i += 1) {
+                    pal[i].R = color.toColorFloat(self.header.builtin_palette[3 * i + 0]);
+                    pal[i].G = color.toColorFloat(self.header.builtin_palette[3 * i + 1]);
+                    pal[i].B = color.toColorFloat(self.header.builtin_palette[3 * i + 2]);
                     pal[i].A = 1.0;
                 }
 
                 if (pixels == .Bpp8) {
-                    const endPos = try seekStream.getEndPos();
-                    try seekStream.seekTo(endPos - 769);
+                    const end_pos = try seek_stream.getEndPos();
+                    try seek_stream.seekTo(end_pos - 769);
 
                     if ((try reader.readByte()) != 0x0C)
                         return error.MissingPalette;

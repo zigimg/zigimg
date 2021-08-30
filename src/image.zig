@@ -35,7 +35,6 @@ pub const ImageSaveInfo = struct {
 pub const ImageInfo = struct {
     width: usize = 0,
     height: usize = 0,
-    pixel_format: PixelFormat = undefined,
 };
 
 /// Format-independant image
@@ -130,7 +129,7 @@ pub const Image = struct {
         return result;
     }
 
-    pub fn getPixelFormat(self: Self) ?PixelFormat {
+    pub fn pixelFormat(self: Self) ?PixelFormat {
         if (self.pixels) |pixels| {
             return std.meta.activeTag(pixels);
         }

@@ -2,6 +2,7 @@ const image = @import("image.zig");
 const color = @import("color.zig");
 const Allocator = @import("std").mem.Allocator;
 
+// mlarouche: Because this is a interface, I use Zig function naming convention instead of the variable naming convention
 pub const FormatInterface = struct {
     format: FormatFn,
     formatDetect: FormatDetectFn,
