@@ -429,6 +429,7 @@ pub const ColorStorage = union(PixelFormat) {
     Bgra32: []Bgra32,
     Rgb48: []Rgb48,
     Rgba64: []Rgba64,
+    Float32: []Color,
 
     const Self = @This();
 
@@ -534,6 +535,11 @@ pub const ColorStorage = union(PixelFormat) {
                     .Rgba64 = try allocator.alloc(Rgba64, pixel_count),
                 };
             },
+            .Float32 => {
+                return Self{
+                    .Float32 = try allocator.alloc(Color, pixel_count),
+                };
+            },
         };
     }
 
@@ -559,6 +565,7 @@ pub const ColorStorage = union(PixelFormat) {
             .Bgra32 => |data| allocator.free(data),
             .Rgb48 => |data| allocator.free(data),
             .Rgba64 => |data| allocator.free(data),
+            .Float32 => |data| allocator.free(data),
         }
     }
 
@@ -584,6 +591,7 @@ pub const ColorStorage = union(PixelFormat) {
             .Bgra32 => |data| data.len,
             .Rgb48 => |data| data.len,
             .Rgba64 => |data| data.len,
+            .Float32 => |data| data.len,
         };
     }
 
@@ -643,6 +651,7 @@ pub const ColorStorageIterator = struct {
             .Bgra32 => |data| data[self.current_index].toColor(),
             .Rgb48 => |data| data[self.current_index].toColor(),
             .Rgba64 => |data| data[self.current_index].toColor(),
+            .Float32 => |data| data[self.current_index],
         };
 
         self.current_index += 1;
