@@ -57,11 +57,8 @@ pub const Animation = struct {
     loop_count: i32 = AnimationLoopInfinite,
 
     pub fn deinit(self: *Animation, allocator: std.mem.Allocator) void {
-        // Animation share its first frame with the pixels in Image, we don't want to free it twice
-        if (self.frames.items.len >= 2) {
-            for (self.frames.items[1..]) |frame| {
-                frame.pixels.deinit(allocator);
-            }
+        for (self.frames.items) |frame| {
+            frame.pixels.deinit(allocator);
         }
 
         self.frames.deinit(allocator);
@@ -73,7 +70,7 @@ allocator: Allocator = undefined,
 width: usize = 0,
 height: usize = 0,
 pixels: PixelStorage = .{ .invalid = void{} },
-animation: Animation = .{},
+animation: ?Animation = null,
 
 const Self = @This();
 
@@ -112,7 +109,9 @@ pub fn init(allocator: Allocator) Self {
 /// Deinit the image
 pub fn deinit(self: *Self) void {
     self.pixels.deinit(self.allocator);
-    self.animation.deinit(self.allocator);
+    if (self.animation) |*animation| {
+        animation.deinit(self.allocator);
+    }
 }
 
 /// Load an image from a file path
@@ -149,11 +148,23 @@ pub fn create(allocator: Allocator, width: usize, height: usize, pixel_format: P
 
 /// Return the pixel format of the image
 pub fn pixelFormat(self: Self) PixelFormat {
+    if (self.animation) |animation| {
+        if (animation.frames.items.len > 0) {
+            return std.meta.activeTag(animation.frames.items[0].pixels);
+        }
+    }
+
     return std.meta.activeTag(self.pixels);
 }
 
 /// Return the pixel data as a const byte slice. In case of an animation, it return the pixel data of the first frame.
 pub fn rawBytes(self: Self) []const u8 {
+    if (self.animation) |animation| {
+        if (animation.frames.items.len > 0) {
+            return animation.frames.items[0].pixels.asBytes();
+        }
+    }
+
     return self.pixels.asBytes();
 }
 
@@ -169,7 +180,7 @@ pub fn imageByteSize(self: Self) usize {
 
 /// Is this image is an animation?
 pub fn isAnimation(self: Self) bool {
-    return self.animation.frames.len > 0;
+    return self.animation != null;
 }
 
 /// Write the image to an image format to the specified path
@@ -199,6 +210,12 @@ pub fn writeToMemory(self: Self, write_buffer: []u8, encoder_options: EncoderOpt
 
 /// Iterate the pixel in pixel-format agnostic way. In the case of an animation, it returns an iterator for the first frame. The iterator is read-only.
 pub fn iterator(self: Self) color.PixelStorageIterator {
+    if (self.animation) |animation| {
+        if (animation.frames.items.len > 0) {
+            return color.PixelStorageIterator.init(&animation.frames.items[0].pixels);
+        }
+    }
+
     return color.PixelStorageIterator.init(&self.pixels);
 }
 

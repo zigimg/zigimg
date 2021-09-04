@@ -57,6 +57,9 @@ zig build test
 * 32 RGBA
 * Doesn't support any compression
 
+### GIF - Graphics Interchange Format
+* Support GIF89a only
+
 ### PBM - Portable Bitmap format
 
 * Everything is supported
