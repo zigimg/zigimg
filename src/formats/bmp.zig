@@ -14,7 +14,7 @@ const io = std.io;
 const mem = std.mem;
 const path = std.fs.path;
 const std = @import("std");
-usingnamespace @import("../utils.zig");
+const utils = @import("../utils.zig");
 
 const BitmapMagicHeader = [_]u8{ 'B', 'M' };
 
@@ -40,10 +40,10 @@ pub const CompressionMethod = enum(u32) {
 
 pub const BitmapColorSpace = enum(u32) {
     CalibratedRgb = 0,
-    sRgb = toMagicNumberBig("sRGB"),
-    WindowsColorSpace = toMagicNumberBig("Win "),
-    ProfileLinked = toMagicNumberBig("LINK"),
-    ProfileEmbedded = toMagicNumberBig("MBED"),
+    sRgb = utils.toMagicNumberBig("sRGB"),
+    WindowsColorSpace = utils.toMagicNumberBig("Win "),
+    ProfileLinked = utils.toMagicNumberBig("LINK"),
+    ProfileEmbedded = utils.toMagicNumberBig("MBED"),
 };
 
 pub const BitmapIntent = enum(u32) {
@@ -228,7 +228,7 @@ pub const Bitmap = struct {
 
     pub fn read(self: *Self, allocator: *Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.ColorStorage) !void {
         // Read file header
-        self.file_header = try readStructLittle(reader, BitmapFileHeader);
+        self.file_header = try utils.readStructLittle(reader, BitmapFileHeader);
         if (!mem.eql(u8, self.file_header.magic_header[0..], BitmapMagicHeader[0..])) {
             return errors.ImageError.InvalidMagicHeader;
         }
@@ -240,9 +240,9 @@ pub const Bitmap = struct {
 
         // Read info header
         self.info_header = switch (header_size) {
-            BitmapInfoHeaderWindows31.HeaderSize => BitmapInfoHeader{ .Windows31 = try readStructLittle(reader, BitmapInfoHeaderWindows31) },
-            BitmapInfoHeaderV4.HeaderSize => BitmapInfoHeader{ .V4 = try readStructLittle(reader, BitmapInfoHeaderV4) },
-            BitmapInfoHeaderV5.HeaderSize => BitmapInfoHeader{ .V5 = try readStructLittle(reader, BitmapInfoHeaderV5) },
+            BitmapInfoHeaderWindows31.HeaderSize => BitmapInfoHeader{ .Windows31 = try utils.readStructLittle(reader, BitmapInfoHeaderWindows31) },
+            BitmapInfoHeaderV4.HeaderSize => BitmapInfoHeader{ .V4 = try utils.readStructLittle(reader, BitmapInfoHeaderV4) },
+            BitmapInfoHeaderV5.HeaderSize => BitmapInfoHeader{ .V5 = try utils.readStructLittle(reader, BitmapInfoHeaderV5) },
             else => return errors.ImageError.UnsupportedBitmapType,
         };
 
@@ -308,7 +308,7 @@ pub const Bitmap = struct {
 
             x = 0;
             while (x < pixel_width) : (x += 1) {
-                pixels[@intCast(usize, scanline + x)] = try readStructLittle(reader, ColorBufferType);
+                pixels[@intCast(usize, scanline + x)] = try utils.readStructLittle(reader, ColorBufferType);
             }
         }
     }

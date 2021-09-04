@@ -13,7 +13,7 @@ const io = std.io;
 const mem = std.mem;
 const path = std.fs.path;
 const std = @import("std");
-usingnamespace @import("../utils.zig");
+const utils = @import("../utils.zig");
 
 pub const TGAImageType = packed struct {
     indexed: bool = false,
@@ -152,7 +152,7 @@ const TargaRLEDecoder = struct {
         var read_count: usize = 0;
 
         if (self.state == .ReadHeader) {
-            const packet_header = readStructLittle(self.source_stream, PacketHeader) catch return ReadError.InputOutput;
+            const packet_header = utils.readStructLittle(self.source_stream, PacketHeader) catch return ReadError.InputOutput;
 
             if (packet_header.packet_type == .Repeated) {
                 self.state = .Repeated;
@@ -201,7 +201,7 @@ const TargaRLEDecoder = struct {
         return read_count;
     }
 
-    pub fn reader(self: *Self) Reader {
+    pub fn reader(self: *Self) ImageReader {
         return .{ .context = @ptrCast(*std.io.StreamSource, self) };
     }
 };
@@ -251,7 +251,7 @@ pub const TGA = struct {
             const footer_position = endPos - @sizeOf(TGAFooter);
 
             try seekStream.seekTo(footer_position);
-            const footer: TGAFooter = try readStructLittle(reader, TGAFooter);
+            const footer: TGAFooter = try utils.readStructLittle(reader, TGAFooter);
 
             if (footer.dot != '.') {
                 return false;
@@ -325,7 +325,7 @@ pub const TGA = struct {
 
         _ = endPos - @sizeOf(TGAFooter);
         try seekStream.seekTo(endPos - @sizeOf(TGAFooter));
-        const footer: TGAFooter = try readStructLittle(reader, TGAFooter);
+        const footer: TGAFooter = try utils.readStructLittle(reader, TGAFooter);
 
         if (!std.mem.eql(u8, footer.signature[0..], TGASignature[0..])) {
             return errors.ImageError.InvalidMagicHeader;
@@ -335,12 +335,12 @@ pub const TGA = struct {
         if (footer.extension_offset > 0) {
             const extension_pos = @intCast(u64, footer.extension_offset);
             try seekStream.seekTo(extension_pos);
-            self.extension = try readStructLittle(reader, TGAExtension);
+            self.extension = try utils.readStructLittle(reader, TGAExtension);
         }
 
         // Read header
         try seekStream.seekTo(0);
-        self.header = try readStructLittle(reader, TGAHeader);
+        self.header = try utils.readStructLittle(reader, TGAHeader);
 
         // Read ID
         if (self.header.id_length > 0) {
