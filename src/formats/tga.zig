@@ -244,13 +244,13 @@ pub const TGA = struct {
         return ImageFormat.Tga;
     }
 
-    pub fn formatDetect(reader: ImageReader, seekStream: ImageSeekStream) !bool {
-        const endPos = try seekStream.getEndPos();
+    pub fn formatDetect(reader: ImageReader, seek_stream: ImageSeekStream) !bool {
+        const end_pos = try seek_stream.getEndPos();
 
-        if (@sizeOf(TGAFooter) < endPos) {
-            const footer_position = endPos - @sizeOf(TGAFooter);
+        if (@sizeOf(TGAFooter) < end_pos) {
+            const footer_position = end_pos - @sizeOf(TGAFooter);
 
-            try seekStream.seekTo(footer_position);
+            try seek_stream.seekTo(footer_position);
             const footer: TGAFooter = try utils.readStructLittle(reader, TGAFooter);
 
             if (footer.dot != '.') {
@@ -269,15 +269,15 @@ pub const TGA = struct {
         return false;
     }
 
-    pub fn readForImage(allocator: *Allocator, reader: ImageReader, seekStream: ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
+    pub fn readForImage(allocator: *Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
         var tga = Self{};
 
-        try tga.read(allocator, reader, seekStream, pixels);
+        try tga.read(allocator, reader, seek_stream, pixels);
 
-        var imageInfo = ImageInfo{};
-        imageInfo.width = tga.width();
-        imageInfo.height = tga.height();
-        return imageInfo;
+        var image_info = ImageInfo{};
+        image_info.width = tga.width();
+        image_info.height = tga.height();
+        return image_info;
     }
 
     pub fn writeForImage(allocator: *Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
@@ -315,16 +315,16 @@ pub const TGA = struct {
         return errors.ImageError.UnsupportedPixelFormat;
     }
 
-    pub fn read(self: *Self, allocator: *Allocator, reader: ImageReader, seekStream: ImageSeekStream, pixelsOpt: *?color.ColorStorage) !void {
+    pub fn read(self: *Self, allocator: *Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.ColorStorage) !void {
         // Read footage
-        const endPos = try seekStream.getEndPos();
+        const end_pos = try seek_stream.getEndPos();
 
-        if (@sizeOf(TGAFooter) > endPos) {
+        if (@sizeOf(TGAFooter) > end_pos) {
             return errors.ImageFormatInvalid;
         }
 
-        _ = endPos - @sizeOf(TGAFooter);
-        try seekStream.seekTo(endPos - @sizeOf(TGAFooter));
+        _ = end_pos - @sizeOf(TGAFooter);
+        try seek_stream.seekTo(end_pos - @sizeOf(TGAFooter));
         const footer: TGAFooter = try utils.readStructLittle(reader, TGAFooter);
 
         if (!std.mem.eql(u8, footer.signature[0..], TGASignature[0..])) {
@@ -334,12 +334,12 @@ pub const TGA = struct {
         // Read extension
         if (footer.extension_offset > 0) {
             const extension_pos = @intCast(u64, footer.extension_offset);
-            try seekStream.seekTo(extension_pos);
+            try seek_stream.seekTo(extension_pos);
             self.extension = try utils.readStructLittle(reader, TGAExtension);
         }
 
         // Read header
-        try seekStream.seekTo(0);
+        try seek_stream.seekTo(0);
         self.header = try utils.readStructLittle(reader, TGAHeader);
 
         // Read ID
@@ -356,9 +356,9 @@ pub const TGA = struct {
 
         const pixel_format = try self.pixelFormat();
 
-        pixelsOpt.* = try color.ColorStorage.init(allocator, pixel_format, self.width() * self.height());
+        pixels_opt.* = try color.ColorStorage.init(allocator, pixel_format, self.width() * self.height());
 
-        if (pixelsOpt.*) |pixels| {
+        if (pixels_opt.*) |pixels| {
             const is_compressed = self.header.image_type.run_length;
 
             var targa_stream: TargaStream = TargaStream{ .image = reader };
@@ -416,74 +416,74 @@ pub const TGA = struct {
     }
 
     fn readGrayscale8(self: *Self, data: []color.Grayscale8, stream: TargaStream.Reader) !void {
-        var dataIndex: usize = 0;
-        const dataEnd: usize = self.width() * self.height();
+        var data_index: usize = 0;
+        const data_end: usize = self.width() * self.height();
 
-        while (dataIndex < dataEnd) : (dataIndex += 1) {
-            data[dataIndex] = color.Grayscale8{ .value = try stream.readByte() };
+        while (data_index < data_end) : (data_index += 1) {
+            data[data_index] = color.Grayscale8{ .value = try stream.readByte() };
         }
     }
 
     fn readIndexed8(self: *Self, data: color.IndexedStorage8, stream: TargaStream.Reader) !void {
-        var dataIndex: usize = 0;
-        const dataEnd: usize = self.width() * self.height();
+        var data_index: usize = 0;
+        const data_end: usize = self.width() * self.height();
 
-        while (dataIndex < dataEnd) : (dataIndex += 1) {
-            data.indices[dataIndex] = try stream.readByte();
+        while (data_index < data_end) : (data_index += 1) {
+            data.indices[data_index] = try stream.readByte();
         }
     }
 
     fn readColorMap16(self: *Self, data: color.IndexedStorage8, stream: TargaStream.Reader) !void {
-        var dataIndex: usize = self.header.first_entry_index;
-        const dataEnd: usize = self.header.first_entry_index + self.header.color_map_length;
+        var data_index: usize = self.header.first_entry_index;
+        const data_end: usize = self.header.first_entry_index + self.header.color_map_length;
 
-        while (dataIndex < dataEnd) : (dataIndex += 1) {
+        while (data_index < data_end) : (data_index += 1) {
             const raw_color = try stream.readIntLittle(u16);
 
-            data.palette[dataIndex].R = color.toColorFloat(@intCast(u5, (raw_color >> (5 * 2)) & 0x1F));
-            data.palette[dataIndex].G = color.toColorFloat(@intCast(u5, (raw_color >> 5) & 0x1F));
-            data.palette[dataIndex].B = color.toColorFloat(@intCast(u5, raw_color & 0x1F));
-            data.palette[dataIndex].A = 1.0;
+            data.palette[data_index].R = color.toColorFloat(@intCast(u5, (raw_color >> (5 * 2)) & 0x1F));
+            data.palette[data_index].G = color.toColorFloat(@intCast(u5, (raw_color >> 5) & 0x1F));
+            data.palette[data_index].B = color.toColorFloat(@intCast(u5, raw_color & 0x1F));
+            data.palette[data_index].A = 1.0;
         }
     }
 
     fn readTruecolor16(self: *Self, data: []color.Rgb555, stream: TargaStream.Reader) !void {
-        var dataIndex: usize = 0;
-        const dataEnd: usize = self.width() * self.height();
+        var data_index: usize = 0;
+        const data_end: usize = self.width() * self.height();
 
-        while (dataIndex < dataEnd) : (dataIndex += 1) {
+        while (data_index < data_end) : (data_index += 1) {
             const raw_color = try stream.readIntLittle(u16);
 
-            data[dataIndex].R = @intCast(u5, (raw_color >> (5 * 2)) & 0x1F);
-            data[dataIndex].G = @intCast(u5, (raw_color >> 5) & 0x1F);
-            data[dataIndex].B = @intCast(u5, raw_color & 0x1F);
+            data[data_index].R = @intCast(u5, (raw_color >> (5 * 2)) & 0x1F);
+            data[data_index].G = @intCast(u5, (raw_color >> 5) & 0x1F);
+            data[data_index].B = @intCast(u5, raw_color & 0x1F);
         }
     }
 
     fn readTruecolor24(self: *Self, data: []color.Rgb24, stream: TargaStream.Reader) !void {
-        var dataIndex: usize = 0;
-        const dataEnd: usize = self.width() * self.height();
+        var data_index: usize = 0;
+        const data_end: usize = self.width() * self.height();
 
-        while (dataIndex < dataEnd) : (dataIndex += 1) {
-            data[dataIndex].B = try stream.readByte();
-            data[dataIndex].G = try stream.readByte();
-            data[dataIndex].R = try stream.readByte();
+        while (data_index < data_end) : (data_index += 1) {
+            data[data_index].B = try stream.readByte();
+            data[data_index].G = try stream.readByte();
+            data[data_index].R = try stream.readByte();
         }
     }
 
     fn readTruecolor32(self: *Self, data: []color.Rgba32, stream: TargaStream.Reader) !void {
-        var dataIndex: usize = 0;
-        const dataEnd: usize = self.width() * self.height();
+        var data_index: usize = 0;
+        const data_end: usize = self.width() * self.height();
 
-        while (dataIndex < dataEnd) : (dataIndex += 1) {
-            data[dataIndex].B = try stream.readByte();
-            data[dataIndex].G = try stream.readByte();
-            data[dataIndex].R = try stream.readByte();
-            data[dataIndex].A = try stream.readByte();
+        while (data_index < data_end) : (data_index += 1) {
+            data[data_index].B = try stream.readByte();
+            data[data_index].G = try stream.readByte();
+            data[data_index].R = try stream.readByte();
+            data[data_index].A = try stream.readByte();
 
             if (self.extension) |extended_info| {
                 if (extended_info.attributes != TGAAttributeType.UsefulAlphaChannel) {
-                    data[dataIndex].A = 0xFF;
+                    data[data_index].A = 0xFF;
                 }
             }
         }
