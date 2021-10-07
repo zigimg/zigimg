@@ -3,7 +3,7 @@ const std = @import("std");
 const io = std.io;
 const meta = std.meta;
 
-const native_endian = std.Target.current.cpu.arch.endian();
+const native_endian = @import("builtin").target.cpu.arch.endian();
 
 pub fn toMagicNumberNative(magic: []const u8) u32 {
     var result: u32 = 0;
