@@ -1,4 +1,5 @@
 pub const BMP = @import("bmp.zig").Bitmap;
+pub const JPEG = @import("jpeg.zig").JPEG;
 pub const PBM = @import("netpbm.zig").PBM;
 pub const PCX = @import("pcx.zig").PCX;
 pub const PGM = @import("netpbm.zig").PGM;
