@@ -39,7 +39,7 @@ pub const ImageInfo = struct {
 
 /// Format-independant image
 pub const Image = struct {
-    allocator: *Allocator = undefined,
+    allocator: Allocator = undefined,
     width: usize = 0,
     height: usize = 0,
     pixels: ?ColorStorage = null,
@@ -73,7 +73,7 @@ pub const Image = struct {
         break :blk result[0..index];
     };
 
-    pub fn init(allocator: *Allocator) Self {
+    pub fn init(allocator: Allocator) Self {
         return Self{
             .allocator = allocator,
         };
@@ -85,7 +85,7 @@ pub const Image = struct {
         }
     }
 
-    pub fn fromFilePath(allocator: *Allocator, file_path: []const u8) !Self {
+    pub fn fromFilePath(allocator: Allocator, file_path: []const u8) !Self {
         const cwd = std.fs.cwd();
 
         var resolvedPath = try std.fs.path.resolve(allocator, &[_][]const u8{file_path});
@@ -97,7 +97,7 @@ pub const Image = struct {
         return fromFile(allocator, &file);
     }
 
-    pub fn fromFile(allocator: *Allocator, file: *std.fs.File) !Self {
+    pub fn fromFile(allocator: Allocator, file: *std.fs.File) !Self {
         var result = init(allocator);
 
         var stream_source = io.StreamSource{ .file = file.* };
@@ -107,7 +107,7 @@ pub const Image = struct {
         return result;
     }
 
-    pub fn fromMemory(allocator: *Allocator, buffer: []const u8) !Self {
+    pub fn fromMemory(allocator: Allocator, buffer: []const u8) !Self {
         var result = init(allocator);
 
         var stream_source = io.StreamSource{ .const_buffer = io.fixedBufferStream(buffer) };
@@ -117,7 +117,7 @@ pub const Image = struct {
         return result;
     }
 
-    pub fn create(allocator: *Allocator, width: usize, height: usize, pixel_format: PixelFormat, image_format: ImageFormat) !Self {
+    pub fn create(allocator: Allocator, width: usize, height: usize, pixel_format: PixelFormat, image_format: ImageFormat) !Self {
         var result = Self{
             .allocator = allocator,
             .width = width,
@@ -203,7 +203,7 @@ pub const Image = struct {
         return color.ColorStorageIterator.initNull();
     }
 
-    fn internalRead(self: *Self, allocator: *Allocator, reader: ImageReader, seek_stream: ImageSeekStream) !void {
+    fn internalRead(self: *Self, allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream) !void {
         var format_interface = try findImageInterfaceFromStream(reader, seek_stream);
         self.image_format = format_interface.format();
 

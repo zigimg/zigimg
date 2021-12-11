@@ -131,7 +131,7 @@ pub const PCX = struct {
         return true;
     }
 
-    pub fn readForImage(allocator: *Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
+    pub fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
         var pcx = PCX{};
 
         try pcx.read(allocator, reader, seek_stream, pixels);
@@ -143,7 +143,7 @@ pub const PCX = struct {
         return image_info;
     }
 
-    pub fn writeForImage(allocator: *Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
+    pub fn writeForImage(allocator: Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
         _ = allocator;
         _ = write_stream;
         _ = seek_stream;
@@ -169,7 +169,7 @@ pub const PCX = struct {
         }
     }
 
-    pub fn read(self: *Self, allocator: *Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.ColorStorage) !void {
+    pub fn read(self: *Self, allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.ColorStorage) !void {
         self.header = try utils.readStructLittle(reader, PCXHeader);
         _ = try reader.read(PCXHeader.padding[0..]);
 

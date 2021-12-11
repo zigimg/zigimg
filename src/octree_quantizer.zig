@@ -13,7 +13,7 @@ pub const OctTreeQuantizer = struct {
     const NodeArrayList = ArrayList(*OctTreeQuantizerNode);
     const Self = @This();
 
-    pub fn init(allocator: *Allocator) Self {
+    pub fn init(allocator: Allocator) Self {
         var result = Self{
             .rootNode = OctTreeQuantizerNode{},
             .arenaAllocator = ArenaAllocator.init(allocator),
@@ -166,7 +166,7 @@ const OctTreeQuantizerNode = struct {
         return error.ColorNotFound;
     }
 
-    pub fn getLeafNodes(self: Self, allocator: *Allocator) anyerror!NodeArrayList {
+    pub fn getLeafNodes(self: Self, allocator: Allocator) anyerror!NodeArrayList {
         var leafNodes = NodeArrayList.init(allocator);
 
         for (self.children) |childOptional| {

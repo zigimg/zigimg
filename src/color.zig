@@ -343,14 +343,14 @@ pub fn IndexedStorage(comptime T: type) type {
 
         const Self = @This();
 
-        pub fn init(allocator: *Allocator, pixel_count: usize) !Self {
+        pub fn init(allocator: Allocator, pixel_count: usize) !Self {
             return Self{
                 .indices = try allocator.alloc(T, pixel_count),
                 .palette = try allocator.alloc(Color, PaletteSize),
             };
         }
 
-        pub fn deinit(self: Self, allocator: *Allocator) void {
+        pub fn deinit(self: Self, allocator: Allocator) void {
             allocator.free(self.palette);
             allocator.free(self.indices);
         }
@@ -433,7 +433,7 @@ pub const ColorStorage = union(PixelFormat) {
 
     const Self = @This();
 
-    pub fn init(allocator: *Allocator, format: PixelFormat, pixel_count: usize) !Self {
+    pub fn init(allocator: Allocator, format: PixelFormat, pixel_count: usize) !Self {
         return switch (format) {
             .Bpp1 => {
                 return Self{
@@ -543,7 +543,7 @@ pub const ColorStorage = union(PixelFormat) {
         };
     }
 
-    pub fn deinit(self: Self, allocator: *Allocator) void {
+    pub fn deinit(self: Self, allocator: Allocator) void {
         switch (self) {
             .Bpp1 => |data| data.deinit(allocator),
             .Bpp2 => |data| data.deinit(allocator),

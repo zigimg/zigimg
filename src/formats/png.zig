@@ -63,12 +63,12 @@ pub const IHDR = packed struct {
 
     const Self = @This();
 
-    pub fn deinit(self: Self, allocator: *Allocator) void {
+    pub fn deinit(self: Self, allocator: Allocator) void {
         _ = self;
         _ = allocator;
     }
 
-    pub fn read(self: *Self, allocator: *Allocator, read_buffer: []u8) !bool {
+    pub fn read(self: *Self, allocator: Allocator, read_buffer: []u8) !bool {
         _ = allocator;
         var stream = std.io.StreamSource{ .buffer = std.io.fixedBufferStream(read_buffer) };
         self.* = try utils.readStructBig(stream.reader(), Self);
@@ -84,11 +84,11 @@ pub const PLTE = struct {
 
     const Self = @This();
 
-    pub fn deinit(self: Self, allocator: *Allocator) void {
+    pub fn deinit(self: Self, allocator: Allocator) void {
         allocator.free(self.palette);
     }
 
-    pub fn read(self: *Self, header: IHDR, allocator: *Allocator, read_buffer: []u8) !bool {
+    pub fn read(self: *Self, header: IHDR, allocator: Allocator, read_buffer: []u8) !bool {
         _ = header;
 
         if (read_buffer.len % 3 != 0) {
@@ -121,11 +121,11 @@ pub const IDAT = struct {
 
     const Self = @This();
 
-    pub fn deinit(self: Self, allocator: *Allocator) void {
+    pub fn deinit(self: Self, allocator: Allocator) void {
         allocator.free(self.data);
     }
 
-    pub fn read(self: *Self, header: IHDR, allocator: *Allocator, read_buffer: []u8) !bool {
+    pub fn read(self: *Self, header: IHDR, allocator: Allocator, read_buffer: []u8) !bool {
         _ = header;
         _ = allocator;
         self.data = read_buffer;
@@ -139,12 +139,12 @@ pub const IEND = packed struct {
 
     const Self = @This();
 
-    pub fn deinit(self: Self, allocator: *Allocator) void {
+    pub fn deinit(self: Self, allocator: Allocator) void {
         _ = self;
         _ = allocator;
     }
 
-    pub fn read(self: *Self, header: IHDR, allocator: *Allocator, read_buffer: []u8) !bool {
+    pub fn read(self: *Self, header: IHDR, allocator: Allocator, read_buffer: []u8) !bool {
         _ = self;
         _ = header;
         _ = allocator;
@@ -161,12 +161,12 @@ pub const gAMA = packed struct {
 
     const Self = @This();
 
-    pub fn deinit(self: Self, allocator: *Allocator) void {
+    pub fn deinit(self: Self, allocator: Allocator) void {
         _ = self;
         _ = allocator;
     }
 
-    pub fn read(self: *Self, header: IHDR, allocator: *Allocator, read_buffer: []u8) !bool {
+    pub fn read(self: *Self, header: IHDR, allocator: Allocator, read_buffer: []u8) !bool {
         _ = header;
         _ = allocator;
         var stream = std.io.fixedBufferStream(read_buffer);
@@ -197,12 +197,12 @@ pub const bKGD = packed struct {
 
     const Self = @This();
 
-    pub fn deinit(self: Self, allocator: *Allocator) void {
+    pub fn deinit(self: Self, allocator: Allocator) void {
         _ = self;
         _ = allocator;
     }
 
-    pub fn read(self: *Self, header: IHDR, allocator: *Allocator, read_buffer: []u8) !bool {
+    pub fn read(self: *Self, header: IHDR, allocator: Allocator, read_buffer: []u8) !bool {
         _ = allocator;
         var stream = std.io.fixedBufferStream(read_buffer);
 
@@ -235,7 +235,7 @@ pub const ChunkVariant = union(enum) {
 
     const Self = @This();
 
-    pub fn deinit(self: Self, allocator: *Allocator) void {
+    pub fn deinit(self: Self, allocator: Allocator) void {
         switch (self) {
             .PLTE => |instance| instance.deinit(allocator),
             .IDAT => |instance| instance.deinit(allocator),
@@ -319,7 +319,7 @@ const PngFilter = struct {
 
     const Self = @This();
 
-    pub fn init(allocator: *Allocator, line_stride: usize, bit_depth: usize) !Self {
+    pub fn init(allocator: Allocator, line_stride: usize, bit_depth: usize) !Self {
         const context = try allocator.alloc(u8, line_stride * 2);
         std.mem.set(u8, context[0..], 0);
         return Self{
@@ -329,7 +329,7 @@ const PngFilter = struct {
         };
     }
 
-    pub fn deinit(self: Self, allocator: *Allocator) void {
+    pub fn deinit(self: Self, allocator: Allocator) void {
         allocator.free(self.context);
     }
 
@@ -444,7 +444,7 @@ const PngFilter = struct {
 pub const PNG = struct {
     header: IHDR = undefined,
     chunks: std.ArrayList(ChunkVariant) = undefined,
-    allocator: *Allocator = undefined,
+    allocator: Allocator = undefined,
 
     const DecompressionContext = struct {
         pixels: *color.ColorStorage = undefined,
@@ -457,7 +457,7 @@ pub const PNG = struct {
 
     const Self = @This();
 
-    pub fn init(allocator: *Allocator) Self {
+    pub fn init(allocator: Allocator) Self {
         return Self{
             .chunks = std.ArrayList(ChunkVariant).init(allocator),
             .allocator = allocator,
@@ -570,7 +570,7 @@ pub const PNG = struct {
         return null;
     }
 
-    pub fn readForImage(allocator: *Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.ColorStorage) !ImageInfo {
+    pub fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.ColorStorage) !ImageInfo {
         var png = PNG.init(allocator);
         defer png.deinit();
 
@@ -583,7 +583,7 @@ pub const PNG = struct {
         return image_info;
     }
 
-    pub fn writeForImage(allocator: *Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
+    pub fn writeForImage(allocator: Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
         _ = allocator;
         _ = write_stream;
         _ = seek_stream;
