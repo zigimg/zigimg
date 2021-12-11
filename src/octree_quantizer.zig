@@ -36,7 +36,7 @@ pub const OctTreeQuantizer = struct {
     }
 
     pub fn allocateNode(self: *Self) !*OctTreeQuantizerNode {
-        return try self.arenaAllocator.allocator.create(OctTreeQuantizerNode);
+        return try self.arenaAllocator.allocator().create(OctTreeQuantizerNode);
     }
 
     pub fn addLevelNode(self: *Self, level: i32, node: *OctTreeQuantizerNode) !void {
