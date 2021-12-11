@@ -105,7 +105,7 @@ comptime {
 
 const TargaRLEDecoder = struct {
     source_stream: ImageReader,
-    allocator: *Allocator,
+    allocator: Allocator,
     bytes_per_pixel: usize,
 
     state: State = .ReadHeader,
@@ -132,7 +132,7 @@ const TargaRLEDecoder = struct {
         packet_type: PacketType,
     };
 
-    pub fn init(allocator: *Allocator, source_stream: ImageReader, bytes_per_pixels: usize) !Self {
+    pub fn init(allocator: Allocator, source_stream: ImageReader, bytes_per_pixels: usize) !Self {
         var result = Self{
             .allocator = allocator,
             .source_stream = source_stream,
@@ -269,7 +269,7 @@ pub const TGA = struct {
         return false;
     }
 
-    pub fn readForImage(allocator: *Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
+    pub fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
         var tga = Self{};
 
         try tga.read(allocator, reader, seek_stream, pixels);
@@ -280,7 +280,7 @@ pub const TGA = struct {
         return image_info;
     }
 
-    pub fn writeForImage(allocator: *Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
+    pub fn writeForImage(allocator: Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
         _ = allocator;
         _ = write_stream;
         _ = seek_stream;
@@ -315,7 +315,7 @@ pub const TGA = struct {
         return errors.ImageError.UnsupportedPixelFormat;
     }
 
-    pub fn read(self: *Self, allocator: *Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.ColorStorage) !void {
+    pub fn read(self: *Self, allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.ColorStorage) !void {
         // Read footage
         const end_pos = try seek_stream.getEndPos();
 

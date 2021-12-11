@@ -171,7 +171,7 @@ pub const Bitmap = struct {
         return false;
     }
 
-    pub fn readForImage(allocator: *Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
+    pub fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
         var bmp = Self{};
 
         try bmp.read(allocator, reader, seek_stream, pixels);
@@ -182,7 +182,7 @@ pub const Bitmap = struct {
         return image_info;
     }
 
-    pub fn writeForImage(allocator: *Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
+    pub fn writeForImage(allocator: Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
         _ = allocator;
         _ = write_stream;
         _ = seek_stream;
@@ -226,7 +226,7 @@ pub const Bitmap = struct {
         };
     }
 
-    pub fn read(self: *Self, allocator: *Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.ColorStorage) !void {
+    pub fn read(self: *Self, allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.ColorStorage) !void {
         // Read file header
         self.file_header = try utils.readStructLittle(reader, BitmapFileHeader);
         if (!mem.eql(u8, self.file_header.magic_header[0..], BitmapMagicHeader[0..])) {
