@@ -2,11 +2,11 @@
 
 This is a work in progress library to create, process, read and write different image formats with [Zig](https://ziglang.org/) programming language.
 
-![License](https://img.shields.io/github/license/mlarouche/zigimg) ![Issue](https://img.shields.io/github/issues-raw/mlarouche/zigimg?style=flat) ![Commit](https://img.shields.io/github/last-commit/mlarouche/zigimg) ![CI](https://github.com/mlarouche/zigimg/workflows/CI/badge.svg)
+![License](https://img.shields.io/github/license/zigimg/zigimg) ![Issue](https://img.shields.io/github/issues-raw/zigimg/zigimg?style=flat) ![Commit](https://img.shields.io/github/last-commit/zigimg/zigimg) ![CI](https://github.com/zigimg/zigimg/workflows/CI/badge.svg)
 
 ## Install & Build
 
-This project assume current Zig master (0.7.0+a1fb10b76).
+This project assume current Zig master (0.10.0+).
 
 How to add to your project:
 1. Clone this repository or add as a submodule
@@ -36,6 +36,7 @@ zig build test
 | PGM           | ✔️ (Partial)  | ✔️ (Partial)  |
 | PNG           | ✔️            | ❌            |
 | PPM           | ✔️ (Partial)  | ❌            |
+| QOI           | ✔️            | ✔️            |
 | TGA           | ✔️            | ❌            |
 | TIFF          | ❌            | ❌            |
 | XBM           | ❌            | ❌            |
@@ -73,6 +74,10 @@ zig build test
 
 * Support 24-bit RGB (8-bit per channel)
 * Missing 48-bit RGB (16-bit per channel)
+
+### QOI - Quite OK Image Format
+
+* Imported from https://github.com/MasterQ32/zig-qoi with blessing of the author
 
 ### TGA - Truevision TGA format
 
