@@ -64,10 +64,7 @@ pub fn BufferedOStream(comptime buffer_size: usize, comptime WriterType: type, c
 }
 
 pub fn bufferedOStream(writer: anytype, seekable_stream: anytype) BufferedOStream(4096, @TypeOf(writer), @TypeOf(seekable_stream)) {
-    return .{
-        .unbuffered_writer = writer,
-        .underlying_stream = seekable_stream
-    };
+    return .{ .unbuffered_writer = writer, .underlying_stream = seekable_stream };
 }
 
 test "BufferedOStream" {
@@ -81,7 +78,10 @@ test "BufferedOStream" {
     try ostream.flush();
     try std.testing.expectEqual(@as(usize, 8), fbs.pos);
     try std.testing.expectEqual(@as(u64, 8), try seekable_stream.getPos());
-    try std.testing.expectEqualStrings("abcd1234", buffer[0..8],);
+    try std.testing.expectEqualStrings(
+        "abcd1234",
+        buffer[0..8],
+    );
 
     try seekable_stream.seekTo(1);
     try std.testing.expectEqual(@as(usize, 1), fbs.pos);

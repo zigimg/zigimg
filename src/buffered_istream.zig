@@ -48,7 +48,7 @@ pub fn BufferedIStream(comptime buffer_size: usize, comptime ReaderType: type, c
         }
 
         pub fn seekBy(self: *Self, amt: i64) SeekError!void {
-            if(amt != 0) {
+            if (amt != 0) {
                 self.fifo.discard(self.fifo.count);
             }
             try self.underlying_stream.seekBy(amt);
@@ -69,10 +69,7 @@ pub fn BufferedIStream(comptime buffer_size: usize, comptime ReaderType: type, c
 }
 
 pub fn bufferedIStream(reader: anytype, seekable_stream: anytype) BufferedIStream(4096, @TypeOf(reader), @TypeOf(seekable_stream)) {
-    return .{
-        .unbuffered_reader = reader,
-        .underlying_stream = seekable_stream
-    };
+    return .{ .unbuffered_reader = reader, .underlying_stream = seekable_stream };
 }
 
 test "BufferedIStream" {
@@ -101,9 +98,8 @@ test "BufferedIStream" {
     try std.testing.expectEqual(@as(usize, 11), fbs.pos);
     try std.testing.expectEqual(@as(u64, 11), try seekable_stream.getPos());
 
-
     try std.testing.expectError(error.EndOfStream, reader.readNoEof(buffer[0..]));
     try std.testing.expectEqual(@as(usize, 16), fbs.pos);
     try std.testing.expectEqual(@as(u64, 16), try seekable_stream.getPos());
-    try std.testing.expectEqualStrings(str[11..], buffer[0..5]);    
+    try std.testing.expectEqualStrings(str[11..], buffer[0..5]);
 }
