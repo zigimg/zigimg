@@ -9,7 +9,9 @@ const errors = @import("errors.zig");
 const io = std.io;
 const std = @import("std");
 const bufferedIStream = @import("buffered_istream.zig").bufferedIStream;
+const BufferedIStream = @import("buffered_istream.zig").BufferedIStream;
 const bufferedOStream = @import("buffered_ostream.zig").bufferedOStream;
+const BufferedOStream = @import("buffered_ostream.zig").BufferedOStream;
 
 pub const ImageFormat = enum {
     Bmp,
@@ -23,9 +25,11 @@ pub const ImageFormat = enum {
     Tga,
 };
 
-pub const ImageReader = io.StreamSource.Reader;
-pub const ImageSeekStream = io.StreamSource.SeekableStream;
-pub const ImageWriterStream = io.StreamSource.Writer;
+const IStream = BufferedIStream(4096, io.StreamSource.Reader, io.StreamSource.SeekableStream);
+const OStream = BufferedOStream(4096, io.StreamSource.Writer, io.StreamSource.SeekableStream);
+pub const ImageReader = IStream.Reader;
+pub const ImageSeekStream = IStream.SeekableStream;
+pub const ImageWriterStream = OStream.Writer;
 
 pub const ImageEncoderOptions = AllImageFormats.ImageEncoderOptions;
 

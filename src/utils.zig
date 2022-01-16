@@ -31,11 +31,11 @@ pub const toMagicNumberLittle = switch (native_endian) {
     builtin.Endian.Big => toMagicNumberForeign,
 };
 
-pub fn readStructNative(reader: io.StreamSource.Reader, comptime T: type) !T {
+pub fn readStructNative(reader: anytype, comptime T: type) !T {
     return try reader.readStruct(T);
 }
 
-pub fn readStructForeign(reader: io.StreamSource.Reader, comptime T: type) !T {
+pub fn readStructForeign(reader: anytype, comptime T: type) !T {
     comptime std.debug.assert(@typeInfo(T).Struct.layout != builtin.TypeInfo.ContainerLayout.Auto);
 
     var result: T = undefined;
