@@ -87,12 +87,7 @@ pub const Image = struct {
     }
 
     pub fn fromFilePath(allocator: Allocator, file_path: []const u8) !Self {
-        const cwd = std.fs.cwd();
-
-        var resolvedPath = try std.fs.path.resolve(allocator, &[_][]const u8{file_path});
-        defer allocator.free(resolvedPath);
-
-        var file = try cwd.openFile(resolvedPath, .{});
+        var file = try std.fs.cwd().openFile(file_path, .{});
         defer file.close();
 
         return fromFile(allocator, &file);
@@ -143,12 +138,7 @@ pub const Image = struct {
             return error.NoPixelData;
         }
 
-        const cwd = std.fs.cwd();
-
-        var resolved_path = try std.fs.path.resolve(self.allocator, &[_][]const u8{file_path});
-        defer self.allocator.free(resolved_path);
-
-        var file = try cwd.createFile(resolved_path, .{});
+        var file = try std.fs.cwd().createFile(file_path, .{});
         defer file.close();
 
         try self.writeToFile(&file, image_format, encoder_options);
