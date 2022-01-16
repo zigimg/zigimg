@@ -6,7 +6,8 @@ const FormatInterface = @import("../format_interface.zig").FormatInterface;
 const ImageFormat = image.ImageFormat;
 const ImageReader = image.ImageReader;
 const ImageInfo = image.ImageInfo;
-const ImageSeekStream = image.ImageSeekStream;
+const ImageReaderSeekStream = image.ImageReaderSeekStream;
+const ImageWriterSeekStream = image.ImageWriterSeekStream;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const color = @import("../color.zig");
 const errors = @import("../errors.zig");
@@ -485,7 +486,7 @@ pub const PNG = struct {
         return ImageFormat.Png;
     }
 
-    pub fn formatDetect(reader: ImageReader, seek_stream: ImageSeekStream) !bool {
+    pub fn formatDetect(reader: ImageReader, seek_stream: ImageReaderSeekStream) !bool {
         _ = seek_stream;
         var magic_number_buffer: [8]u8 = undefined;
         _ = try reader.read(magic_number_buffer[0..]);
@@ -570,7 +571,7 @@ pub const PNG = struct {
         return null;
     }
 
-    pub fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.ColorStorage) !ImageInfo {
+    pub fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageReaderSeekStream, pixels_opt: *?color.ColorStorage) !ImageInfo {
         var png = PNG.init(allocator);
         defer png.deinit();
 
@@ -583,7 +584,7 @@ pub const PNG = struct {
         return image_info;
     }
 
-    pub fn writeForImage(allocator: Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
+    pub fn writeForImage(allocator: Allocator, write_stream: image.ImageWriter, seek_stream: ImageWriterSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
         _ = allocator;
         _ = write_stream;
         _ = seek_stream;
@@ -591,7 +592,7 @@ pub const PNG = struct {
         _ = save_info;
     }
 
-    pub fn read(self: *Self, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.ColorStorage) !void {
+    pub fn read(self: *Self, reader: ImageReader, seek_stream: ImageReaderSeekStream, pixels_opt: *?color.ColorStorage) !void {
         _ = seek_stream;
         var magic_number_buffer: [8]u8 = undefined;
         _ = try reader.read(magic_number_buffer[0..]);

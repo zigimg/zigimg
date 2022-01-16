@@ -28,8 +28,9 @@ pub const ImageFormat = enum {
 const IStream = BufferedIStream(4096, io.StreamSource.Reader, io.StreamSource.SeekableStream);
 const OStream = BufferedOStream(4096, io.StreamSource.Writer, io.StreamSource.SeekableStream);
 pub const ImageReader = IStream.Reader;
-pub const ImageSeekStream = IStream.SeekableStream;
-pub const ImageWriterStream = OStream.Writer;
+pub const ImageReaderSeekStream = IStream.SeekableStream;
+pub const ImageWriter = OStream.Writer;
+pub const ImageWriterSeekStream = OStream.SeekableStream;
 
 pub const ImageEncoderOptions = AllImageFormats.ImageEncoderOptions;
 
@@ -108,7 +109,10 @@ pub const Image = struct {
         var result = init(allocator);
 
         var stream_source = io.StreamSource{ .file = file.* };
-        var buffered = bufferedIStream(stream_source.reader(), stream_source.seekableStream());
+        var buffered = IStream{
+            .unbuffered_reader = stream_source.reader(),
+            .underlying_stream = stream_source.seekableStream()
+        };
 
         try result.internalRead(allocator, buffered.reader(), buffered.seekableStream());
 
@@ -175,12 +179,16 @@ pub const Image = struct {
         var format_interface = try findImageInterfaceFromImageFormat(image_format);
 
         var stream_source = io.StreamSource{ .file = file.* };
-        var buffered = bufferedOStream(stream_source.writer(), stream_source.seekableStream());
-        defer buffered.flush();
+        var buffered = OStream{
+            .unbuffered_writer = stream_source.writer(),
+            .underlying_stream = stream_source.seekableStream()
+        };
 
         if (self.pixels) |pixels| {
             try format_interface.writeForImage(self.allocator, buffered.writer(), buffered.seekableStream(), pixels, image_save_info);
         }
+
+        try buffered.flush();
     }
 
     pub fn writeToMemory(self: Self, write_buffer: []u8, image_format: ImageFormat, encoder_options: ImageEncoderOptions) ![]u8 {
@@ -213,7 +221,7 @@ pub const Image = struct {
         return color.ColorStorageIterator.initNull();
     }
 
-    fn internalRead(self: *Self, allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream) !void {
+    fn internalRead(self: *Self, allocator: Allocator, reader: ImageReader, seek_stream: ImageReaderSeekStream) !void {
         var format_interface = try findImageInterfaceFromStream(reader, seek_stream);
         self.image_format = format_interface.format();
 
@@ -225,7 +233,7 @@ pub const Image = struct {
         self.height = image_info.height;
     }
 
-    fn findImageInterfaceFromStream(reader: ImageReader, seek_stream: ImageSeekStream) !FormatInterface {
+    fn findImageInterfaceFromStream(reader: ImageReader, seek_stream: ImageReaderSeekStream) !FormatInterface {
         for (all_interface_funcs) |intefaceFn| {
             const formatInterface = intefaceFn();
 

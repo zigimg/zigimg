@@ -5,7 +5,8 @@ const FormatInterface = @import("../format_interface.zig").FormatInterface;
 const ImageFormat = image.ImageFormat;
 const ImageReader = image.ImageReader;
 const ImageInfo = image.ImageInfo;
-const ImageSeekStream = image.ImageSeekStream;
+const ImageReaderSeekStream = image.ImageReaderSeekStream;
+const ImageWriterSeekStream = image.ImageWriterSeekStream;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const color = @import("../color.zig");
 const errors = @import("../errors.zig");
@@ -115,7 +116,7 @@ pub const PCX = struct {
         return ImageFormat.Pcx;
     }
 
-    pub fn formatDetect(reader: ImageReader, seek_stream: ImageSeekStream) !bool {
+    pub fn formatDetect(reader: ImageReader, seek_stream: ImageReaderSeekStream) !bool {
         _ = seek_stream;
         var magic_number_bufffer: [2]u8 = undefined;
         _ = try reader.read(magic_number_bufffer[0..]);
@@ -131,7 +132,7 @@ pub const PCX = struct {
         return true;
     }
 
-    pub fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
+    pub fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageReaderSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
         var pcx = PCX{};
 
         try pcx.read(allocator, reader, seek_stream, pixels);
@@ -143,7 +144,7 @@ pub const PCX = struct {
         return image_info;
     }
 
-    pub fn writeForImage(allocator: Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
+    pub fn writeForImage(allocator: Allocator, write_stream: image.ImageWriter, seek_stream: ImageWriterSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
         _ = allocator;
         _ = write_stream;
         _ = seek_stream;
@@ -169,7 +170,7 @@ pub const PCX = struct {
         }
     }
 
-    pub fn read(self: *Self, allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.ColorStorage) !void {
+    pub fn read(self: *Self, allocator: Allocator, reader: ImageReader, seek_stream: ImageReaderSeekStream, pixels_opt: *?color.ColorStorage) !void {
         self.header = try utils.readStructLittle(reader, PCXHeader);
         _ = try reader.read(PCXHeader.padding[0..]);
 

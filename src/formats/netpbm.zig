@@ -5,7 +5,8 @@ const FormatInterface = @import("../format_interface.zig").FormatInterface;
 const ImageFormat = image.ImageFormat;
 const ImageReader = image.ImageReader;
 const ImageInfo = image.ImageInfo;
-const ImageSeekStream = image.ImageSeekStream;
+const ImageReaderSeekStream = image.ImageReaderSeekStream;
+const ImageWriterSeekStream = image.ImageWriterSeekStream;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const color = @import("../color.zig");
 const errors = @import("../errors.zig");
@@ -259,7 +260,7 @@ fn Netpbm(comptime image_format: ImageFormat, comptime header_numbers: []const u
             return image_format;
         }
 
-        pub fn formatDetect(reader: ImageReader, seek_stream: ImageSeekStream) !bool {
+        pub fn formatDetect(reader: ImageReader, seek_stream: ImageReaderSeekStream) !bool {
             _ = seek_stream;
 
             var magic_number_buffer: [2]u8 = undefined;
@@ -281,7 +282,7 @@ fn Netpbm(comptime image_format: ImageFormat, comptime header_numbers: []const u
             return found;
         }
 
-        pub fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
+        pub fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageReaderSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
             var netpbm_file = Self{};
 
             try netpbm_file.read(allocator, reader, seek_stream, pixels);
@@ -293,7 +294,7 @@ fn Netpbm(comptime image_format: ImageFormat, comptime header_numbers: []const u
             return image_info;
         }
 
-        pub fn writeForImage(allocator: Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
+        pub fn writeForImage(allocator: Allocator, write_stream: image.ImageWriter, seek_stream: ImageWriterSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
             _ = allocator;
             var netpbm_file = Self{};
             netpbm_file.header.binary = switch (save_info.encoder_options) {
@@ -332,7 +333,7 @@ fn Netpbm(comptime image_format: ImageFormat, comptime header_numbers: []const u
             };
         }
 
-        pub fn read(self: *Self, allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.ColorStorage) !void {
+        pub fn read(self: *Self, allocator: Allocator, reader: ImageReader, seek_stream: ImageReaderSeekStream, pixels_opt: *?color.ColorStorage) !void {
             _ = seek_stream;
             self.header = try parseHeader(reader);
 
@@ -367,7 +368,7 @@ fn Netpbm(comptime image_format: ImageFormat, comptime header_numbers: []const u
             }
         }
 
-        pub fn write(self: *Self, write_stream: image.ImageWriterStream, seek_stream: image.ImageSeekStream, pixels: color.ColorStorage) !void {
+        pub fn write(self: *Self, write_stream: image.ImageWriter, seek_stream: image.ImageWriterSeekStream, pixels: color.ColorStorage) !void {
             _ = seek_stream;
             const image_type = if (self.header.binary) header_numbers[1] else header_numbers[0];
             try write_stream.print("P{c}\n", .{image_type});

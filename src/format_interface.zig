@@ -10,7 +10,7 @@ pub const FormatInterface = struct {
     writeForImage: WriteForImageFn,
 
     pub const FormatFn = fn () image.ImageFormat;
-    pub const FormatDetectFn = fn (reader: image.ImageReader, seekStream: image.ImageSeekStream) anyerror!bool;
-    pub const ReadForImageFn = fn (allocator: Allocator, reader: image.ImageReader, seekStream: image.ImageSeekStream, pixels: *?color.ColorStorage) anyerror!image.ImageInfo;
-    pub const WriteForImageFn = fn (allocator: Allocator, write_stream: image.ImageWriterStream, seek_stream: image.ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) anyerror!void;
+    pub const FormatDetectFn = fn (reader: image.ImageReader, seekStream: image.ImageReaderSeekStream) anyerror!bool;
+    pub const ReadForImageFn = fn (allocator: Allocator, reader: image.ImageReader, seekStream: image.ImageReaderSeekStream, pixels: *?color.ColorStorage) anyerror!image.ImageInfo;
+    pub const WriteForImageFn = fn (allocator: Allocator, write_stream: image.ImageWriter, seek_stream: image.ImageWriterSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) anyerror!void;
 };

@@ -3,7 +3,8 @@ const FormatInterface = @import("../format_interface.zig").FormatInterface;
 const ImageFormat = image.ImageFormat;
 const ImageReader = image.ImageReader;
 const ImageInfo = image.ImageInfo;
-const ImageSeekStream = image.ImageSeekStream;
+const ImageReaderSeekStream = image.ImageReaderSeekStream;
+const ImageWriterSeekStream = image.ImageWriterSeekStream;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const color = @import("../color.zig");
 const errors = @import("../errors.zig");
@@ -244,7 +245,7 @@ pub const TGA = struct {
         return ImageFormat.Tga;
     }
 
-    pub fn formatDetect(reader: ImageReader, seek_stream: ImageSeekStream) !bool {
+    pub fn formatDetect(reader: ImageReader, seek_stream: ImageReaderSeekStream) !bool {
         const end_pos = try seek_stream.getEndPos();
 
         if (@sizeOf(TGAFooter) < end_pos) {
@@ -269,7 +270,7 @@ pub const TGA = struct {
         return false;
     }
 
-    pub fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
+    pub fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageReaderSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
         var tga = Self{};
 
         try tga.read(allocator, reader, seek_stream, pixels);
@@ -280,7 +281,7 @@ pub const TGA = struct {
         return image_info;
     }
 
-    pub fn writeForImage(allocator: Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
+    pub fn writeForImage(allocator: Allocator, write_stream: image.ImageWriter, seek_stream: ImageWriterSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
         _ = allocator;
         _ = write_stream;
         _ = seek_stream;
@@ -315,7 +316,7 @@ pub const TGA = struct {
         return errors.ImageError.UnsupportedPixelFormat;
     }
 
-    pub fn read(self: *Self, allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.ColorStorage) !void {
+    pub fn read(self: *Self, allocator: Allocator, reader: ImageReader, seek_stream: ImageReaderSeekStream, pixels_opt: *?color.ColorStorage) !void {
         // Read footage
         const end_pos = try seek_stream.getEndPos();
 
