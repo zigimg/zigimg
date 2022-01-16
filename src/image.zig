@@ -8,6 +8,8 @@ const color = @import("color.zig");
 const errors = @import("errors.zig");
 const io = std.io;
 const std = @import("std");
+const bufferedIStream = @import("buffered_istream.zig").bufferedIStream;
+const bufferedOStream = @import("buffered_ostream.zig").bufferedOStream;
 
 pub const ImageFormat = enum {
     Bmp,
@@ -102,8 +104,9 @@ pub const Image = struct {
         var result = init(allocator);
 
         var stream_source = io.StreamSource{ .file = file.* };
+        var buffered = bufferedIStream(stream_source.reader(), stream_source.seekableStream());
 
-        try result.internalRead(allocator, stream_source.reader(), stream_source.seekableStream());
+        try result.internalRead(allocator, buffered.reader(), buffered.seekableStream());
 
         return result;
     }
@@ -168,9 +171,11 @@ pub const Image = struct {
         var format_interface = try findImageInterfaceFromImageFormat(image_format);
 
         var stream_source = io.StreamSource{ .file = file.* };
+        var buffered = bufferedOStream(stream_source.writer(), stream_source.seekableStream());
+        defer buffered.flush();
 
         if (self.pixels) |pixels| {
-            try format_interface.writeForImage(self.allocator, stream_source.writer(), stream_source.seekableStream(), pixels, image_save_info);
+            try format_interface.writeForImage(self.allocator, buffered.writer(), buffered.seekableStream(), pixels, image_save_info);
         }
     }
 
