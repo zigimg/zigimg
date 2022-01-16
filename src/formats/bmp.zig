@@ -1,5 +1,4 @@
 const Allocator = std.mem.Allocator;
-const File = std.fs.File;
 const FormatInterface = @import("../format_interface.zig").FormatInterface;
 const ImageFormat = image.ImageFormat;
 const ImageReader = image.ImageReader;
