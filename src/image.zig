@@ -11,6 +11,7 @@ const std = @import("std");
 
 pub const ImageFormat = enum {
     Bmp,
+    Jpeg,
     Pbm,
     Pcx,
     Pgm,
