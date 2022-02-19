@@ -55,20 +55,19 @@ pub const Image = struct {
         var result: [allFormatDecls.len]FormatInteraceFnType = undefined;
         var index: usize = 0;
         for (allFormatDecls) |decl| {
-            switch (decl.data) {
-                .Type => |entryType| {
-                    const entryTypeInfo = @typeInfo(entryType);
-                    if (entryTypeInfo == .Struct) {
-                        for (entryTypeInfo.Struct.decls) |structEntry| {
-                            if (std.mem.eql(u8, structEntry.name, "formatInterface")) {
-                                result[index] = @field(entryType, structEntry.name);
-                                index += 1;
-                                break;
-                            }
+            const decl_value = @field(AllImageFormats, decl.name);
+            const entry_type = @TypeOf(decl_value);
+            if (entry_type == type) {
+                const entryTypeInfo = @typeInfo(decl_value);
+                if (entryTypeInfo == .Struct) {
+                    for (entryTypeInfo.Struct.decls) |structEntry| {
+                        if (std.mem.eql(u8, structEntry.name, "formatInterface")) {
+                            result[index] = @field(decl_value, structEntry.name);
+                            index += 1;
+                            break;
                         }
                     }
-                },
-                else => {},
+                }
             }
         }
 
