@@ -145,6 +145,7 @@ pub const Image = struct {
         if (self.pixels) |pixels| {
             return switch (pixels) {
                 .Rgb24 => |data| return std.mem.sliceAsBytes(data),
+                .Bgr24 => |data| return std.mem.sliceAsBytes(data),
                 .Rgba32 => |data| return std.mem.sliceAsBytes(data),
                 .Bgra32 => |data| return std.mem.sliceAsBytes(data),
                 .Float32 => |data| return std.mem.sliceAsBytes(data),
@@ -159,10 +160,11 @@ pub const Image = struct {
     pub fn rowByteSize(self: Self) !usize {
         if (self.pixels) |pixels| {
             return switch (pixels) {
-                .Rgb24 => return image.width * 3,
-                .Rgba32 => return image.width * 4,
-                .Bgra32 => return image.width * 4,
-                .Float32 => return image.width * (4 * @sizeOf(f32)),
+                .Rgb24 => return self.width * 3,
+                .Bgr24 => return self.width * 3,
+                .Rgba32 => return self.width * 4,
+                .Bgra32 => return self.width * 4,
+                .Float32 => return self.width * (4 * @sizeOf(f32)),
                 else => return errors.ImageError.UnsupportedPixelFormat,
             };
         }
@@ -174,10 +176,11 @@ pub const Image = struct {
     pub fn imageByteSize(self: Self) !usize {
         if (self.pixels) |pixels| {
             return switch (pixels) {
-                .Rgb24 => return image.width * image.height * 3,
-                .Rgba32 => return image.width * image.height * 4,
-                .Bgra32 => return image.width * image.height * 4,
-                .Float32 => return image.width * image.height * (4 * @sizeOf(f32)),
+                .Rgb24 => return self.width * self.height * 3,
+                .Bgr24 => return self.width * self.height * 3,
+                .Rgba32 => return self.width * self.height * 4,
+                .Bgra32 => return self.width * self.height * 4,
+                .Float32 => return self.width * self.height * (4 * @sizeOf(f32)),
                 else => return errors.ImageError.UnsupportedPixelFormat,
             };
         }
