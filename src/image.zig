@@ -74,18 +74,21 @@ pub const Image = struct {
         break :blk result[0..index];
     };
 
+    /// Init an empty image with no pixel data
     pub fn init(allocator: Allocator) Self {
         return Self{
             .allocator = allocator,
         };
     }
 
+    /// Deinit the image
     pub fn deinit(self: Self) void {
         if (self.pixels) |pixels| {
             pixels.deinit(self.allocator);
         }
     }
 
+    /// Load an image from a file path
     pub fn fromFilePath(allocator: Allocator, file_path: []const u8) !Self {
         var file = try std.fs.cwd().openFile(file_path, .{});
         defer file.close();
@@ -93,6 +96,7 @@ pub const Image = struct {
         return fromFile(allocator, &file);
     }
 
+    /// Load an image from a standard library std.fs.File
     pub fn fromFile(allocator: Allocator, file: *std.fs.File) !Self {
         var result = init(allocator);
 
@@ -103,6 +107,7 @@ pub const Image = struct {
         return result;
     }
 
+    /// Load an image from a memory buffer
     pub fn fromMemory(allocator: Allocator, buffer: []const u8) !Self {
         var result = init(allocator);
 
@@ -113,6 +118,7 @@ pub const Image = struct {
         return result;
     }
 
+    /// Create a pixel surface from scratch
     pub fn create(allocator: Allocator, width: usize, height: usize, pixel_format: PixelFormat, image_format: ImageFormat) !Self {
         var result = Self{
             .allocator = allocator,
@@ -125,6 +131,7 @@ pub const Image = struct {
         return result;
     }
 
+    /// Return the pixel format of the image
     pub fn pixelFormat(self: Self) ?PixelFormat {
         if (self.pixels) |pixels| {
             return std.meta.activeTag(pixels);
@@ -133,6 +140,52 @@ pub const Image = struct {
         return null;
     }
 
+    /// Return the pixel data as a const byte slice
+    pub fn rawBytes(self: Self) ![]const u8 {
+        if (self.pixels) |pixels| {
+            return switch (pixels) {
+                .Rgb24 => |data| return std.mem.sliceAsBytes(data),
+                .Rgba32 => |data| return std.mem.sliceAsBytes(data),
+                .Bgra32 => |data| return std.mem.sliceAsBytes(data),
+                .Float32 => |data| return std.mem.sliceAsBytes(data),
+                else => return errors.ImageError.UnsupportedPixelFormat,
+            };
+        }
+
+        return errors.ImageError.AllocationFailed;
+    }
+
+    /// Return the byte size of a row in the image
+    pub fn rowByteSize(self: Self) !usize {
+        if (self.pixels) |pixels| {
+            return switch (pixels) {
+                .Rgb24 => return image.width * 3,
+                .Rgba32 => return image.width * 4,
+                .Bgra32 => return image.width * 4,
+                .Float32 => return image.width * (4 * @sizeOf(f32)),
+                else => return errors.ImageError.UnsupportedPixelFormat,
+            };
+        }
+
+        return errors.ImageError.AllocationFailed;
+    }
+
+    /// Return the byte size of the whole image
+    pub fn imageByteSize(self: Self) !usize {
+        if (self.pixels) |pixels| {
+            return switch (pixels) {
+                .Rgb24 => return image.width * image.height * 3,
+                .Rgba32 => return image.width * image.height * 4,
+                .Bgra32 => return image.width * image.height * 4,
+                .Float32 => return image.width * image.height * (4 * @sizeOf(f32)),
+                else => return errors.ImageError.UnsupportedPixelFormat,
+            };
+        }
+
+        return errors.ImageError.AllocationFailed;
+    }
+
+    /// Write the image to an image format to the specified path
     pub fn writeToFilePath(self: Self, file_path: []const u8, image_format: ImageFormat, encoder_options: ImageEncoderOptions) !void {
         if (self.pixels == null) {
             return error.NoPixelData;
@@ -144,6 +197,7 @@ pub const Image = struct {
         try self.writeToFile(&file, image_format, encoder_options);
     }
 
+    /// Write the image to an image format to the specified std.fs.File
     pub fn writeToFile(self: Self, file: *std.fs.File, image_format: ImageFormat, encoder_options: ImageEncoderOptions) !void {
         if (self.pixels == null) {
             return error.NoPixelData;
@@ -164,6 +218,8 @@ pub const Image = struct {
         }
     }
 
+    /// Write the image to an image format in a memory buffer. The memory buffer is not grown
+    /// for you so make sure you pass a large enough buffer. 
     pub fn writeToMemory(self: Self, write_buffer: []u8, image_format: ImageFormat, encoder_options: ImageEncoderOptions) ![]u8 {
         if (self.pixels == null) {
             return error.NoPixelData;
@@ -186,6 +242,7 @@ pub const Image = struct {
         return stream_source.buffer.getWritten();
     }
 
+    /// Iterate the pixel in pixel-format agnostic way. The iterator is read-only.
     pub fn iterator(self: Self) color.ColorStorageIterator {
         if (self.pixels) |*pixels| {
             return color.ColorStorageIterator.init(pixels);
