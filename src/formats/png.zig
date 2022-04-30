@@ -363,7 +363,7 @@ const PngFilter = struct {
                 while (i < input.len) : (i += 1) {
                     const a = @intToFloat(f64, self.getA(i, current_row, previous_row));
                     const b = @intToFloat(f64, self.getB(i, current_row, previous_row));
-                    const result: u8 = @intCast(u8, @floatToInt(u16, std.math.floor((a + b) / 2.0)) & 0xFF);
+                    const result: u8 = @intCast(u8, @floatToInt(u16, @floor((a + b) / 2.0)) & 0xFF);
 
                     current_row[i] = input[i] +% result;
                 }
