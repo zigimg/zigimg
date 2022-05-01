@@ -568,8 +568,8 @@ const IDCTMultipliers = blk: {
                     const C_u: f32 = if (u == 0) 1.0 / @sqrt(2.0) else 1.0;
                     const C_v: f32 = if (v == 0) 1.0 / @sqrt(2.0) else 1.0;
 
-                    const x_cosine = std.math.cos(((2 * @intToFloat(f32, x) + 1) * @intToFloat(f32, u) * std.math.pi) / 16.0);
-                    const y_cosine = std.math.cos(((2 * @intToFloat(f32, y) + 1) * @intToFloat(f32, v) * std.math.pi) / 16.0);
+                    const x_cosine = @cos(((2 * @intToFloat(f32, x) + 1) * @intToFloat(f32, u) * std.math.pi) / 16.0);
+                    const y_cosine = @cos(((2 * @intToFloat(f32, y) + 1) * @intToFloat(f32, v) * std.math.pi) / 16.0);
                     const uv_value = C_u * C_v * x_cosine * y_cosine;
                     multipliers[y][x][u][v] = uv_value;
                 }

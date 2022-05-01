@@ -5,7 +5,7 @@ const PixelFormat = @import("pixel_format.zig").PixelFormat;
 const TypeInfo = std.builtin.TypeInfo;
 
 pub inline fn toColorInt(comptime T: type, value: f32) T {
-    return math.max(math.minInt(T), math.min(math.maxInt(T), @floatToInt(T, math.round(value * @intToFloat(f32, math.maxInt(T))))));
+    return math.max(math.minInt(T), math.min(math.maxInt(T), @floatToInt(T, @round(value * @intToFloat(f32, math.maxInt(T))))));
 }
 
 pub inline fn toColorFloat(value: anytype) f32 {
