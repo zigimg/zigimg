@@ -11,7 +11,7 @@ const image = @import("../../src/image.zig");
 const helpers = @import("../helpers.zig");
 
 test "Read basn0g01 data properly" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/tests/fixtures/png/basn0g01.png");
+    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/png/basn0g01.png");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -44,7 +44,7 @@ test "Read basn0g01 data properly" {
 }
 
 test "Read basn0g02 data properly" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/tests/fixtures/png/basn0g02.png");
+    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/png/basn0g02.png");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -76,7 +76,7 @@ test "Read basn0g02 data properly" {
 }
 
 test "Read basn0g04 data properly" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/tests/fixtures/png/basn0g04.png");
+    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/png/basn0g04.png");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -111,7 +111,7 @@ test "Read basn0g04 data properly" {
 }
 
 test "Read basn0g08 data properly" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/tests/fixtures/png/basn0g08.png");
+    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/png/basn0g08.png");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -145,7 +145,7 @@ test "Read basn0g08 data properly" {
 }
 
 test "Read basn0g16 data properly" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/tests/fixtures/png/basn0g16.png");
+    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/png/basn0g16.png");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -173,7 +173,7 @@ test "Read basn0g16 data properly" {
 }
 
 test "Read basn2c08 data properly" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/tests/fixtures/png/basn2c08.png");
+    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/png/basn2c08.png");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -218,7 +218,7 @@ test "Read basn2c08 data properly" {
 }
 
 test "Read basn2c16 data properly" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/tests/fixtures/png/basn2c16.png");
+    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/png/basn2c16.png");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -255,7 +255,7 @@ test "Read basn2c16 data properly" {
 }
 
 test "Read basn3p01 data properly" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/tests/fixtures/png/basn3p01.png");
+    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/png/basn3p01.png");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -322,7 +322,7 @@ test "Read basn3p01 data properly" {
 }
 
 test "Read basn3p02 data properly" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/tests/fixtures/png/basn3p02.png");
+    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/png/basn3p02.png");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -380,7 +380,7 @@ test "Read basn3p02 data properly" {
 }
 
 test "Read basn3p04 data properly" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/tests/fixtures/png/basn3p04.png");
+    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/png/basn3p04.png");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -500,7 +500,7 @@ test "Read basn3p04 data properly" {
 }
 
 test "Read basn3p08 data properly" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/tests/fixtures/png/basn3p08.png");
+    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/png/basn3p08.png");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -564,7 +564,7 @@ test "Read basn3p08 data properly" {
 }
 
 test "Read basn4a08 data properly" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/tests/fixtures/png/basn4a08.png");
+    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/png/basn4a08.png");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -601,7 +601,7 @@ test "Read basn4a08 data properly" {
 }
 
 test "Read basn4a16 data properly" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/tests/fixtures/png/basn4a16.png");
+    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/png/basn4a16.png");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -641,7 +641,7 @@ test "Read basn4a16 data properly" {
 }
 
 test "Read basn6a08 data properly" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/tests/fixtures/png/basn6a08.png");
+    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/png/basn6a08.png");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -691,7 +691,7 @@ test "Read basn6a08 data properly" {
 }
 
 test "Read basn6a16 data properly" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/tests/fixtures/png/basn6a16.png");
+    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/png/basn6a16.png");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };

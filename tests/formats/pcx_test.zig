@@ -11,7 +11,7 @@ const image = @import("../../src/image.zig");
 const helpers = @import("../helpers.zig");
 
 test "PCX bpp1 (linear)" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/tests/fixtures/pcx/test-bpp1.pcx");
+    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/pcx/test-bpp1.pcx");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -58,7 +58,7 @@ test "PCX bpp1 (linear)" {
 }
 
 test "PCX bpp4 (linear)" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/tests/fixtures/pcx/test-bpp4.pcx");
+    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/pcx/test-bpp4.pcx");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -106,7 +106,7 @@ test "PCX bpp4 (linear)" {
 }
 
 test "PCX bpp8 (linear)" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/tests/fixtures/pcx/test-bpp8.pcx");
+    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/pcx/test-bpp8.pcx");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -156,7 +156,7 @@ test "PCX bpp8 (linear)" {
 }
 
 test "PCX bpp24 (planar)" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/tests/fixtures/pcx/test-bpp24.pcx");
+    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/pcx/test-bpp24.pcx");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };

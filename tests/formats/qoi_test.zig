@@ -10,11 +10,11 @@ const testing = std.testing;
 const image = @import("../../src/image.zig");
 const helpers = @import("../helpers.zig");
 
-const zero_raw_pixels = @embedFile("../../../test-suite/tests/fixtures/qoi/zero.raw");
-const zero_qoi = @embedFile("../../../test-suite/tests/fixtures/qoi/zero.qoi");
+const zero_raw_pixels = @embedFile("../../../test-suite/fixtures/qoi/zero.raw");
+const zero_qoi = @embedFile("../../../test-suite/fixtures/qoi/zero.qoi");
 
 test "Should error on non QOI images" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/tests/fixtures/bmp/simple_v4.bmp");
+    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/bmp/simple_v4.bmp");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -33,7 +33,7 @@ test "Should error on non QOI images" {
 }
 
 test "Read zero.qoi file" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/tests/fixtures/qoi/zero.qoi");
+    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/qoi/zero.qoi");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };

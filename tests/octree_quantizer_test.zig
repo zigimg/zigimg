@@ -31,7 +31,7 @@ test "Build the oct tree with 3 colors" {
 }
 
 test "Build a oct tree with 32-bit RGBA bitmap" {
-    const MemoryRGBABitmap = @embedFile("../../test-suite/tests/fixtures/bmp/windows_rgba_v5.bmp");
+    const MemoryRGBABitmap = @embedFile("../../test-suite/fixtures/bmp/windows_rgba_v5.bmp");
     var image = try Image.fromMemory(helpers.zigimg_test_allocator, MemoryRGBABitmap);
     defer image.deinit();
 

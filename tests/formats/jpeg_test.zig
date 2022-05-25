@@ -7,7 +7,7 @@ const errors = @import("../../src/errors.zig");
 const testing = std.testing;
 
 test "Should error on non JPEG images" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/tests/fixtures/bmp/simple_v4.bmp");
+    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/bmp/simple_v4.bmp");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -27,7 +27,7 @@ test "Should error on non JPEG images" {
 }
 
 test "Read JFIF header properly and decode simple Huffman stream" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/tests/fixtures/jpeg/huff_simple0.jpg");
+    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/jpeg/huff_simple0.jpg");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -57,7 +57,7 @@ test "Read JFIF header properly and decode simple Huffman stream" {
 }
 
 test "Read the tuba properly" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/tests/fixtures/jpeg/tuba.jpg");
+    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/jpeg/tuba.jpg");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
