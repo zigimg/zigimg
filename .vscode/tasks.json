@@ -4,9 +4,20 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "build",
+            "label": "run tests",
             "type": "shell",
-            "command": "zig build test"
+            "command": "zig build test",
+            "problemMatcher": ["$gcc"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "build tests",
+            "type": "shell",
+            "command": "zig build tests",
+            "problemMatcher": ["$gcc"]
         }
     ]
 }
