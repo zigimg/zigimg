@@ -17,4 +17,4 @@ jobs:
       - name: AST Verify
         run: zig fmt --check --ast-check src/
       - name: Run test suite
-        run: zig build check_semantics
+        run: zig build test
