@@ -178,35 +178,36 @@ test "Create Image Float32" {
 
 test "Should detect BMP properly" {
     const image_tests = &[_][]const u8{
-        "../test-suite/fixtures/bmp/simple_v4.bmp",
-        "../test-suite/fixtures/bmp/windows_rgba_v5.bmp",
+        helpers.fixtures_path ++ "bmp/simple_v4.bmp",
+        helpers.fixtures_path ++ "bmp/windows_rgba_v5.bmp",
     };
 
     for (image_tests) |image_path| {
-        const test_image = try Image.fromFilePath(helpers.zigimg_test_allocator, image_path);
+        const test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
         try testing.expect(test_image.image_format == .Bmp);
     }
 }
 
 test "Should detect Memory BMP properly" {
-    const MemoryRGBABitmap = @embedFile("../../test-suite/fixtures/bmp/windows_rgba_v5.bmp");
+    var MemoryRGBABitmap: [200 * 1024]u8 = undefined;
+    var buffer = try helpers.testReadFile(helpers.fixtures_path ++ "bmp/windows_rgba_v5.bmp", MemoryRGBABitmap[0..]);
 
-    const test_image = try Image.fromMemory(helpers.zigimg_test_allocator, MemoryRGBABitmap);
+    const test_image = try Image.fromMemory(helpers.zigimg_test_allocator, buffer);
     defer test_image.deinit();
     try testing.expect(test_image.image_format == .Bmp);
 }
 
 test "Should detect PCX properly" {
     const image_tests = &[_][]const u8{
-        "../test-suite/fixtures/pcx/test-bpp1.pcx",
-        "../test-suite/fixtures/pcx/test-bpp4.pcx",
-        "../test-suite/fixtures/pcx/test-bpp8.pcx",
-        "../test-suite/fixtures/pcx/test-bpp24.pcx",
+        helpers.fixtures_path ++ "pcx/test-bpp1.pcx",
+        helpers.fixtures_path ++ "pcx/test-bpp4.pcx",
+        helpers.fixtures_path ++ "pcx/test-bpp8.pcx",
+        helpers.fixtures_path ++ "pcx/test-bpp24.pcx",
     };
 
     for (image_tests) |image_path| {
-        const test_image = try Image.fromFilePath(helpers.zigimg_test_allocator, image_path);
+        const test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
         try testing.expect(test_image.image_format == .Pcx);
     }
@@ -214,12 +215,12 @@ test "Should detect PCX properly" {
 
 test "Should detect PBM properly" {
     const image_tests = &[_][]const u8{
-        "../test-suite/fixtures/netpbm/pbm_ascii.pbm",
-        "../test-suite/fixtures/netpbm/pbm_binary.pbm",
+        helpers.fixtures_path ++ "netpbm/pbm_ascii.pbm",
+        helpers.fixtures_path ++ "netpbm/pbm_binary.pbm",
     };
 
     for (image_tests) |image_path| {
-        const test_image = try Image.fromFilePath(helpers.zigimg_test_allocator, image_path);
+        const test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
         try testing.expect(test_image.image_format == .Pbm);
     }
@@ -227,14 +228,14 @@ test "Should detect PBM properly" {
 
 test "Should detect PGM properly" {
     const image_tests = &[_][]const u8{
-        "../test-suite/fixtures/netpbm/pgm_ascii_grayscale8.pgm",
-        "../test-suite/fixtures/netpbm/pgm_binary_grayscale8.pgm",
-        "../test-suite/fixtures/netpbm/pgm_ascii_grayscale16.pgm",
-        "../test-suite/fixtures/netpbm/pgm_binary_grayscale16.pgm",
+        helpers.fixtures_path ++ "netpbm/pgm_ascii_grayscale8.pgm",
+        helpers.fixtures_path ++ "netpbm/pgm_binary_grayscale8.pgm",
+        helpers.fixtures_path ++ "netpbm/pgm_ascii_grayscale16.pgm",
+        helpers.fixtures_path ++ "netpbm/pgm_binary_grayscale16.pgm",
     };
 
     for (image_tests) |image_path| {
-        const test_image = try Image.fromFilePath(helpers.zigimg_test_allocator, image_path);
+        const test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
         try testing.expect(test_image.image_format == .Pgm);
     }
@@ -242,12 +243,12 @@ test "Should detect PGM properly" {
 
 test "Should detect PPM properly" {
     const image_tests = &[_][]const u8{
-        "../test-suite/fixtures/netpbm/ppm_ascii_rgb24.ppm",
-        "../test-suite/fixtures/netpbm/ppm_binary_rgb24.ppm",
+        helpers.fixtures_path ++ "netpbm/ppm_ascii_rgb24.ppm",
+        helpers.fixtures_path ++ "netpbm/ppm_binary_rgb24.ppm",
     };
 
     for (image_tests) |image_path| {
-        const test_image = try Image.fromFilePath(helpers.zigimg_test_allocator, image_path);
+        const test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
         try testing.expect(test_image.image_format == .Ppm);
     }
@@ -255,12 +256,12 @@ test "Should detect PPM properly" {
 
 test "Should detect PNG properly" {
     const image_tests = &[_][]const u8{
-        "../test-suite/fixtures/png/basn0g01.png",
-        "../test-suite/fixtures/png/basi0g01.png",
+        helpers.fixtures_path ++ "png/basn0g01.png",
+        helpers.fixtures_path ++ "png/basi0g01.png",
     };
 
     for (image_tests) |image_path| {
-        const test_image = try Image.fromFilePath(helpers.zigimg_test_allocator, image_path);
+        const test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
         try testing.expect(test_image.image_format == .Png);
     }
@@ -268,28 +269,28 @@ test "Should detect PNG properly" {
 
 test "Should detect TGA properly" {
     const image_tests = &[_][]const u8{
-        "../test-suite/fixtures/tga/cbw8.tga",
-        "../test-suite/fixtures/tga/ccm8.tga",
-        "../test-suite/fixtures/tga/ctc24.tga",
-        "../test-suite/fixtures/tga/ubw8.tga",
-        "../test-suite/fixtures/tga/ucm8.tga",
-        "../test-suite/fixtures/tga/utc16.tga",
-        "../test-suite/fixtures/tga/utc24.tga",
-        "../test-suite/fixtures/tga/utc32.tga",
+        helpers.fixtures_path ++ "tga/cbw8.tga",
+        helpers.fixtures_path ++ "tga/ccm8.tga",
+        helpers.fixtures_path ++ "tga/ctc24.tga",
+        helpers.fixtures_path ++ "tga/ubw8.tga",
+        helpers.fixtures_path ++ "tga/ucm8.tga",
+        helpers.fixtures_path ++ "tga/utc16.tga",
+        helpers.fixtures_path ++ "tga/utc24.tga",
+        helpers.fixtures_path ++ "tga/utc32.tga",
     };
 
     for (image_tests) |image_path| {
-        const test_image = try Image.fromFilePath(helpers.zigimg_test_allocator, image_path);
+        const test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
         try testing.expect(test_image.image_format == .Tga);
     }
 }
 
 test "Should detect QOI properly" {
-    const image_tests = &[_][]const u8{"../test-suite/fixtures/qoi/zero.qoi"};
+    const image_tests = &[_][]const u8{helpers.fixtures_path ++ "qoi/zero.qoi"};
 
     for (image_tests) |image_path| {
-        const test_image = try Image.fromFilePath(helpers.zigimg_test_allocator, image_path);
+        const test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
         try testing.expect(test_image.image_format == .Qoi);
     }
@@ -297,29 +298,24 @@ test "Should detect QOI properly" {
 
 test "Should detect JPEG properly" {
     const image_tests = &[_][]const u8{
-        "../test-suite/fixtures/jpeg/tuba.jpg",
-        "../test-suite/fixtures/jpeg/huff_simple0.jpg",
+        helpers.fixtures_path ++ "jpeg/tuba.jpg",
+        helpers.fixtures_path ++ "jpeg/huff_simple0.jpg",
     };
 
     for (image_tests) |image_path| {
-        const test_image = try Image.fromFilePath(helpers.zigimg_test_allocator, image_path);
+        const test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
         try testing.expect(test_image.image_format == .Jpeg);
     }
 }
 
-test "Should error on invalid path" {
-    var invalidPath = Image.fromFilePath(helpers.zigimg_test_allocator, "notapathdummy");
-    try helpers.expectError(invalidPath, error.FileNotFound);
-}
-
 test "Should error on invalid file" {
-    var invalidFile = Image.fromFilePath(helpers.zigimg_test_allocator, "tests/helpers.zig");
+    var invalidFile = helpers.testImageFromFile("tests/helpers.zig");
     try helpers.expectError(invalidFile, error.ImageFormatInvalid);
 }
 
 test "Should read a 24-bit bitmap" {
-    var test_image = try Image.fromFilePath(helpers.zigimg_test_allocator, "../test-suite/fixtures/bmp/simple_v4.bmp");
+    var test_image = try helpers.testImageFromFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
     defer test_image.deinit();
 
     try helpers.expectEq(test_image.width, 8);
@@ -371,7 +367,7 @@ test "Should read a 24-bit bitmap" {
 }
 
 test "Test Color iterator" {
-    var test_image = try Image.fromFilePath(helpers.zigimg_test_allocator, "../test-suite/fixtures/bmp/simple_v4.bmp");
+    var test_image = try helpers.testImageFromFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
     defer test_image.deinit();
 
     const expectedColors = [_]color.Color{
@@ -400,7 +396,7 @@ test "Test Color iterator" {
 }
 
 test "Should return a valid byte slice with rawByte()" {
-    var test_image = try Image.fromFilePath(helpers.zigimg_test_allocator, "../test-suite/fixtures/bmp/simple_v4.bmp");
+    var test_image = try helpers.testImageFromFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
     defer test_image.deinit();
 
     const slice = try test_image.rawBytes();
@@ -435,7 +431,7 @@ test "Should return a valid byte slice with rawByte()" {
 }
 
 test "Should return a valid row size with rowByteSize()" {
-    var test_image = try Image.fromFilePath(helpers.zigimg_test_allocator, "../test-suite/fixtures/bmp/windows_rgba_v5.bmp");
+    var test_image = try helpers.testImageFromFile(helpers.fixtures_path ++ "bmp/windows_rgba_v5.bmp");
     defer test_image.deinit();
 
     const row_size = try test_image.rowByteSize();
@@ -444,7 +440,7 @@ test "Should return a valid row size with rowByteSize()" {
 }
 
 test "Should return a valid byte size with imageByteSize()" {
-    var test_image = try Image.fromFilePath(helpers.zigimg_test_allocator, "../test-suite/fixtures/bmp/windows_rgba_v5.bmp");
+    var test_image = try helpers.testImageFromFile(helpers.fixtures_path ++ "bmp/windows_rgba_v5.bmp");
     defer test_image.deinit();
 
     const image_size = try test_image.imageByteSize();

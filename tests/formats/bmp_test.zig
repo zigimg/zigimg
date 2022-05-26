@@ -10,8 +10,6 @@ const testing = std.testing;
 const image = @import("../../src/image.zig");
 const helpers = @import("../helpers.zig");
 
-const MemoryRGBABitmap = @embedFile("../../../test-suite/fixtures/bmp/windows_rgba_v5.bmp");
-
 fn verifyBitmapRGBAV5(the_bitmap: bmp.Bitmap, pixels_opt: ?color.ColorStorage) !void {
     try helpers.expectEq(the_bitmap.file_header.size, 153738);
     try helpers.expectEq(the_bitmap.file_header.reserved, 0);
@@ -99,7 +97,7 @@ fn verifyBitmapRGBAV5(the_bitmap: bmp.Bitmap, pixels_opt: ?color.ColorStorage) !
 }
 
 test "Read simple version 4 24-bit RGB bitmap" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/bmp/simple_v4.bmp");
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
     defer file.close();
 
     var the_bitmap = bmp.Bitmap{};
@@ -166,7 +164,7 @@ test "Read simple version 4 24-bit RGB bitmap" {
 }
 
 test "Read a valid version 5 RGBA bitmap from file" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/bmp/windows_rgba_v5.bmp");
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "bmp/windows_rgba_v5.bmp");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -186,7 +184,9 @@ test "Read a valid version 5 RGBA bitmap from file" {
 }
 
 test "Read a valid version 5 RGBA bitmap from memory" {
-    var stream_source = std.io.StreamSource{ .const_buffer = std.io.fixedBufferStream(MemoryRGBABitmap) };
+    var MemoryRGBABitmap: [200 * 1024]u8 = undefined;
+    var buffer: []const u8 = try helpers.testReadFile(helpers.fixtures_path ++ "bmp/windows_rgba_v5.bmp", MemoryRGBABitmap[0..]);
+    var stream_source = std.io.StreamSource{ .const_buffer = std.io.fixedBufferStream(buffer) };
 
     var the_bitmap = bmp.Bitmap{};
 
@@ -203,7 +203,7 @@ test "Read a valid version 5 RGBA bitmap from memory" {
 }
 
 test "Should error when reading an invalid file" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/bmp/notbmp.png");
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "bmp/notbmp.png");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };

@@ -1,7 +1,9 @@
 const std = @import("std");
 const testing = std.testing;
+const Image = @import("../src/image.zig").Image;
 
 pub const zigimg_test_allocator = std.testing.allocator;
+pub const fixtures_path = "../test-suite/fixtures/";
 
 pub const TestInput = struct {
     x: u32 = 0,
@@ -21,11 +23,17 @@ pub fn expectError(actual: anytype, expected: anyerror) !void {
     try testing.expectError(expected, actual);
 }
 
-pub fn testOpenFile(allocator: std.mem.Allocator, file_path: []const u8) !std.fs.File {
-    const cwd = std.fs.cwd();
+pub fn testOpenFile(file_path: []const u8) !std.fs.File {
+    return std.fs.cwd().openFile(file_path, .{}) catch |err|
+        if (err == error.FileNotFound) return error.SkipZigTest else return err;
+}
 
-    var resolved_path = try std.fs.path.resolve(allocator, &[_][]const u8{file_path});
-    defer allocator.free(resolved_path);
+pub fn testImageFromFile(image_path: []const u8) !Image {
+    return Image.fromFilePath(zigimg_test_allocator, image_path) catch |err|
+        if (err == error.FileNotFound) return error.SkipZigTest else return err;
+}
 
-    return cwd.openFile(resolved_path, .{});
+pub fn testReadFile(file_path: []const u8, buffer: []u8) ![]u8 {
+    return std.fs.cwd().readFile(file_path, buffer) catch |err|
+        if (err == error.FileNotFound) return error.SkipZigTest else return err;
 }

@@ -11,7 +11,7 @@ const image = @import("../../src/image.zig");
 const helpers = @import("../helpers.zig");
 
 test "Load ASCII PBM image" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/netpbm/pbm_ascii.pbm");
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "netpbm/pbm_ascii.pbm");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -43,7 +43,7 @@ test "Load ASCII PBM image" {
 }
 
 test "Load binary PBM image" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/netpbm/pbm_binary.pbm");
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "netpbm/pbm_binary.pbm");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -75,7 +75,7 @@ test "Load binary PBM image" {
 }
 
 test "Load ASCII PGM 8-bit grayscale image" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/netpbm/pgm_ascii_grayscale8.pgm");
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "netpbm/pgm_ascii_grayscale8.pgm");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -107,7 +107,7 @@ test "Load ASCII PGM 8-bit grayscale image" {
 }
 
 test "Load Binary PGM 8-bit grayscale image" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/netpbm/pgm_binary_grayscale8.pgm");
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "netpbm/pgm_binary_grayscale8.pgm");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -139,7 +139,7 @@ test "Load Binary PGM 8-bit grayscale image" {
 }
 
 test "Load ASCII PGM 16-bit grayscale image" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/netpbm/pgm_ascii_grayscale16.pgm");
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "netpbm/pgm_ascii_grayscale16.pgm");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -171,7 +171,7 @@ test "Load ASCII PGM 16-bit grayscale image" {
 }
 
 test "Load Binary PGM 16-bit grayscale image" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/netpbm/pgm_binary_grayscale16.pgm");
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "netpbm/pgm_binary_grayscale16.pgm");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -203,7 +203,7 @@ test "Load Binary PGM 16-bit grayscale image" {
 }
 
 test "Load ASCII PPM image" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/netpbm/ppm_ascii_rgb24.ppm");
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "netpbm/ppm_ascii_rgb24.ppm");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -251,7 +251,7 @@ test "Load ASCII PPM image" {
 }
 
 test "Load binary PPM image" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/netpbm/ppm_binary_rgb24.ppm");
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "netpbm/ppm_binary_rgb24.ppm");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };

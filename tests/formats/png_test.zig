@@ -11,7 +11,7 @@ const image = @import("../../src/image.zig");
 const helpers = @import("../helpers.zig");
 
 test "Should error on non PNG images" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/bmp/simple_v4.bmp");
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -31,7 +31,7 @@ test "Should error on non PNG images" {
 }
 
 test "Read PNG header properly" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/png/basn0g01.png");
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "png/basn0g01.png");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -64,7 +64,7 @@ test "Read PNG header properly" {
 }
 
 test "Read gAMA chunk properly" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/png/basn0g01.png");
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "png/basn0g01.png");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };

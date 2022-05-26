@@ -11,7 +11,7 @@ const image = @import("../../src/image.zig");
 const helpers = @import("../helpers.zig");
 
 test "Read leroycep1 properly" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/png/leroycep1.png");
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "png/leroycep1.png");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -69,7 +69,7 @@ test "Read leroycep1 properly" {
 }
 
 test "Read leroycep2 properly" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/png/leroycep2.png");
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "png/leroycep2.png");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -129,7 +129,7 @@ test "Read leroycep2 properly" {
 }
 
 test "Read leroycep3 properly" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/png/leroycep3.png");
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "png/leroycep3.png");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -186,7 +186,7 @@ test "Read leroycep3 properly" {
 }
 
 test "Read leroycep4 properly" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/png/leroycep4.png");
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "png/leroycep4.png");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };

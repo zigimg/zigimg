@@ -11,7 +11,7 @@ const image = @import("../../src/image.zig");
 const helpers = @import("../helpers.zig");
 
 test "Should error on non TGA images" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/bmp/simple_v4.bmp");
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -30,7 +30,7 @@ test "Should error on non TGA images" {
 }
 
 test "Read ubw8 TGA file" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/tga/ubw8.tga");
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/ubw8.tga");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -76,7 +76,7 @@ test "Read ubw8 TGA file" {
 }
 
 test "Read ucm8 TGA file" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/tga/ucm8.tga");
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/ucm8.tga");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -130,7 +130,7 @@ test "Read ucm8 TGA file" {
 }
 
 test "Read utc16 TGA file" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/tga/utc16.tga");
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/utc16.tga");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -178,7 +178,7 @@ test "Read utc16 TGA file" {
 }
 
 test "Read utc24 TGA file" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/tga/utc24.tga");
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/utc24.tga");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -226,7 +226,7 @@ test "Read utc24 TGA file" {
 }
 
 test "Read utc32 TGA file" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/tga/utc32.tga");
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/utc32.tga");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -274,7 +274,7 @@ test "Read utc32 TGA file" {
 }
 
 test "Read cbw8 TGA file" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/tga/cbw8.tga");
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/cbw8.tga");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -320,7 +320,7 @@ test "Read cbw8 TGA file" {
 }
 
 test "Read ccm8 TGA file" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/tga/ccm8.tga");
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/ccm8.tga");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -374,7 +374,7 @@ test "Read ccm8 TGA file" {
 }
 
 test "Read ctc24 TGA file" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/tga/ctc24.tga");
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/ctc24.tga");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -422,7 +422,7 @@ test "Read ctc24 TGA file" {
 }
 
 test "Read matte-01 TGA file" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/tga/matte-01.tga");
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/matte-01.tga");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
@@ -478,7 +478,7 @@ test "Read matte-01 TGA file" {
 }
 
 test "Read font TGA file" {
-    const file = try helpers.testOpenFile(helpers.zigimg_test_allocator, "../test-suite/fixtures/tga/font.tga");
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/font.tga");
     defer file.close();
 
     var stream_source = std.io.StreamSource{ .file = file };
