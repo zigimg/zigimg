@@ -222,7 +222,7 @@ pub const Image = struct {
     }
 
     /// Write the image to an image format in a memory buffer. The memory buffer is not grown
-    /// for you so make sure you pass a large enough buffer. 
+    /// for you so make sure you pass a large enough buffer.
     pub fn writeToMemory(self: Self, write_buffer: []u8, image_format: ImageFormat, encoder_options: ImageEncoderOptions) ![]u8 {
         if (self.pixels == null) {
             return error.NoPixelData;
