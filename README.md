@@ -8,6 +8,8 @@ This is a work in progress library to create, process, read and write different 
 
 This project assume current Zig master (0.10.0+).
 
+### Use zigimg in your project
+
 How to add to your project:
 1. Clone this repository or add as a submodule
 1. Add to your `build.zig`
@@ -15,7 +17,12 @@ How to add to your project:
 exe.addPackagePath("zigimg", "zigimg/zigimg.zig");
 ```
 
+### Test suite
 To run the test suite, checkout the [test suite](https://github.com/zigimg/test-suite) and run
+
+1. Checkout zigimg
+1. Go back one folder and checkout the [test suite](https://github.com/zigimg/test-suite) 
+1. Run the tests with `zig build`
 ```
 zig build test
 ```
