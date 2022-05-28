@@ -64,11 +64,11 @@ pub const TGAHeader = packed struct {
 };
 
 pub const TGAAttributeType = enum(u8) {
-    NoAlpha = 0,
-    UndefinedAlphaIgnore = 1,
-    UndefinedAlphaRetained = 2,
-    UsefulAlphaChannel = 3,
-    PremultipledAlpha = 4,
+    no_alpha = 0,
+    undefined_alpha_ignore = 1,
+    undefined_alpha_retained = 2,
+    useful_alpha_channel = 3,
+    premultipled_alpha = 4,
 };
 
 pub const TGAExtension = packed struct {
@@ -86,7 +86,7 @@ pub const TGAExtension = packed struct {
     color_correction_offset: u32 = 0,
     postage_stamp_offset: u32 = 0,
     scanline_offset: u32 = 0,
-    attributes: TGAAttributeType = .NoAlpha,
+    attributes: TGAAttributeType = .no_alpha,
 };
 
 pub const TGAFooter = packed struct {
@@ -108,7 +108,7 @@ const TargaRLEDecoder = struct {
     allocator: Allocator,
     bytes_per_pixel: usize,
 
-    state: State = .ReadHeader,
+    state: State = .read_header,
     repeat_count: usize = 0,
     repeat_data: []u8 = undefined,
     data_stream: std.io.FixedBufferStream([]u8) = undefined,
@@ -118,14 +118,14 @@ const TargaRLEDecoder = struct {
     pub const ReadError = error{ InputOutput, BrokenPipe } || std.io.StreamSource.ReadError;
 
     const State = enum {
-        ReadHeader,
-        Repeated,
-        Raw,
+        read_header,
+        repeated,
+        raw,
     };
 
     const PacketType = enum(u1) {
-        Raw = 0,
-        Repeated = 1,
+        raw = 0,
+        repeated = 1,
     };
     const PacketHeader = packed struct {
         pixel_count: u7,
@@ -151,26 +151,26 @@ const TargaRLEDecoder = struct {
     pub fn read(self: *Self, dest: []u8) ReadError!usize {
         var read_count: usize = 0;
 
-        if (self.state == .ReadHeader) {
+        if (self.state == .read_header) {
             const packet_header = utils.readStructLittle(self.source_stream, PacketHeader) catch return ReadError.InputOutput;
 
-            if (packet_header.packet_type == .Repeated) {
-                self.state = .Repeated;
+            if (packet_header.packet_type == .repeated) {
+                self.state = .repeated;
 
                 self.repeat_count = @intCast(usize, packet_header.pixel_count) + 1;
 
                 _ = try self.source_stream.read(self.repeat_data);
 
                 self.data_stream.reset();
-            } else if (packet_header.packet_type == .Raw) {
-                self.state = .Raw;
+            } else if (packet_header.packet_type == .raw) {
+                self.state = .raw;
 
                 self.repeat_count = (@intCast(usize, packet_header.pixel_count) + 1) * self.bytes_per_pixel;
             }
         }
 
         switch (self.state) {
-            .Repeated => {
+            .repeated => {
                 _ = try self.data_stream.read(dest);
 
                 const end_pos = try self.data_stream.getEndPos();
@@ -182,7 +182,7 @@ const TargaRLEDecoder = struct {
 
                 read_count = dest.len;
             },
-            .Raw => {
+            .raw => {
                 const read_bytes = try self.source_stream.read(dest);
 
                 self.repeat_count -= read_bytes;
@@ -195,7 +195,7 @@ const TargaRLEDecoder = struct {
         }
 
         if (self.repeat_count == 0) {
-            self.state = .ReadHeader;
+            self.state = .read_header;
         }
 
         return read_count;
@@ -241,7 +241,7 @@ pub const TGA = struct {
     }
 
     pub fn format() ImageFormat {
-        return ImageFormat.Tga;
+        return ImageFormat.tga;
     }
 
     pub fn formatDetect(reader: ImageReader, seek_stream: ImageSeekStream) !bool {
@@ -299,15 +299,15 @@ pub const TGA = struct {
     pub fn pixelFormat(self: Self) !PixelFormat {
         if (self.header.image_type.indexed) {
             if (self.header.image_type.truecolor) {
-                return PixelFormat.Grayscale8;
+                return PixelFormat.grayscale8;
             }
 
-            return PixelFormat.Indexed8;
+            return PixelFormat.indexed8;
         } else if (self.header.image_type.truecolor) {
             switch (self.header.bit_per_pixel) {
-                16 => return PixelFormat.Rgb555,
-                24 => return PixelFormat.Rgb24,
-                32 => return PixelFormat.Rgba32,
+                16 => return PixelFormat.rgb555,
+                24 => return PixelFormat.rgb24,
+                32 => return PixelFormat.rgba32,
                 else => {},
             }
         }
@@ -380,14 +380,14 @@ pub const TGA = struct {
             }
 
             switch (pixel_format) {
-                .Grayscale8 => {
-                    try self.readGrayscale8(pixels.Grayscale8, targa_stream.reader());
+                .grayscale8 => {
+                    try self.readGrayscale8(pixels.grayscale8, targa_stream.reader());
                 },
-                .Indexed8 => {
+                .indexed8 => {
                     // Read color map
                     switch (self.header.color_map_bit_depth) {
                         15, 16 => {
-                            try self.readColorMap16(pixels.Indexed8, (TargaStream{ .image = reader }).reader());
+                            try self.readColorMap16(pixels.indexed8, (TargaStream{ .image = reader }).reader());
                         },
                         else => {
                             return errors.ImageError.UnsupportedPixelFormat;
@@ -395,16 +395,16 @@ pub const TGA = struct {
                     }
 
                     // Read indices
-                    try self.readIndexed8(pixels.Indexed8, targa_stream.reader());
+                    try self.readIndexed8(pixels.indexed8, targa_stream.reader());
                 },
-                .Rgb555 => {
-                    try self.readTruecolor16(pixels.Rgb555, targa_stream.reader());
+                .rgb555 => {
+                    try self.readTruecolor16(pixels.rgb555, targa_stream.reader());
                 },
-                .Rgb24 => {
-                    try self.readTruecolor24(pixels.Rgb24, targa_stream.reader());
+                .rgb24 => {
+                    try self.readTruecolor24(pixels.rgb24, targa_stream.reader());
                 },
-                .Rgba32 => {
-                    try self.readTruecolor32(pixels.Rgba32, targa_stream.reader());
+                .rgba32 => {
+                    try self.readTruecolor32(pixels.rgba32, targa_stream.reader());
                 },
                 else => {
                     return errors.ImageError.UnsupportedPixelFormat;
@@ -482,7 +482,7 @@ pub const TGA = struct {
             data[data_index].A = try stream.readByte();
 
             if (self.extension) |extended_info| {
-                if (extended_info.attributes != TGAAttributeType.UsefulAlphaChannel) {
+                if (extended_info.attributes != TGAAttributeType.useful_alpha_channel) {
                     data[data_index].A = 0xFF;
                 }
             }

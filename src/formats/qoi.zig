@@ -70,7 +70,7 @@ pub const QoiColor = extern struct {
 
 pub const Colorspace = enum(u8) {
     /// sRGB color, linear alpha
-    sRGB = 0,
+    srgb = 0,
 
     /// Every channel is linear
     linear = 1,
@@ -120,7 +120,7 @@ pub const QOI = struct {
     }
 
     pub fn format() ImageFormat {
-        return ImageFormat.Qoi;
+        return ImageFormat.qoi;
     }
 
     pub fn formatDetect(reader: ImageReader, seek_stream: ImageSeekStream) !bool {
@@ -151,8 +151,8 @@ pub const QOI = struct {
         qoi.header.width = @truncate(u32, save_info.width);
         qoi.header.height = @truncate(u32, save_info.height);
         qoi.header.format = switch (pixels) {
-            .Rgb24 => Format.rgb,
-            .Rgba32 => Format.rgba,
+            .rgb24 => Format.rgb,
+            .rgba32 => Format.rgba,
             else => return errors.ImageError.UnsupportedPixelFormat,
         };
         switch (save_info.encoder_options) {
@@ -160,7 +160,7 @@ pub const QOI = struct {
                 qoi.header.colorspace = qoi_encode_options.colorspace;
             },
             else => {
-                qoi.header.colorspace = .sRGB;
+                qoi.header.colorspace = .srgb;
             },
         }
 
@@ -177,8 +177,8 @@ pub const QOI = struct {
 
     pub fn pixelFormat(self: Self) !PixelFormat {
         return switch (self.header.format) {
-            .rgb => PixelFormat.Rgb24,
-            .rgba => PixelFormat.Rgba32,
+            .rgb => PixelFormat.rgb24,
+            .rgba => PixelFormat.rgba32,
         };
     }
 
@@ -262,10 +262,10 @@ pub const QOI = struct {
             while (count > 0) {
                 count -= 1;
                 switch (pixels_opt.*.?) {
-                    .Rgb24 => |data| {
+                    .rgb24 => |data| {
                         data[index] = new_color.toRgb24();
                     },
-                    .Rgba32 => |data| {
+                    .rgba32 => |data| {
                         data[index] = new_color.toRgba32();
                     },
                     else => {},
@@ -284,10 +284,10 @@ pub const QOI = struct {
         try write_stream.writeAll(&self.header.encode());
 
         switch (pixels) {
-            .Rgb24 => |data| {
+            .rgb24 => |data| {
                 try writeData(write_stream, data);
             },
-            .Rgba32 => |data| {
+            .rgba32 => |data| {
                 try writeData(write_stream, data);
             },
             else => {

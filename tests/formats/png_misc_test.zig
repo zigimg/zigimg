@@ -30,12 +30,12 @@ test "Read leroycep1 properly" {
 
     try helpers.expectEq(pngFile.header.width, 17);
     try helpers.expectEq(pngFile.header.height, 12);
-    try helpers.expectEq(pngFile.header.color_type, png.ColorType.Truecolor);
+    try helpers.expectEq(pngFile.header.color_type, png.ColorType.truecolor);
 
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Rgb24);
+        try testing.expect(pixels == PixelFormat.rgb24);
 
         const test_inputs = [_]helpers.TestInput{
             .{
@@ -63,7 +63,7 @@ test "Read leroycep1 properly" {
 
             const index = pngFile.header.width * input.y + input.x;
 
-            try helpers.expectEq(pixels.Rgb24[index].toColor().toIntegerColor8(), expected_color);
+            try helpers.expectEq(pixels.rgb24[index].toColor().toIntegerColor8(), expected_color);
         }
     }
 }
@@ -88,12 +88,12 @@ test "Read leroycep2 properly" {
 
     try helpers.expectEq(pngFile.header.width, 37);
     try helpers.expectEq(pngFile.header.height, 39);
-    try helpers.expectEq(pngFile.header.color_type, png.ColorType.TruecolorAlpha);
+    try helpers.expectEq(pngFile.header.color_type, png.ColorType.truecolor_alpha);
 
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Rgba32);
+        try testing.expect(pixels == PixelFormat.rgba32);
 
         const test_inputs = [_]helpers.TestInput{
             .{
@@ -123,7 +123,7 @@ test "Read leroycep2 properly" {
 
             const index = pngFile.header.width * input.y + input.x;
 
-            try helpers.expectEq(pixels.Rgba32[index].toColor().toIntegerColor8(), expected_color);
+            try helpers.expectEq(pixels.rgba32[index].toColor().toIntegerColor8(), expected_color);
         }
     }
 }
@@ -148,12 +148,12 @@ test "Read leroycep3 properly" {
 
     try helpers.expectEq(pngFile.header.width, 10);
     try helpers.expectEq(pngFile.header.height, 10);
-    try helpers.expectEq(pngFile.header.color_type, png.ColorType.Truecolor);
+    try helpers.expectEq(pngFile.header.color_type, png.ColorType.truecolor);
 
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Rgb24);
+        try testing.expect(pixels == PixelFormat.rgb24);
 
         const test_inputs = [_]helpers.TestInput{
             .{
@@ -180,7 +180,7 @@ test "Read leroycep3 properly" {
 
             const index = pngFile.header.width * input.y + input.x;
 
-            try helpers.expectEq(pixels.Rgb24[index].toColor().toIntegerColor8(), expected_color);
+            try helpers.expectEq(pixels.rgb24[index].toColor().toIntegerColor8(), expected_color);
         }
     }
 }
@@ -205,12 +205,12 @@ test "Read leroycep4 properly" {
 
     try helpers.expectEq(pngFile.header.width, 10);
     try helpers.expectEq(pngFile.header.height, 10);
-    try helpers.expectEq(pngFile.header.color_type, png.ColorType.Truecolor);
+    try helpers.expectEq(pngFile.header.color_type, png.ColorType.truecolor);
 
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Rgb24);
+        try testing.expect(pixels == PixelFormat.rgb24);
 
         const test_inputs = [_]helpers.TestInput{
             .{
@@ -243,7 +243,7 @@ test "Read leroycep4 properly" {
 
             const index = pngFile.header.width * input.y + input.x;
 
-            try helpers.expectEq(pixels.Rgb24[index].toColor().toIntegerColor8(), expected_color);
+            try helpers.expectEq(pixels.rgb24[index].toColor().toIntegerColor8(), expected_color);
         }
     }
 }

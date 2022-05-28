@@ -10,16 +10,16 @@ const io = std.io;
 const std = @import("std");
 
 pub const ImageFormat = enum {
-    Bmp,
-    Jpeg,
-    Pbm,
-    Pcx,
-    Pgm,
-    Png,
-    Ppm,
-    Qoi,
-    Raw,
-    Tga,
+    bmp,
+    jpg,
+    pbm,
+    pcx,
+    pgm,
+    png,
+    ppm,
+    qoi,
+    raw,
+    tga,
 };
 
 pub const ImageReader = io.StreamSource.Reader;
@@ -144,11 +144,11 @@ pub const Image = struct {
     pub fn rawBytes(self: Self) ![]const u8 {
         if (self.pixels) |pixels| {
             return switch (pixels) {
-                .Rgb24 => |data| return std.mem.sliceAsBytes(data),
-                .Bgr24 => |data| return std.mem.sliceAsBytes(data),
-                .Rgba32 => |data| return std.mem.sliceAsBytes(data),
-                .Bgra32 => |data| return std.mem.sliceAsBytes(data),
-                .Float32 => |data| return std.mem.sliceAsBytes(data),
+                .rgb24 => |data| return std.mem.sliceAsBytes(data),
+                .bgr24 => |data| return std.mem.sliceAsBytes(data),
+                .rgba32 => |data| return std.mem.sliceAsBytes(data),
+                .bgra32 => |data| return std.mem.sliceAsBytes(data),
+                .float32 => |data| return std.mem.sliceAsBytes(data),
                 else => return errors.ImageError.UnsupportedPixelFormat,
             };
         }
@@ -160,11 +160,11 @@ pub const Image = struct {
     pub fn rowByteSize(self: Self) !usize {
         if (self.pixels) |pixels| {
             return switch (pixels) {
-                .Rgb24 => return self.width * 3,
-                .Bgr24 => return self.width * 3,
-                .Rgba32 => return self.width * 4,
-                .Bgra32 => return self.width * 4,
-                .Float32 => return self.width * (4 * @sizeOf(f32)),
+                .rgb24 => return self.width * 3,
+                .bgr24 => return self.width * 3,
+                .rgba32 => return self.width * 4,
+                .bgra32 => return self.width * 4,
+                .float32 => return self.width * (4 * @sizeOf(f32)),
                 else => return errors.ImageError.UnsupportedPixelFormat,
             };
         }
@@ -176,11 +176,11 @@ pub const Image = struct {
     pub fn imageByteSize(self: Self) !usize {
         if (self.pixels) |pixels| {
             return switch (pixels) {
-                .Rgb24 => return self.width * self.height * 3,
-                .Bgr24 => return self.width * self.height * 3,
-                .Rgba32 => return self.width * self.height * 4,
-                .Bgra32 => return self.width * self.height * 4,
-                .Float32 => return self.width * self.height * (4 * @sizeOf(f32)),
+                .rgb24 => return self.width * self.height * 3,
+                .bgr24 => return self.width * self.height * 3,
+                .rgba32 => return self.width * self.height * 4,
+                .bgra32 => return self.width * self.height * 4,
+                .float32 => return self.width * self.height * (4 * @sizeOf(f32)),
                 else => return errors.ImageError.UnsupportedPixelFormat,
             };
         }
