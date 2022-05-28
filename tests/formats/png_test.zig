@@ -51,15 +51,15 @@ test "Read PNG header properly" {
     try helpers.expectEq(png_file.header.width, 32);
     try helpers.expectEq(png_file.header.height, 32);
     try helpers.expectEq(png_file.header.bit_depth, 1);
-    try testing.expect(png_file.header.color_type == .Grayscale);
+    try testing.expect(png_file.header.color_type == .grayscale);
     try helpers.expectEq(png_file.header.compression_method, 0);
     try helpers.expectEq(png_file.header.filter_method, 0);
-    try testing.expect(png_file.header.interlace_method == .Standard);
+    try testing.expect(png_file.header.interlace_method == .standard);
 
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == .Grayscale1);
+        try testing.expect(pixels == .grayscale1);
     }
 }
 

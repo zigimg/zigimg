@@ -112,7 +112,7 @@ pub const PCX = struct {
     }
 
     pub fn format() ImageFormat {
-        return ImageFormat.Pcx;
+        return ImageFormat.pcx;
     }
 
     pub fn formatDetect(reader: ImageReader, seek_stream: ImageSeekStream) !bool {
@@ -154,14 +154,14 @@ pub const PCX = struct {
     pub fn pixelFormat(self: Self) !PixelFormat {
         if (self.header.planes == 1) {
             switch (self.header.bpp) {
-                1 => return PixelFormat.Indexed1,
-                4 => return PixelFormat.Indexed4,
-                8 => return PixelFormat.Indexed8,
+                1 => return PixelFormat.indexed1,
+                4 => return PixelFormat.indexed4,
+                8 => return PixelFormat.indexed8,
                 else => return errors.ImageError.UnsupportedPixelFormat,
             }
         } else if (self.header.planes == 3) {
             switch (self.header.bpp) {
-                8 => return PixelFormat.Rgb24,
+                8 => return PixelFormat.rgb24,
                 else => return errors.ImageError.UnsupportedPixelFormat,
             }
         } else {
@@ -211,7 +211,7 @@ pub const PCX = struct {
                 while (offset < scanline_length and x < self.width) : (offset += 1) {
                     const byte = try decoder.readByte();
                     switch (pixels) {
-                        .Indexed1 => |storage| {
+                        .indexed1 => |storage| {
                             var i: usize = 0;
                             while (i < 8) : (i += 1) {
                                 if (x < self.width) {
@@ -220,7 +220,7 @@ pub const PCX = struct {
                                 }
                             }
                         },
-                        .Indexed4 => |storage| {
+                        .indexed4 => |storage| {
                             storage.indices[y_stride + x] = @truncate(u4, byte >> 4);
                             x += 1;
                             if (x < self.width) {
@@ -228,11 +228,11 @@ pub const PCX = struct {
                                 x += 1;
                             }
                         },
-                        .Indexed8 => |storage| {
+                        .indexed8 => |storage| {
                             storage.indices[y_stride + x] = byte;
                             x += 1;
                         },
-                        .Rgb24 => |storage| {
+                        .rgb24 => |storage| {
                             if (has_dummy_byte and byte == 0x00) {
                                 continue;
                             }
@@ -267,11 +267,11 @@ pub const PCX = struct {
 
             try decoder.finish();
 
-            if (pixel_format == .Indexed1 or pixel_format == .Indexed4 or pixel_format == .Indexed8) {
+            if (pixel_format == .indexed1 or pixel_format == .indexed4 or pixel_format == .indexed8) {
                 var pal = switch (pixels) {
-                    .Indexed1 => |*storage| storage.palette[0..],
-                    .Indexed4 => |*storage| storage.palette[0..],
-                    .Indexed8 => |*storage| storage.palette[0..],
+                    .indexed1 => |*storage| storage.palette[0..],
+                    .indexed4 => |*storage| storage.palette[0..],
+                    .indexed8 => |*storage| storage.palette[0..],
                     else => undefined,
                 };
 
@@ -283,7 +283,7 @@ pub const PCX = struct {
                     pal[i].A = 1.0;
                 }
 
-                if (pixels == .Indexed8) {
+                if (pixels == .indexed8) {
                     const end_pos = try seek_stream.getEndPos();
                     try seek_stream.seekTo(end_pos - 769);
 

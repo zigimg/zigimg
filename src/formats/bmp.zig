@@ -26,31 +26,31 @@ pub const BitmapFileHeader = packed struct {
 };
 
 pub const CompressionMethod = enum(u32) {
-    None = 0,
-    Rle8 = 1,
-    Rle4 = 2,
-    Bitfields = 3,
-    Jpeg = 4,
-    Png = 5,
-    AlphaBitFields = 6,
-    Cmyk = 11,
-    CmykRle8 = 12,
-    CmykRle4 = 13,
+    none = 0,
+    rle8 = 1,
+    rle4 = 2,
+    bitfields = 3,
+    jpg = 4,
+    png = 5,
+    alpha_bit_fields = 6,
+    cmyk = 11,
+    cmyk_rle8 = 12,
+    cmyk_rle4 = 13,
 };
 
 pub const BitmapColorSpace = enum(u32) {
-    CalibratedRgb = 0,
-    sRgb = utils.toMagicNumberBig("sRGB"),
-    WindowsColorSpace = utils.toMagicNumberBig("Win "),
-    ProfileLinked = utils.toMagicNumberBig("LINK"),
-    ProfileEmbedded = utils.toMagicNumberBig("MBED"),
+    calibrated_rgb = 0,
+    srgb = utils.toMagicNumberBig("sRGB"),
+    windows_color_space = utils.toMagicNumberBig("Win "),
+    profile_linked = utils.toMagicNumberBig("LINK"),
+    profile_embedded = utils.toMagicNumberBig("MBED"),
 };
 
 pub const BitmapIntent = enum(u32) {
-    Business = 1,
-    Graphics = 2,
-    Images = 4,
-    AbsoluteColorimetric = 8,
+    business = 1,
+    graphics = 2,
+    images = 4,
+    absolute_colorimetric = 8,
 };
 
 pub const CieXyz = packed struct {
@@ -71,7 +71,7 @@ pub const BitmapInfoHeaderWindows31 = packed struct {
     height: i32 = 0,
     color_plane: u16 = 0,
     bit_count: u16 = 0,
-    compression_method: CompressionMethod = CompressionMethod.None,
+    compression_method: CompressionMethod = CompressionMethod.none,
     image_raw_size: u32 = 0,
     horizontal_resolution: u32 = 0,
     vertical_resolution: u32 = 0,
@@ -87,7 +87,7 @@ pub const BitmapInfoHeaderV4 = packed struct {
     height: i32 = 0,
     color_plane: u16 = 0,
     bit_count: u16 = 0,
-    compression_method: CompressionMethod = CompressionMethod.None,
+    compression_method: CompressionMethod = CompressionMethod.none,
     image_raw_size: u32 = 0,
     horizontal_resolution: u32 = 0,
     vertical_resolution: u32 = 0,
@@ -97,7 +97,7 @@ pub const BitmapInfoHeaderV4 = packed struct {
     green_mask: u32 = 0,
     blue_mask: u32 = 0,
     alpha_mask: u32 = 0,
-    color_space: BitmapColorSpace = BitmapColorSpace.sRgb,
+    color_space: BitmapColorSpace = BitmapColorSpace.srgb,
     cie_end_points: CieXyzTriple = CieXyzTriple{},
     gamma_red: u32 = 0,
     gamma_green: u32 = 0,
@@ -112,7 +112,7 @@ pub const BitmapInfoHeaderV5 = packed struct {
     height: i32 = 0,
     color_plane: u16 = 0,
     bit_count: u16 = 0,
-    compression_method: CompressionMethod = CompressionMethod.None,
+    compression_method: CompressionMethod = CompressionMethod.none,
     image_raw_size: u32 = 0,
     horizontal_resolution: u32 = 0,
     vertical_resolution: u32 = 0,
@@ -122,12 +122,12 @@ pub const BitmapInfoHeaderV5 = packed struct {
     green_mask: u32 = 0,
     blue_mask: u32 = 0,
     alpha_mask: u32 = 0,
-    color_space: BitmapColorSpace = BitmapColorSpace.sRgb,
+    color_space: BitmapColorSpace = BitmapColorSpace.srgb,
     cie_end_points: CieXyzTriple = CieXyzTriple{},
     gamma_red: u32 = 0,
     gamma_green: u32 = 0,
     gamma_blue: u32 = 0,
-    intent: BitmapIntent = BitmapIntent.Graphics,
+    intent: BitmapIntent = BitmapIntent.graphics,
     profile_data: u32 = 0,
     profile_size: u32 = 0,
     reserved: u32 = 0,
@@ -136,9 +136,9 @@ pub const BitmapInfoHeaderV5 = packed struct {
 };
 
 pub const BitmapInfoHeader = union(enum) {
-    Windows31: BitmapInfoHeaderWindows31,
-    V4: BitmapInfoHeaderV4,
-    V5: BitmapInfoHeaderV5,
+    windows31: BitmapInfoHeaderWindows31,
+    v4: BitmapInfoHeaderV4,
+    v5: BitmapInfoHeaderV5,
 };
 
 pub const Bitmap = struct {
@@ -157,7 +157,7 @@ pub const Bitmap = struct {
     }
 
     pub fn format() ImageFormat {
-        return ImageFormat.Bmp;
+        return ImageFormat.bmp;
     }
 
     pub fn formatDetect(reader: ImageReader, seek_stream: ImageSeekStream) !bool {
@@ -192,13 +192,13 @@ pub const Bitmap = struct {
 
     pub fn width(self: Self) i32 {
         return switch (self.info_header) {
-            .Windows31 => |win31| {
+            .windows31 => |win31| {
                 return win31.width;
             },
-            .V4 => |v4Header| {
+            .v4 => |v4Header| {
                 return v4Header.width;
             },
-            .V5 => |v5Header| {
+            .v5 => |v5Header| {
                 return v5Header.width;
             },
         };
@@ -206,13 +206,13 @@ pub const Bitmap = struct {
 
     pub fn height(self: Self) i32 {
         return switch (self.info_header) {
-            .Windows31 => |win31| {
+            .windows31 => |win31| {
                 return win31.height;
             },
-            .V4 => |v4Header| {
+            .v4 => |v4Header| {
                 return v4Header.height;
             },
-            .V5 => |v5Header| {
+            .v5 => |v5Header| {
                 return v5Header.height;
             },
         };
@@ -220,8 +220,8 @@ pub const Bitmap = struct {
 
     pub fn pixelFormat(self: Self) !PixelFormat {
         return switch (self.info_header) {
-            .V4 => |v4Header| try findPixelFormat(v4Header.bit_count, v4Header.compression_method),
-            .V5 => |v5Header| try findPixelFormat(v5Header.bit_count, v5Header.compression_method),
+            .v4 => |v4Header| try findPixelFormat(v4Header.bit_count, v4Header.compression_method),
+            .v5 => |v5Header| try findPixelFormat(v5Header.bit_count, v5Header.compression_method),
             else => return errors.ImageError.UnsupportedPixelFormat,
         };
     }
@@ -240,15 +240,15 @@ pub const Bitmap = struct {
 
         // Read info header
         self.info_header = switch (header_size) {
-            BitmapInfoHeaderWindows31.HeaderSize => BitmapInfoHeader{ .Windows31 = try utils.readStructLittle(reader, BitmapInfoHeaderWindows31) },
-            BitmapInfoHeaderV4.HeaderSize => BitmapInfoHeader{ .V4 = try utils.readStructLittle(reader, BitmapInfoHeaderV4) },
-            BitmapInfoHeaderV5.HeaderSize => BitmapInfoHeader{ .V5 = try utils.readStructLittle(reader, BitmapInfoHeaderV5) },
+            BitmapInfoHeaderWindows31.HeaderSize => BitmapInfoHeader{ .windows31 = try utils.readStructLittle(reader, BitmapInfoHeaderWindows31) },
+            BitmapInfoHeaderV4.HeaderSize => BitmapInfoHeader{ .v4 = try utils.readStructLittle(reader, BitmapInfoHeaderV4) },
+            BitmapInfoHeaderV5.HeaderSize => BitmapInfoHeader{ .v5 = try utils.readStructLittle(reader, BitmapInfoHeaderV5) },
             else => return errors.ImageError.UnsupportedBitmapType,
         };
 
         // Read pixel data
         _ = switch (self.info_header) {
-            .V4 => |v4Header| {
+            .v4 => |v4Header| {
                 const pixel_width = v4Header.width;
                 const pixel_height = v4Header.height;
                 const pixel_format = try findPixelFormat(v4Header.bit_count, v4Header.compression_method);
@@ -259,7 +259,7 @@ pub const Bitmap = struct {
                     try readPixels(reader, pixel_width, pixel_height, pixel_format, pixels);
                 }
             },
-            .V5 => |v5Header| {
+            .v5 => |v5Header| {
                 const pixel_width = v5Header.width;
                 const pixel_height = v5Header.height;
                 const pixel_format = try findPixelFormat(v5Header.bit_count, v5Header.compression_method);
@@ -275,10 +275,10 @@ pub const Bitmap = struct {
     }
 
     fn findPixelFormat(bit_count: u32, compression: CompressionMethod) !PixelFormat {
-        if (bit_count == 32 and compression == CompressionMethod.Bitfields) {
-            return PixelFormat.Bgra32;
-        } else if (bit_count == 24 and compression == CompressionMethod.None) {
-            return PixelFormat.Bgr24;
+        if (bit_count == 32 and compression == CompressionMethod.bitfields) {
+            return PixelFormat.bgra32;
+        } else if (bit_count == 24 and compression == CompressionMethod.none) {
+            return PixelFormat.bgr24;
         } else {
             return errors.ImageError.UnsupportedPixelFormat;
         }
@@ -286,11 +286,11 @@ pub const Bitmap = struct {
 
     fn readPixels(reader: ImageReader, pixel_width: i32, pixel_height: i32, pixel_format: PixelFormat, pixels: *color.PixelStorage) !void {
         return switch (pixel_format) {
-            PixelFormat.Bgr24 => {
-                return readPixelsInternal(pixels.Bgr24, reader, pixel_width, pixel_height);
+            PixelFormat.bgr24 => {
+                return readPixelsInternal(pixels.bgr24, reader, pixel_width, pixel_height);
             },
-            PixelFormat.Bgra32 => {
-                return readPixelsInternal(pixels.Bgra32, reader, pixel_width, pixel_height);
+            PixelFormat.bgra32 => {
+                return readPixelsInternal(pixels.bgra32, reader, pixel_width, pixel_height);
             },
             else => {
                 return errors.ImageError.UnsupportedPixelFormat;

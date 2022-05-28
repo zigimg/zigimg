@@ -17,36 +17,36 @@ const utils = @import("../utils.zig");
 const PNGMagicHeader = "\x89PNG\x0D\x0A\x1A\x0A";
 
 pub const ColorType = enum(u8) {
-    Grayscale = 0,
-    Truecolor = 2,
-    Indexed = 3,
-    GrayscaleAlpha = 4,
-    TruecolorAlpha = 6,
+    grayscale = 0,
+    truecolor = 2,
+    indexed = 3,
+    grayscale_alpha = 4,
+    truecolor_alpha = 6,
 
     const Self = @This();
 
     pub fn channelCount(self: Self) u8 {
         return switch (self) {
-            .Grayscale => 1,
-            .Truecolor => 3,
-            .Indexed => 1,
-            .GrayscaleAlpha => 2,
-            .TruecolorAlpha => 4,
+            .grayscale => 1,
+            .truecolor => 3,
+            .indexed => 1,
+            .grayscale_alpha => 2,
+            .truecolor_alpha => 4,
         };
     }
 };
 
 pub const FilterType = enum(u8) {
-    None,
-    Sub,
-    Up,
-    Average,
-    Paeth,
+    none,
+    sub,
+    up,
+    average,
+    paeth,
 };
 
 pub const InterlaceMethod = enum(u8) {
-    Standard,
-    Adam7,
+    standard,
+    adam7,
 };
 
 pub const IHDR = packed struct {
@@ -182,9 +182,9 @@ pub const gAMA = packed struct {
 pub const bKGD = packed struct {
     // TODO: Use a union(enum) once Zig support a union(enum) inside another union(enum)
     color: enum(u8) {
-        Grayscale,
-        Palette,
-        TrueColor,
+        grayscale,
+        palette,
+        true_color,
     },
     grayscale: u16,
     palette: u8,
@@ -207,16 +207,16 @@ pub const bKGD = packed struct {
         var stream = std.io.fixedBufferStream(read_buffer);
 
         switch (header.color_type) {
-            .Grayscale, .GrayscaleAlpha => {
-                self.color = .Grayscale;
+            .grayscale, .grayscale_alpha => {
+                self.color = .grayscale;
                 self.grayscale = try stream.reader().readIntBig(u16);
             },
-            .Indexed => {
-                self.color = .Palette;
+            .indexed => {
+                self.color = .palette;
                 self.palette = try stream.reader().readIntBig(u8);
             },
-            .Truecolor, .TruecolorAlpha => {
-                self.color = .TrueColor;
+            .truecolor, .truecolor_alpha => {
+                self.color = .true_color;
                 self.red = try stream.reader().readIntBig(u16);
                 self.green = try stream.reader().readIntBig(u16);
                 self.blue = try stream.reader().readIntBig(u16);
@@ -255,10 +255,10 @@ pub const ChunkVariant = union(enum) {
 };
 
 const ChunkAllowed = enum {
-    OneOrMore,
-    OnlyOne,
-    ZeroOrOne,
-    ZeroOrMore,
+    one_or_more,
+    only_one,
+    zero_or_one,
+    zero_or_more,
 };
 
 const ChunkInfo = struct {
@@ -270,43 +270,43 @@ const ChunkInfo = struct {
 const AllChunks = [_]ChunkInfo{
     .{
         .chunk_type = IHDR,
-        .allowed = .OnlyOne,
+        .allowed = .only_one,
         .store = false,
     },
     .{
         .chunk_type = PLTE,
-        .allowed = .ZeroOrOne,
+        .allowed = .zero_or_one,
         .store = true,
     },
     .{
         .chunk_type = bKGD,
-        .allowed = .ZeroOrOne,
+        .allowed = .zero_or_one,
         .store = true,
     },
     .{
         .chunk_type = IDAT,
-        .allowed = .OneOrMore,
+        .allowed = .one_or_more,
         .store = true,
     },
     .{
         .chunk_type = gAMA,
-        .allowed = .ZeroOrOne,
+        .allowed = .zero_or_one,
         .store = true,
     },
     .{
         .chunk_type = IEND,
-        .allowed = .OnlyOne,
+        .allowed = .only_one,
         .store = false,
     },
 };
 
 fn validBitDepths(color_type: ColorType) []const u8 {
     return switch (color_type) {
-        .Grayscale => &[_]u8{ 1, 2, 4, 8, 16 },
-        .Truecolor => &[_]u8{ 8, 16 },
-        .Indexed => &[_]u8{ 1, 2, 4, 8 },
-        .GrayscaleAlpha => &[_]u8{ 8, 16 },
-        .TruecolorAlpha => &[_]u8{ 8, 16 },
+        .grayscale => &[_]u8{ 1, 2, 4, 8, 16 },
+        .truecolor => &[_]u8{ 8, 16 },
+        .indexed => &[_]u8{ 1, 2, 4, 8 },
+        .grayscale_alpha => &[_]u8{ 8, 16 },
+        .truecolor_alpha => &[_]u8{ 8, 16 },
     };
 }
 
@@ -341,24 +341,24 @@ const PngFilter = struct {
         var previous_row = self.context[previous_start_position..(previous_start_position + self.line_stride)];
 
         switch (filter_type) {
-            .None => {
+            .none => {
                 std.mem.copy(u8, current_row, input);
             },
-            .Sub => {
+            .sub => {
                 var i: usize = 0;
                 while (i < input.len) : (i += 1) {
                     const a = self.getA(i, current_row, previous_row);
                     current_row[i] = input[i] +% a;
                 }
             },
-            .Up => {
+            .up => {
                 var i: usize = 0;
                 while (i < input.len) : (i += 1) {
                     const b = self.getB(i, current_row, previous_row);
                     current_row[i] = input[i] +% b;
                 }
             },
-            .Average => {
+            .average => {
                 var i: usize = 0;
                 while (i < input.len) : (i += 1) {
                     const a = @intToFloat(f64, self.getA(i, current_row, previous_row));
@@ -368,7 +368,7 @@ const PngFilter = struct {
                     current_row[i] = input[i] +% result;
                 }
             },
-            .Paeth => {
+            .paeth => {
                 var i: usize = 0;
                 while (i < input.len) : (i += 1) {
                     const a = self.getA(i, current_row, previous_row);
@@ -482,7 +482,7 @@ pub const PNG = struct {
     }
 
     pub fn format() ImageFormat {
-        return ImageFormat.Png;
+        return ImageFormat.png;
     }
 
     pub fn formatDetect(reader: ImageReader, seek_stream: ImageSeekStream) !bool {
@@ -495,43 +495,43 @@ pub const PNG = struct {
 
     pub fn pixelFormat(self: Self) !PixelFormat {
         switch (self.header.color_type) {
-            .Grayscale => {
+            .grayscale => {
                 return switch (self.header.bit_depth) {
-                    1 => PixelFormat.Grayscale1,
-                    2 => PixelFormat.Grayscale2,
-                    4 => PixelFormat.Grayscale4,
-                    8 => PixelFormat.Grayscale8,
-                    16 => PixelFormat.Grayscale16,
+                    1 => PixelFormat.grayscale1,
+                    2 => PixelFormat.grayscale2,
+                    4 => PixelFormat.grayscale4,
+                    8 => PixelFormat.grayscale8,
+                    16 => PixelFormat.grayscale16,
                     else => return errors.ImageError.UnsupportedPixelFormat,
                 };
             },
-            .Truecolor => {
+            .truecolor => {
                 return switch (self.header.bit_depth) {
-                    8 => PixelFormat.Rgb24,
-                    16 => PixelFormat.Rgb48,
+                    8 => PixelFormat.rgb24,
+                    16 => PixelFormat.rgb48,
                     else => return errors.ImageError.UnsupportedPixelFormat,
                 };
             },
-            .Indexed => {
+            .indexed => {
                 return switch (self.header.bit_depth) {
-                    1 => PixelFormat.Indexed1,
-                    2 => PixelFormat.Indexed2,
-                    4 => PixelFormat.Indexed4,
-                    8 => PixelFormat.Indexed8,
+                    1 => PixelFormat.indexed1,
+                    2 => PixelFormat.indexed2,
+                    4 => PixelFormat.indexed4,
+                    8 => PixelFormat.indexed8,
                     else => return errors.ImageError.UnsupportedPixelFormat,
                 };
             },
-            .GrayscaleAlpha => {
+            .grayscale_alpha => {
                 return switch (self.header.bit_depth) {
-                    8 => PixelFormat.Grayscale8Alpha,
-                    16 => PixelFormat.Grayscale16Alpha,
+                    8 => PixelFormat.grayscale8Alpha,
+                    16 => PixelFormat.grayscale16Alpha,
                     else => return errors.ImageError.UnsupportedPixelFormat,
                 };
             },
-            .TruecolorAlpha => {
+            .truecolor_alpha => {
                 return switch (self.header.bit_depth) {
-                    8 => PixelFormat.Rgba32,
-                    16 => PixelFormat.Rgba64,
+                    8 => PixelFormat.rgba32,
+                    16 => PixelFormat.rgba64,
                     else => return errors.ImageError.UnsupportedPixelFormat,
                 };
             },
@@ -611,19 +611,19 @@ pub const PNG = struct {
         pixels_opt.* = try color.PixelStorage.init(self.allocator, pixel_format, self.header.width * self.header.height);
 
         if (pixels_opt.*) |*pixels| {
-            if (self.header.color_type == .Indexed) {
+            if (self.header.color_type == .indexed) {
                 if (self.getPalette()) |palette_chunk| {
                     switch (pixels.*) {
-                        .Indexed1 => |instance| {
+                        .indexed1 => |instance| {
                             std.mem.copy(color.Color, instance.palette, palette_chunk.palette);
                         },
-                        .Indexed2 => |instance| {
+                        .indexed2 => |instance| {
                             std.mem.copy(color.Color, instance.palette, palette_chunk.palette);
                         },
-                        .Indexed4 => |instance| {
+                        .indexed4 => |instance| {
                             std.mem.copy(color.Color, instance.palette, palette_chunk.palette);
                         },
-                        .Indexed8 => |instance| {
+                        .indexed8 => |instance| {
                             std.mem.copy(color.Color, instance.palette, palette_chunk.palette);
                         },
                         else => {
@@ -761,14 +761,14 @@ pub const PNG = struct {
         var final_data_stream = std.io.fixedBufferStream(final_data);
 
         switch (self.header.interlace_method) {
-            .Standard => {
+            .standard => {
                 const line_stride = ((self.header.width * self.header.bit_depth + 7) / 8) * self.header.color_type.channelCount();
                 context.filter = try PngFilter.init(self.allocator, line_stride, self.header.bit_depth * self.header.color_type.channelCount());
                 defer context.filter.deinit(self.allocator);
 
                 try self.readPixelsNonInterlaced(context, &final_data_stream, &final_data_stream.reader());
             },
-            .Adam7 => try self.readPixelsInterlaced(context, &final_data_stream, &final_data_stream.reader()),
+            .adam7 => try self.readPixelsInterlaced(context, &final_data_stream, &final_data_stream.reader()),
         }
     }
 
@@ -794,7 +794,7 @@ pub const PNG = struct {
             var x: usize = 0;
 
             switch (context.pixels.*) {
-                .Grayscale1 => |data| {
+                .grayscale1 => |data| {
                     while (index < filter_slice.len) : (index += 1) {
                         const current_byte = filter_slice[index];
 
@@ -808,7 +808,7 @@ pub const PNG = struct {
                         }
                     }
                 },
-                .Grayscale2 => |data| {
+                .grayscale2 => |data| {
                     while (index < filter_slice.len) : (index += 1) {
                         const current_byte = filter_slice[index];
 
@@ -822,7 +822,7 @@ pub const PNG = struct {
                         }
                     }
                 },
-                .Grayscale4 => |data| {
+                .grayscale4 => |data| {
                     while (index < filter_slice.len) : (index += 1) {
                         const current_byte = filter_slice[index];
 
@@ -836,7 +836,7 @@ pub const PNG = struct {
                         }
                     }
                 },
-                .Grayscale8 => |data| {
+                .grayscale8 => |data| {
                     while (index < filter_slice.len and context.pixels_index < pixels_length and x < self.header.width) {
                         data[context.pixels_index].value = filter_slice[index];
 
@@ -845,7 +845,7 @@ pub const PNG = struct {
                         context.pixels_index += 1;
                     }
                 },
-                .Grayscale16 => |data| {
+                .grayscale16 => |data| {
                     while (index < filter_slice.len and context.pixels_index < pixels_length and x < self.header.width) {
                         const read_value = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[index]));
                         data[context.pixels_index].value = read_value;
@@ -855,7 +855,7 @@ pub const PNG = struct {
                         context.pixels_index += 1;
                     }
                 },
-                .Rgb24 => |data| {
+                .rgb24 => |data| {
                     var count: usize = 0;
                     const count_end = filter_slice.len;
                     while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
@@ -868,7 +868,7 @@ pub const PNG = struct {
                         context.pixels_index += 1;
                     }
                 },
-                .Rgb48 => |data| {
+                .rgb48 => |data| {
                     var count: usize = 0;
                     const count_end = filter_slice.len;
                     while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
@@ -881,7 +881,7 @@ pub const PNG = struct {
                         context.pixels_index += 1;
                     }
                 },
-                .Indexed1 => |indexed| {
+                .indexed1 => |indexed| {
                     while (index < filter_slice.len) : (index += 1) {
                         const current_byte = filter_slice[index];
 
@@ -895,7 +895,7 @@ pub const PNG = struct {
                         }
                     }
                 },
-                .Indexed2 => |indexed| {
+                .indexed2 => |indexed| {
                     while (index < filter_slice.len) : (index += 1) {
                         const current_byte = filter_slice[index];
 
@@ -909,7 +909,7 @@ pub const PNG = struct {
                         }
                     }
                 },
-                .Indexed4 => |indexed| {
+                .indexed4 => |indexed| {
                     while (index < filter_slice.len) : (index += 1) {
                         const current_byte = filter_slice[index];
 
@@ -923,7 +923,7 @@ pub const PNG = struct {
                         }
                     }
                 },
-                .Indexed8 => |indexed| {
+                .indexed8 => |indexed| {
                     while (index < filter_slice.len and context.pixels_index < pixels_length and x < self.header.width) {
                         indexed.indices[context.pixels_index] = filter_slice[index];
 
@@ -932,7 +932,7 @@ pub const PNG = struct {
                         context.pixels_index += 1;
                     }
                 },
-                .Grayscale8Alpha => |grey_alpha| {
+                .grayscale8Alpha => |grey_alpha| {
                     var count: usize = 0;
                     const count_end = filter_slice.len;
                     while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
@@ -944,7 +944,7 @@ pub const PNG = struct {
                         context.pixels_index += 1;
                     }
                 },
-                .Grayscale16Alpha => |grey_alpha| {
+                .grayscale16Alpha => |grey_alpha| {
                     var count: usize = 0;
                     const count_end = filter_slice.len;
                     while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
@@ -956,7 +956,7 @@ pub const PNG = struct {
                         context.pixels_index += 1;
                     }
                 },
-                .Rgba32 => |data| {
+                .rgba32 => |data| {
                     var count: usize = 0;
                     const count_end = filter_slice.len;
                     while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
@@ -970,7 +970,7 @@ pub const PNG = struct {
                         context.pixels_index += 1;
                     }
                 },
-                .Rgba64 => |data| {
+                .rgba64 => |data| {
                     var count: usize = 0;
                     const count_end = filter_slice.len;
                     while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
@@ -1092,7 +1092,7 @@ pub const PNG = struct {
 
     fn writePixelInterlaced(self: Self, bytes: []const u8, pixel_index: usize, context: *DecompressionContext, block_width: usize, block_height: usize) !void {
         switch (context.pixels.*) {
-            .Grayscale1 => |data| {
+            .grayscale1 => |data| {
                 const bit = (pixel_index & 0b111);
                 const value = @intCast(u1, (bytes[0] >> @intCast(u3, 7 - bit)) & 1);
 
@@ -1112,7 +1112,7 @@ pub const PNG = struct {
                     }
                 }
             },
-            .Grayscale2 => |data| {
+            .grayscale2 => |data| {
                 const bit = (pixel_index & 0b011) * 2 + 1;
                 const value = @intCast(u2, (bytes[0] >> @intCast(u3, (7 - bit))) & 0b00000011);
 
@@ -1132,7 +1132,7 @@ pub const PNG = struct {
                     }
                 }
             },
-            .Grayscale4 => |data| {
+            .grayscale4 => |data| {
                 const bit = (pixel_index & 0b1) * 4 + 3;
                 const value = @intCast(u4, (bytes[0] >> @intCast(u3, (7 - bit))) & 0b00001111);
 
@@ -1152,7 +1152,7 @@ pub const PNG = struct {
                     }
                 }
             },
-            .Grayscale8 => |data| {
+            .grayscale8 => |data| {
                 const value = bytes[0];
 
                 var height: usize = 0;
@@ -1171,7 +1171,7 @@ pub const PNG = struct {
                     }
                 }
             },
-            .Grayscale16 => |data| {
+            .grayscale16 => |data| {
                 const value = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, bytes));
 
                 var height: usize = 0;
@@ -1190,7 +1190,7 @@ pub const PNG = struct {
                     }
                 }
             },
-            .Rgb24 => |data| {
+            .rgb24 => |data| {
                 const pixel = color.Rgb24{
                     .R = bytes[0],
                     .G = bytes[1],
@@ -1213,7 +1213,7 @@ pub const PNG = struct {
                     }
                 }
             },
-            .Rgb48 => |data| {
+            .rgb48 => |data| {
                 const pixel = color.Rgb48{
                     .R = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &bytes[0])),
                     .G = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &bytes[2])),
@@ -1236,7 +1236,7 @@ pub const PNG = struct {
                     }
                 }
             },
-            .Indexed1 => |indexed| {
+            .indexed1 => |indexed| {
                 const bit = (pixel_index & 0b111);
                 const value = @intCast(u1, (bytes[0] >> @intCast(u3, 7 - bit)) & 1);
 
@@ -1256,7 +1256,7 @@ pub const PNG = struct {
                     }
                 }
             },
-            .Indexed2 => |indexed| {
+            .indexed2 => |indexed| {
                 const bit = (pixel_index & 0b011) * 2 + 1;
                 const value = @intCast(u2, (bytes[0] >> @intCast(u3, (7 - bit))) & 0b00000011);
 
@@ -1276,7 +1276,7 @@ pub const PNG = struct {
                     }
                 }
             },
-            .Indexed4 => |indexed| {
+            .indexed4 => |indexed| {
                 const bit = (pixel_index & 0b1) * 4 + 3;
                 const value = @intCast(u4, (bytes[0] >> @intCast(u3, (7 - bit))) & 0b00001111);
 
@@ -1296,7 +1296,7 @@ pub const PNG = struct {
                     }
                 }
             },
-            .Indexed8 => |indexed| {
+            .indexed8 => |indexed| {
                 const value = bytes[0];
 
                 var height: usize = 0;
@@ -1315,7 +1315,7 @@ pub const PNG = struct {
                     }
                 }
             },
-            .Grayscale8Alpha => |grey_alpha| {
+            .grayscale8Alpha => |grey_alpha| {
                 const value = color.Grayscale8Alpha{
                     .value = bytes[0],
                     .alpha = bytes[1],
@@ -1337,7 +1337,7 @@ pub const PNG = struct {
                     }
                 }
             },
-            .Grayscale16Alpha => |grey_alpha| {
+            .grayscale16Alpha => |grey_alpha| {
                 const value = color.Grayscale16Alpha{
                     .value = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &bytes[0])),
                     .alpha = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &bytes[2])),
@@ -1359,7 +1359,7 @@ pub const PNG = struct {
                     }
                 }
             },
-            .Rgba32 => |data| {
+            .rgba32 => |data| {
                 const pixel = color.Rgba32{
                     .R = bytes[0],
                     .G = bytes[1],
@@ -1383,7 +1383,7 @@ pub const PNG = struct {
                     }
                 }
             },
-            .Rgba64 => |data| {
+            .rgba64 => |data| {
                 const pixel = color.Rgba64{
                     .R = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &bytes[0])),
                     .G = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &bytes[2])),

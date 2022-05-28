@@ -23,46 +23,46 @@ const JPEG_VERY_DEBUG = false;
 
 const Markers = enum(u16) {
     // Start of Frame markers, non-differential, Huffman coding
-    SOF0 = 0xFFC0, // Baseline DCT
-    SOF1 = 0xFFC1, // Extended sequential DCT
-    SOF2 = 0xFFC2, // Progressive DCT
-    SOF3 = 0xFFC3, // Lossless sequential
+    sof0 = 0xFFC0, // Baseline DCT
+    sof1 = 0xFFC1, // Extended sequential DCT
+    sof2 = 0xFFC2, // Progressive DCT
+    sof3 = 0xFFC3, // Lossless sequential
     // Start of Frame markers, differential, Huffman coding
-    SOF5 = 0xFFC5, // Differential sequential DCT
-    SOF6 = 0xFFC6, // Differential progressive DCT
-    SOF7 = 0xFFC7, // Differential lossless sequential
+    sof5 = 0xFFC5, // Differential sequential DCT
+    sof6 = 0xFFC6, // Differential progressive DCT
+    sof7 = 0xFFC7, // Differential lossless sequential
     // Start of Frame markers, non-differential, arithmetic coding
-    SOF9 = 0xFFC9, // Extended sequential DCT
-    SOF10 = 0xFFCA, // Progressive DCT
-    SOF11 = 0xFFCB, // Lossless sequential
+    sof9 = 0xFFC9, // Extended sequential DCT
+    sof10 = 0xFFCA, // Progressive DCT
+    sof11 = 0xFFCB, // Lossless sequential
     // Start of Frame markers, differential, arithmetic coding
-    SOF13 = 0xFFCD, // Differential sequential DCT
-    SOF14 = 0xFFCE, // Differential progressive DCT
-    SOF15 = 0xFFCF, // Differential lossless sequential
+    sof13 = 0xFFCD, // Differential sequential DCT
+    sof14 = 0xFFCE, // Differential progressive DCT
+    sof15 = 0xFFCF, // Differential lossless sequential
 
-    DefineHuffmanTables = 0xFFC4,
-    DefineArithmeticCoding = 0xFFCC,
+    define_huffman_tables = 0xFFC4,
+    define_arithmetic_coding = 0xFFCC,
 
-    StartOfImage = 0xFFD8,
-    EndOfImage = 0xFFD9,
-    StartOfScan = 0xFFDA,
-    DefineQuantizationTables = 0xFFDB,
-    DefineNumberOfLines = 0xFFDC,
-    DefineRestartInterval = 0xFFDD,
-    DefineHierarchicalProgression = 0xFFDE,
-    ExpandReferenceComponents = 0xFFDF,
+    start_of_image = 0xFFD8,
+    end_of_image = 0xFFD9,
+    start_of_scan = 0xFFDA,
+    define_quantization_tables = 0xFFDB,
+    define_number_of_lines = 0xFFDC,
+    define_restart_interval = 0xFFDD,
+    define_hierarchical_progression = 0xFFDE,
+    expand_reference_components = 0xFFDF,
 
     // Add 0-15 as needed.
-    Application0 = 0xFFE0,
+    application0 = 0xFFE0,
     // Add 0-13 as needed.
-    JpegExtension0 = 0xFFF0,
-    Comment = 0xFFFE,
+    jpeg_extension0 = 0xFFF0,
+    comment = 0xFFFE,
 };
 
 const DensityUnit = enum {
-    Pixels,
-    DotsPerInch,
-    DotsPerCm,
+    pixels,
+    dots_per_inch,
+    dots_per_cm,
 };
 
 const JFIFHeader = struct {
@@ -75,7 +75,7 @@ const JFIFHeader = struct {
         // Read the first APP0 header.
         try seek_stream.seekTo(2);
         const maybe_app0_marker = try reader.readIntBig(u16);
-        if (maybe_app0_marker != @enumToInt(Markers.Application0)) {
+        if (maybe_app0_marker != @enumToInt(Markers.application0)) {
             return error.App0MarkerDoesNotExist;
         }
 
@@ -105,7 +105,7 @@ const JFIFHeader = struct {
         }
 
         // Make sure there are no application markers after us.
-        if (((try reader.readIntBig(u16)) & 0xFFF0) == @enumToInt(Markers.Application0)) {
+        if (((try reader.readIntBig(u16)) & 0xFFF0) == @enumToInt(Markers.application0)) {
             return error.ExtraneousApplicationMarker;
         }
 
@@ -121,19 +121,19 @@ const JFIFHeader = struct {
 };
 
 const QuantizationTable = union(enum) {
-    Q8: [64]u8,
-    Q16: [64]u16,
+    q8: [64]u8,
+    q16: [64]u16,
 
     pub fn read(precision: u8, reader: ImageReader) !QuantizationTable {
         // 0 = 8 bits, 1 = 16 bits
         switch (precision) {
             0 => {
-                var table = QuantizationTable{ .Q8 = undefined };
+                var table = QuantizationTable{ .q8 = undefined };
 
                 var offset: usize = 0;
                 while (offset < 64) : (offset += 1) {
                     const value = try reader.readByte();
-                    table.Q8[ZigzagOffsets[offset]] = value;
+                    table.q8[ZigzagOffsets[offset]] = value;
                 }
 
                 if (JPEG_DEBUG) {
@@ -141,7 +141,7 @@ const QuantizationTable = union(enum) {
                     while (i < 8) : (i += 1) {
                         var j: usize = 0;
                         while (j < 8) : (j += 1) {
-                            std.debug.print("{d:4} ", .{table.Q8[i * 8 + j]});
+                            std.debug.print("{d:4} ", .{table.q8[i * 8 + j]});
                         }
                         std.debug.print("\n", .{});
                     }
@@ -150,12 +150,12 @@ const QuantizationTable = union(enum) {
                 return table;
             },
             1 => {
-                var table = QuantizationTable{ .Q16 = undefined };
+                var table = QuantizationTable{ .q16 = undefined };
 
                 var offset: usize = 0;
                 while (offset < 64) : (offset += 1) {
                     const value = try reader.readIntBig(u16);
-                    table.Q16[ZigzagOffsets[offset]] = value;
+                    table.q16[ZigzagOffsets[offset]] = value;
                 }
 
                 return table;
@@ -509,32 +509,32 @@ const ZigzagOffsets = blk: {
     offsets[0] = 0;
 
     var current_offset: usize = 0;
-    var direction: enum { NorthEast, SouthWest } = .NorthEast;
+    var direction: enum { north_east, south_west } = .north_east;
     var i: usize = 1;
     while (i < 64) : (i += 1) {
         switch (direction) {
-            .NorthEast => {
+            .north_east => {
                 if (current_offset < 8) {
                     // Hit top edge
                     current_offset += 1;
-                    direction = .SouthWest;
+                    direction = .south_west;
                 } else if (current_offset % 8 == 7) {
                     // Hit right edge
                     current_offset += 8;
-                    direction = .SouthWest;
+                    direction = .south_west;
                 } else {
                     current_offset -= 7;
                 }
             },
-            .SouthWest => {
+            .south_west => {
                 if (current_offset >= 56) {
                     // Hit bottom edge
                     current_offset += 1;
-                    direction = .NorthEast;
+                    direction = .north_east;
                 } else if (current_offset % 8 == 0) {
                     // Hit left edge
                     current_offset += 8;
-                    direction = .NorthEast;
+                    direction = .north_east;
                 } else {
                     current_offset += 7;
                 }
@@ -713,11 +713,11 @@ const Frame = struct {
         errdefer self.deinit();
 
         var marker = try reader.readIntBig(u16);
-        while (marker != @enumToInt(Markers.StartOfScan)) : (marker = try reader.readIntBig(u16)) {
+        while (marker != @enumToInt(Markers.start_of_scan)) : (marker = try reader.readIntBig(u16)) {
             if (JPEG_DEBUG) std.debug.print("Frame: Parsing marker value: 0x{X}\n", .{marker});
 
             switch (@intToEnum(Markers, marker)) {
-                .DefineHuffmanTables => {
+                .define_huffman_tables => {
                     try self.parseDefineHuffmanTables(reader);
                 },
                 else => {
@@ -726,7 +726,7 @@ const Frame = struct {
             }
         }
 
-        while (marker == @enumToInt(Markers.StartOfScan)) : (marker = try reader.readIntBig(u16)) {
+        while (marker == @enumToInt(Markers.start_of_scan)) : (marker = try reader.readIntBig(u16)) {
             try self.parseScan(reader);
         }
 
@@ -806,7 +806,7 @@ const Frame = struct {
                 if (self.quantization_tables[component.quantization_table_id]) |quantization_table| {
                     var sample_id: usize = 0;
                     while (sample_id < 64) : (sample_id += 1) {
-                        mcu[sample_id] = mcu[sample_id] * quantization_table.Q8[sample_id];
+                        mcu[sample_id] = mcu[sample_id] * quantization_table.q8[sample_id];
                     }
                 } else return error.UnknownQuantizationTableReferenced;
             }
@@ -815,8 +815,8 @@ const Frame = struct {
 
     pub fn renderToPixels(self: *Frame, pixels: *color.PixelStorage) !void {
         switch (self.frame_header.components.len) {
-            1 => try self.renderToPixelsGrayscale(pixels.Grayscale8),
-            3 => try self.renderToPixelsRgb(pixels.Rgb24),
+            1 => try self.renderToPixelsGrayscale(pixels.grayscale8),
+            3 => try self.renderToPixelsRgb(pixels.rgb24),
             else => unreachable,
         }
     }
@@ -923,8 +923,8 @@ pub const JPEG = struct {
 
             const quantization_table = try QuantizationTable.read(table_precision, reader);
             switch (quantization_table) {
-                .Q8 => segment_size -= 64 + 1,
-                .Q16 => segment_size -= 128 + 1,
+                .q8 => segment_size -= 64 + 1,
+                .q16 => segment_size -= 128 + 1,
             }
 
             self.quantization_tables[table_destination] = quantization_table;
@@ -936,8 +936,8 @@ pub const JPEG = struct {
         if (self.frame) |frame| {
             var pixel_format: PixelFormat = undefined;
             switch (frame.frame_header.components.len) {
-                1 => pixel_format = .Grayscale8,
-                3 => pixel_format = .Rgb24,
+                1 => pixel_format = .grayscale8,
+                3 => pixel_format = .rgb24,
                 else => unreachable,
             }
 
@@ -962,10 +962,10 @@ pub const JPEG = struct {
         }
 
         var marker = try reader.readIntBig(u16);
-        while (marker != @enumToInt(Markers.EndOfImage)) : (marker = try reader.readIntBig(u16)) {
+        while (marker != @enumToInt(Markers.end_of_image)) : (marker = try reader.readIntBig(u16)) {
             if (JPEG_DEBUG) std.debug.print("Parsing marker value: 0x{X}\n", .{marker});
 
-            if (marker >= @enumToInt(Markers.Application0) and marker < @enumToInt(Markers.Application0) + 16) {
+            if (marker >= @enumToInt(Markers.application0) and marker < @enumToInt(Markers.application0) + 16) {
                 if (JPEG_DEBUG) std.debug.print("Skipping application data segment\n", .{});
                 const application_data_length = try reader.readIntBig(u16);
                 try seek_stream.seekBy(application_data_length - 2);
@@ -973,7 +973,7 @@ pub const JPEG = struct {
             }
 
             switch (@intToEnum(Markers, marker)) {
-                .SOF0 => {
+                .sof0 => {
                     if (self.frame != null) {
                         return error.UnsupportedMultiframe;
                     }
@@ -983,24 +983,24 @@ pub const JPEG = struct {
                     try self.frame.?.renderToPixels(&pixels_opt.*.?);
                 },
 
-                .SOF1 => return error.UnsupportedFrameFormat,
-                .SOF2 => return error.UnsupportedFrameFormat,
-                .SOF3 => return error.UnsupportedFrameFormat,
-                .SOF5 => return error.UnsupportedFrameFormat,
-                .SOF6 => return error.UnsupportedFrameFormat,
-                .SOF7 => return error.UnsupportedFrameFormat,
-                .SOF9 => return error.UnsupportedFrameFormat,
-                .SOF10 => return error.UnsupportedFrameFormat,
-                .SOF11 => return error.UnsupportedFrameFormat,
-                .SOF13 => return error.UnsupportedFrameFormat,
-                .SOF14 => return error.UnsupportedFrameFormat,
-                .SOF15 => return error.UnsupportedFrameFormat,
+                .sof1 => return error.UnsupportedFrameFormat,
+                .sof2 => return error.UnsupportedFrameFormat,
+                .sof3 => return error.UnsupportedFrameFormat,
+                .sof5 => return error.UnsupportedFrameFormat,
+                .sof6 => return error.UnsupportedFrameFormat,
+                .sof7 => return error.UnsupportedFrameFormat,
+                .sof9 => return error.UnsupportedFrameFormat,
+                .sof10 => return error.UnsupportedFrameFormat,
+                .sof11 => return error.UnsupportedFrameFormat,
+                .sof13 => return error.UnsupportedFrameFormat,
+                .sof14 => return error.UnsupportedFrameFormat,
+                .sof15 => return error.UnsupportedFrameFormat,
 
-                .DefineQuantizationTables => {
+                .define_quantization_tables => {
                     try self.parseDefineQuantizationTables(reader);
                 },
 
-                .Comment => {
+                .comment => {
                     if (JPEG_DEBUG) std.debug.print("Skipping comment segment\n", .{});
 
                     const comment_length = try reader.readIntBig(u16);
@@ -1028,12 +1028,12 @@ pub const JPEG = struct {
     }
 
     fn format() ImageFormat {
-        return ImageFormat.Jpeg;
+        return ImageFormat.jpg;
     }
 
     fn formatDetect(reader: ImageReader, seek_stream: ImageSeekStream) !bool {
         const maybe_start_of_image = try reader.readIntBig(u16);
-        if (maybe_start_of_image != @enumToInt(Markers.StartOfImage)) {
+        if (maybe_start_of_image != @enumToInt(Markers.start_of_image)) {
             return false;
         }
 

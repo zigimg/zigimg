@@ -31,15 +31,15 @@ test "Read basn0g01 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == .Grayscale1);
+        try testing.expect(pixels == .grayscale1);
 
-        try helpers.expectEq(pixels.Grayscale1[0].value, 1);
-        try helpers.expectEq(pixels.Grayscale1[31].value, 0);
-        try helpers.expectEq(pixels.Grayscale1[4 * 32 + 3].value, 1);
-        try helpers.expectEq(pixels.Grayscale1[4 * 32 + 4].value, 0);
-        try helpers.expectEq(pixels.Grayscale1[18 * 32 + 19].value, 0);
-        try helpers.expectEq(pixels.Grayscale1[18 * 32 + 20].value, 1);
-        try helpers.expectEq(pixels.Grayscale1[31 * 32 + 31].value, 0);
+        try helpers.expectEq(pixels.grayscale1[0].value, 1);
+        try helpers.expectEq(pixels.grayscale1[31].value, 0);
+        try helpers.expectEq(pixels.grayscale1[4 * 32 + 3].value, 1);
+        try helpers.expectEq(pixels.grayscale1[4 * 32 + 4].value, 0);
+        try helpers.expectEq(pixels.grayscale1[18 * 32 + 19].value, 0);
+        try helpers.expectEq(pixels.grayscale1[18 * 32 + 20].value, 1);
+        try helpers.expectEq(pixels.grayscale1[31 * 32 + 31].value, 0);
     }
 }
 
@@ -64,14 +64,14 @@ test "Read basn0g02 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == .Grayscale2);
+        try testing.expect(pixels == .grayscale2);
 
-        try helpers.expectEq(pixels.Grayscale2[0].value, 0);
-        try helpers.expectEq(pixels.Grayscale2[4].value, 1);
-        try helpers.expectEq(pixels.Grayscale2[8].value, 2);
-        try helpers.expectEq(pixels.Grayscale2[12].value, 3);
-        try helpers.expectEq(pixels.Grayscale2[16 * 32 + 16].value, 0);
-        try helpers.expectEq(pixels.Grayscale2[31 * 32 + 31].value, 2);
+        try helpers.expectEq(pixels.grayscale2[0].value, 0);
+        try helpers.expectEq(pixels.grayscale2[4].value, 1);
+        try helpers.expectEq(pixels.grayscale2[8].value, 2);
+        try helpers.expectEq(pixels.grayscale2[12].value, 3);
+        try helpers.expectEq(pixels.grayscale2[16 * 32 + 16].value, 0);
+        try helpers.expectEq(pixels.grayscale2[31 * 32 + 31].value, 2);
     }
 }
 
@@ -96,17 +96,17 @@ test "Read basn0g04 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == .Grayscale4);
+        try testing.expect(pixels == .grayscale4);
 
-        try helpers.expectEq(pixels.Grayscale4[0].value, 0);
-        try helpers.expectEq(pixels.Grayscale4[4].value, 1);
-        try helpers.expectEq(pixels.Grayscale4[8].value, 2);
-        try helpers.expectEq(pixels.Grayscale4[12].value, 3);
-        try helpers.expectEq(pixels.Grayscale4[16].value, 4);
-        try helpers.expectEq(pixels.Grayscale4[20].value, 5);
-        try helpers.expectEq(pixels.Grayscale4[24].value, 6);
-        try helpers.expectEq(pixels.Grayscale4[28].value, 7);
-        try helpers.expectEq(pixels.Grayscale4[31 * 32 + 31].value, 14);
+        try helpers.expectEq(pixels.grayscale4[0].value, 0);
+        try helpers.expectEq(pixels.grayscale4[4].value, 1);
+        try helpers.expectEq(pixels.grayscale4[8].value, 2);
+        try helpers.expectEq(pixels.grayscale4[12].value, 3);
+        try helpers.expectEq(pixels.grayscale4[16].value, 4);
+        try helpers.expectEq(pixels.grayscale4[20].value, 5);
+        try helpers.expectEq(pixels.grayscale4[24].value, 6);
+        try helpers.expectEq(pixels.grayscale4[28].value, 7);
+        try helpers.expectEq(pixels.grayscale4[31 * 32 + 31].value, 14);
     }
 }
 
@@ -131,15 +131,15 @@ test "Read basn0g08 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == .Grayscale8);
+        try testing.expect(pixels == .grayscale8);
 
         var i: usize = 0;
         while (i < 256) : (i += 1) {
-            try helpers.expectEq(pixels.Grayscale8[i].value, @intCast(u8, i));
+            try helpers.expectEq(pixels.grayscale8[i].value, @intCast(u8, i));
         }
 
         while (i < 510) : (i += 1) {
-            try helpers.expectEq(pixels.Grayscale8[i].value, @intCast(u8, 510 - i));
+            try helpers.expectEq(pixels.grayscale8[i].value, @intCast(u8, 510 - i));
         }
     }
 }
@@ -165,10 +165,10 @@ test "Read basn0g16 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == .Grayscale16);
+        try testing.expect(pixels == .grayscale16);
 
-        try helpers.expectEq(pixels.Grayscale16[0].value, 0);
-        try helpers.expectEq(pixels.Grayscale16[31].value, 47871);
+        try helpers.expectEq(pixels.grayscale16[0].value, 0);
+        try helpers.expectEq(pixels.grayscale16[31].value, 47871);
     }
 }
 
@@ -193,27 +193,27 @@ test "Read basn2c08 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == .Rgb24);
+        try testing.expect(pixels == .rgb24);
 
-        try helpers.expectEq(pixels.Rgb24[0].R, 0xFF);
-        try helpers.expectEq(pixels.Rgb24[0].G, 0xFF);
-        try helpers.expectEq(pixels.Rgb24[0].B, 0xFF);
+        try helpers.expectEq(pixels.rgb24[0].R, 0xFF);
+        try helpers.expectEq(pixels.rgb24[0].G, 0xFF);
+        try helpers.expectEq(pixels.rgb24[0].B, 0xFF);
 
-        try helpers.expectEq(pixels.Rgb24[7 * 32 + 31].R, 0xFF);
-        try helpers.expectEq(pixels.Rgb24[7 * 32 + 31].G, 0xFF);
-        try helpers.expectEq(pixels.Rgb24[7 * 32 + 31].B, 0);
+        try helpers.expectEq(pixels.rgb24[7 * 32 + 31].R, 0xFF);
+        try helpers.expectEq(pixels.rgb24[7 * 32 + 31].G, 0xFF);
+        try helpers.expectEq(pixels.rgb24[7 * 32 + 31].B, 0);
 
-        try helpers.expectEq(pixels.Rgb24[15 * 32 + 31].R, 0xFF);
-        try helpers.expectEq(pixels.Rgb24[15 * 32 + 31].G, 0);
-        try helpers.expectEq(pixels.Rgb24[15 * 32 + 31].B, 0xFF);
+        try helpers.expectEq(pixels.rgb24[15 * 32 + 31].R, 0xFF);
+        try helpers.expectEq(pixels.rgb24[15 * 32 + 31].G, 0);
+        try helpers.expectEq(pixels.rgb24[15 * 32 + 31].B, 0xFF);
 
-        try helpers.expectEq(pixels.Rgb24[23 * 32 + 31].R, 0x0);
-        try helpers.expectEq(pixels.Rgb24[23 * 32 + 31].G, 0xFF);
-        try helpers.expectEq(pixels.Rgb24[23 * 32 + 31].B, 0xFF);
+        try helpers.expectEq(pixels.rgb24[23 * 32 + 31].R, 0x0);
+        try helpers.expectEq(pixels.rgb24[23 * 32 + 31].G, 0xFF);
+        try helpers.expectEq(pixels.rgb24[23 * 32 + 31].B, 0xFF);
 
-        try helpers.expectEq(pixels.Rgb24[31 * 32 + 31].R, 0x0);
-        try helpers.expectEq(pixels.Rgb24[31 * 32 + 31].G, 0x0);
-        try helpers.expectEq(pixels.Rgb24[31 * 32 + 31].B, 0x0);
+        try helpers.expectEq(pixels.rgb24[31 * 32 + 31].R, 0x0);
+        try helpers.expectEq(pixels.rgb24[31 * 32 + 31].G, 0x0);
+        try helpers.expectEq(pixels.rgb24[31 * 32 + 31].B, 0x0);
     }
 }
 
@@ -238,19 +238,19 @@ test "Read basn2c16 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == .Rgb48);
+        try testing.expect(pixels == .rgb48);
 
-        try helpers.expectEq(pixels.Rgb48[0].R, 0xFFFF);
-        try helpers.expectEq(pixels.Rgb48[0].G, 0xFFFF);
-        try helpers.expectEq(pixels.Rgb48[0].B, 0);
+        try helpers.expectEq(pixels.rgb48[0].R, 0xFFFF);
+        try helpers.expectEq(pixels.rgb48[0].G, 0xFFFF);
+        try helpers.expectEq(pixels.rgb48[0].B, 0);
 
-        try helpers.expectEq(pixels.Rgb48[16 * 32 + 16].R, 0x7bde);
-        try helpers.expectEq(pixels.Rgb48[16 * 32 + 16].G, 0x7bde);
-        try helpers.expectEq(pixels.Rgb48[16 * 32 + 16].B, 0x842);
+        try helpers.expectEq(pixels.rgb48[16 * 32 + 16].R, 0x7bde);
+        try helpers.expectEq(pixels.rgb48[16 * 32 + 16].G, 0x7bde);
+        try helpers.expectEq(pixels.rgb48[16 * 32 + 16].B, 0x842);
 
-        try helpers.expectEq(pixels.Rgb48[31 * 32 + 31].R, 0);
-        try helpers.expectEq(pixels.Rgb48[31 * 32 + 31].G, 0);
-        try helpers.expectEq(pixels.Rgb48[31 * 32 + 31].B, 0xFFFF);
+        try helpers.expectEq(pixels.rgb48[31 * 32 + 31].R, 0);
+        try helpers.expectEq(pixels.rgb48[31 * 32 + 31].G, 0);
+        try helpers.expectEq(pixels.rgb48[31 * 32 + 31].B, 0xFFFF);
     }
 }
 
@@ -292,11 +292,11 @@ test "Read basn3p01 data properly" {
     }
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == .Indexed1);
-        try helpers.expectEq(pixels.Indexed1.palette.len, 2);
+        try testing.expect(pixels == .indexed1);
+        try helpers.expectEq(pixels.indexed1.palette.len, 2);
 
-        const first_color = pixels.Indexed1.palette[0].toIntegerColor8();
-        const second_color = pixels.Indexed1.palette[1].toIntegerColor8();
+        const first_color = pixels.indexed1.palette[0].toIntegerColor8();
+        const second_color = pixels.indexed1.palette[1].toIntegerColor8();
 
         try helpers.expectEq(first_color.R, 0xee);
         try helpers.expectEq(first_color.G, 0xff);
@@ -307,7 +307,7 @@ test "Read basn3p01 data properly" {
         try helpers.expectEq(second_color.B, 0xff);
 
         var i: usize = 0;
-        while (i < pixels.Indexed1.indices.len) : (i += 1) {
+        while (i < pixels.indexed1.indices.len) : (i += 1) {
             const x = i % 32;
             const y = i / 32;
 
@@ -316,7 +316,7 @@ test "Read basn3p01 data properly" {
 
             const final_pixel: u1 = @intCast(u1, (temp1 + temp2) & 1);
 
-            try helpers.expectEq(pixels.Indexed1.indices[i], final_pixel);
+            try helpers.expectEq(pixels.indexed1.indices[i], final_pixel);
         }
     }
 }
@@ -346,13 +346,13 @@ test "Read basn3p02 data properly" {
     try testing.expect(palette_chunk_opt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == .Indexed2);
-        try helpers.expectEq(pixels.Indexed2.palette.len, 4);
+        try testing.expect(pixels == .indexed2);
+        try helpers.expectEq(pixels.indexed2.palette.len, 4);
 
-        const color0 = pixels.Indexed2.palette[0].toIntegerColor8();
-        const color1 = pixels.Indexed2.palette[1].toIntegerColor8();
-        const color2 = pixels.Indexed2.palette[2].toIntegerColor8();
-        const color3 = pixels.Indexed2.palette[3].toIntegerColor8();
+        const color0 = pixels.indexed2.palette[0].toIntegerColor8();
+        const color1 = pixels.indexed2.palette[1].toIntegerColor8();
+        const color2 = pixels.indexed2.palette[2].toIntegerColor8();
+        const color3 = pixels.indexed2.palette[3].toIntegerColor8();
 
         try helpers.expectEq(color0.R, 0x00);
         try helpers.expectEq(color0.G, 0xff);
@@ -370,12 +370,12 @@ test "Read basn3p02 data properly" {
         try helpers.expectEq(color3.G, 0x00);
         try helpers.expectEq(color3.B, 0xff);
 
-        try helpers.expectEq(pixels.Indexed2.indices[0], 3);
-        try helpers.expectEq(pixels.Indexed2.indices[4], 1);
-        try helpers.expectEq(pixels.Indexed2.indices[8], 2);
-        try helpers.expectEq(pixels.Indexed2.indices[12], 0);
+        try helpers.expectEq(pixels.indexed2.indices[0], 3);
+        try helpers.expectEq(pixels.indexed2.indices[4], 1);
+        try helpers.expectEq(pixels.indexed2.indices[8], 2);
+        try helpers.expectEq(pixels.indexed2.indices[12], 0);
 
-        try helpers.expectEq(pixels.Indexed2.indices[31 * 32 + 31], 3);
+        try helpers.expectEq(pixels.indexed2.indices[31 * 32 + 31], 3);
     }
 }
 
@@ -408,23 +408,23 @@ test "Read basn3p04 data properly" {
     }
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == .Indexed4);
+        try testing.expect(pixels == .indexed4);
 
-        const color0 = pixels.Indexed4.palette[0].toIntegerColor8();
-        const color1 = pixels.Indexed4.palette[1].toIntegerColor8();
-        const color2 = pixels.Indexed4.palette[2].toIntegerColor8();
-        const color3 = pixels.Indexed4.palette[3].toIntegerColor8();
-        const color4 = pixels.Indexed4.palette[4].toIntegerColor8();
-        const color5 = pixels.Indexed4.palette[5].toIntegerColor8();
-        const color6 = pixels.Indexed4.palette[6].toIntegerColor8();
-        const color7 = pixels.Indexed4.palette[7].toIntegerColor8();
-        const color8 = pixels.Indexed4.palette[8].toIntegerColor8();
-        const color9 = pixels.Indexed4.palette[9].toIntegerColor8();
-        const color10 = pixels.Indexed4.palette[10].toIntegerColor8();
-        const color11 = pixels.Indexed4.palette[11].toIntegerColor8();
-        const color12 = pixels.Indexed4.palette[12].toIntegerColor8();
-        const color13 = pixels.Indexed4.palette[13].toIntegerColor8();
-        const color14 = pixels.Indexed4.palette[14].toIntegerColor8();
+        const color0 = pixels.indexed4.palette[0].toIntegerColor8();
+        const color1 = pixels.indexed4.palette[1].toIntegerColor8();
+        const color2 = pixels.indexed4.palette[2].toIntegerColor8();
+        const color3 = pixels.indexed4.palette[3].toIntegerColor8();
+        const color4 = pixels.indexed4.palette[4].toIntegerColor8();
+        const color5 = pixels.indexed4.palette[5].toIntegerColor8();
+        const color6 = pixels.indexed4.palette[6].toIntegerColor8();
+        const color7 = pixels.indexed4.palette[7].toIntegerColor8();
+        const color8 = pixels.indexed4.palette[8].toIntegerColor8();
+        const color9 = pixels.indexed4.palette[9].toIntegerColor8();
+        const color10 = pixels.indexed4.palette[10].toIntegerColor8();
+        const color11 = pixels.indexed4.palette[11].toIntegerColor8();
+        const color12 = pixels.indexed4.palette[12].toIntegerColor8();
+        const color13 = pixels.indexed4.palette[13].toIntegerColor8();
+        const color14 = pixels.indexed4.palette[14].toIntegerColor8();
 
         try helpers.expectEq(color0.R, 0x22);
         try helpers.expectEq(color0.G, 0x00);
@@ -486,16 +486,16 @@ test "Read basn3p04 data properly" {
         try helpers.expectEq(color14.G, 0xff);
         try helpers.expectEq(color14.B, 0x44);
 
-        try helpers.expectEq(pixels.Indexed4.indices[0], 8);
-        try helpers.expectEq(pixels.Indexed4.indices[4], 5);
-        try helpers.expectEq(pixels.Indexed4.indices[8], 12);
-        try helpers.expectEq(pixels.Indexed4.indices[12], 10);
-        try helpers.expectEq(pixels.Indexed4.indices[16], 7);
-        try helpers.expectEq(pixels.Indexed4.indices[20], 3);
-        try helpers.expectEq(pixels.Indexed4.indices[24], 14);
-        try helpers.expectEq(pixels.Indexed4.indices[28], 9);
+        try helpers.expectEq(pixels.indexed4.indices[0], 8);
+        try helpers.expectEq(pixels.indexed4.indices[4], 5);
+        try helpers.expectEq(pixels.indexed4.indices[8], 12);
+        try helpers.expectEq(pixels.indexed4.indices[12], 10);
+        try helpers.expectEq(pixels.indexed4.indices[16], 7);
+        try helpers.expectEq(pixels.indexed4.indices[20], 3);
+        try helpers.expectEq(pixels.indexed4.indices[24], 14);
+        try helpers.expectEq(pixels.indexed4.indices[28], 9);
 
-        try helpers.expectEq(pixels.Indexed4.indices[31 * 32 + 31], 11);
+        try helpers.expectEq(pixels.indexed4.indices[31 * 32 + 31], 11);
     }
 }
 
@@ -528,13 +528,13 @@ test "Read basn3p08 data properly" {
     }
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == .Indexed8);
+        try testing.expect(pixels == .indexed8);
 
-        const color0 = pixels.Indexed8.palette[0].toIntegerColor8();
-        const color64 = pixels.Indexed8.palette[64].toIntegerColor8();
-        const color128 = pixels.Indexed8.palette[128].toIntegerColor8();
-        const color192 = pixels.Indexed8.palette[192].toIntegerColor8();
-        const color255 = pixels.Indexed8.palette[255].toIntegerColor8();
+        const color0 = pixels.indexed8.palette[0].toIntegerColor8();
+        const color64 = pixels.indexed8.palette[64].toIntegerColor8();
+        const color128 = pixels.indexed8.palette[128].toIntegerColor8();
+        const color192 = pixels.indexed8.palette[192].toIntegerColor8();
+        const color255 = pixels.indexed8.palette[255].toIntegerColor8();
 
         try helpers.expectEq(color0.R, 0x22);
         try helpers.expectEq(color0.G, 0x44);
@@ -556,10 +556,10 @@ test "Read basn3p08 data properly" {
         try helpers.expectEq(color255.G, 0x33);
         try helpers.expectEq(color255.B, 0xff);
 
-        try helpers.expectEq(pixels.Indexed8.indices[0], 165);
-        try helpers.expectEq(pixels.Indexed8.indices[16 * 32], 107);
-        try helpers.expectEq(pixels.Indexed8.indices[16 * 32 + 16], 65);
-        try helpers.expectEq(pixels.Indexed8.indices[31 * 32 + 31], 80);
+        try helpers.expectEq(pixels.indexed8.indices[0], 165);
+        try helpers.expectEq(pixels.indexed8.indices[16 * 32], 107);
+        try helpers.expectEq(pixels.indexed8.indices[16 * 32 + 16], 65);
+        try helpers.expectEq(pixels.indexed8.indices[31 * 32 + 31], 80);
     }
 }
 
@@ -584,19 +584,19 @@ test "Read basn4a08 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == .Grayscale8Alpha);
+        try testing.expect(pixels == .grayscale8Alpha);
 
-        try helpers.expectEq(pixels.Grayscale8Alpha[0].value, 255);
-        try helpers.expectEq(pixels.Grayscale8Alpha[0].alpha, 0);
+        try helpers.expectEq(pixels.grayscale8Alpha[0].value, 255);
+        try helpers.expectEq(pixels.grayscale8Alpha[0].alpha, 0);
 
-        try helpers.expectEq(pixels.Grayscale8Alpha[8].value, 255);
-        try helpers.expectEq(pixels.Grayscale8Alpha[8].alpha, 65);
+        try helpers.expectEq(pixels.grayscale8Alpha[8].value, 255);
+        try helpers.expectEq(pixels.grayscale8Alpha[8].alpha, 65);
 
-        try helpers.expectEq(pixels.Grayscale8Alpha[31].value, 255);
-        try helpers.expectEq(pixels.Grayscale8Alpha[31].alpha, 255);
+        try helpers.expectEq(pixels.grayscale8Alpha[31].value, 255);
+        try helpers.expectEq(pixels.grayscale8Alpha[31].alpha, 255);
 
-        try helpers.expectEq(pixels.Grayscale8Alpha[31 * 32 + 31].value, 0);
-        try helpers.expectEq(pixels.Grayscale8Alpha[31 * 32 + 31].alpha, 255);
+        try helpers.expectEq(pixels.grayscale8Alpha[31 * 32 + 31].value, 0);
+        try helpers.expectEq(pixels.grayscale8Alpha[31 * 32 + 31].alpha, 255);
     }
 }
 
@@ -621,22 +621,22 @@ test "Read basn4a16 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == .Grayscale16Alpha);
+        try testing.expect(pixels == .grayscale16Alpha);
 
-        try helpers.expectEq(pixels.Grayscale16Alpha[0].value, 0);
-        try helpers.expectEq(pixels.Grayscale16Alpha[0].alpha, 0);
+        try helpers.expectEq(pixels.grayscale16Alpha[0].value, 0);
+        try helpers.expectEq(pixels.grayscale16Alpha[0].alpha, 0);
 
-        try helpers.expectEq(pixels.Grayscale16Alpha[8].value, 33824);
-        try helpers.expectEq(pixels.Grayscale16Alpha[8].alpha, 0);
+        try helpers.expectEq(pixels.grayscale16Alpha[8].value, 33824);
+        try helpers.expectEq(pixels.grayscale16Alpha[8].alpha, 0);
 
-        try helpers.expectEq(pixels.Grayscale16Alpha[9 * 32 + 8].value, 8737);
-        try helpers.expectEq(pixels.Grayscale16Alpha[9 * 32 + 8].alpha, 33825);
+        try helpers.expectEq(pixels.grayscale16Alpha[9 * 32 + 8].value, 8737);
+        try helpers.expectEq(pixels.grayscale16Alpha[9 * 32 + 8].alpha, 33825);
 
-        try helpers.expectEq(pixels.Grayscale16Alpha[31].value, 0);
-        try helpers.expectEq(pixels.Grayscale16Alpha[31].alpha, 0);
+        try helpers.expectEq(pixels.grayscale16Alpha[31].value, 0);
+        try helpers.expectEq(pixels.grayscale16Alpha[31].alpha, 0);
 
-        try helpers.expectEq(pixels.Grayscale16Alpha[31 * 32 + 31].value, 0);
-        try helpers.expectEq(pixels.Grayscale16Alpha[31 * 32 + 31].alpha, 0);
+        try helpers.expectEq(pixels.grayscale16Alpha[31 * 32 + 31].value, 0);
+        try helpers.expectEq(pixels.grayscale16Alpha[31 * 32 + 31].alpha, 0);
     }
 }
 
@@ -661,12 +661,12 @@ test "Read basn6a08 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == .Rgba32);
+        try testing.expect(pixels == .rgba32);
 
-        const color0 = pixels.Rgba32[0];
-        const color16 = pixels.Rgba32[16];
-        const color31 = pixels.Rgba32[31];
-        const color16_16 = pixels.Rgba32[16 * 32 + 16];
+        const color0 = pixels.rgba32[0];
+        const color16 = pixels.rgba32[16];
+        const color31 = pixels.rgba32[31];
+        const color16_16 = pixels.rgba32[16 * 32 + 16];
 
         try helpers.expectEq(color0.R, 0xFF);
         try helpers.expectEq(color0.G, 0x00);
@@ -711,13 +711,13 @@ test "Read basn6a16 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == .Rgba64);
+        try testing.expect(pixels == .rgba64);
 
-        const color0 = pixels.Rgba64[0];
-        const color16 = pixels.Rgba64[16];
-        const color31 = pixels.Rgba64[31];
-        const color16_16 = pixels.Rgba64[16 * 32 + 16];
-        const color25_17 = pixels.Rgba64[17 * 32 + 25];
+        const color0 = pixels.rgba64[0];
+        const color16 = pixels.rgba64[16];
+        const color31 = pixels.rgba64[31];
+        const color16_16 = pixels.rgba64[16 * 32 + 16];
+        const color25_17 = pixels.rgba64[17 * 32 + 25];
 
         try helpers.expectEq(color0.R, 0xFFFF);
         try helpers.expectEq(color0.G, 0xFFFF);
