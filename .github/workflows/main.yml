@@ -11,15 +11,19 @@ jobs:
     steps:
       - name: Checkout zigmimg
         uses: actions/checkout@v2
+        with:
+          path: zigimg
+      - name: Checkout test-suite fixtures
+        uses: actions/checkout@v3
+        with:
+          repository: zigimg/test-suite
+          path: test-suite
       - name: Setup Zig
         uses: goto-bus-stop/setup-zig@v1
         with:
           version: master
       - name: AST Verify
         run: zig fmt --check --ast-check src/
-      - name: Checkout test-suite fixtures
-        uses: actions/checkout@v3
-        with:
-          repository: zigimg/test-suite
       - name: Run test suite
         run: zig build test
+        working-directory: zigimg
