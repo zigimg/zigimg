@@ -19,7 +19,7 @@ test "Read basi0g01 data properly" {
     var pngFile = png.PNG.init(helpers.zigimg_test_allocator);
     defer pngFile.deinit();
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try pngFile.read(stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -52,7 +52,7 @@ test "Read basi0g02 data properly" {
     var pngFile = png.PNG.init(helpers.zigimg_test_allocator);
     defer pngFile.deinit();
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try pngFile.read(stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -84,7 +84,7 @@ test "Read basi0g04 data properly" {
     var pngFile = png.PNG.init(helpers.zigimg_test_allocator);
     defer pngFile.deinit();
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try pngFile.read(stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -119,7 +119,7 @@ test "Read basi0g08 data properly" {
     var pngFile = png.PNG.init(helpers.zigimg_test_allocator);
     defer pngFile.deinit();
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try pngFile.read(stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -153,7 +153,7 @@ test "Read basi0g16 data properly" {
     var pngFile = png.PNG.init(helpers.zigimg_test_allocator);
     defer pngFile.deinit();
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try pngFile.read(stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -181,7 +181,7 @@ test "Read basi2c08 data properly" {
     var pngFile = png.PNG.init(helpers.zigimg_test_allocator);
     defer pngFile.deinit();
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try pngFile.read(stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -226,7 +226,7 @@ test "Read basi2c16 data properly" {
     var pngFile = png.PNG.init(helpers.zigimg_test_allocator);
     defer pngFile.deinit();
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try pngFile.read(stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -263,7 +263,7 @@ test "Read basi3p01 data properly" {
     var pngFile = png.PNG.init(helpers.zigimg_test_allocator);
     defer pngFile.deinit();
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try pngFile.read(stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -330,7 +330,7 @@ test "Read basi3p02 data properly" {
     var pngFile = png.PNG.init(helpers.zigimg_test_allocator);
     defer pngFile.deinit();
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try pngFile.read(stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -388,7 +388,7 @@ test "Read basi3p04 data properly" {
     var pngFile = png.PNG.init(helpers.zigimg_test_allocator);
     defer pngFile.deinit();
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try pngFile.read(stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -508,7 +508,7 @@ test "Read basi3p08 data properly" {
     var pngFile = png.PNG.init(helpers.zigimg_test_allocator);
     defer pngFile.deinit();
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try pngFile.read(stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -572,7 +572,7 @@ test "Read basi4a08 data properly" {
     var pngFile = png.PNG.init(helpers.zigimg_test_allocator);
     defer pngFile.deinit();
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try pngFile.read(stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -609,7 +609,7 @@ test "Read basi4a16 data properly" {
     var pngFile = png.PNG.init(helpers.zigimg_test_allocator);
     defer pngFile.deinit();
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try pngFile.read(stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -649,7 +649,7 @@ test "Read basi6a08 data properly" {
     var pngFile = png.PNG.init(helpers.zigimg_test_allocator);
     defer pngFile.deinit();
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try pngFile.read(stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -699,7 +699,7 @@ test "Read basi6a16 data properly" {
     var pngFile = png.PNG.init(helpers.zigimg_test_allocator);
     defer pngFile.deinit();
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try pngFile.read(stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {

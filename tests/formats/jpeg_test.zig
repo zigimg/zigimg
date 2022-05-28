@@ -15,7 +15,7 @@ test "Should error on non JPEG images" {
     var jpeg_file = jpeg.JPEG.init(helpers.zigimg_test_allocator);
     defer jpeg_file.deinit();
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     const invalidFile = jpeg_file.read(stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
     defer {
         if (pixelsOpt) |pixels| {
@@ -35,7 +35,7 @@ test "Read JFIF header properly and decode simple Huffman stream" {
     var jpeg_file = jpeg.JPEG.init(helpers.zigimg_test_allocator);
     defer jpeg_file.deinit();
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     const frame = try jpeg_file.read(stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -65,7 +65,7 @@ test "Read the tuba properly" {
     var jpeg_file = jpeg.JPEG.init(helpers.zigimg_test_allocator);
     defer jpeg_file.deinit();
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     const frame = try jpeg_file.read(stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {

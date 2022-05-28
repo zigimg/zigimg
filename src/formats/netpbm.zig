@@ -173,7 +173,7 @@ fn readLinearizedValue(stream: ImageReader, max_value: usize) !u8 {
         @truncate(u8, 255 * @as(usize, try stream.readByte()) / max_value);
 }
 
-fn loadBinaryGraymap(header: Header, pixels: *color.ColorStorage, stream: ImageReader) !void {
+fn loadBinaryGraymap(header: Header, pixels: *color.PixelStorage, stream: ImageReader) !void {
     var data_index: usize = 0;
     const data_end = header.width * header.height;
     if (header.max_value <= 255) {
@@ -187,7 +187,7 @@ fn loadBinaryGraymap(header: Header, pixels: *color.ColorStorage, stream: ImageR
     }
 }
 
-fn loadAsciiGraymap(header: Header, pixels: *color.ColorStorage, stream: ImageReader) !void {
+fn loadAsciiGraymap(header: Header, pixels: *color.PixelStorage, stream: ImageReader) !void {
     var read_buffer: [16]u8 = undefined;
 
     var data_index: usize = 0;
@@ -281,7 +281,7 @@ fn Netpbm(comptime image_format: ImageFormat, comptime header_numbers: []const u
             return found;
         }
 
-        pub fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
+        pub fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels: *?color.PixelStorage) !ImageInfo {
             var netpbm_file = Self{};
 
             try netpbm_file.read(allocator, reader, seek_stream, pixels);
@@ -293,7 +293,7 @@ fn Netpbm(comptime image_format: ImageFormat, comptime header_numbers: []const u
             return image_info;
         }
 
-        pub fn writeForImage(allocator: Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
+        pub fn writeForImage(allocator: Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) !void {
             _ = allocator;
             var netpbm_file = Self{};
             netpbm_file.header.binary = switch (save_info.encoder_options) {
@@ -332,13 +332,13 @@ fn Netpbm(comptime image_format: ImageFormat, comptime header_numbers: []const u
             };
         }
 
-        pub fn read(self: *Self, allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.ColorStorage) !void {
+        pub fn read(self: *Self, allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.PixelStorage) !void {
             _ = seek_stream;
             self.header = try parseHeader(reader);
 
             const pixel_format = try self.pixelFormat();
 
-            pixels_opt.* = try color.ColorStorage.init(allocator, pixel_format, self.header.width * self.header.height);
+            pixels_opt.* = try color.PixelStorage.init(allocator, pixel_format, self.header.width * self.header.height);
 
             if (pixels_opt.*) |*pixels| {
                 switch (self.header.format) {
@@ -367,7 +367,7 @@ fn Netpbm(comptime image_format: ImageFormat, comptime header_numbers: []const u
             }
         }
 
-        pub fn write(self: *Self, write_stream: image.ImageWriterStream, seek_stream: image.ImageSeekStream, pixels: color.ColorStorage) !void {
+        pub fn write(self: *Self, write_stream: image.ImageWriterStream, seek_stream: image.ImageSeekStream, pixels: color.PixelStorage) !void {
             _ = seek_stream;
             const image_type = if (self.header.binary) header_numbers[1] else header_numbers[0];
             try write_stream.print("P{c}\n", .{image_type});

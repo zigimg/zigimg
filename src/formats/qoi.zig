@@ -133,7 +133,7 @@ pub const QOI = struct {
         return std.mem.eql(u8, magic_buffer[0..], Header.correct_magic[0..]);
     }
 
-    pub fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
+    pub fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels: *?color.PixelStorage) !ImageInfo {
         var qoi = Self{};
 
         try qoi.read(allocator, reader, seek_stream, pixels);
@@ -144,7 +144,7 @@ pub const QOI = struct {
         return image_info;
     }
 
-    pub fn writeForImage(allocator: Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
+    pub fn writeForImage(allocator: Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) !void {
         _ = allocator;
 
         var qoi = Self{};
@@ -182,7 +182,7 @@ pub const QOI = struct {
         };
     }
 
-    pub fn read(self: *Self, allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.ColorStorage) !void {
+    pub fn read(self: *Self, allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.PixelStorage) !void {
         _ = seek_stream;
 
         var magic_buffer: [std.mem.len(Header.correct_magic)]u8 = undefined;
@@ -197,7 +197,7 @@ pub const QOI = struct {
 
         const pixel_format = try self.pixelFormat();
 
-        pixels_opt.* = try color.ColorStorage.init(allocator, pixel_format, self.width() * self.height());
+        pixels_opt.* = try color.PixelStorage.init(allocator, pixel_format, self.width() * self.height());
 
         var current_color = QoiColor{ .r = 0, .g = 0, .b = 0, .a = 0xFF };
         var color_lut = std.mem.zeroes([64]QoiColor);
@@ -278,7 +278,7 @@ pub const QOI = struct {
         }
     }
 
-    pub fn write(self: Self, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage) !void {
+    pub fn write(self: Self, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.PixelStorage) !void {
         _ = seek_stream;
 
         try write_stream.writeAll(&self.header.encode());

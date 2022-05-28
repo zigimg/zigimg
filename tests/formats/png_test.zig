@@ -19,7 +19,7 @@ test "Should error on non PNG images" {
     var png_file = png.PNG.init(helpers.zigimg_test_allocator);
     defer png_file.deinit();
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     const invalidFile = png_file.read(stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
     defer {
         if (pixelsOpt) |pixels| {
@@ -39,7 +39,7 @@ test "Read PNG header properly" {
     var png_file = png.PNG.init(helpers.zigimg_test_allocator);
     defer png_file.deinit();
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try png_file.read(stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -72,7 +72,7 @@ test "Read gAMA chunk properly" {
     var png_file = png.PNG.init(helpers.zigimg_test_allocator);
     defer png_file.deinit();
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try png_file.read(stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {

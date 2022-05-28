@@ -18,7 +18,7 @@ test "Should error on non TGA images" {
 
     var tga_file = tga.TGA{};
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     const invalidFile = tga_file.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
     defer {
         if (pixelsOpt) |pixels| {
@@ -37,7 +37,7 @@ test "Read ubw8 TGA file" {
 
     var tga_file = tga.TGA{};
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try tga_file.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -83,7 +83,7 @@ test "Read ucm8 TGA file" {
 
     var tga_file = tga.TGA{};
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try tga_file.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -137,7 +137,7 @@ test "Read utc16 TGA file" {
 
     var tga_file = tga.TGA{};
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try tga_file.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -185,7 +185,7 @@ test "Read utc24 TGA file" {
 
     var tga_file = tga.TGA{};
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try tga_file.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -233,7 +233,7 @@ test "Read utc32 TGA file" {
 
     var tga_file = tga.TGA{};
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try tga_file.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -281,7 +281,7 @@ test "Read cbw8 TGA file" {
 
     var tga_file = tga.TGA{};
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try tga_file.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -327,7 +327,7 @@ test "Read ccm8 TGA file" {
 
     var tga_file = tga.TGA{};
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try tga_file.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -381,7 +381,7 @@ test "Read ctc24 TGA file" {
 
     var tga_file = tga.TGA{};
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try tga_file.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -429,7 +429,7 @@ test "Read matte-01 TGA file" {
 
     var tga_file = tga.TGA{};
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try tga_file.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -485,7 +485,7 @@ test "Read font TGA file" {
 
     var tga_file = tga.TGA{};
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try tga_file.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {

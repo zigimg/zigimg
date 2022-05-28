@@ -18,7 +18,7 @@ test "PCX bpp1 (linear)" {
 
     var pcxFile = pcx.PCX{};
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try pcxFile.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -65,7 +65,7 @@ test "PCX bpp4 (linear)" {
 
     var pcxFile = pcx.PCX{};
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try pcxFile.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -113,7 +113,7 @@ test "PCX bpp8 (linear)" {
 
     var pcxFile = pcx.PCX{};
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try pcxFile.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -163,7 +163,7 @@ test "PCX bpp24 (planar)" {
 
     var pcxFile = pcx.PCX{};
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try pcxFile.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {

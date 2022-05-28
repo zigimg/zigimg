@@ -269,7 +269,7 @@ pub const TGA = struct {
         return false;
     }
 
-    pub fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
+    pub fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels: *?color.PixelStorage) !ImageInfo {
         var tga = Self{};
 
         try tga.read(allocator, reader, seek_stream, pixels);
@@ -280,7 +280,7 @@ pub const TGA = struct {
         return image_info;
     }
 
-    pub fn writeForImage(allocator: Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
+    pub fn writeForImage(allocator: Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) !void {
         _ = allocator;
         _ = write_stream;
         _ = seek_stream;
@@ -315,7 +315,7 @@ pub const TGA = struct {
         return errors.ImageError.UnsupportedPixelFormat;
     }
 
-    pub fn read(self: *Self, allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.ColorStorage) !void {
+    pub fn read(self: *Self, allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.PixelStorage) !void {
         // Read footage
         const end_pos = try seek_stream.getEndPos();
 
@@ -356,7 +356,7 @@ pub const TGA = struct {
 
         const pixel_format = try self.pixelFormat();
 
-        pixels_opt.* = try color.ColorStorage.init(allocator, pixel_format, self.width() * self.height());
+        pixels_opt.* = try color.PixelStorage.init(allocator, pixel_format, self.width() * self.height());
 
         if (pixels_opt.*) |pixels| {
             const is_compressed = self.header.image_type.run_length;

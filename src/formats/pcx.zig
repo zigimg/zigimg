@@ -131,7 +131,7 @@ pub const PCX = struct {
         return true;
     }
 
-    pub fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
+    pub fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels: *?color.PixelStorage) !ImageInfo {
         var pcx = PCX{};
 
         try pcx.read(allocator, reader, seek_stream, pixels);
@@ -143,7 +143,7 @@ pub const PCX = struct {
         return image_info;
     }
 
-    pub fn writeForImage(allocator: Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
+    pub fn writeForImage(allocator: Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) !void {
         _ = allocator;
         _ = write_stream;
         _ = seek_stream;
@@ -169,7 +169,7 @@ pub const PCX = struct {
         }
     }
 
-    pub fn read(self: *Self, allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.ColorStorage) !void {
+    pub fn read(self: *Self, allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.PixelStorage) !void {
         self.header = try utils.readStructLittle(reader, PCXHeader);
         _ = try reader.read(PCXHeader.padding[0..]);
 
@@ -193,7 +193,7 @@ pub const PCX = struct {
         const has_dummy_byte = (@bitCast(i16, self.header.stride) - @bitCast(isize, self.width)) == 1;
         const actual_width = if (has_dummy_byte) self.width + 1 else self.width;
 
-        pixels_opt.* = try color.ColorStorage.init(allocator, pixel_format, self.width * self.height);
+        pixels_opt.* = try color.PixelStorage.init(allocator, pixel_format, self.width * self.height);
 
         if (pixels_opt.*) |pixels| {
             var decoder = RLEDecoder.init(reader);

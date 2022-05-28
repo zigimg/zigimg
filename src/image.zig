@@ -1,7 +1,7 @@
 const AllImageFormats = @import("formats/all.zig");
 const Allocator = std.mem.Allocator;
 const Color = color.Color;
-const ColorStorage = color.ColorStorage;
+const PixelStorage = color.PixelStorage;
 const FormatInterface = @import("format_interface.zig").FormatInterface;
 const PixelFormat = @import("pixel_format.zig").PixelFormat;
 const color = @import("color.zig");
@@ -44,7 +44,7 @@ pub const Image = struct {
     allocator: Allocator = undefined,
     width: usize = 0,
     height: usize = 0,
-    pixels: ?ColorStorage = null,
+    pixels: ?PixelStorage = null,
     image_format: ImageFormat = undefined,
 
     const Self = @This();
@@ -125,7 +125,7 @@ pub const Image = struct {
             .width = width,
             .height = height,
             .image_format = image_format,
-            .pixels = try ColorStorage.init(allocator, pixel_format, width * height),
+            .pixels = try PixelStorage.init(allocator, pixel_format, width * height),
         };
 
         return result;
@@ -246,12 +246,12 @@ pub const Image = struct {
     }
 
     /// Iterate the pixel in pixel-format agnostic way. The iterator is read-only.
-    pub fn iterator(self: Self) color.ColorStorageIterator {
+    pub fn iterator(self: Self) color.PixelStorageIterator {
         if (self.pixels) |*pixels| {
-            return color.ColorStorageIterator.init(pixels);
+            return color.PixelStorageIterator.init(pixels);
         }
 
-        return color.ColorStorageIterator.initNull();
+        return color.PixelStorageIterator.initNull();
     }
 
     fn internalRead(self: *Self, allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream) !void {
