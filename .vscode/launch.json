@@ -5,23 +5,27 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug tests",
+            "name": "Debug tests (Windows)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "cwd": "${workspaceRoot}",
+            "preLaunchTask": "build tests",
+            "stopAtEntry": false,
+            "program": "zig-out/bin/zigimgtest.exe",
+            "args": [
+                "path/to/zig/exe/not/really/needed"
+            ],
+        },
+        {
+            "name": "Debug tests (UNIX)",
             "type": "gdb",
             "request": "launch",
             "cwd": "${workspaceRoot}",
             "preLaunchTask": "build tests",
             "stopAtEntry": false,
-            "linux": {
-                "type": "gdb",
-                "target": "zig-out/zigimgtest",
-                "valuesFormatting": "parseText",
-                "arguments": "path/to/zig/exe/not/really/needed"
-            },
-            "windows": {
-                "type": "cppvsdbg",
-                "program": "zig-out/zigimgtest.exe",
-                "args": ["path/to/zig/exe/not/really/needed"]
-            }
+            "target": "zig-out/bin/zigimgtest",
+            "valuesFormatting": "parseText",
+            "arguments": "path/to/zig/exe/not/really/needed"
         }
     ]
 }

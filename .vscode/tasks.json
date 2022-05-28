@@ -7,7 +7,9 @@
             "label": "run tests",
             "type": "shell",
             "command": "zig build test",
-            "problemMatcher": ["$gcc"],
+            "problemMatcher": [
+                "$gcc"
+            ],
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -16,8 +18,10 @@
         {
             "label": "build tests",
             "type": "shell",
-            "command": "zig build tests",
-            "problemMatcher": ["$gcc"]
+            "command": "zig build test_build_only",
+            "problemMatcher": [
+                "$gcc"
+            ]
         }
     ]
 }
