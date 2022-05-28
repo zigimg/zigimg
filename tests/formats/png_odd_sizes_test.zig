@@ -34,21 +34,21 @@ test "Read s01i3p01 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp1);
+        try testing.expect(pixels == PixelFormat.Indexed1);
 
-        try helpers.expectEq(pixels.Bpp1.palette.len, 2);
+        try helpers.expectEq(pixels.Indexed1.palette.len, 2);
 
-        const firstColor = pixels.Bpp1.palette[0].toIntegerColor8();
+        const firstColor = pixels.Indexed1.palette[0].toIntegerColor8();
         try helpers.expectEq(firstColor.R, 0);
         try helpers.expectEq(firstColor.G, 0);
         try helpers.expectEq(firstColor.B, 255);
 
-        const secondColor = pixels.Bpp1.palette[1].toIntegerColor8();
+        const secondColor = pixels.Indexed1.palette[1].toIntegerColor8();
         try helpers.expectEq(secondColor.R, 0);
         try helpers.expectEq(secondColor.G, 0);
         try helpers.expectEq(secondColor.B, 0);
 
-        try helpers.expectEq(pixels.Bpp1.indices[0], 0);
+        try helpers.expectEq(pixels.Indexed1.indices[0], 0);
     }
 }
 
@@ -76,21 +76,21 @@ test "Read s01n3p01 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp1);
+        try testing.expect(pixels == PixelFormat.Indexed1);
 
-        try helpers.expectEq(pixels.Bpp1.palette.len, 2);
+        try helpers.expectEq(pixels.Indexed1.palette.len, 2);
 
-        const firstColor = pixels.Bpp1.palette[0].toIntegerColor8();
+        const firstColor = pixels.Indexed1.palette[0].toIntegerColor8();
         try helpers.expectEq(firstColor.R, 0);
         try helpers.expectEq(firstColor.G, 0);
         try helpers.expectEq(firstColor.B, 255);
 
-        const secondColor = pixels.Bpp1.palette[1].toIntegerColor8();
+        const secondColor = pixels.Indexed1.palette[1].toIntegerColor8();
         try helpers.expectEq(secondColor.R, 0);
         try helpers.expectEq(secondColor.G, 0);
         try helpers.expectEq(secondColor.B, 0);
 
-        try helpers.expectEq(pixels.Bpp1.indices[0], 0);
+        try helpers.expectEq(pixels.Indexed1.indices[0], 0);
     }
 }
 
@@ -118,25 +118,25 @@ test "Read s02i3p01 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp1);
+        try testing.expect(pixels == PixelFormat.Indexed1);
 
-        try helpers.expectEq(pixels.Bpp1.palette.len, 2);
+        try helpers.expectEq(pixels.Indexed1.palette.len, 2);
 
-        const firstColor = pixels.Bpp1.palette[0].toIntegerColor8();
+        const firstColor = pixels.Indexed1.palette[0].toIntegerColor8();
         try helpers.expectEq(firstColor.R, 0);
         try helpers.expectEq(firstColor.G, 255);
         try helpers.expectEq(firstColor.B, 255);
 
-        const secondColor = pixels.Bpp1.palette[1].toIntegerColor8();
+        const secondColor = pixels.Indexed1.palette[1].toIntegerColor8();
         try helpers.expectEq(secondColor.R, 0);
         try helpers.expectEq(secondColor.G, 0);
         try helpers.expectEq(secondColor.B, 0);
 
-        try helpers.expectEq(pixels.Bpp1.indices.len, 4);
-        try helpers.expectEq(pixels.Bpp1.indices[0], 0);
-        try helpers.expectEq(pixels.Bpp1.indices[1], 0);
-        try helpers.expectEq(pixels.Bpp1.indices[2], 0);
-        try helpers.expectEq(pixels.Bpp1.indices[3], 0);
+        try helpers.expectEq(pixels.Indexed1.indices.len, 4);
+        try helpers.expectEq(pixels.Indexed1.indices[0], 0);
+        try helpers.expectEq(pixels.Indexed1.indices[1], 0);
+        try helpers.expectEq(pixels.Indexed1.indices[2], 0);
+        try helpers.expectEq(pixels.Indexed1.indices[3], 0);
     }
 }
 
@@ -164,25 +164,25 @@ test "Read s02n3p01 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp1);
+        try testing.expect(pixels == PixelFormat.Indexed1);
 
-        try helpers.expectEq(pixels.Bpp1.palette.len, 2);
+        try helpers.expectEq(pixels.Indexed1.palette.len, 2);
 
-        const firstColor = pixels.Bpp1.palette[0].toIntegerColor8();
+        const firstColor = pixels.Indexed1.palette[0].toIntegerColor8();
         try helpers.expectEq(firstColor.R, 0);
         try helpers.expectEq(firstColor.G, 255);
         try helpers.expectEq(firstColor.B, 255);
 
-        const secondColor = pixels.Bpp1.palette[1].toIntegerColor8();
+        const secondColor = pixels.Indexed1.palette[1].toIntegerColor8();
         try helpers.expectEq(secondColor.R, 0);
         try helpers.expectEq(secondColor.G, 0);
         try helpers.expectEq(secondColor.B, 0);
 
-        try helpers.expectEq(pixels.Bpp1.indices.len, 4);
-        try helpers.expectEq(pixels.Bpp1.indices[0], 0);
-        try helpers.expectEq(pixels.Bpp1.indices[1], 0);
-        try helpers.expectEq(pixels.Bpp1.indices[2], 0);
-        try helpers.expectEq(pixels.Bpp1.indices[3], 0);
+        try helpers.expectEq(pixels.Indexed1.indices.len, 4);
+        try helpers.expectEq(pixels.Indexed1.indices[0], 0);
+        try helpers.expectEq(pixels.Indexed1.indices[1], 0);
+        try helpers.expectEq(pixels.Indexed1.indices[2], 0);
+        try helpers.expectEq(pixels.Indexed1.indices[3], 0);
     }
 }
 
@@ -210,27 +210,27 @@ test "Read s03i3p01 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp1);
+        try testing.expect(pixels == PixelFormat.Indexed1);
 
-        try helpers.expectEq(pixels.Bpp1.palette.len, 2);
+        try helpers.expectEq(pixels.Indexed1.palette.len, 2);
 
-        const firstColor = pixels.Bpp1.palette[0].toIntegerColor8();
+        const firstColor = pixels.Indexed1.palette[0].toIntegerColor8();
         try helpers.expectEq(firstColor.R, 0);
         try helpers.expectEq(firstColor.G, 255);
         try helpers.expectEq(firstColor.B, 0);
 
-        const secondColor = pixels.Bpp1.palette[1].toIntegerColor8();
+        const secondColor = pixels.Indexed1.palette[1].toIntegerColor8();
         try helpers.expectEq(secondColor.R, 0xFF);
         try helpers.expectEq(secondColor.G, 0x77);
         try helpers.expectEq(secondColor.B, 0);
 
-        try helpers.expectEq(pixels.Bpp1.indices.len, 3 * 3);
+        try helpers.expectEq(pixels.Indexed1.indices.len, 3 * 3);
         var index: usize = 0;
         while (index < 3 * 3) : (index += 1) {
             if (index == 1 * pngFile.header.width + 1) {
-                try helpers.expectEq(pixels.Bpp1.indices[index], 1);
+                try helpers.expectEq(pixels.Indexed1.indices[index], 1);
             } else {
-                try helpers.expectEq(pixels.Bpp1.indices[index], 0);
+                try helpers.expectEq(pixels.Indexed1.indices[index], 0);
             }
         }
     }
@@ -260,27 +260,27 @@ test "Read s03n3p01 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp1);
+        try testing.expect(pixels == PixelFormat.Indexed1);
 
-        try helpers.expectEq(pixels.Bpp1.palette.len, 2);
+        try helpers.expectEq(pixels.Indexed1.palette.len, 2);
 
-        const firstColor = pixels.Bpp1.palette[0].toIntegerColor8();
+        const firstColor = pixels.Indexed1.palette[0].toIntegerColor8();
         try helpers.expectEq(firstColor.R, 0);
         try helpers.expectEq(firstColor.G, 255);
         try helpers.expectEq(firstColor.B, 0);
 
-        const secondColor = pixels.Bpp1.palette[1].toIntegerColor8();
+        const secondColor = pixels.Indexed1.palette[1].toIntegerColor8();
         try helpers.expectEq(secondColor.R, 0xFF);
         try helpers.expectEq(secondColor.G, 0x77);
         try helpers.expectEq(secondColor.B, 0);
 
-        try helpers.expectEq(pixels.Bpp1.indices.len, 3 * 3);
+        try helpers.expectEq(pixels.Indexed1.indices.len, 3 * 3);
         var index: usize = 0;
         while (index < 3 * 3) : (index += 1) {
             if (index == 1 * pngFile.header.width + 1) {
-                try helpers.expectEq(pixels.Bpp1.indices[index], 1);
+                try helpers.expectEq(pixels.Indexed1.indices[index], 1);
             } else {
-                try helpers.expectEq(pixels.Bpp1.indices[index], 0);
+                try helpers.expectEq(pixels.Indexed1.indices[index], 0);
             }
         }
     }
@@ -310,21 +310,21 @@ test "Read s04i3p01 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp1);
+        try testing.expect(pixels == PixelFormat.Indexed1);
 
-        try helpers.expectEq(pixels.Bpp1.palette.len, 2);
+        try helpers.expectEq(pixels.Indexed1.palette.len, 2);
 
-        const firstColor = pixels.Bpp1.palette[0].toIntegerColor8();
+        const firstColor = pixels.Indexed1.palette[0].toIntegerColor8();
         try helpers.expectEq(firstColor.R, 255);
         try helpers.expectEq(firstColor.G, 0);
         try helpers.expectEq(firstColor.B, 119);
 
-        const secondColor = pixels.Bpp1.palette[1].toIntegerColor8();
+        const secondColor = pixels.Indexed1.palette[1].toIntegerColor8();
         try helpers.expectEq(secondColor.R, 255);
         try helpers.expectEq(secondColor.G, 255);
         try helpers.expectEq(secondColor.B, 0);
 
-        try helpers.expectEq(pixels.Bpp1.indices.len, 4 * 4);
+        try helpers.expectEq(pixels.Indexed1.indices.len, 4 * 4);
 
         const expected = [_]u8{
             1, 1, 1, 1,
@@ -334,7 +334,7 @@ test "Read s04i3p01 data properly" {
         };
         var index: usize = 0;
         while (index < 4 * 4) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp1.indices[index], @intCast(u1, expected[index]));
+            try helpers.expectEq(pixels.Indexed1.indices[index], @intCast(u1, expected[index]));
         }
     }
 }
@@ -363,21 +363,21 @@ test "Read s04n3p01 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp1);
+        try testing.expect(pixels == PixelFormat.Indexed1);
 
-        try helpers.expectEq(pixels.Bpp1.palette.len, 2);
+        try helpers.expectEq(pixels.Indexed1.palette.len, 2);
 
-        const firstColor = pixels.Bpp1.palette[0].toIntegerColor8();
+        const firstColor = pixels.Indexed1.palette[0].toIntegerColor8();
         try helpers.expectEq(firstColor.R, 255);
         try helpers.expectEq(firstColor.G, 0);
         try helpers.expectEq(firstColor.B, 119);
 
-        const secondColor = pixels.Bpp1.palette[1].toIntegerColor8();
+        const secondColor = pixels.Indexed1.palette[1].toIntegerColor8();
         try helpers.expectEq(secondColor.R, 255);
         try helpers.expectEq(secondColor.G, 255);
         try helpers.expectEq(secondColor.B, 0);
 
-        try helpers.expectEq(pixels.Bpp1.indices.len, 4 * 4);
+        try helpers.expectEq(pixels.Indexed1.indices.len, 4 * 4);
 
         const expected = [_]u8{
             1, 1, 1, 1,
@@ -387,7 +387,7 @@ test "Read s04n3p01 data properly" {
         };
         var index: usize = 0;
         while (index < 4 * 4) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp1.indices[index], @intCast(u1, expected[index]));
+            try helpers.expectEq(pixels.Indexed1.indices[index], @intCast(u1, expected[index]));
         }
     }
 }
@@ -418,26 +418,26 @@ test "Read s05i3p02 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp2);
+        try testing.expect(pixels == PixelFormat.Indexed2);
 
-        try helpers.expectEq(pixels.Bpp2.palette.len, 4);
+        try helpers.expectEq(pixels.Indexed2.palette.len, 4);
 
-        const color0 = pixels.Bpp2.palette[0].toIntegerColor8();
+        const color0 = pixels.Indexed2.palette[0].toIntegerColor8();
         try helpers.expectEq(color0.R, 0);
         try helpers.expectEq(color0.G, 255);
         try helpers.expectEq(color0.B, 255);
 
-        const color1 = pixels.Bpp2.palette[1].toIntegerColor8();
+        const color1 = pixels.Indexed2.palette[1].toIntegerColor8();
         try helpers.expectEq(color1.R, 119);
         try helpers.expectEq(color1.G, 0);
         try helpers.expectEq(color1.B, 255);
 
-        const color2 = pixels.Bpp2.palette[2].toIntegerColor8();
+        const color2 = pixels.Indexed2.palette[2].toIntegerColor8();
         try helpers.expectEq(color2.R, 255);
         try helpers.expectEq(color2.G, 0);
         try helpers.expectEq(color2.B, 0);
 
-        try helpers.expectEq(pixels.Bpp2.indices.len, total_size);
+        try helpers.expectEq(pixels.Indexed2.indices.len, total_size);
 
         const expected = [_]u8{
             2, 2, 2, 2, 2,
@@ -448,7 +448,7 @@ test "Read s05i3p02 data properly" {
         };
         var index: usize = 0;
         while (index < total_size) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp2.indices[index], @intCast(u2, expected[index]));
+            try helpers.expectEq(pixels.Indexed2.indices[index], @intCast(u2, expected[index]));
         }
     }
 }
@@ -479,26 +479,26 @@ test "Read s05n3p02 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp2);
+        try testing.expect(pixels == PixelFormat.Indexed2);
 
-        try helpers.expectEq(pixels.Bpp2.palette.len, 4);
+        try helpers.expectEq(pixels.Indexed2.palette.len, 4);
 
-        const color0 = pixels.Bpp2.palette[0].toIntegerColor8();
+        const color0 = pixels.Indexed2.palette[0].toIntegerColor8();
         try helpers.expectEq(color0.R, 0);
         try helpers.expectEq(color0.G, 255);
         try helpers.expectEq(color0.B, 255);
 
-        const color1 = pixels.Bpp2.palette[1].toIntegerColor8();
+        const color1 = pixels.Indexed2.palette[1].toIntegerColor8();
         try helpers.expectEq(color1.R, 119);
         try helpers.expectEq(color1.G, 0);
         try helpers.expectEq(color1.B, 255);
 
-        const color2 = pixels.Bpp2.palette[2].toIntegerColor8();
+        const color2 = pixels.Indexed2.palette[2].toIntegerColor8();
         try helpers.expectEq(color2.R, 255);
         try helpers.expectEq(color2.G, 0);
         try helpers.expectEq(color2.B, 0);
 
-        try helpers.expectEq(pixels.Bpp2.indices.len, total_size);
+        try helpers.expectEq(pixels.Indexed2.indices.len, total_size);
 
         const expected = [_]u8{
             2, 2, 2, 2, 2,
@@ -509,7 +509,7 @@ test "Read s05n3p02 data properly" {
         };
         var index: usize = 0;
         while (index < total_size) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp2.indices[index], @intCast(u2, expected[index]));
+            try helpers.expectEq(pixels.Indexed2.indices[index], @intCast(u2, expected[index]));
         }
     }
 }
@@ -540,26 +540,26 @@ test "Read s06i3p02 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp2);
+        try testing.expect(pixels == PixelFormat.Indexed2);
 
-        try helpers.expectEq(pixels.Bpp2.palette.len, 4);
+        try helpers.expectEq(pixels.Indexed2.palette.len, 4);
 
-        const color0 = pixels.Bpp2.palette[0].toIntegerColor8();
+        const color0 = pixels.Indexed2.palette[0].toIntegerColor8();
         try helpers.expectEq(color0.R, 0);
         try helpers.expectEq(color0.G, 255);
         try helpers.expectEq(color0.B, 0);
 
-        const color1 = pixels.Bpp2.palette[1].toIntegerColor8();
+        const color1 = pixels.Indexed2.palette[1].toIntegerColor8();
         try helpers.expectEq(color1.R, 0);
         try helpers.expectEq(color1.G, 119);
         try helpers.expectEq(color1.B, 255);
 
-        const color2 = pixels.Bpp2.palette[2].toIntegerColor8();
+        const color2 = pixels.Indexed2.palette[2].toIntegerColor8();
         try helpers.expectEq(color2.R, 255);
         try helpers.expectEq(color2.G, 0);
         try helpers.expectEq(color2.B, 255);
 
-        try helpers.expectEq(pixels.Bpp2.indices.len, total_size);
+        try helpers.expectEq(pixels.Indexed2.indices.len, total_size);
 
         const expected = [_]u8{
             2, 2, 2, 2, 2, 2,
@@ -571,7 +571,7 @@ test "Read s06i3p02 data properly" {
         };
         var index: usize = 0;
         while (index < total_size) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp2.indices[index], @intCast(u2, expected[index]));
+            try helpers.expectEq(pixels.Indexed2.indices[index], @intCast(u2, expected[index]));
         }
     }
 }
@@ -602,26 +602,26 @@ test "Read s06n3p02 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp2);
+        try testing.expect(pixels == PixelFormat.Indexed2);
 
-        try helpers.expectEq(pixels.Bpp2.palette.len, 4);
+        try helpers.expectEq(pixels.Indexed2.palette.len, 4);
 
-        const color0 = pixels.Bpp2.palette[0].toIntegerColor8();
+        const color0 = pixels.Indexed2.palette[0].toIntegerColor8();
         try helpers.expectEq(color0.R, 0);
         try helpers.expectEq(color0.G, 255);
         try helpers.expectEq(color0.B, 0);
 
-        const color1 = pixels.Bpp2.palette[1].toIntegerColor8();
+        const color1 = pixels.Indexed2.palette[1].toIntegerColor8();
         try helpers.expectEq(color1.R, 0);
         try helpers.expectEq(color1.G, 119);
         try helpers.expectEq(color1.B, 255);
 
-        const color2 = pixels.Bpp2.palette[2].toIntegerColor8();
+        const color2 = pixels.Indexed2.palette[2].toIntegerColor8();
         try helpers.expectEq(color2.R, 255);
         try helpers.expectEq(color2.G, 0);
         try helpers.expectEq(color2.B, 255);
 
-        try helpers.expectEq(pixels.Bpp2.indices.len, total_size);
+        try helpers.expectEq(pixels.Indexed2.indices.len, total_size);
 
         const expected = [_]u8{
             2, 2, 2, 2, 2, 2,
@@ -633,7 +633,7 @@ test "Read s06n3p02 data properly" {
         };
         var index: usize = 0;
         while (index < total_size) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp2.indices[index], @intCast(u2, expected[index]));
+            try helpers.expectEq(pixels.Indexed2.indices[index], @intCast(u2, expected[index]));
         }
     }
 }
@@ -664,31 +664,31 @@ test "Read s07i3p02 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp2);
+        try testing.expect(pixels == PixelFormat.Indexed2);
 
-        try helpers.expectEq(pixels.Bpp2.palette.len, 4);
+        try helpers.expectEq(pixels.Indexed2.palette.len, 4);
 
-        const color0 = pixels.Bpp2.palette[0].toIntegerColor8();
+        const color0 = pixels.Indexed2.palette[0].toIntegerColor8();
         try helpers.expectEq(color0.R, 255);
         try helpers.expectEq(color0.G, 0);
         try helpers.expectEq(color0.B, 119);
 
-        const color1 = pixels.Bpp2.palette[1].toIntegerColor8();
+        const color1 = pixels.Indexed2.palette[1].toIntegerColor8();
         try helpers.expectEq(color1.R, 0);
         try helpers.expectEq(color1.G, 255);
         try helpers.expectEq(color1.B, 119);
 
-        const color2 = pixels.Bpp2.palette[2].toIntegerColor8();
+        const color2 = pixels.Indexed2.palette[2].toIntegerColor8();
         try helpers.expectEq(color2.R, 255);
         try helpers.expectEq(color2.G, 255);
         try helpers.expectEq(color2.B, 0);
 
-        const color3 = pixels.Bpp2.palette[3].toIntegerColor8();
+        const color3 = pixels.Indexed2.palette[3].toIntegerColor8();
         try helpers.expectEq(color3.R, 0);
         try helpers.expectEq(color3.G, 0);
         try helpers.expectEq(color3.B, 255);
 
-        try helpers.expectEq(pixels.Bpp2.indices.len, total_size);
+        try helpers.expectEq(pixels.Indexed2.indices.len, total_size);
 
         const expected = [_]u8{
             3, 3, 3, 3, 3, 3, 3,
@@ -701,7 +701,7 @@ test "Read s07i3p02 data properly" {
         };
         var index: usize = 0;
         while (index < total_size) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp2.indices[index], @intCast(u2, expected[index]));
+            try helpers.expectEq(pixels.Indexed2.indices[index], @intCast(u2, expected[index]));
         }
     }
 }
@@ -732,31 +732,31 @@ test "Read s07n3p02 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp2);
+        try testing.expect(pixels == PixelFormat.Indexed2);
 
-        try helpers.expectEq(pixels.Bpp2.palette.len, 4);
+        try helpers.expectEq(pixels.Indexed2.palette.len, 4);
 
-        const color0 = pixels.Bpp2.palette[0].toIntegerColor8();
+        const color0 = pixels.Indexed2.palette[0].toIntegerColor8();
         try helpers.expectEq(color0.R, 255);
         try helpers.expectEq(color0.G, 0);
         try helpers.expectEq(color0.B, 119);
 
-        const color1 = pixels.Bpp2.palette[1].toIntegerColor8();
+        const color1 = pixels.Indexed2.palette[1].toIntegerColor8();
         try helpers.expectEq(color1.R, 0);
         try helpers.expectEq(color1.G, 255);
         try helpers.expectEq(color1.B, 119);
 
-        const color2 = pixels.Bpp2.palette[2].toIntegerColor8();
+        const color2 = pixels.Indexed2.palette[2].toIntegerColor8();
         try helpers.expectEq(color2.R, 255);
         try helpers.expectEq(color2.G, 255);
         try helpers.expectEq(color2.B, 0);
 
-        const color3 = pixels.Bpp2.palette[3].toIntegerColor8();
+        const color3 = pixels.Indexed2.palette[3].toIntegerColor8();
         try helpers.expectEq(color3.R, 0);
         try helpers.expectEq(color3.G, 0);
         try helpers.expectEq(color3.B, 255);
 
-        try helpers.expectEq(pixels.Bpp2.indices.len, total_size);
+        try helpers.expectEq(pixels.Indexed2.indices.len, total_size);
 
         const expected = [_]u8{
             3, 3, 3, 3, 3, 3, 3,
@@ -769,7 +769,7 @@ test "Read s07n3p02 data properly" {
         };
         var index: usize = 0;
         while (index < total_size) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp2.indices[index], @intCast(u2, expected[index]));
+            try helpers.expectEq(pixels.Indexed2.indices[index], @intCast(u2, expected[index]));
         }
     }
 }
@@ -800,31 +800,31 @@ test "Read s08i3p02 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp2);
+        try testing.expect(pixels == PixelFormat.Indexed2);
 
-        try helpers.expectEq(pixels.Bpp2.palette.len, 4);
+        try helpers.expectEq(pixels.Indexed2.palette.len, 4);
 
-        const color0 = pixels.Bpp2.palette[0].toIntegerColor8();
+        const color0 = pixels.Indexed2.palette[0].toIntegerColor8();
         try helpers.expectEq(color0.R, 0);
         try helpers.expectEq(color0.G, 255);
         try helpers.expectEq(color0.B, 255);
 
-        const color1 = pixels.Bpp2.palette[1].toIntegerColor8();
+        const color1 = pixels.Indexed2.palette[1].toIntegerColor8();
         try helpers.expectEq(color1.R, 119);
         try helpers.expectEq(color1.G, 0);
         try helpers.expectEq(color1.B, 255);
 
-        const color2 = pixels.Bpp2.palette[2].toIntegerColor8();
+        const color2 = pixels.Indexed2.palette[2].toIntegerColor8();
         try helpers.expectEq(color2.R, 119);
         try helpers.expectEq(color2.G, 255);
         try helpers.expectEq(color2.B, 0);
 
-        const color3 = pixels.Bpp2.palette[3].toIntegerColor8();
+        const color3 = pixels.Indexed2.palette[3].toIntegerColor8();
         try helpers.expectEq(color3.R, 255);
         try helpers.expectEq(color3.G, 0);
         try helpers.expectEq(color3.B, 0);
 
-        try helpers.expectEq(pixels.Bpp2.indices.len, total_size);
+        try helpers.expectEq(pixels.Indexed2.indices.len, total_size);
 
         const expected = [_]u8{
             0, 0, 0, 0, 0, 0, 0, 0,
@@ -838,7 +838,7 @@ test "Read s08i3p02 data properly" {
         };
         var index: usize = 0;
         while (index < total_size) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp2.indices[index], @intCast(u2, expected[index]));
+            try helpers.expectEq(pixels.Indexed2.indices[index], @intCast(u2, expected[index]));
         }
     }
 }
@@ -869,31 +869,31 @@ test "Read s08n3p02 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp2);
+        try testing.expect(pixels == PixelFormat.Indexed2);
 
-        try helpers.expectEq(pixels.Bpp2.palette.len, 4);
+        try helpers.expectEq(pixels.Indexed2.palette.len, 4);
 
-        const color0 = pixels.Bpp2.palette[0].toIntegerColor8();
+        const color0 = pixels.Indexed2.palette[0].toIntegerColor8();
         try helpers.expectEq(color0.R, 0);
         try helpers.expectEq(color0.G, 255);
         try helpers.expectEq(color0.B, 255);
 
-        const color1 = pixels.Bpp2.palette[1].toIntegerColor8();
+        const color1 = pixels.Indexed2.palette[1].toIntegerColor8();
         try helpers.expectEq(color1.R, 119);
         try helpers.expectEq(color1.G, 0);
         try helpers.expectEq(color1.B, 255);
 
-        const color2 = pixels.Bpp2.palette[2].toIntegerColor8();
+        const color2 = pixels.Indexed2.palette[2].toIntegerColor8();
         try helpers.expectEq(color2.R, 119);
         try helpers.expectEq(color2.G, 255);
         try helpers.expectEq(color2.B, 0);
 
-        const color3 = pixels.Bpp2.palette[3].toIntegerColor8();
+        const color3 = pixels.Indexed2.palette[3].toIntegerColor8();
         try helpers.expectEq(color3.R, 255);
         try helpers.expectEq(color3.G, 0);
         try helpers.expectEq(color3.B, 0);
 
-        try helpers.expectEq(pixels.Bpp2.indices.len, total_size);
+        try helpers.expectEq(pixels.Indexed2.indices.len, total_size);
 
         const expected = [_]u8{
             0, 0, 0, 0, 0, 0, 0, 0,
@@ -907,7 +907,7 @@ test "Read s08n3p02 data properly" {
         };
         var index: usize = 0;
         while (index < total_size) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp2.indices[index], @intCast(u2, expected[index]));
+            try helpers.expectEq(pixels.Indexed2.indices[index], @intCast(u2, expected[index]));
         }
     }
 }
@@ -938,31 +938,31 @@ test "Read s09i3p02 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp2);
+        try testing.expect(pixels == PixelFormat.Indexed2);
 
-        try helpers.expectEq(pixels.Bpp2.palette.len, 4);
+        try helpers.expectEq(pixels.Indexed2.palette.len, 4);
 
-        const color0 = pixels.Bpp2.palette[0].toIntegerColor8();
+        const color0 = pixels.Indexed2.palette[0].toIntegerColor8();
         try helpers.expectEq(color0.R, 0);
         try helpers.expectEq(color0.G, 255);
         try helpers.expectEq(color0.B, 0);
 
-        const color1 = pixels.Bpp2.palette[1].toIntegerColor8();
+        const color1 = pixels.Indexed2.palette[1].toIntegerColor8();
         try helpers.expectEq(color1.R, 0);
         try helpers.expectEq(color1.G, 119);
         try helpers.expectEq(color1.B, 255);
 
-        const color2 = pixels.Bpp2.palette[2].toIntegerColor8();
+        const color2 = pixels.Indexed2.palette[2].toIntegerColor8();
         try helpers.expectEq(color2.R, 255);
         try helpers.expectEq(color2.G, 0);
         try helpers.expectEq(color2.B, 255);
 
-        const color3 = pixels.Bpp2.palette[3].toIntegerColor8();
+        const color3 = pixels.Indexed2.palette[3].toIntegerColor8();
         try helpers.expectEq(color3.R, 255);
         try helpers.expectEq(color3.G, 119);
         try helpers.expectEq(color3.B, 0);
 
-        try helpers.expectEq(pixels.Bpp2.indices.len, total_size);
+        try helpers.expectEq(pixels.Indexed2.indices.len, total_size);
 
         const expected = [_]u8{
             0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -977,7 +977,7 @@ test "Read s09i3p02 data properly" {
         };
         var index: usize = 0;
         while (index < total_size) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp2.indices[index], @intCast(u2, expected[index]));
+            try helpers.expectEq(pixels.Indexed2.indices[index], @intCast(u2, expected[index]));
         }
     }
 }
@@ -1008,31 +1008,31 @@ test "Read s09n3p02 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp2);
+        try testing.expect(pixels == PixelFormat.Indexed2);
 
-        try helpers.expectEq(pixels.Bpp2.palette.len, 4);
+        try helpers.expectEq(pixels.Indexed2.palette.len, 4);
 
-        const color0 = pixels.Bpp2.palette[0].toIntegerColor8();
+        const color0 = pixels.Indexed2.palette[0].toIntegerColor8();
         try helpers.expectEq(color0.R, 0);
         try helpers.expectEq(color0.G, 255);
         try helpers.expectEq(color0.B, 0);
 
-        const color1 = pixels.Bpp2.palette[1].toIntegerColor8();
+        const color1 = pixels.Indexed2.palette[1].toIntegerColor8();
         try helpers.expectEq(color1.R, 0);
         try helpers.expectEq(color1.G, 119);
         try helpers.expectEq(color1.B, 255);
 
-        const color2 = pixels.Bpp2.palette[2].toIntegerColor8();
+        const color2 = pixels.Indexed2.palette[2].toIntegerColor8();
         try helpers.expectEq(color2.R, 255);
         try helpers.expectEq(color2.G, 0);
         try helpers.expectEq(color2.B, 255);
 
-        const color3 = pixels.Bpp2.palette[3].toIntegerColor8();
+        const color3 = pixels.Indexed2.palette[3].toIntegerColor8();
         try helpers.expectEq(color3.R, 255);
         try helpers.expectEq(color3.G, 119);
         try helpers.expectEq(color3.B, 0);
 
-        try helpers.expectEq(pixels.Bpp2.indices.len, total_size);
+        try helpers.expectEq(pixels.Indexed2.indices.len, total_size);
 
         const expected = [_]u8{
             0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -1047,7 +1047,7 @@ test "Read s09n3p02 data properly" {
         };
         var index: usize = 0;
         while (index < total_size) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp2.indices[index], @intCast(u2, expected[index]));
+            try helpers.expectEq(pixels.Indexed2.indices[index], @intCast(u2, expected[index]));
         }
     }
 }
@@ -1078,9 +1078,9 @@ test "Read s32i3p04 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp4);
+        try testing.expect(pixels == PixelFormat.Indexed4);
 
-        try helpers.expectEq(pixels.Bpp4.palette.len, 16);
+        try helpers.expectEq(pixels.Indexed4.palette.len, 16);
 
         const palette = [_]u32{
             0x000000,
@@ -1101,10 +1101,10 @@ test "Read s32i3p04 data properly" {
         for (palette) |raw_color, i| {
             const expected = color.IntegerColor8.fromHtmlHex(raw_color);
 
-            try helpers.expectEq(pixels.Bpp4.palette[i].toIntegerColor8(), expected);
+            try helpers.expectEq(pixels.Indexed4.palette[i].toIntegerColor8(), expected);
         }
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, total_size);
+        try helpers.expectEq(pixels.Indexed4.indices.len, total_size);
 
         const expected = [_]u8{
             0, 0,  0,  0, 0, 0, 0, 0, 0,  0, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
@@ -1141,11 +1141,11 @@ test "Read s32i3p04 data properly" {
             8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 0, 0, 0, 0,  0,  0, 0, 0, 0, 0,
         };
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, expected.len);
+        try helpers.expectEq(pixels.Indexed4.indices.len, expected.len);
 
         var index: usize = 0;
         while (index < total_size) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp4.indices[index], @intCast(u4, expected[index]));
+            try helpers.expectEq(pixels.Indexed4.indices[index], @intCast(u4, expected[index]));
         }
     }
 }
@@ -1176,9 +1176,9 @@ test "Read s32n3p04 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp4);
+        try testing.expect(pixels == PixelFormat.Indexed4);
 
-        try helpers.expectEq(pixels.Bpp4.palette.len, 16);
+        try helpers.expectEq(pixels.Indexed4.palette.len, 16);
 
         const palette = [_]u32{
             0x000000,
@@ -1199,10 +1199,10 @@ test "Read s32n3p04 data properly" {
         for (palette) |raw_color, i| {
             const expected = color.IntegerColor8.fromHtmlHex(raw_color);
 
-            try helpers.expectEq(pixels.Bpp4.palette[i].toIntegerColor8(), expected);
+            try helpers.expectEq(pixels.Indexed4.palette[i].toIntegerColor8(), expected);
         }
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, total_size);
+        try helpers.expectEq(pixels.Indexed4.indices.len, total_size);
 
         const expected = [_]u8{
             0, 0,  0,  0, 0, 0, 0, 0, 0,  0, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5,
@@ -1239,11 +1239,11 @@ test "Read s32n3p04 data properly" {
             8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 0, 0, 0, 0,  0,  0, 0, 0, 0, 0,
         };
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, expected.len);
+        try helpers.expectEq(pixels.Indexed4.indices.len, expected.len);
 
         var index: usize = 0;
         while (index < total_size) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp4.indices[index], @intCast(u4, expected[index]));
+            try helpers.expectEq(pixels.Indexed4.indices[index], @intCast(u4, expected[index]));
         }
     }
 }
@@ -1274,9 +1274,9 @@ test "Read s33i3p04 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp4);
+        try testing.expect(pixels == PixelFormat.Indexed4);
 
-        try helpers.expectEq(pixels.Bpp4.palette.len, 16);
+        try helpers.expectEq(pixels.Indexed4.palette.len, 16);
 
         const palette = [_]u32{
             0x000000,
@@ -1297,10 +1297,10 @@ test "Read s33i3p04 data properly" {
         for (palette) |raw_color, i| {
             const expected = color.IntegerColor8.fromHtmlHex(raw_color);
 
-            try helpers.expectEq(pixels.Bpp4.palette[i].toIntegerColor8(), expected);
+            try helpers.expectEq(pixels.Indexed4.palette[i].toIntegerColor8(), expected);
         }
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, total_size);
+        try helpers.expectEq(pixels.Indexed4.indices.len, total_size);
 
         const expected = [_]u8{
             0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,
@@ -1338,11 +1338,11 @@ test "Read s33i3p04 data properly" {
             12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 0,  0,  0,  0,  0,  0,  12, 12,
         };
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, expected.len);
+        try helpers.expectEq(pixels.Indexed4.indices.len, expected.len);
 
         var index: usize = 0;
         while (index < total_size) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp4.indices[index], @intCast(u4, expected[index]));
+            try helpers.expectEq(pixels.Indexed4.indices[index], @intCast(u4, expected[index]));
         }
     }
 }
@@ -1373,9 +1373,9 @@ test "Read s33n3p04 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp4);
+        try testing.expect(pixels == PixelFormat.Indexed4);
 
-        try helpers.expectEq(pixels.Bpp4.palette.len, 16);
+        try helpers.expectEq(pixels.Indexed4.palette.len, 16);
 
         const palette = [_]u32{
             0x000000,
@@ -1396,10 +1396,10 @@ test "Read s33n3p04 data properly" {
         for (palette) |raw_color, i| {
             const expected = color.IntegerColor8.fromHtmlHex(raw_color);
 
-            try helpers.expectEq(pixels.Bpp4.palette[i].toIntegerColor8(), expected);
+            try helpers.expectEq(pixels.Indexed4.palette[i].toIntegerColor8(), expected);
         }
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, total_size);
+        try helpers.expectEq(pixels.Indexed4.indices.len, total_size);
 
         const expected = [_]u8{
             0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,
@@ -1437,11 +1437,11 @@ test "Read s33n3p04 data properly" {
             12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 0,  0,  0,  0,  0,  0,  12, 12,
         };
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, expected.len);
+        try helpers.expectEq(pixels.Indexed4.indices.len, expected.len);
 
         var index: usize = 0;
         while (index < total_size) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp4.indices[index], @intCast(u4, expected[index]));
+            try helpers.expectEq(pixels.Indexed4.indices[index], @intCast(u4, expected[index]));
         }
     }
 }
@@ -1472,9 +1472,9 @@ test "Read s34i3p04 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp4);
+        try testing.expect(pixels == PixelFormat.Indexed4);
 
-        try helpers.expectEq(pixels.Bpp4.palette.len, 16);
+        try helpers.expectEq(pixels.Indexed4.palette.len, 16);
 
         const palette = [_]u32{
             0x000000,
@@ -1495,10 +1495,10 @@ test "Read s34i3p04 data properly" {
         for (palette) |raw_color, i| {
             const expected = color.IntegerColor8.fromHtmlHex(raw_color);
 
-            try helpers.expectEq(pixels.Bpp4.palette[i].toIntegerColor8(), expected);
+            try helpers.expectEq(pixels.Indexed4.palette[i].toIntegerColor8(), expected);
         }
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, total_size);
+        try helpers.expectEq(pixels.Indexed4.indices.len, total_size);
 
         const expected = [_]u8{
             0, 0,  0,  0, 0, 0, 0, 0, 0,  0, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4,
@@ -1537,11 +1537,11 @@ test "Read s34i3p04 data properly" {
             8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 0, 0, 12, 4,
         };
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, expected.len);
+        try helpers.expectEq(pixels.Indexed4.indices.len, expected.len);
 
         var index: usize = 0;
         while (index < total_size) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp4.indices[index], @intCast(u4, expected[index]));
+            try helpers.expectEq(pixels.Indexed4.indices[index], @intCast(u4, expected[index]));
         }
     }
 }
@@ -1572,9 +1572,9 @@ test "Read s34n3p04 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp4);
+        try testing.expect(pixels == PixelFormat.Indexed4);
 
-        try helpers.expectEq(pixels.Bpp4.palette.len, 16);
+        try helpers.expectEq(pixels.Indexed4.palette.len, 16);
 
         const palette = [_]u32{
             0x000000,
@@ -1595,10 +1595,10 @@ test "Read s34n3p04 data properly" {
         for (palette) |raw_color, i| {
             const expected = color.IntegerColor8.fromHtmlHex(raw_color);
 
-            try helpers.expectEq(pixels.Bpp4.palette[i].toIntegerColor8(), expected);
+            try helpers.expectEq(pixels.Indexed4.palette[i].toIntegerColor8(), expected);
         }
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, total_size);
+        try helpers.expectEq(pixels.Indexed4.indices.len, total_size);
 
         const expected = [_]u8{
             0, 0,  0,  0, 0, 0, 0, 0, 0,  0, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4,
@@ -1637,11 +1637,11 @@ test "Read s34n3p04 data properly" {
             8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 0, 0, 12, 4,
         };
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, expected.len);
+        try helpers.expectEq(pixels.Indexed4.indices.len, expected.len);
 
         var index: usize = 0;
         while (index < total_size) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp4.indices[index], @intCast(u4, expected[index]));
+            try helpers.expectEq(pixels.Indexed4.indices[index], @intCast(u4, expected[index]));
         }
     }
 }
@@ -1672,9 +1672,9 @@ test "Read s35i3p04 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp4);
+        try testing.expect(pixels == PixelFormat.Indexed4);
 
-        try helpers.expectEq(pixels.Bpp4.palette.len, 16);
+        try helpers.expectEq(pixels.Indexed4.palette.len, 16);
 
         const palette = [_]u32{
             0x000000,
@@ -1695,10 +1695,10 @@ test "Read s35i3p04 data properly" {
         for (palette) |raw_color, i| {
             const expected = color.IntegerColor8.fromHtmlHex(raw_color);
 
-            try helpers.expectEq(pixels.Bpp4.palette[i].toIntegerColor8(), expected);
+            try helpers.expectEq(pixels.Indexed4.palette[i].toIntegerColor8(), expected);
         }
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, total_size);
+        try helpers.expectEq(pixels.Indexed4.indices.len, total_size);
 
         const expected = [_]u8{
             0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,
@@ -1738,11 +1738,11 @@ test "Read s35i3p04 data properly" {
             7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  0,  0,  0,  0,  0,  0,  7,  7,
         };
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, expected.len);
+        try helpers.expectEq(pixels.Indexed4.indices.len, expected.len);
 
         var index: usize = 0;
         while (index < total_size) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp4.indices[index], @intCast(u4, expected[index]));
+            try helpers.expectEq(pixels.Indexed4.indices[index], @intCast(u4, expected[index]));
         }
     }
 }
@@ -1773,9 +1773,9 @@ test "Read s35n3p04 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp4);
+        try testing.expect(pixels == PixelFormat.Indexed4);
 
-        try helpers.expectEq(pixels.Bpp4.palette.len, 16);
+        try helpers.expectEq(pixels.Indexed4.palette.len, 16);
 
         const palette = [_]u32{
             0x000000,
@@ -1796,10 +1796,10 @@ test "Read s35n3p04 data properly" {
         for (palette) |raw_color, i| {
             const expected = color.IntegerColor8.fromHtmlHex(raw_color);
 
-            try helpers.expectEq(pixels.Bpp4.palette[i].toIntegerColor8(), expected);
+            try helpers.expectEq(pixels.Indexed4.palette[i].toIntegerColor8(), expected);
         }
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, total_size);
+        try helpers.expectEq(pixels.Indexed4.indices.len, total_size);
 
         const expected = [_]u8{
             0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,
@@ -1839,11 +1839,11 @@ test "Read s35n3p04 data properly" {
             7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  0,  0,  0,  0,  0,  0,  7,  7,
         };
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, expected.len);
+        try helpers.expectEq(pixels.Indexed4.indices.len, expected.len);
 
         var index: usize = 0;
         while (index < total_size) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp4.indices[index], @intCast(u4, expected[index]));
+            try helpers.expectEq(pixels.Indexed4.indices[index], @intCast(u4, expected[index]));
         }
     }
 }
@@ -1874,9 +1874,9 @@ test "Read s36i3p04 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp4);
+        try testing.expect(pixels == PixelFormat.Indexed4);
 
-        try helpers.expectEq(pixels.Bpp4.palette.len, 16);
+        try helpers.expectEq(pixels.Indexed4.palette.len, 16);
 
         const palette = [_]u32{
             0x000000,
@@ -1897,10 +1897,10 @@ test "Read s36i3p04 data properly" {
         for (palette) |raw_color, i| {
             const expected = color.IntegerColor8.fromHtmlHex(raw_color);
 
-            try helpers.expectEq(pixels.Bpp4.palette[i].toIntegerColor8(), expected);
+            try helpers.expectEq(pixels.Indexed4.palette[i].toIntegerColor8(), expected);
         }
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, total_size);
+        try helpers.expectEq(pixels.Indexed4.indices.len, total_size);
 
         const expected = [_]u8{
             0, 0,  0,  0, 0, 0, 0, 0, 0,  0, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1,
@@ -1941,11 +1941,11 @@ test "Read s36i3p04 data properly" {
             8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 0, 0, 0, 0, 0,  0, 7, 1,
         };
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, expected.len);
+        try helpers.expectEq(pixels.Indexed4.indices.len, expected.len);
 
         var index: usize = 0;
         while (index < total_size) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp4.indices[index], @intCast(u4, expected[index]));
+            try helpers.expectEq(pixels.Indexed4.indices[index], @intCast(u4, expected[index]));
         }
     }
 }
@@ -1976,9 +1976,9 @@ test "Read s36n3p04 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp4);
+        try testing.expect(pixels == PixelFormat.Indexed4);
 
-        try helpers.expectEq(pixels.Bpp4.palette.len, 16);
+        try helpers.expectEq(pixels.Indexed4.palette.len, 16);
 
         const palette = [_]u32{
             0x000000,
@@ -1999,10 +1999,10 @@ test "Read s36n3p04 data properly" {
         for (palette) |raw_color, i| {
             const expected = color.IntegerColor8.fromHtmlHex(raw_color);
 
-            try helpers.expectEq(pixels.Bpp4.palette[i].toIntegerColor8(), expected);
+            try helpers.expectEq(pixels.Indexed4.palette[i].toIntegerColor8(), expected);
         }
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, total_size);
+        try helpers.expectEq(pixels.Indexed4.indices.len, total_size);
 
         const expected = [_]u8{
             0, 0,  0,  0, 0, 0, 0, 0, 0,  0, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1,
@@ -2043,11 +2043,11 @@ test "Read s36n3p04 data properly" {
             8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 0, 0, 0, 0, 0,  0, 7, 1,
         };
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, expected.len);
+        try helpers.expectEq(pixels.Indexed4.indices.len, expected.len);
 
         var index: usize = 0;
         while (index < total_size) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp4.indices[index], @intCast(u4, expected[index]));
+            try helpers.expectEq(pixels.Indexed4.indices[index], @intCast(u4, expected[index]));
         }
     }
 }
@@ -2078,9 +2078,9 @@ test "Read s37i3p04 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp4);
+        try testing.expect(pixels == PixelFormat.Indexed4);
 
-        try helpers.expectEq(pixels.Bpp4.palette.len, 16);
+        try helpers.expectEq(pixels.Indexed4.palette.len, 16);
 
         const palette = [_]u32{
             0x000000,
@@ -2101,10 +2101,10 @@ test "Read s37i3p04 data properly" {
         for (palette) |raw_color, i| {
             const expected = color.IntegerColor8.fromHtmlHex(raw_color);
 
-            try helpers.expectEq(pixels.Bpp4.palette[i].toIntegerColor8(), expected);
+            try helpers.expectEq(pixels.Indexed4.palette[i].toIntegerColor8(), expected);
         }
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, total_size);
+        try helpers.expectEq(pixels.Indexed4.indices.len, total_size);
 
         const expected = [_]u8{
             0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,
@@ -2146,11 +2146,11 @@ test "Read s37i3p04 data properly" {
             8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  0,  0,  8,  8,  8,  8,  8,  8,
         };
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, expected.len);
+        try helpers.expectEq(pixels.Indexed4.indices.len, expected.len);
 
         var index: usize = 0;
         while (index < total_size) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp4.indices[index], @intCast(u4, expected[index]));
+            try helpers.expectEq(pixels.Indexed4.indices[index], @intCast(u4, expected[index]));
         }
     }
 }
@@ -2181,9 +2181,9 @@ test "Read s37n3p04 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp4);
+        try testing.expect(pixels == PixelFormat.Indexed4);
 
-        try helpers.expectEq(pixels.Bpp4.palette.len, 16);
+        try helpers.expectEq(pixels.Indexed4.palette.len, 16);
 
         const palette = [_]u32{
             0x000000,
@@ -2204,10 +2204,10 @@ test "Read s37n3p04 data properly" {
         for (palette) |raw_color, i| {
             const expected = color.IntegerColor8.fromHtmlHex(raw_color);
 
-            try helpers.expectEq(pixels.Bpp4.palette[i].toIntegerColor8(), expected);
+            try helpers.expectEq(pixels.Indexed4.palette[i].toIntegerColor8(), expected);
         }
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, total_size);
+        try helpers.expectEq(pixels.Indexed4.indices.len, total_size);
 
         const expected = [_]u8{
             0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,
@@ -2249,11 +2249,11 @@ test "Read s37n3p04 data properly" {
             8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  0,  0,  8,  8,  8,  8,  8,  8,
         };
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, expected.len);
+        try helpers.expectEq(pixels.Indexed4.indices.len, expected.len);
 
         var index: usize = 0;
         while (index < total_size) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp4.indices[index], @intCast(u4, expected[index]));
+            try helpers.expectEq(pixels.Indexed4.indices[index], @intCast(u4, expected[index]));
         }
     }
 }
@@ -2284,9 +2284,9 @@ test "Read s38i3p04 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp4);
+        try testing.expect(pixels == PixelFormat.Indexed4);
 
-        try helpers.expectEq(pixels.Bpp4.palette.len, 16);
+        try helpers.expectEq(pixels.Indexed4.palette.len, 16);
 
         const palette = [_]u32{
             0x000000,
@@ -2307,10 +2307,10 @@ test "Read s38i3p04 data properly" {
         for (palette) |raw_color, i| {
             const expected = color.IntegerColor8.fromHtmlHex(raw_color);
 
-            try helpers.expectEq(pixels.Bpp4.palette[i].toIntegerColor8(), expected);
+            try helpers.expectEq(pixels.Indexed4.palette[i].toIntegerColor8(), expected);
         }
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, total_size);
+        try helpers.expectEq(pixels.Indexed4.indices.len, total_size);
 
         const expected = [_]u8{
             0, 0,  0,  0, 0, 0, 0, 0, 0,  0, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11,
@@ -2353,11 +2353,11 @@ test "Read s38i3p04 data properly" {
             8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 0, 0, 0,  0, 0, 0, 8, 11,
         };
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, expected.len);
+        try helpers.expectEq(pixels.Indexed4.indices.len, expected.len);
 
         var index: usize = 0;
         while (index < total_size) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp4.indices[index], @intCast(u4, expected[index]));
+            try helpers.expectEq(pixels.Indexed4.indices[index], @intCast(u4, expected[index]));
         }
     }
 }
@@ -2388,9 +2388,9 @@ test "Read s38n3p04 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp4);
+        try testing.expect(pixels == PixelFormat.Indexed4);
 
-        try helpers.expectEq(pixels.Bpp4.palette.len, 16);
+        try helpers.expectEq(pixels.Indexed4.palette.len, 16);
 
         const palette = [_]u32{
             0x000000,
@@ -2411,10 +2411,10 @@ test "Read s38n3p04 data properly" {
         for (palette) |raw_color, i| {
             const expected = color.IntegerColor8.fromHtmlHex(raw_color);
 
-            try helpers.expectEq(pixels.Bpp4.palette[i].toIntegerColor8(), expected);
+            try helpers.expectEq(pixels.Indexed4.palette[i].toIntegerColor8(), expected);
         }
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, total_size);
+        try helpers.expectEq(pixels.Indexed4.indices.len, total_size);
 
         const expected = [_]u8{
             0, 0,  0,  0, 0, 0, 0, 0, 0,  0, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11,
@@ -2457,11 +2457,11 @@ test "Read s38n3p04 data properly" {
             8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 0, 0, 0,  0, 0, 0, 8, 11,
         };
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, expected.len);
+        try helpers.expectEq(pixels.Indexed4.indices.len, expected.len);
 
         var index: usize = 0;
         while (index < total_size) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp4.indices[index], @intCast(u4, expected[index]));
+            try helpers.expectEq(pixels.Indexed4.indices[index], @intCast(u4, expected[index]));
         }
     }
 }
@@ -2492,9 +2492,9 @@ test "Read s39i3p04 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp4);
+        try testing.expect(pixels == PixelFormat.Indexed4);
 
-        try helpers.expectEq(pixels.Bpp4.palette.len, 16);
+        try helpers.expectEq(pixels.Indexed4.palette.len, 16);
 
         const palette = [_]u32{
             0x000000,
@@ -2515,10 +2515,10 @@ test "Read s39i3p04 data properly" {
         for (palette) |raw_color, i| {
             const expected = color.IntegerColor8.fromHtmlHex(raw_color);
 
-            try helpers.expectEq(pixels.Bpp4.palette[i].toIntegerColor8(), expected);
+            try helpers.expectEq(pixels.Indexed4.palette[i].toIntegerColor8(), expected);
         }
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, total_size);
+        try helpers.expectEq(pixels.Indexed4.indices.len, total_size);
 
         const expected = [_]u8{
             0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,
@@ -2562,11 +2562,11 @@ test "Read s39i3p04 data properly" {
             10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 0,  0,  0,  0,  0,  0,  10, 10,
         };
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, expected.len);
+        try helpers.expectEq(pixels.Indexed4.indices.len, expected.len);
 
         var index: usize = 0;
         while (index < total_size) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp4.indices[index], @intCast(u4, expected[index]));
+            try helpers.expectEq(pixels.Indexed4.indices[index], @intCast(u4, expected[index]));
         }
     }
 }
@@ -2597,9 +2597,9 @@ test "Read s39n3p04 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp4);
+        try testing.expect(pixels == PixelFormat.Indexed4);
 
-        try helpers.expectEq(pixels.Bpp4.palette.len, 16);
+        try helpers.expectEq(pixels.Indexed4.palette.len, 16);
 
         const palette = [_]u32{
             0x000000,
@@ -2620,10 +2620,10 @@ test "Read s39n3p04 data properly" {
         for (palette) |raw_color, i| {
             const expected = color.IntegerColor8.fromHtmlHex(raw_color);
 
-            try helpers.expectEq(pixels.Bpp4.palette[i].toIntegerColor8(), expected);
+            try helpers.expectEq(pixels.Indexed4.palette[i].toIntegerColor8(), expected);
         }
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, total_size);
+        try helpers.expectEq(pixels.Indexed4.indices.len, total_size);
 
         const expected = [_]u8{
             0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,
@@ -2667,11 +2667,11 @@ test "Read s39n3p04 data properly" {
             10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 0,  0,  0,  0,  0,  0,  10, 10,
         };
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, expected.len);
+        try helpers.expectEq(pixels.Indexed4.indices.len, expected.len);
 
         var index: usize = 0;
         while (index < total_size) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp4.indices[index], @intCast(u4, expected[index]));
+            try helpers.expectEq(pixels.Indexed4.indices[index], @intCast(u4, expected[index]));
         }
     }
 }
@@ -2702,9 +2702,9 @@ test "Read s40i3p04 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp4);
+        try testing.expect(pixels == PixelFormat.Indexed4);
 
-        try helpers.expectEq(pixels.Bpp4.palette.len, 16);
+        try helpers.expectEq(pixels.Indexed4.palette.len, 16);
 
         const palette = [_]u32{
             0x000000,
@@ -2725,10 +2725,10 @@ test "Read s40i3p04 data properly" {
         for (palette) |raw_color, i| {
             const expected = color.IntegerColor8.fromHtmlHex(raw_color);
 
-            try helpers.expectEq(pixels.Bpp4.palette[i].toIntegerColor8(), expected);
+            try helpers.expectEq(pixels.Indexed4.palette[i].toIntegerColor8(), expected);
         }
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, total_size);
+        try helpers.expectEq(pixels.Indexed4.indices.len, total_size);
 
         const expected = [_]u8{
             8, 11, 10, 6, 0, 0, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6,
@@ -2773,11 +2773,11 @@ test "Read s40i3p04 data properly" {
             8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 0,  0, 0, 0, 0, 0,  10, 6,
         };
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, expected.len);
+        try helpers.expectEq(pixels.Indexed4.indices.len, expected.len);
 
         var index: usize = 0;
         while (index < total_size) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp4.indices[index], @intCast(u4, expected[index]));
+            try helpers.expectEq(pixels.Indexed4.indices[index], @intCast(u4, expected[index]));
         }
     }
 }
@@ -2808,9 +2808,9 @@ test "Read s40n3p04 data properly" {
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == PixelFormat.Bpp4);
+        try testing.expect(pixels == PixelFormat.Indexed4);
 
-        try helpers.expectEq(pixels.Bpp4.palette.len, 16);
+        try helpers.expectEq(pixels.Indexed4.palette.len, 16);
 
         const palette = [_]u32{
             0x000000,
@@ -2831,10 +2831,10 @@ test "Read s40n3p04 data properly" {
         for (palette) |raw_color, i| {
             const expected = color.IntegerColor8.fromHtmlHex(raw_color);
 
-            try helpers.expectEq(pixels.Bpp4.palette[i].toIntegerColor8(), expected);
+            try helpers.expectEq(pixels.Indexed4.palette[i].toIntegerColor8(), expected);
         }
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, total_size);
+        try helpers.expectEq(pixels.Indexed4.indices.len, total_size);
 
         const expected = [_]u8{
             8, 11, 10, 6, 0, 0, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6,
@@ -2879,11 +2879,11 @@ test "Read s40n3p04 data properly" {
             8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 12, 4, 7, 1, 8, 11, 10, 6, 3, 9, 2, 5, 0,  0, 0, 0, 0, 0,  10, 6,
         };
 
-        try helpers.expectEq(pixels.Bpp4.indices.len, expected.len);
+        try helpers.expectEq(pixels.Indexed4.indices.len, expected.len);
 
         var index: usize = 0;
         while (index < total_size) : (index += 1) {
-            try helpers.expectEq(pixels.Bpp4.indices[index], @intCast(u4, expected[index]));
+            try helpers.expectEq(pixels.Indexed4.indices[index], @intCast(u4, expected[index]));
         }
     }
 }

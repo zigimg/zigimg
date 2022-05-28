@@ -94,22 +94,22 @@ test "Read ucm8 TGA file" {
 
     try helpers.expectEq(tga_file.width(), 128);
     try helpers.expectEq(tga_file.height(), 128);
-    try helpers.expectEq(try tga_file.pixelFormat(), .Bpp8);
+    try helpers.expectEq(try tga_file.pixelFormat(), .Indexed8);
 
     const expected_strip = [_]u8{ 64, 128, 192, 0, 64, 128, 192, 255, 64, 128, 192, 0, 64, 128, 192, 255 };
 
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == .Bpp8);
+        try testing.expect(pixels == .Indexed8);
 
-        try helpers.expectEq(pixels.Bpp8.indices.len, 128 * 128);
+        try helpers.expectEq(pixels.Indexed8.indices.len, 128 * 128);
 
-        try helpers.expectEq(pixels.Bpp8.palette[0].toIntegerColor8(), color.IntegerColor8.fromHtmlHex(0x000000));
-        try helpers.expectEq(pixels.Bpp8.palette[64].toIntegerColor8(), color.IntegerColor8.fromHtmlHex(0xff0000));
-        try helpers.expectEq(pixels.Bpp8.palette[128].toIntegerColor8(), color.IntegerColor8.fromHtmlHex(0x00ff00));
-        try helpers.expectEq(pixels.Bpp8.palette[192].toIntegerColor8(), color.IntegerColor8.fromHtmlHex(0x0000ff));
-        try helpers.expectEq(pixels.Bpp8.palette[255].toIntegerColor8(), color.IntegerColor8.fromHtmlHex(0xffffff));
+        try helpers.expectEq(pixels.Indexed8.palette[0].toIntegerColor8(), color.IntegerColor8.fromHtmlHex(0x000000));
+        try helpers.expectEq(pixels.Indexed8.palette[64].toIntegerColor8(), color.IntegerColor8.fromHtmlHex(0xff0000));
+        try helpers.expectEq(pixels.Indexed8.palette[128].toIntegerColor8(), color.IntegerColor8.fromHtmlHex(0x00ff00));
+        try helpers.expectEq(pixels.Indexed8.palette[192].toIntegerColor8(), color.IntegerColor8.fromHtmlHex(0x0000ff));
+        try helpers.expectEq(pixels.Indexed8.palette[255].toIntegerColor8(), color.IntegerColor8.fromHtmlHex(0xffffff));
 
         const width = tga_file.width();
         const height = tga_file.height();
@@ -123,7 +123,7 @@ test "Read ucm8 TGA file" {
             while (x < width) : (x += 1) {
                 const strip_index = x / 8;
 
-                try helpers.expectEq(pixels.Bpp8.indices[stride + x], expected_strip[strip_index]);
+                try helpers.expectEq(pixels.Indexed8.indices[stride + x], expected_strip[strip_index]);
             }
         }
     }
@@ -338,22 +338,22 @@ test "Read ccm8 TGA file" {
 
     try helpers.expectEq(tga_file.width(), 128);
     try helpers.expectEq(tga_file.height(), 128);
-    try helpers.expectEq(try tga_file.pixelFormat(), .Bpp8);
+    try helpers.expectEq(try tga_file.pixelFormat(), .Indexed8);
 
     const expected_strip = [_]u8{ 64, 128, 192, 0, 64, 128, 192, 255, 64, 128, 192, 0, 64, 128, 192, 255 };
 
     try testing.expect(pixelsOpt != null);
 
     if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == .Bpp8);
+        try testing.expect(pixels == .Indexed8);
 
-        try helpers.expectEq(pixels.Bpp8.indices.len, 128 * 128);
+        try helpers.expectEq(pixels.Indexed8.indices.len, 128 * 128);
 
-        try helpers.expectEq(pixels.Bpp8.palette[0].toIntegerColor8(), color.IntegerColor8.fromHtmlHex(0x000000));
-        try helpers.expectEq(pixels.Bpp8.palette[64].toIntegerColor8(), color.IntegerColor8.fromHtmlHex(0xff0000));
-        try helpers.expectEq(pixels.Bpp8.palette[128].toIntegerColor8(), color.IntegerColor8.fromHtmlHex(0x00ff00));
-        try helpers.expectEq(pixels.Bpp8.palette[192].toIntegerColor8(), color.IntegerColor8.fromHtmlHex(0x0000ff));
-        try helpers.expectEq(pixels.Bpp8.palette[255].toIntegerColor8(), color.IntegerColor8.fromHtmlHex(0xffffff));
+        try helpers.expectEq(pixels.Indexed8.palette[0].toIntegerColor8(), color.IntegerColor8.fromHtmlHex(0x000000));
+        try helpers.expectEq(pixels.Indexed8.palette[64].toIntegerColor8(), color.IntegerColor8.fromHtmlHex(0xff0000));
+        try helpers.expectEq(pixels.Indexed8.palette[128].toIntegerColor8(), color.IntegerColor8.fromHtmlHex(0x00ff00));
+        try helpers.expectEq(pixels.Indexed8.palette[192].toIntegerColor8(), color.IntegerColor8.fromHtmlHex(0x0000ff));
+        try helpers.expectEq(pixels.Indexed8.palette[255].toIntegerColor8(), color.IntegerColor8.fromHtmlHex(0xffffff));
 
         const width = tga_file.width();
         const height = tga_file.height();
@@ -367,7 +367,7 @@ test "Read ccm8 TGA file" {
             while (x < width) : (x += 1) {
                 const strip_index = x / 8;
 
-                try helpers.expectEq(pixels.Bpp8.indices[stride + x], expected_strip[strip_index]);
+                try helpers.expectEq(pixels.Indexed8.indices[stride + x], expected_strip[strip_index]);
             }
         }
     }
