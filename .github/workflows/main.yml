@@ -24,6 +24,7 @@ jobs:
           version: master
       - name: AST Verify
         run: zig fmt --check --ast-check src/
+        working-directory: zigimg
       - name: Run test suite
         run: zig build test
         working-directory: zigimg
