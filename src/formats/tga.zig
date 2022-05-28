@@ -302,7 +302,7 @@ pub const TGA = struct {
                 return PixelFormat.Grayscale8;
             }
 
-            return PixelFormat.Bpp8;
+            return PixelFormat.Indexed8;
         } else if (self.header.image_type.truecolor) {
             switch (self.header.bit_per_pixel) {
                 16 => return PixelFormat.Rgb555,
@@ -383,11 +383,11 @@ pub const TGA = struct {
                 .Grayscale8 => {
                     try self.readGrayscale8(pixels.Grayscale8, targa_stream.reader());
                 },
-                .Bpp8 => {
+                .Indexed8 => {
                     // Read color map
                     switch (self.header.color_map_bit_depth) {
                         15, 16 => {
-                            try self.readColorMap16(pixels.Bpp8, (TargaStream{ .image = reader }).reader());
+                            try self.readColorMap16(pixels.Indexed8, (TargaStream{ .image = reader }).reader());
                         },
                         else => {
                             return errors.ImageError.UnsupportedPixelFormat;
@@ -395,7 +395,7 @@ pub const TGA = struct {
                     }
 
                     // Read indices
-                    try self.readIndexed8(pixels.Bpp8, targa_stream.reader());
+                    try self.readIndexed8(pixels.Indexed8, targa_stream.reader());
                 },
                 .Rgb555 => {
                     try self.readTruecolor16(pixels.Rgb555, targa_stream.reader());

@@ -514,10 +514,10 @@ pub const PNG = struct {
             },
             .Indexed => {
                 return switch (self.header.bit_depth) {
-                    1 => PixelFormat.Bpp1,
-                    2 => PixelFormat.Bpp2,
-                    4 => PixelFormat.Bpp4,
-                    8 => PixelFormat.Bpp8,
+                    1 => PixelFormat.Indexed1,
+                    2 => PixelFormat.Indexed2,
+                    4 => PixelFormat.Indexed4,
+                    8 => PixelFormat.Indexed8,
                     else => return errors.ImageError.UnsupportedPixelFormat,
                 };
             },
@@ -614,16 +614,16 @@ pub const PNG = struct {
             if (self.header.color_type == .Indexed) {
                 if (self.getPalette()) |palette_chunk| {
                     switch (pixels.*) {
-                        .Bpp1 => |instance| {
+                        .Indexed1 => |instance| {
                             std.mem.copy(color.Color, instance.palette, palette_chunk.palette);
                         },
-                        .Bpp2 => |instance| {
+                        .Indexed2 => |instance| {
                             std.mem.copy(color.Color, instance.palette, palette_chunk.palette);
                         },
-                        .Bpp4 => |instance| {
+                        .Indexed4 => |instance| {
                             std.mem.copy(color.Color, instance.palette, palette_chunk.palette);
                         },
-                        .Bpp8 => |instance| {
+                        .Indexed8 => |instance| {
                             std.mem.copy(color.Color, instance.palette, palette_chunk.palette);
                         },
                         else => {
@@ -881,7 +881,7 @@ pub const PNG = struct {
                         context.pixels_index += 1;
                     }
                 },
-                .Bpp1 => |indexed| {
+                .Indexed1 => |indexed| {
                     while (index < filter_slice.len) : (index += 1) {
                         const current_byte = filter_slice[index];
 
@@ -895,7 +895,7 @@ pub const PNG = struct {
                         }
                     }
                 },
-                .Bpp2 => |indexed| {
+                .Indexed2 => |indexed| {
                     while (index < filter_slice.len) : (index += 1) {
                         const current_byte = filter_slice[index];
 
@@ -909,7 +909,7 @@ pub const PNG = struct {
                         }
                     }
                 },
-                .Bpp4 => |indexed| {
+                .Indexed4 => |indexed| {
                     while (index < filter_slice.len) : (index += 1) {
                         const current_byte = filter_slice[index];
 
@@ -923,7 +923,7 @@ pub const PNG = struct {
                         }
                     }
                 },
-                .Bpp8 => |indexed| {
+                .Indexed8 => |indexed| {
                     while (index < filter_slice.len and context.pixels_index < pixels_length and x < self.header.width) {
                         indexed.indices[context.pixels_index] = filter_slice[index];
 
@@ -1236,7 +1236,7 @@ pub const PNG = struct {
                     }
                 }
             },
-            .Bpp1 => |indexed| {
+            .Indexed1 => |indexed| {
                 const bit = (pixel_index & 0b111);
                 const value = @intCast(u1, (bytes[0] >> @intCast(u3, 7 - bit)) & 1);
 
@@ -1256,7 +1256,7 @@ pub const PNG = struct {
                     }
                 }
             },
-            .Bpp2 => |indexed| {
+            .Indexed2 => |indexed| {
                 const bit = (pixel_index & 0b011) * 2 + 1;
                 const value = @intCast(u2, (bytes[0] >> @intCast(u3, (7 - bit))) & 0b00000011);
 
@@ -1276,7 +1276,7 @@ pub const PNG = struct {
                     }
                 }
             },
-            .Bpp4 => |indexed| {
+            .Indexed4 => |indexed| {
                 const bit = (pixel_index & 0b1) * 4 + 3;
                 const value = @intCast(u4, (bytes[0] >> @intCast(u3, (7 - bit))) & 0b00001111);
 
@@ -1296,7 +1296,7 @@ pub const PNG = struct {
                     }
                 }
             },
-            .Bpp8 => |indexed| {
+            .Indexed8 => |indexed| {
                 const value = bytes[0];
 
                 var height: usize = 0;

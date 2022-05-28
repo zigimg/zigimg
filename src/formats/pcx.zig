@@ -154,9 +154,9 @@ pub const PCX = struct {
     pub fn pixelFormat(self: Self) !PixelFormat {
         if (self.header.planes == 1) {
             switch (self.header.bpp) {
-                1 => return PixelFormat.Bpp1,
-                4 => return PixelFormat.Bpp4,
-                8 => return PixelFormat.Bpp8,
+                1 => return PixelFormat.Indexed1,
+                4 => return PixelFormat.Indexed4,
+                8 => return PixelFormat.Indexed8,
                 else => return errors.ImageError.UnsupportedPixelFormat,
             }
         } else if (self.header.planes == 3) {
@@ -211,7 +211,7 @@ pub const PCX = struct {
                 while (offset < scanline_length and x < self.width) : (offset += 1) {
                     const byte = try decoder.readByte();
                     switch (pixels) {
-                        .Bpp1 => |storage| {
+                        .Indexed1 => |storage| {
                             var i: usize = 0;
                             while (i < 8) : (i += 1) {
                                 if (x < self.width) {
@@ -220,7 +220,7 @@ pub const PCX = struct {
                                 }
                             }
                         },
-                        .Bpp4 => |storage| {
+                        .Indexed4 => |storage| {
                             storage.indices[y_stride + x] = @truncate(u4, byte >> 4);
                             x += 1;
                             if (x < self.width) {
@@ -228,7 +228,7 @@ pub const PCX = struct {
                                 x += 1;
                             }
                         },
-                        .Bpp8 => |storage| {
+                        .Indexed8 => |storage| {
                             storage.indices[y_stride + x] = byte;
                             x += 1;
                         },
@@ -267,11 +267,11 @@ pub const PCX = struct {
 
             try decoder.finish();
 
-            if (pixel_format == .Bpp1 or pixel_format == .Bpp4 or pixel_format == .Bpp8) {
+            if (pixel_format == .Indexed1 or pixel_format == .Indexed4 or pixel_format == .Indexed8) {
                 var pal = switch (pixels) {
-                    .Bpp1 => |*storage| storage.palette[0..],
-                    .Bpp4 => |*storage| storage.palette[0..],
-                    .Bpp8 => |*storage| storage.palette[0..],
+                    .Indexed1 => |*storage| storage.palette[0..],
+                    .Indexed4 => |*storage| storage.palette[0..],
+                    .Indexed8 => |*storage| storage.palette[0..],
                     else => undefined,
                 };
 
@@ -283,7 +283,7 @@ pub const PCX = struct {
                     pal[i].A = 1.0;
                 }
 
-                if (pixels == .Bpp8) {
+                if (pixels == .Indexed8) {
                     const end_pos = try seek_stream.getEndPos();
                     try seek_stream.seekTo(end_pos - 769);
 

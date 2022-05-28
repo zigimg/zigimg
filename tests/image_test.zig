@@ -6,83 +6,83 @@ const color = @import("../src/color.zig");
 const PixelFormat = @import("../src/pixel_format.zig").PixelFormat;
 const helpers = @import("helpers.zig");
 
-test "Create Image Bpp1" {
-    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.Bpp1, .Raw);
+test "Create Image Indexed1" {
+    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.Indexed1, .Raw);
     defer test_image.deinit();
 
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
-    try helpers.expectEq(test_image.pixelFormat(), PixelFormat.Bpp1);
+    try helpers.expectEq(test_image.pixelFormat(), PixelFormat.Indexed1);
     try testing.expect(test_image.pixels != null);
 
     if (test_image.pixels) |pixels| {
-        try testing.expect(pixels == .Bpp1);
-        try testing.expect(pixels.Bpp1.palette.len == 2);
-        try testing.expect(pixels.Bpp1.indices.len == 24 * 32);
+        try testing.expect(pixels == .Indexed1);
+        try testing.expect(pixels.Indexed1.palette.len == 2);
+        try testing.expect(pixels.Indexed1.indices.len == 24 * 32);
     }
 }
 
-test "Create Image Bpp2" {
-    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.Bpp2, .Raw);
+test "Create Image Indexed2" {
+    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.Indexed2, .Raw);
     defer test_image.deinit();
 
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
-    try helpers.expectEq(test_image.pixelFormat(), PixelFormat.Bpp2);
+    try helpers.expectEq(test_image.pixelFormat(), PixelFormat.Indexed2);
     try testing.expect(test_image.pixels != null);
 
     if (test_image.pixels) |pixels| {
-        try testing.expect(pixels == .Bpp2);
-        try testing.expect(pixels.Bpp2.palette.len == 4);
-        try testing.expect(pixels.Bpp2.indices.len == 24 * 32);
+        try testing.expect(pixels == .Indexed2);
+        try testing.expect(pixels.Indexed2.palette.len == 4);
+        try testing.expect(pixels.Indexed2.indices.len == 24 * 32);
     }
 }
 
-test "Create Image Bpp4" {
-    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.Bpp4, .Raw);
+test "Create Image Indexed4" {
+    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.Indexed4, .Raw);
     defer test_image.deinit();
 
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
-    try helpers.expectEq(test_image.pixelFormat(), PixelFormat.Bpp4);
+    try helpers.expectEq(test_image.pixelFormat(), PixelFormat.Indexed4);
     try testing.expect(test_image.pixels != null);
 
     if (test_image.pixels) |pixels| {
-        try testing.expect(pixels == .Bpp4);
-        try testing.expect(pixels.Bpp4.palette.len == 16);
-        try testing.expect(pixels.Bpp4.indices.len == 24 * 32);
+        try testing.expect(pixels == .Indexed4);
+        try testing.expect(pixels.Indexed4.palette.len == 16);
+        try testing.expect(pixels.Indexed4.indices.len == 24 * 32);
     }
 }
 
-test "Create Image Bpp8" {
-    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.Bpp8, .Raw);
+test "Create Image Indexed8" {
+    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.Indexed8, .Raw);
     defer test_image.deinit();
 
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
-    try helpers.expectEq(test_image.pixelFormat(), PixelFormat.Bpp8);
+    try helpers.expectEq(test_image.pixelFormat(), PixelFormat.Indexed8);
     try testing.expect(test_image.pixels != null);
 
     if (test_image.pixels) |pixels| {
-        try testing.expect(pixels == .Bpp8);
-        try testing.expect(pixels.Bpp8.palette.len == 256);
-        try testing.expect(pixels.Bpp8.indices.len == 24 * 32);
+        try testing.expect(pixels == .Indexed8);
+        try testing.expect(pixels.Indexed8.palette.len == 256);
+        try testing.expect(pixels.Indexed8.indices.len == 24 * 32);
     }
 }
 
-test "Create Image Bpp16" {
-    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.Bpp16, .Raw);
+test "Create Image Indexed16" {
+    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.Indexed16, .Raw);
     defer test_image.deinit();
 
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
-    try helpers.expectEq(test_image.pixelFormat(), PixelFormat.Bpp16);
+    try helpers.expectEq(test_image.pixelFormat(), PixelFormat.Indexed16);
     try testing.expect(test_image.pixels != null);
 
     if (test_image.pixels) |pixels| {
-        try testing.expect(pixels == .Bpp16);
-        try testing.expect(pixels.Bpp16.palette.len == 65536);
-        try testing.expect(pixels.Bpp16.indices.len == 24 * 32);
+        try testing.expect(pixels == .Indexed16);
+        try testing.expect(pixels.Indexed16.palette.len == 65536);
+        try testing.expect(pixels.Indexed16.indices.len == 24 * 32);
     }
 }
 
