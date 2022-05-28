@@ -19,7 +19,7 @@ test "Read leroycep1 properly" {
     var pngFile = png.PNG.init(helpers.zigimg_test_allocator);
     defer pngFile.deinit();
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try pngFile.read(stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -77,7 +77,7 @@ test "Read leroycep2 properly" {
     var pngFile = png.PNG.init(helpers.zigimg_test_allocator);
     defer pngFile.deinit();
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try pngFile.read(stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -137,7 +137,7 @@ test "Read leroycep3 properly" {
     var pngFile = png.PNG.init(helpers.zigimg_test_allocator);
     defer pngFile.deinit();
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try pngFile.read(stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {
@@ -194,7 +194,7 @@ test "Read leroycep4 properly" {
     var pngFile = png.PNG.init(helpers.zigimg_test_allocator);
     defer pngFile.deinit();
 
-    var pixelsOpt: ?color.ColorStorage = null;
+    var pixelsOpt: ?color.PixelStorage = null;
     try pngFile.read(stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
 
     defer {

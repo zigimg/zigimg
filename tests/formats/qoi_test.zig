@@ -21,7 +21,7 @@ test "Should error on non QOI images" {
 
     var qoi_file = qoi.QOI{};
 
-    var pixels_opt: ?color.ColorStorage = null;
+    var pixels_opt: ?color.PixelStorage = null;
     const invalid_file = qoi_file.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixels_opt);
     defer {
         if (pixels_opt) |pixels| {
@@ -40,7 +40,7 @@ test "Read zero.qoi file" {
 
     var qoi_file = qoi.QOI{};
 
-    var pixels_opt: ?color.ColorStorage = null;
+    var pixels_opt: ?color.PixelStorage = null;
     try qoi_file.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixels_opt);
 
     defer {

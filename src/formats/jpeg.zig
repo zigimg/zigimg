@@ -813,7 +813,7 @@ const Frame = struct {
         }
     }
 
-    pub fn renderToPixels(self: *Frame, pixels: *color.ColorStorage) !void {
+    pub fn renderToPixels(self: *Frame, pixels: *color.PixelStorage) !void {
         switch (self.frame_header.components.len) {
             1 => try self.renderToPixelsGrayscale(pixels.Grayscale8),
             3 => try self.renderToPixelsRgb(pixels.Rgb24),
@@ -932,7 +932,7 @@ pub const JPEG = struct {
         }
     }
 
-    fn initializePixels(self: *JPEG, pixels_opt: *?color.ColorStorage) !void {
+    fn initializePixels(self: *JPEG, pixels_opt: *?color.PixelStorage) !void {
         if (self.frame) |frame| {
             var pixel_format: PixelFormat = undefined;
             switch (frame.frame_header.components.len) {
@@ -942,11 +942,11 @@ pub const JPEG = struct {
             }
 
             const pixel_count = @intCast(usize, frame.frame_header.samples_per_row) * @intCast(usize, frame.frame_header.row_count);
-            pixels_opt.* = try color.ColorStorage.init(self.allocator, pixel_format, pixel_count);
+            pixels_opt.* = try color.PixelStorage.init(self.allocator, pixel_format, pixel_count);
         } else return error.FrameDoesNotExist;
     }
 
-    pub fn read(self: *JPEG, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.ColorStorage) !Frame {
+    pub fn read(self: *JPEG, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.PixelStorage) !Frame {
         _ = pixels_opt;
         const jfif_header = JFIFHeader.read(reader, seek_stream) catch |err| switch (err) {
             error.App0MarkerDoesNotExist, error.JfifIdentifierNotSet, error.ThumbnailImagesUnsupported, error.ExtraneousApplicationMarker => return errors.ImageError.InvalidMagicHeader,
@@ -1044,7 +1044,7 @@ pub const JPEG = struct {
         return std.mem.eql(u8, identifier_buffer[0..], "JFIF");
     }
 
-    fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.ColorStorage) !ImageInfo {
+    fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.PixelStorage) !ImageInfo {
         var jpeg = JPEG.init(allocator);
         defer jpeg.deinit();
 
@@ -1055,7 +1055,7 @@ pub const JPEG = struct {
         };
     }
 
-    fn writeForImage(allocator: Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
+    fn writeForImage(allocator: Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) !void {
         _ = allocator;
         _ = write_stream;
         _ = seek_stream;

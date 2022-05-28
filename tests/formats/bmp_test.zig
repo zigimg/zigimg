@@ -10,7 +10,7 @@ const testing = std.testing;
 const image = @import("../../src/image.zig");
 const helpers = @import("../helpers.zig");
 
-fn verifyBitmapRGBAV5(the_bitmap: bmp.Bitmap, pixels_opt: ?color.ColorStorage) !void {
+fn verifyBitmapRGBAV5(the_bitmap: bmp.Bitmap, pixels_opt: ?color.PixelStorage) !void {
     try helpers.expectEq(the_bitmap.file_header.size, 153738);
     try helpers.expectEq(the_bitmap.file_header.reserved, 0);
     try helpers.expectEq(the_bitmap.file_header.pixel_offset, 138);
@@ -104,7 +104,7 @@ test "Read simple version 4 24-bit RGB bitmap" {
 
     var stream_source = std.io.StreamSource{ .file = file };
 
-    var pixels_opt: ?color.ColorStorage = null;
+    var pixels_opt: ?color.PixelStorage = null;
     try the_bitmap.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixels_opt);
 
     defer {
@@ -171,7 +171,7 @@ test "Read a valid version 5 RGBA bitmap from file" {
 
     var the_bitmap = bmp.Bitmap{};
 
-    var pixels_opt: ?color.ColorStorage = null;
+    var pixels_opt: ?color.PixelStorage = null;
     try the_bitmap.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixels_opt);
 
     defer {
@@ -190,7 +190,7 @@ test "Read a valid version 5 RGBA bitmap from memory" {
 
     var the_bitmap = bmp.Bitmap{};
 
-    var pixels_opt: ?color.ColorStorage = null;
+    var pixels_opt: ?color.PixelStorage = null;
     try the_bitmap.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixels_opt);
 
     defer {
@@ -210,7 +210,7 @@ test "Should error when reading an invalid file" {
 
     var the_bitmap = bmp.Bitmap{};
 
-    var pixels: ?color.ColorStorage = null;
+    var pixels: ?color.PixelStorage = null;
     const invalidFile = the_bitmap.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixels);
     try helpers.expectError(invalidFile, errors.ImageError.InvalidMagicHeader);
 }

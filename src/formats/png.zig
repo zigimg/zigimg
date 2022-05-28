@@ -447,7 +447,7 @@ pub const PNG = struct {
     allocator: Allocator = undefined,
 
     const DecompressionContext = struct {
-        pixels: *color.ColorStorage = undefined,
+        pixels: *color.PixelStorage = undefined,
         pixels_index: usize = 0,
         compressed_data: std.ArrayList(u8) = undefined,
         filter: PngFilter = undefined,
@@ -570,7 +570,7 @@ pub const PNG = struct {
         return null;
     }
 
-    pub fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.ColorStorage) !ImageInfo {
+    pub fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.PixelStorage) !ImageInfo {
         var png = PNG.init(allocator);
         defer png.deinit();
 
@@ -583,7 +583,7 @@ pub const PNG = struct {
         return image_info;
     }
 
-    pub fn writeForImage(allocator: Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
+    pub fn writeForImage(allocator: Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) !void {
         _ = allocator;
         _ = write_stream;
         _ = seek_stream;
@@ -591,7 +591,7 @@ pub const PNG = struct {
         _ = save_info;
     }
 
-    pub fn read(self: *Self, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.ColorStorage) !void {
+    pub fn read(self: *Self, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.PixelStorage) !void {
         _ = seek_stream;
         var magic_number_buffer: [8]u8 = undefined;
         _ = try reader.read(magic_number_buffer[0..]);
@@ -608,7 +608,7 @@ pub const PNG = struct {
 
         const pixel_format = try self.pixelFormat();
 
-        pixels_opt.* = try color.ColorStorage.init(self.allocator, pixel_format, self.header.width * self.header.height);
+        pixels_opt.* = try color.PixelStorage.init(self.allocator, pixel_format, self.header.width * self.header.height);
 
         if (pixels_opt.*) |*pixels| {
             if (self.header.color_type == .Indexed) {

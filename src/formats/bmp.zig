@@ -171,7 +171,7 @@ pub const Bitmap = struct {
         return false;
     }
 
-    pub fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels: *?color.ColorStorage) !ImageInfo {
+    pub fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels: *?color.PixelStorage) !ImageInfo {
         var bmp = Self{};
 
         try bmp.read(allocator, reader, seek_stream, pixels);
@@ -182,7 +182,7 @@ pub const Bitmap = struct {
         return image_info;
     }
 
-    pub fn writeForImage(allocator: Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.ColorStorage, save_info: image.ImageSaveInfo) !void {
+    pub fn writeForImage(allocator: Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) !void {
         _ = allocator;
         _ = write_stream;
         _ = seek_stream;
@@ -226,7 +226,7 @@ pub const Bitmap = struct {
         };
     }
 
-    pub fn read(self: *Self, allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.ColorStorage) !void {
+    pub fn read(self: *Self, allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.PixelStorage) !void {
         // Read file header
         self.file_header = try utils.readStructLittle(reader, BitmapFileHeader);
         if (!mem.eql(u8, self.file_header.magic_header[0..], BitmapMagicHeader[0..])) {
@@ -253,7 +253,7 @@ pub const Bitmap = struct {
                 const pixel_height = v4Header.height;
                 const pixel_format = try findPixelFormat(v4Header.bit_count, v4Header.compression_method);
 
-                pixels_opt.* = try color.ColorStorage.init(allocator, pixel_format, @intCast(usize, pixel_width * pixel_height));
+                pixels_opt.* = try color.PixelStorage.init(allocator, pixel_format, @intCast(usize, pixel_width * pixel_height));
 
                 if (pixels_opt.*) |*pixels| {
                     try readPixels(reader, pixel_width, pixel_height, pixel_format, pixels);
@@ -264,7 +264,7 @@ pub const Bitmap = struct {
                 const pixel_height = v5Header.height;
                 const pixel_format = try findPixelFormat(v5Header.bit_count, v5Header.compression_method);
 
-                pixels_opt.* = try color.ColorStorage.init(allocator, pixel_format, @intCast(usize, pixel_width * pixel_height));
+                pixels_opt.* = try color.PixelStorage.init(allocator, pixel_format, @intCast(usize, pixel_width * pixel_height));
 
                 if (pixels_opt.*) |*pixels| {
                     try readPixels(reader, pixel_width, pixel_height, pixel_format, pixels);
@@ -284,7 +284,7 @@ pub const Bitmap = struct {
         }
     }
 
-    fn readPixels(reader: ImageReader, pixel_width: i32, pixel_height: i32, pixel_format: PixelFormat, pixels: *color.ColorStorage) !void {
+    fn readPixels(reader: ImageReader, pixel_width: i32, pixel_height: i32, pixel_format: PixelFormat, pixels: *color.PixelStorage) !void {
         return switch (pixel_format) {
             PixelFormat.Bgr24 => {
                 return readPixelsInternal(pixels.Bgr24, reader, pixel_width, pixel_height);

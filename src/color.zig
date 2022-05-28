@@ -409,7 +409,7 @@ pub const Grayscale16 = Grayscale(u16);
 pub const Grayscale8Alpha = GrayscaleAlpha(u8);
 pub const Grayscale16Alpha = GrayscaleAlpha(u16);
 
-pub const ColorStorage = union(PixelFormat) {
+pub const PixelStorage = union(PixelFormat) {
     Bpp1: IndexedStorage1,
     Bpp2: IndexedStorage2,
     Bpp4: IndexedStorage4,
@@ -608,14 +608,14 @@ pub const ColorStorage = union(PixelFormat) {
     }
 };
 
-pub const ColorStorageIterator = struct {
-    pixels: *const ColorStorage = undefined,
+pub const PixelStorageIterator = struct {
+    pixels: *const PixelStorage = undefined,
     current_index: usize = 0,
     end: usize = 0,
 
     const Self = @This();
 
-    pub fn init(pixels: *const ColorStorage) Self {
+    pub fn init(pixels: *const PixelStorage) Self {
         return Self{
             .pixels = pixels,
             .end = pixels.len(),
