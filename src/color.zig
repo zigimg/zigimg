@@ -107,15 +107,15 @@ pub const Colorf32 = packed struct {
 
 fn RgbMethods(comptime Self: type) type {
     return struct {
-        const RT = std.meta.fieldInfo(Self, .r).field_type;
-        const GT = std.meta.fieldInfo(Self, .g).field_type;
-        const BT = std.meta.fieldInfo(Self, .b).field_type;
-        const r_bits = @typeInfo(RT).Int.bits;
-        const g_bits = @typeInfo(GT).Int.bits;
-        const b_bits = @typeInfo(BT).Int.bits;
-        const AT = RT; // We assume Alpha type is same as Red type
+        const RedComponentType = std.meta.fieldInfo(Self, .r).field_type;
+        const GreenComponentType = std.meta.fieldInfo(Self, .g).field_type;
+        const BlueComponentType = std.meta.fieldInfo(Self, .b).field_type;
+        const r_bits = @typeInfo(RedComponentType).Int.bits;
+        const g_bits = @typeInfo(GreenComponentType).Int.bits;
+        const b_bits = @typeInfo(BlueComponentType).Int.bits;
+        const AT = RedComponentType; // We assume Alpha type is same as Red type
 
-        pub fn initRgb(r: RT, g: GT, b: BT) Self {
+        pub fn initRgb(r: RedComponentType, g: GreenComponentType, b: BlueComponentType) Self {
             return Self{
                 .r = r,
                 .g = g,
@@ -133,12 +133,12 @@ fn RgbMethods(comptime Self: type) type {
         }
 
         pub fn fromU32Rgba(value: u32) Self {
-            return switch (RT) {
+            return switch (RedComponentType) {
                 u5, u8 => blk: {
                     var res = Self{
-                        .r = @truncate(RT, value >> (32 - r_bits)),
-                        .g = @truncate(GT, value >> (24 - g_bits)),
-                        .b = @truncate(BT, value >> (16 - b_bits)),
+                        .r = @truncate(RedComponentType, value >> (32 - r_bits)),
+                        .g = @truncate(GreenComponentType, value >> (24 - g_bits)),
+                        .b = @truncate(BlueComponentType, value >> (16 - b_bits)),
                     };
                     // This if can only be true for u8 here
                     if (@hasField(Self, "a")) res.a = @truncate(AT, value);
@@ -146,9 +146,9 @@ fn RgbMethods(comptime Self: type) type {
                 },
                 u16 => blk: {
                     var res = Self{
-                        .r = @truncate(RT, value >> 24) * 257,
-                        .g = @truncate(GT, value >> 16 & 0xff) * 257,
-                        .b = @truncate(BT, value >> 8 & 0xff) * 257,
+                        .r = @truncate(RedComponentType, value >> 24) * 257,
+                        .g = @truncate(GreenComponentType, value >> 16 & 0xff) * 257,
+                        .b = @truncate(BlueComponentType, value >> 8 & 0xff) * 257,
                     };
                     if (@hasField(Self, "a")) res.a = @truncate(AT, value & 0xff) * 257;
                     break :blk res;
@@ -158,28 +158,28 @@ fn RgbMethods(comptime Self: type) type {
         }
 
         pub fn fromU32Rgb(value: u32) Self {
-            return switch (RT) {
+            return switch (RedComponentType) {
                 u5, u8 => Self{
-                    .r = @truncate(RT, value >> (24 - r_bits)),
-                    .g = @truncate(GT, value >> (16 - g_bits)),
-                    .b = @truncate(BT, value >> (8 - b_bits)),
+                    .r = @truncate(RedComponentType, value >> (24 - r_bits)),
+                    .g = @truncate(GreenComponentType, value >> (16 - g_bits)),
+                    .b = @truncate(BlueComponentType, value >> (8 - b_bits)),
                 },
                 u16 => Self{
-                    .r = @truncate(RT, value >> 16 & 0xff) * 257,
-                    .g = @truncate(GT, value >> 8 & 0xff) * 257,
-                    .b = @truncate(BT, value & 0xff) * 257,
+                    .r = @truncate(RedComponentType, value >> 16 & 0xff) * 257,
+                    .g = @truncate(GreenComponentType, value >> 8 & 0xff) * 257,
+                    .b = @truncate(BlueComponentType, value & 0xff) * 257,
                 },
                 else => unreachable,
             };
         }
 
         pub fn fromU64Rgba(value: u64) Self {
-            return switch (RT) {
+            return switch (RedComponentType) {
                 u5, u8 => blk: {
                     var res = Self{
-                        .r = @truncate(RT, value >> (64 - r_bits)),
-                        .g = @truncate(GT, value >> (48 - g_bits)),
-                        .b = @truncate(BT, value >> (32 - b_bits)),
+                        .r = @truncate(RedComponentType, value >> (64 - r_bits)),
+                        .g = @truncate(GreenComponentType, value >> (48 - g_bits)),
+                        .b = @truncate(BlueComponentType, value >> (32 - b_bits)),
                     };
                     // This if can only be true for u8 here
                     if (@hasField(Self, "a")) res.a = @truncate(AT, value >> 8);
@@ -187,9 +187,9 @@ fn RgbMethods(comptime Self: type) type {
                 },
                 u16 => blk: {
                     var res = Self{
-                        .r = @truncate(RT, value >> 48),
-                        .g = @truncate(GT, value >> 32),
-                        .b = @truncate(BT, value >> 16),
+                        .r = @truncate(RedComponentType, value >> 48),
+                        .g = @truncate(GreenComponentType, value >> 32),
+                        .b = @truncate(BlueComponentType, value >> 16),
                     };
                     if (@hasField(Self, "a")) res.a = @truncate(AT, value);
                     break :blk res;
@@ -199,23 +199,23 @@ fn RgbMethods(comptime Self: type) type {
         }
 
         pub fn fromU64Rgb(value: u64) Self {
-            return switch (RT) {
+            return switch (RedComponentType) {
                 u5, u8 => Self{
-                    .r = @truncate(RT, value >> (48 - r_bits)),
-                    .g = @truncate(GT, value >> (32 - g_bits)),
-                    .b = @truncate(BT, value >> (16 - b_bits)),
+                    .r = @truncate(RedComponentType, value >> (48 - r_bits)),
+                    .g = @truncate(GreenComponentType, value >> (32 - g_bits)),
+                    .b = @truncate(BlueComponentType, value >> (16 - b_bits)),
                 },
                 u16 => Self{
-                    .r = @truncate(RT, value >> 32),
-                    .g = @truncate(GT, value >> 16),
-                    .b = @truncate(BT, value),
+                    .r = @truncate(RedComponentType, value >> 32),
+                    .g = @truncate(GreenComponentType, value >> 16),
+                    .b = @truncate(BlueComponentType, value),
                 },
                 else => unreachable,
             };
         }
 
         pub fn toU32Rgba(self: Self) u32 {
-            return switch (GT) {
+            return switch (GreenComponentType) {
                 u5 => ((@as(u32, self.r) * 255 + 15) / 31) << 24 |
                     ((@as(u32, self.g) * 255 + 15) / 31) << 16 |
                     ((@as(u32, self.b) * 255 + 15) / 31) << 8 |
@@ -237,7 +237,7 @@ fn RgbMethods(comptime Self: type) type {
         }
 
         pub fn toU32Rgb(self: Self) u32 {
-            return switch (GT) {
+            return switch (GreenComponentType) {
                 u5 => ((@as(u32, self.r) * 255 + 15) / 31) << 16 |
                     ((@as(u32, self.g) * 255 + 15) / 31) << 8 |
                     ((@as(u32, self.b) * 255 + 15) / 31),
@@ -255,7 +255,7 @@ fn RgbMethods(comptime Self: type) type {
         }
 
         pub fn toU64Rgba(self: Self) u64 {
-            return switch (GT) {
+            return switch (GreenComponentType) {
                 u5 => ((@as(u64, self.r) * 65535 + 15) / 31) << 48 |
                     ((@as(u64, self.g) * 65535 + 15) / 31) << 32 |
                     ((@as(u64, self.b) * 65535 + 15) / 31) << 16 |
@@ -277,7 +277,7 @@ fn RgbMethods(comptime Self: type) type {
         }
 
         pub fn toU64Rgb(self: Self) u64 {
-            return switch (GT) {
+            return switch (GreenComponentType) {
                 u5 => ((@as(u64, self.r) * 65535 + 15) / 31) << 32 |
                     ((@as(u64, self.g) * 65535 + 15) / 31) << 16 |
                     ((@as(u64, self.b) * 65535 + 15) / 31),
