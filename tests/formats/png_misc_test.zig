@@ -59,11 +59,9 @@ test "Read leroycep1 properly" {
         };
 
         for (test_inputs) |input| {
-            const expected_color = color.IntegerColor8.fromHtmlHex(input.hex);
-
             const index = pngFile.header.width * input.y + input.x;
 
-            try helpers.expectEq(pixels.rgb24[index].toColor().toIntegerColor8(), expected_color);
+            try helpers.expectEq(pixels.rgb24[index].toU32Rgb(), input.hex);
         }
     }
 }
@@ -99,31 +97,29 @@ test "Read leroycep2 properly" {
             .{
                 .x = 8,
                 .y = 9,
-                .hex = 0xb37e6d,
+                .hex = 0xb37e6dff,
             },
             .{
                 .x = 10,
                 .y = 24,
-                .hex = 0x914f28,
+                .hex = 0x914f28ff,
             },
             .{
                 .x = 16,
                 .y = 15,
-                .hex = 0x914f28,
+                .hex = 0x914f28ff,
             },
             .{
                 .x = 22,
                 .y = 33,
-                .hex = 0x412b0f,
+                .hex = 0x412b0fff,
             },
         };
 
         for (test_inputs) |input| {
-            const expected_color = color.IntegerColor8.fromHtmlHex(input.hex);
-
             const index = pngFile.header.width * input.y + input.x;
 
-            try helpers.expectEq(pixels.rgba32[index].toColor().toIntegerColor8(), expected_color);
+            try helpers.expectEq(pixels.rgba32[index].toU32Rgba(), input.hex);
         }
     }
 }
@@ -176,11 +172,9 @@ test "Read leroycep3 properly" {
         };
 
         for (test_inputs) |input| {
-            const expected_color = color.IntegerColor8.fromHtmlHex(input.hex);
-
             const index = pngFile.header.width * input.y + input.x;
 
-            try helpers.expectEq(pixels.rgb24[index].toColor().toIntegerColor8(), expected_color);
+            try helpers.expectEq(pixels.rgb24[index].toU32Rgb(), input.hex);
         }
     }
 }
@@ -239,11 +233,9 @@ test "Read leroycep4 properly" {
         };
 
         for (test_inputs) |input| {
-            const expected_color = color.IntegerColor8.fromHtmlHex(input.hex);
-
             const index = pngFile.header.width * input.y + input.x;
 
-            try helpers.expectEq(pixels.rgb24[index].toColor().toIntegerColor8(), expected_color);
+            try helpers.expectEq(pixels.rgb24[index].toU32Rgb(), input.hex);
         }
     }
 }

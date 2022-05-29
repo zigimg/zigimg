@@ -856,14 +856,14 @@ const Frame = struct {
                     const Co_green = 0.587;
                     const Co_blue = 0.114;
 
-                    const R = Cr * (2 - 2 * Co_red) + Y;
-                    const B = Cb * (2 - 2 * Co_blue) + Y;
-                    const G = (Y - Co_blue * B - Co_red * R) / Co_green;
+                    const r = Cr * (2 - 2 * Co_red) + Y;
+                    const b = Cb * (2 - 2 * Co_blue) + Y;
+                    const g = (Y - Co_blue * b - Co_red * r) / Co_green;
 
                     pixels[(((block_y * 8) + y) * width) + (block_x * 8) + x] = .{
-                        .R = @floatToInt(u8, std.math.clamp(R + 128.0, 0.0, 255.0)),
-                        .G = @floatToInt(u8, std.math.clamp(G + 128.0, 0.0, 255.0)),
-                        .B = @floatToInt(u8, std.math.clamp(B + 128.0, 0.0, 255.0)),
+                        .r = @floatToInt(u8, std.math.clamp(r + 128.0, 0.0, 255.0)),
+                        .g = @floatToInt(u8, std.math.clamp(g + 128.0, 0.0, 255.0)),
+                        .b = @floatToInt(u8, std.math.clamp(b + 128.0, 0.0, 255.0)),
                     };
                 }
             }

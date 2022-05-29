@@ -1,7 +1,7 @@
 const Allocator = @import("std").mem.Allocator;
 const ArenaAllocator = @import("std").heap.ArenaAllocator;
 const ArrayList = @import("std").ArrayList;
-const IntegerColor8 = @import("color.zig").IntegerColor8;
+const Rgba32 = @import("color.zig").Rgba32;
 
 const MaxDepth = 8;
 
@@ -43,15 +43,15 @@ pub const OctTreeQuantizer = struct {
         try self.levels[@intCast(usize, level)].append(node);
     }
 
-    pub fn addColor(self: *Self, color: IntegerColor8) !void {
+    pub fn addColor(self: *Self, color: Rgba32) !void {
         try self.rootNode.addColor(color, 0, self);
     }
 
-    pub fn getPaletteIndex(self: Self, color: IntegerColor8) !usize {
+    pub fn getPaletteIndex(self: Self, color: Rgba32) !usize {
         return try self.rootNode.getPaletteIndex(color, 0);
     }
 
-    pub fn makePalette(self: *Self, colorCount: usize, palette: []IntegerColor8) anyerror![]IntegerColor8 {
+    pub fn makePalette(self: *Self, colorCount: usize, palette: []Rgba32) anyerror![]Rgba32 {
         var paletteIndex: usize = 0;
 
         var rootLeafNodes = try self.rootNode.getLeafNodes(self.arenaAllocator.child_allocator);
@@ -122,15 +122,15 @@ const OctTreeQuantizerNode = struct {
         return self.referenceCount > 0;
     }
 
-    pub fn getColor(self: Self) IntegerColor8 {
-        return IntegerColor8.initRGB(@intCast(u8, self.red / self.referenceCount), @intCast(u8, self.green / self.referenceCount), @intCast(u8, self.blue / self.referenceCount));
+    pub fn getColor(self: Self) Rgba32 {
+        return Rgba32.initRgb(@intCast(u8, self.red / self.referenceCount), @intCast(u8, self.green / self.referenceCount), @intCast(u8, self.blue / self.referenceCount));
     }
 
-    pub fn addColor(self: *Self, color: IntegerColor8, level: i32, parent: *OctTreeQuantizer) anyerror!void {
+    pub fn addColor(self: *Self, color: Rgba32, level: i32, parent: *OctTreeQuantizer) anyerror!void {
         if (level >= MaxDepth) {
-            self.red += color.R;
-            self.green += color.G;
-            self.blue += color.B;
+            self.red += color.r;
+            self.green += color.g;
+            self.blue += color.b;
             self.referenceCount += 1;
             return;
         }
@@ -148,7 +148,7 @@ const OctTreeQuantizerNode = struct {
         }
     }
 
-    pub fn getPaletteIndex(self: Self, color: IntegerColor8, level: i32) anyerror!usize {
+    pub fn getPaletteIndex(self: Self, color: Rgba32, level: i32) anyerror!usize {
         if (self.isLeaf()) {
             return self.paletteIndex;
         }
@@ -201,16 +201,16 @@ const OctTreeQuantizerNode = struct {
         return result - 1;
     }
 
-    inline fn getColorIndex(color: IntegerColor8, level: i32) usize {
+    inline fn getColorIndex(color: Rgba32, level: i32) usize {
         var index: usize = 0;
         var mask = @intCast(u8, 0b10000000) >> @intCast(u3, level);
-        if (color.R & mask != 0) {
+        if (color.r & mask != 0) {
             index |= 0b100;
         }
-        if (color.G & mask != 0) {
+        if (color.g & mask != 0) {
             index |= 0b010;
         }
-        if (color.B & mask != 0) {
+        if (color.b & mask != 0) {
             index |= 0b001;
         }
         return index;

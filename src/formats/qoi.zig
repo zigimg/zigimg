@@ -33,34 +33,34 @@ pub const QoiColor = extern struct {
 
     pub fn toRgb24(self: QoiColor) color.Rgb24 {
         return color.Rgb24{
-            .R = self.r,
-            .G = self.g,
-            .B = self.b,
+            .r = self.r,
+            .g = self.g,
+            .b = self.b,
         };
     }
 
     pub fn toRgba32(self: QoiColor) color.Rgba32 {
         return color.Rgba32{
-            .R = self.r,
-            .G = self.g,
-            .B = self.b,
-            .A = self.a,
+            .r = self.r,
+            .g = self.g,
+            .b = self.b,
+            .a = self.a,
         };
     }
 
     pub fn from(pixel: anytype) QoiColor {
         if (@TypeOf(pixel) == color.Rgb24) {
             return QoiColor{
-                .r = pixel.R,
-                .g = pixel.G,
-                .b = pixel.B,
+                .r = pixel.r,
+                .g = pixel.g,
+                .b = pixel.b,
             };
         } else if (@TypeOf(pixel) == color.Rgba32) {
             return QoiColor{
-                .r = pixel.R,
-                .g = pixel.G,
-                .b = pixel.B,
-                .a = pixel.A,
+                .r = pixel.r,
+                .g = pixel.g,
+                .b = pixel.b,
+                .a = pixel.a,
             };
         } else {
             unreachable;

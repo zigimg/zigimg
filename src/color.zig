@@ -4,212 +4,355 @@ const Allocator = std.mem.Allocator;
 const PixelFormat = @import("pixel_format.zig").PixelFormat;
 const TypeInfo = std.builtin.TypeInfo;
 
-pub inline fn toColorInt(comptime T: type, value: f32) T {
+pub inline fn toIntColor(comptime T: type, value: f32) T {
     const float_value = @round(value * @intToFloat(f32, math.maxInt(T)));
     return @floatToInt(T, math.clamp(float_value, math.minInt(T), math.maxInt(T)));
 }
 
-pub inline fn toColorFloat(value: anytype) f32 {
+pub inline fn toF32Color(value: anytype) f32 {
     return @intToFloat(f32, value) / @intToFloat(f32, math.maxInt(@TypeOf(value)));
 }
 
-pub const Color = struct {
-    R: f32,
-    G: f32,
-    B: f32,
-    A: f32,
+pub const Colorf32 = packed struct {
+    r: f32,
+    g: f32,
+    b: f32,
+    a: f32 = 1.0,
 
     const Self = @This();
 
-    pub fn initRGB(r: f32, g: f32, b: f32) Self {
+    pub fn initRgb(r: f32, g: f32, b: f32) Self {
         return Self{
-            .R = r,
-            .G = g,
-            .B = b,
-            .A = 1.0,
+            .r = r,
+            .g = g,
+            .b = b,
         };
     }
 
-    pub fn initRGBA(r: f32, g: f32, b: f32, a: f32) Self {
+    pub fn initRgba(r: f32, g: f32, b: f32, a: f32) Self {
         return Self{
-            .R = r,
-            .G = g,
-            .B = b,
-            .A = a,
+            .r = r,
+            .g = g,
+            .b = b,
+            .a = a,
         };
     }
 
-    pub fn fromHtmlHex(value: u32) Self {
+    pub fn fromU32Rgba(value: u32) Self {
         return Self{
-            .R = toColorFloat((value >> 16) & 0xFF),
-            .G = toColorFloat((value >> 8) & 0xFF),
-            .B = toColorFloat(value & 0xFF),
-            .A = 1.0,
+            .r = toF32Color(@truncate(u8, value >> 24)),
+            .g = toF32Color(@truncate(u8, value >> 16)),
+            .b = toF32Color(@truncate(u8, value >> 8)),
+            .a = toF32Color(@truncate(u8, value)),
         };
     }
 
-    pub fn premultipliedAlpha(self: Self) Self {
+    pub fn toU32Rgba(self: Self) u32 {
+        return @as(u32, toIntColor(u8, self.r)) << 24 |
+            @as(u32, toIntColor(u8, self.g)) << 16 |
+            @as(u32, toIntColor(u8, self.b)) << 8 |
+            @as(u32, toIntColor(u8, self.a));
+    }
+
+    pub fn fromU64Rgba(value: u64) Self {
         return Self{
-            .R = self.R * self.A,
-            .G = self.G * self.A,
-            .B = self.B * self.A,
-            .A = self.A,
+            .r = toF32Color(@truncate(u16, value >> 48)),
+            .g = toF32Color(@truncate(u16, value >> 32)),
+            .b = toF32Color(@truncate(u16, value >> 16)),
+            .a = toF32Color(@truncate(u16, value)),
         };
     }
 
-    pub fn toIntegerColor(self: Self, comptime storage_type: type) IntegerColor(storage_type) {
-        return IntegerColor(storage_type){
-            .R = toColorInt(storage_type, self.R),
-            .G = toColorInt(storage_type, self.G),
-            .B = toColorInt(storage_type, self.B),
-            .A = toColorInt(storage_type, self.A),
+    pub fn toU64Rgba(self: Self) u64 {
+        return @as(u64, toIntColor(u16, self.r)) << 48 |
+            @as(u64, toIntColor(u16, self.g)) << 32 |
+            @as(u64, toIntColor(u16, self.b)) << 16 |
+            @as(u64, toIntColor(u16, self.a));
+    }
+
+    pub fn toPremultipliedAlpha(self: Self) Self {
+        return Self{
+            .r = self.r * self.a,
+            .g = self.g * self.a,
+            .b = self.b * self.a,
+            .a = self.a,
         };
     }
 
-    pub fn toIntegerColor8(self: Self) IntegerColor8 {
-        return toIntegerColor(self, u8);
+    pub fn toRgba(self: Self, comptime T: type) RgbaColor(T) {
+        return .{
+            .r = toIntColor(T, self.r),
+            .g = toIntColor(T, self.g),
+            .b = toIntColor(T, self.b),
+            .a = toIntColor(T, self.a),
+        };
     }
 
-    pub fn toIntegerColor16(self: Self) IntegerColor16 {
-        return toIntegerColor(self, u16);
+    pub fn toRgba32(self: Self) Rgba32 {
+        return self.toRgba(u8);
+    }
+
+    pub fn toRgba64(self: Self) Rgba64 {
+        return self.toRgba(u16);
+    }
+
+    pub fn toArray(self: Self) [4]f32 {
+        return @bitCast([4]f32, self);
+    }
+
+    pub fn fromArray(value: [4]f32) Self {
+        return @bitCast(Self, value);
     }
 };
 
-pub fn IntegerColor(comptime storage_type: type) type {
+fn RgbMethods(comptime Self: type) type {
     return struct {
-        R: storage_type,
-        G: storage_type,
-        B: storage_type,
-        A: storage_type,
+        const RedComponentType = std.meta.fieldInfo(Self, .r).field_type;
+        const GreenComponentType = std.meta.fieldInfo(Self, .g).field_type;
+        const BlueComponentType = std.meta.fieldInfo(Self, .b).field_type;
+        const r_bits = @typeInfo(RedComponentType).Int.bits;
+        const g_bits = @typeInfo(GreenComponentType).Int.bits;
+        const b_bits = @typeInfo(BlueComponentType).Int.bits;
+        const AT = RedComponentType; // We assume Alpha type is same as Red type
 
-        const Self = @This();
-
-        pub fn initRGB(r: storage_type, g: storage_type, b: storage_type) Self {
+        pub fn initRgb(r: RedComponentType, g: GreenComponentType, b: BlueComponentType) Self {
             return Self{
-                .R = r,
-                .G = g,
-                .B = b,
-                .A = math.maxInt(storage_type),
+                .r = r,
+                .g = g,
+                .b = b,
             };
         }
 
-        pub fn initRGBA(r: storage_type, g: storage_type, b: storage_type, a: storage_type) Self {
-            return Self{
-                .R = r,
-                .G = g,
-                .B = b,
-                .A = a,
+        pub fn toColorf32(self: Self) Colorf32 {
+            return Colorf32{
+                .r = toF32Color(self.r),
+                .g = toF32Color(self.g),
+                .b = toF32Color(self.b),
+                .a = if (@hasField(Self, "a")) toF32Color(self.a) else 1.0,
             };
         }
 
-        pub fn fromHtmlHex(value: u32) Self {
-            return Self{
-                .R = @intCast(storage_type, (value >> 16) & 0xFF),
-                .G = @intCast(storage_type, (value >> 8) & 0xFF),
-                .B = @intCast(storage_type, value & 0xFF),
-                .A = math.maxInt(storage_type),
+        pub fn fromU32Rgba(value: u32) Self {
+            return switch (RedComponentType) {
+                u5, u8 => blk: {
+                    var res = Self{
+                        .r = @truncate(RedComponentType, value >> (32 - r_bits)),
+                        .g = @truncate(GreenComponentType, value >> (24 - g_bits)),
+                        .b = @truncate(BlueComponentType, value >> (16 - b_bits)),
+                    };
+                    // This if can only be true for u8 here
+                    if (@hasField(Self, "a")) res.a = @truncate(AT, value);
+                    break :blk res;
+                },
+                u16 => blk: {
+                    var res = Self{
+                        .r = @truncate(RedComponentType, value >> 24) * 257,
+                        .g = @truncate(GreenComponentType, value >> 16 & 0xff) * 257,
+                        .b = @truncate(BlueComponentType, value >> 8 & 0xff) * 257,
+                    };
+                    if (@hasField(Self, "a")) res.a = @truncate(AT, value & 0xff) * 257;
+                    break :blk res;
+                },
+                else => unreachable,
             };
         }
 
-        pub fn premultipliedAlpha(self: Self) Self {
-            var floatR: f32 = toColorFloat(self.R);
-            var floatG: f32 = toColorFloat(self.G);
-            var floatB: f32 = toColorFloat(self.B);
-            var floatA: f32 = toColorFloat(self.A);
-
-            return Self{
-                .R = toColorInt(u8, floatR * floatA),
-                .G = toColorInt(u8, floatG * floatA),
-                .B = toColorInt(u8, floatB * floatA),
-                .A = self.A,
+        pub fn fromU32Rgb(value: u32) Self {
+            return switch (RedComponentType) {
+                u5, u8 => Self{
+                    .r = @truncate(RedComponentType, value >> (24 - r_bits)),
+                    .g = @truncate(GreenComponentType, value >> (16 - g_bits)),
+                    .b = @truncate(BlueComponentType, value >> (8 - b_bits)),
+                },
+                u16 => Self{
+                    .r = @truncate(RedComponentType, value >> 16 & 0xff) * 257,
+                    .g = @truncate(GreenComponentType, value >> 8 & 0xff) * 257,
+                    .b = @truncate(BlueComponentType, value & 0xff) * 257,
+                },
+                else => unreachable,
             };
         }
 
-        pub fn toColor(self: Self) Color {
-            return Color{
-                .R = toColorFloat(self.R),
-                .G = toColorFloat(self.G),
-                .B = toColorFloat(self.B),
-                .A = toColorFloat(self.A),
+        pub fn fromU64Rgba(value: u64) Self {
+            return switch (RedComponentType) {
+                u5, u8 => blk: {
+                    var res = Self{
+                        .r = @truncate(RedComponentType, value >> (64 - r_bits)),
+                        .g = @truncate(GreenComponentType, value >> (48 - g_bits)),
+                        .b = @truncate(BlueComponentType, value >> (32 - b_bits)),
+                    };
+                    // This if can only be true for u8 here
+                    if (@hasField(Self, "a")) res.a = @truncate(AT, value >> 8);
+                    break :blk res;
+                },
+                u16 => blk: {
+                    var res = Self{
+                        .r = @truncate(RedComponentType, value >> 48),
+                        .g = @truncate(GreenComponentType, value >> 32),
+                        .b = @truncate(BlueComponentType, value >> 16),
+                    };
+                    if (@hasField(Self, "a")) res.a = @truncate(AT, value);
+                    break :blk res;
+                },
+                else => unreachable,
+            };
+        }
+
+        pub fn fromU64Rgb(value: u64) Self {
+            return switch (RedComponentType) {
+                u5, u8 => Self{
+                    .r = @truncate(RedComponentType, value >> (48 - r_bits)),
+                    .g = @truncate(GreenComponentType, value >> (32 - g_bits)),
+                    .b = @truncate(BlueComponentType, value >> (16 - b_bits)),
+                },
+                u16 => Self{
+                    .r = @truncate(RedComponentType, value >> 32),
+                    .g = @truncate(GreenComponentType, value >> 16),
+                    .b = @truncate(BlueComponentType, value),
+                },
+                else => unreachable,
+            };
+        }
+
+        pub fn toU32Rgba(self: Self) u32 {
+            return switch (GreenComponentType) {
+                u5 => ((@as(u32, self.r) * 255 + 15) / 31) << 24 |
+                    ((@as(u32, self.g) * 255 + 15) / 31) << 16 |
+                    ((@as(u32, self.b) * 255 + 15) / 31) << 8 |
+                    0xff,
+                u6 => ((@as(u32, self.r) * 255 + 15) / 31) << 24 |
+                    ((@as(u32, self.g) * 255 + 31) / 63) << 16 |
+                    ((@as(u32, self.b) * 255 + 15) / 31) << 8 |
+                    0xff,
+                u8 => @as(u32, self.r) << 24 |
+                    @as(u32, self.g) << 16 |
+                    @as(u32, self.b) << 8 |
+                    if (@hasField(Self, "a")) @as(u32, self.a) else 0xff,
+                u16 => @as(u32, self.r & 0xff00) << 16 |
+                    @as(u32, self.g & 0xff00) << 8 |
+                    @as(u32, self.b & 0xff00) |
+                    if (@hasField(Self, "a")) @as(u32, self.a) >> 8 else 0xff,
+                else => unreachable,
+            };
+        }
+
+        pub fn toU32Rgb(self: Self) u32 {
+            return switch (GreenComponentType) {
+                u5 => ((@as(u32, self.r) * 255 + 15) / 31) << 16 |
+                    ((@as(u32, self.g) * 255 + 15) / 31) << 8 |
+                    ((@as(u32, self.b) * 255 + 15) / 31),
+                u6 => ((@as(u32, self.r) * 255 + 15) / 31) << 16 |
+                    ((@as(u32, self.g) * 255 + 31) / 63) << 8 |
+                    ((@as(u32, self.b) * 255 + 15) / 31),
+                u8 => @as(u32, self.r) << 16 |
+                    @as(u32, self.g) << 8 |
+                    @as(u32, self.b),
+                u16 => @as(u32, self.r & 0xff00) << 8 |
+                    @as(u32, self.g & 0xff00) |
+                    @as(u32, self.b & 0xff00) >> 8,
+                else => unreachable,
+            };
+        }
+
+        pub fn toU64Rgba(self: Self) u64 {
+            return switch (GreenComponentType) {
+                u5 => ((@as(u64, self.r) * 65535 + 15) / 31) << 48 |
+                    ((@as(u64, self.g) * 65535 + 15) / 31) << 32 |
+                    ((@as(u64, self.b) * 65535 + 15) / 31) << 16 |
+                    0xff,
+                u6 => ((@as(u64, self.r) * 65535 + 15) / 31) << 48 |
+                    ((@as(u64, self.g) * 65535 + 31) / 63) << 32 |
+                    ((@as(u64, self.b) * 65535 + 15) / 31) << 16 |
+                    0xff,
+                u8 => ((@as(u64, self.r) * 65535 + 127) / 255) << 48 |
+                    ((@as(u64, self.g) * 65535 + 127) / 255) << 32 |
+                    ((@as(u64, self.b) * 65535 + 127) / 255) << 16 |
+                    if (@hasField(Self, "a")) (@as(u64, self.a) * 65535 + 127) / 255 else 0xffff,
+                u16 => @as(u64, self.r) << 48 |
+                    @as(u64, self.g) << 32 |
+                    @as(u64, self.b) << 16 |
+                    if (@hasField(Self, "a")) @as(u64, self.a) else 0xffff,
+                else => unreachable,
+            };
+        }
+
+        pub fn toU64Rgb(self: Self) u64 {
+            return switch (GreenComponentType) {
+                u5 => ((@as(u64, self.r) * 65535 + 15) / 31) << 32 |
+                    ((@as(u64, self.g) * 65535 + 15) / 31) << 16 |
+                    ((@as(u64, self.b) * 65535 + 15) / 31),
+                u6 => ((@as(u64, self.r) * 65535 + 15) / 31) << 32 |
+                    ((@as(u64, self.g) * 65535 + 31) / 63) << 16 |
+                    ((@as(u64, self.b) * 65535 + 15) / 31),
+                u8 => ((@as(u64, self.r) * 65535 + 127) / 255) << 32 |
+                    ((@as(u64, self.g) * 65535 + 127) / 255) << 16 |
+                    ((@as(u64, self.b) * 65535 + 127) / 255),
+                u16 => @as(u64, self.r) << 16 |
+                    @as(u64, self.g) << 8 |
+                    @as(u64, self.b),
+                else => unreachable,
             };
         }
     };
 }
 
-pub const IntegerColor8 = IntegerColor(u8);
-pub const IntegerColor16 = IntegerColor(u16);
+fn RgbaMethods(comptime Self: type) type {
+    return struct {
+        const T = std.meta.fieldInfo(Self, .r).field_type;
+        const comp_bits = @typeInfo(T).Int.bits;
 
-fn RgbColor(comptime red_bits: comptime_int, comptime green_bits: comptime_int, comptime blue_bits: comptime_int) type {
-    return packed struct {
-        R: RedType,
-        G: GreenType,
-        B: BlueType,
-
-        const RedType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = red_bits } });
-        const GreenType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = green_bits } });
-        const BlueType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = blue_bits } });
-
-        const Self = @This();
-
-        pub fn initRGB(r: RedType, g: GreenType, b: BlueType) Self {
+        pub fn initRgba(r: T, g: T, b: T, a: T) Self {
             return Self{
-                .R = r,
-                .G = g,
-                .B = b,
+                .r = r,
+                .g = g,
+                .b = b,
+                .a = a,
             };
         }
 
-        pub fn toColor(self: Self) Color {
-            return Color{
-                .R = toColorFloat(self.R),
-                .G = toColorFloat(self.G),
-                .B = toColorFloat(self.B),
-                .A = 1.0,
+        pub fn toPremultipliedAlpha(self: Self) Self {
+            const max = math.maxInt(T);
+            return Self{
+                .r = @truncate(T, (@as(u32, self.r) * self.a + max / 2) / max),
+                .g = @truncate(T, (@as(u32, self.g) * self.a + max / 2) / max),
+                .b = @truncate(T, (@as(u32, self.b) * self.a + max / 2) / max),
+                .a = self.a,
             };
         }
     };
 }
 
-fn RgbaColor(comptime red_bits: comptime_int, comptime green_bits: comptime_int, comptime blue_bits: comptime_int, comptime alpha_bits: comptime_int) type {
+fn RgbColor(comptime T: type) type {
     return packed struct {
-        R: RedType,
-        G: GreenType,
-        B: BlueType,
-        A: AlphaType,
+        r: T,
+        g: T,
+        b: T,
 
-        const RedType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = red_bits } });
-        const GreenType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = green_bits } });
-        const BlueType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = blue_bits } });
-        const AlphaType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = alpha_bits } });
+        pub usingnamespace RgbMethods(@This());
+    };
+}
 
-        const Self = @This();
+// Rgb565
+// OpenGL: n/a
+// Vulkan: n/a
+// Direct3D/DXGI: n/a
+pub const Rgb565 = packed struct {
+    r: u5,
+    g: u6,
+    b: u5,
 
-        pub fn initRGB(r: RedType, g: GreenType, b: BlueType) Self {
-            return Self{
-                .R = r,
-                .G = g,
-                .B = b,
-                .A = math.maxInt(AlphaType),
-            };
-        }
+    pub usingnamespace RgbMethods(@This());
+};
 
-        pub fn initRGBA(r: RedType, g: GreenType, b: BlueType, a: AlphaType) Self {
-            return Self{
-                .R = r,
-                .G = g,
-                .B = b,
-                .A = a,
-            };
-        }
+fn RgbaColor(comptime T: type) type {
+    return packed struct {
+        r: T,
+        g: T,
+        b: T,
+        a: T = math.maxInt(T),
 
-        pub fn toColor(self: Self) Color {
-            return Color{
-                .R = toColorFloat(self.R),
-                .G = toColorFloat(self.G),
-                .B = toColorFloat(self.B),
-                .A = toColorFloat(self.A),
-            };
-        }
+        pub usingnamespace RgbMethods(@This());
+        pub usingnamespace RgbaMethods(@This());
     };
 }
 
@@ -217,109 +360,51 @@ fn RgbaColor(comptime red_bits: comptime_int, comptime green_bits: comptime_int,
 // OpenGL: GL_RGB
 // Vulkan: VK_FORMAT_R8G8B8_UNORM
 // Direct3D/DXGI: n/a
-pub const Rgb24 = RgbColor(8, 8, 8);
+pub const Rgb24 = RgbColor(u8);
 
 // Rgba32
 // OpenGL: GL_RGBA
 // Vulkan: VK_FORMAT_R8G8B8A8_UNORM
 // Direct3D/DXGI: DXGI_FORMAT_R8G8B8A8_UNORM
-pub const Rgba32 = RgbaColor(8, 8, 8, 8);
-
-// Rgb565
-// OpenGL: n/a
-// Vulkan: n/a
-// Direct3D/DXGI: n/a
-pub const Rgb565 = RgbColor(5, 6, 5);
+pub const Rgba32 = RgbaColor(u8);
 
 // Rgb555
 // OpenGL: GL_RGB5
 // Vulkan: VK_FORMAT_R5G6B5_UNORM_PACK16
 // Direct3D/DXGI: n/a
-pub const Rgb555 = RgbColor(5, 5, 5);
+pub const Rgb555 = RgbColor(u5);
 
 // Rgb48
 // OpenGL: GL_RGB16
 // Vulkan: VK_FORMAT_R16G16B16_UNORM
 // Direct3D/DXGI: n/a
-pub const Rgb48 = RgbColor(16, 16, 16);
+pub const Rgb48 = RgbColor(u16);
 
 // Rgba64
 // OpenGL: GL_RGBA16
 // Vulkan: VK_FORMAT_R16G16B16A16_UNORM
 // Direct3D/DXGI: DXGI_FORMAT_R16G16B16A16_UNORM
-pub const Rgba64 = RgbaColor(16, 16, 16, 16);
+pub const Rgba64 = RgbaColor(u16);
 
-fn BgrColor(comptime red_bits: comptime_int, comptime green_bits: comptime_int, comptime blue_bits: comptime_int) type {
+fn BgrColor(comptime T: type) type {
     return packed struct {
-        B: BlueType,
-        G: GreenType,
-        R: RedType,
+        b: T,
+        g: T,
+        r: T,
 
-        const RedType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = red_bits } });
-        const GreenType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = green_bits } });
-        const BlueType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = blue_bits } });
-
-        const Self = @This();
-
-        pub fn initRGB(r: RedType, g: GreenType, b: BlueType) Self {
-            return Self{
-                .R = r,
-                .G = g,
-                .B = b,
-            };
-        }
-
-        pub fn toColor(self: Self) Color {
-            return Color{
-                .R = toColorFloat(self.R),
-                .G = toColorFloat(self.G),
-                .B = toColorFloat(self.B),
-                .A = 1.0,
-            };
-        }
+        pub usingnamespace RgbMethods(@This());
     };
 }
 
-fn BgraColor(comptime red_bits: comptime_int, comptime green_bits: comptime_int, comptime blue_bits: comptime_int, comptime alpha_bits: comptime_int) type {
+fn BgraColor(comptime T: type) type {
     return packed struct {
-        B: BlueType,
-        G: GreenType,
-        R: RedType,
-        A: AlphaType,
+        b: T,
+        g: T,
+        r: T,
+        a: T = math.maxInt(T),
 
-        const RedType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = red_bits } });
-        const GreenType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = green_bits } });
-        const BlueType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = blue_bits } });
-        const AlphaType = @Type(TypeInfo{ .Int = TypeInfo.Int{ .signedness = .unsigned, .bits = alpha_bits } });
-
-        const Self = @This();
-
-        pub fn initRGB(r: RedType, g: GreenType, b: BlueType) Self {
-            return Self{
-                .R = r,
-                .G = g,
-                .B = b,
-                .A = math.maxInt(AlphaType),
-            };
-        }
-
-        pub fn initRGBA(r: RedType, g: GreenType, b: BlueType, a: AlphaType) Self {
-            return Self{
-                .R = r,
-                .G = g,
-                .B = b,
-                .A = a,
-            };
-        }
-
-        pub fn toColor(self: Self) Color {
-            return Color{
-                .R = toColorFloat(self.R),
-                .G = toColorFloat(self.G),
-                .B = toColorFloat(self.B),
-                .A = toColorFloat(self.A),
-            };
-        }
+        pub usingnamespace RgbMethods(@This());
+        pub usingnamespace RgbaMethods(@This());
     };
 }
 
@@ -327,17 +412,17 @@ fn BgraColor(comptime red_bits: comptime_int, comptime green_bits: comptime_int,
 // OpenGL: GL_BGR
 // Vulkan: VK_FORMAT_B8G8R8_UNORM
 // Direct3D/DXGI: n/a
-pub const Bgr24 = BgrColor(8, 8, 8);
+pub const Bgr24 = BgrColor(u8);
 
 // Bgra32
 // OpenGL: GL_BGRA
 // Vulkan: VK_FORMAT_B8G8R8A8_UNORM
 // Direct3D/DXGI: DXGI_FORMAT_B8G8R8A8_UNORM
-pub const Bgra32 = BgraColor(8, 8, 8, 8);
+pub const Bgra32 = BgraColor(u8);
 
 pub fn IndexedStorage(comptime T: type) type {
     return struct {
-        palette: []Color,
+        palette: []Colorf32,
         indices: []T,
 
         pub const PaletteSize = 1 << @bitSizeOf(T);
@@ -347,7 +432,7 @@ pub fn IndexedStorage(comptime T: type) type {
         pub fn init(allocator: Allocator, pixel_count: usize) !Self {
             return Self{
                 .indices = try allocator.alloc(T, pixel_count),
-                .palette = try allocator.alloc(Color, PaletteSize),
+                .palette = try allocator.alloc(Colorf32, PaletteSize),
             };
         }
 
@@ -370,13 +455,13 @@ pub fn Grayscale(comptime T: type) type {
 
         const Self = @This();
 
-        pub fn toColor(self: Self) Color {
-            const gray = toColorFloat(self.value);
-            return Color{
-                .R = gray,
-                .G = gray,
-                .B = gray,
-                .A = 1.0,
+        pub fn toColorf32(self: Self) Colorf32 {
+            const gray = toF32Color(self.value);
+            return Colorf32{
+                .r = gray,
+                .g = gray,
+                .b = gray,
+                .a = 1.0,
             };
         }
     };
@@ -385,17 +470,17 @@ pub fn Grayscale(comptime T: type) type {
 pub fn GrayscaleAlpha(comptime T: type) type {
     return struct {
         value: T,
-        alpha: T,
+        alpha: T = math.maxInt(T),
 
         const Self = @This();
 
-        pub fn toColor(self: Self) Color {
-            const gray = toColorFloat(self.value);
-            return Color{
-                .R = gray,
-                .G = gray,
-                .B = gray,
-                .A = toColorFloat(self.alpha),
+        pub fn toColorf32(self: Self) Colorf32 {
+            const gray = toF32Color(self.value);
+            return Colorf32{
+                .r = gray,
+                .g = gray,
+                .b = gray,
+                .a = toF32Color(self.alpha),
             };
         }
     };
@@ -430,7 +515,7 @@ pub const PixelStorage = union(PixelFormat) {
     bgra32: []Bgra32,
     rgb48: []Rgb48,
     rgba64: []Rgba64,
-    float32: []Color,
+    float32: []Colorf32,
 
     const Self = @This();
 
@@ -538,7 +623,7 @@ pub const PixelStorage = union(PixelFormat) {
             },
             .float32 => {
                 return Self{
-                    .float32 = try allocator.alloc(Color, pixel_count),
+                    .float32 = try allocator.alloc(Colorf32, pixel_count),
                 };
             },
         };
@@ -626,32 +711,32 @@ pub const PixelStorageIterator = struct {
         return Self{};
     }
 
-    pub fn next(self: *Self) ?Color {
+    pub fn next(self: *Self) ?Colorf32 {
         if (self.current_index >= self.end) {
             return null;
         }
 
-        const result: ?Color = switch (self.pixels.*) {
+        const result: ?Colorf32 = switch (self.pixels.*) {
             .indexed1 => |data| data.palette[data.indices[self.current_index]],
             .indexed2 => |data| data.palette[data.indices[self.current_index]],
             .indexed4 => |data| data.palette[data.indices[self.current_index]],
             .indexed8 => |data| data.palette[data.indices[self.current_index]],
             .indexed16 => |data| data.palette[data.indices[self.current_index]],
-            .grayscale1 => |data| data[self.current_index].toColor(),
-            .grayscale2 => |data| data[self.current_index].toColor(),
-            .grayscale4 => |data| data[self.current_index].toColor(),
-            .grayscale8 => |data| data[self.current_index].toColor(),
-            .grayscale8Alpha => |data| data[self.current_index].toColor(),
-            .grayscale16 => |data| data[self.current_index].toColor(),
-            .grayscale16Alpha => |data| data[self.current_index].toColor(),
-            .rgb24 => |data| data[self.current_index].toColor(),
-            .rgba32 => |data| data[self.current_index].toColor(),
-            .rgb565 => |data| data[self.current_index].toColor(),
-            .rgb555 => |data| data[self.current_index].toColor(),
-            .bgr24 => |data| data[self.current_index].toColor(),
-            .bgra32 => |data| data[self.current_index].toColor(),
-            .rgb48 => |data| data[self.current_index].toColor(),
-            .rgba64 => |data| data[self.current_index].toColor(),
+            .grayscale1 => |data| data[self.current_index].toColorf32(),
+            .grayscale2 => |data| data[self.current_index].toColorf32(),
+            .grayscale4 => |data| data[self.current_index].toColorf32(),
+            .grayscale8 => |data| data[self.current_index].toColorf32(),
+            .grayscale8Alpha => |data| data[self.current_index].toColorf32(),
+            .grayscale16 => |data| data[self.current_index].toColorf32(),
+            .grayscale16Alpha => |data| data[self.current_index].toColorf32(),
+            .rgb24 => |data| data[self.current_index].toColorf32(),
+            .rgba32 => |data| data[self.current_index].toColorf32(),
+            .rgb565 => |data| data[self.current_index].toColorf32(),
+            .rgb555 => |data| data[self.current_index].toColorf32(),
+            .bgr24 => |data| data[self.current_index].toColorf32(),
+            .bgra32 => |data| data[self.current_index].toColorf32(),
+            .rgb48 => |data| data[self.current_index].toColorf32(),
+            .rgba64 => |data| data[self.current_index].toColorf32(),
             .float32 => |data| data[self.current_index],
         };
 

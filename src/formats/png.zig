@@ -77,7 +77,7 @@ pub const IHDR = packed struct {
 };
 
 pub const PLTE = struct {
-    palette: []color.Color,
+    palette: []color.Colorf32,
 
     pub const ChunkType = "PLTE";
     pub const ChunkID = utils.toMagicNumberBig(ChunkType);
@@ -95,15 +95,15 @@ pub const PLTE = struct {
             return errors.PngError.InvalidPalette;
         }
 
-        self.palette = try allocator.alloc(color.Color, read_buffer.len / 3);
+        self.palette = try allocator.alloc(color.Colorf32, read_buffer.len / 3);
 
         var palette_index: usize = 0;
         var buffer_index: usize = 0;
         while (buffer_index < read_buffer.len) {
-            self.palette[palette_index].R = color.toColorFloat(read_buffer[buffer_index]);
-            self.palette[palette_index].G = color.toColorFloat(read_buffer[buffer_index + 1]);
-            self.palette[palette_index].B = color.toColorFloat(read_buffer[buffer_index + 2]);
-            self.palette[palette_index].A = 1.0;
+            self.palette[palette_index].r = color.toF32Color(read_buffer[buffer_index]);
+            self.palette[palette_index].g = color.toF32Color(read_buffer[buffer_index + 1]);
+            self.palette[palette_index].b = color.toF32Color(read_buffer[buffer_index + 2]);
+            self.palette[palette_index].a = 1.0;
 
             palette_index += 1;
             buffer_index += 3;
@@ -615,16 +615,16 @@ pub const PNG = struct {
                 if (self.getPalette()) |palette_chunk| {
                     switch (pixels.*) {
                         .indexed1 => |instance| {
-                            std.mem.copy(color.Color, instance.palette, palette_chunk.palette);
+                            std.mem.copy(color.Colorf32, instance.palette, palette_chunk.palette);
                         },
                         .indexed2 => |instance| {
-                            std.mem.copy(color.Color, instance.palette, palette_chunk.palette);
+                            std.mem.copy(color.Colorf32, instance.palette, palette_chunk.palette);
                         },
                         .indexed4 => |instance| {
-                            std.mem.copy(color.Color, instance.palette, palette_chunk.palette);
+                            std.mem.copy(color.Colorf32, instance.palette, palette_chunk.palette);
                         },
                         .indexed8 => |instance| {
-                            std.mem.copy(color.Color, instance.palette, palette_chunk.palette);
+                            std.mem.copy(color.Colorf32, instance.palette, palette_chunk.palette);
                         },
                         else => {
                             return error.NotIndexedPixelFormat;
@@ -859,9 +859,9 @@ pub const PNG = struct {
                     var count: usize = 0;
                     const count_end = filter_slice.len;
                     while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
-                        data[context.pixels_index].R = filter_slice[count];
-                        data[context.pixels_index].G = filter_slice[count + 1];
-                        data[context.pixels_index].B = filter_slice[count + 2];
+                        data[context.pixels_index].r = filter_slice[count];
+                        data[context.pixels_index].g = filter_slice[count + 1];
+                        data[context.pixels_index].b = filter_slice[count + 2];
 
                         count += 3;
                         x += 1;
@@ -872,9 +872,9 @@ pub const PNG = struct {
                     var count: usize = 0;
                     const count_end = filter_slice.len;
                     while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
-                        data[context.pixels_index].R = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count]));
-                        data[context.pixels_index].G = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 2]));
-                        data[context.pixels_index].B = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 4]));
+                        data[context.pixels_index].r = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count]));
+                        data[context.pixels_index].g = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 2]));
+                        data[context.pixels_index].b = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 4]));
 
                         count += 6;
                         x += 1;
@@ -960,10 +960,10 @@ pub const PNG = struct {
                     var count: usize = 0;
                     const count_end = filter_slice.len;
                     while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
-                        data[context.pixels_index].R = filter_slice[count];
-                        data[context.pixels_index].G = filter_slice[count + 1];
-                        data[context.pixels_index].B = filter_slice[count + 2];
-                        data[context.pixels_index].A = filter_slice[count + 3];
+                        data[context.pixels_index].r = filter_slice[count];
+                        data[context.pixels_index].g = filter_slice[count + 1];
+                        data[context.pixels_index].b = filter_slice[count + 2];
+                        data[context.pixels_index].a = filter_slice[count + 3];
 
                         count += 4;
                         x += 1;
@@ -974,10 +974,10 @@ pub const PNG = struct {
                     var count: usize = 0;
                     const count_end = filter_slice.len;
                     while (count < count_end and context.pixels_index < pixels_length and x < self.header.width) {
-                        data[context.pixels_index].R = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count]));
-                        data[context.pixels_index].G = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 2]));
-                        data[context.pixels_index].B = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 4]));
-                        data[context.pixels_index].A = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 6]));
+                        data[context.pixels_index].r = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count]));
+                        data[context.pixels_index].g = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 2]));
+                        data[context.pixels_index].b = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 4]));
+                        data[context.pixels_index].a = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &filter_slice[count + 6]));
 
                         count += 8;
                         x += 1;
@@ -1192,9 +1192,9 @@ pub const PNG = struct {
             },
             .rgb24 => |data| {
                 const pixel = color.Rgb24{
-                    .R = bytes[0],
-                    .G = bytes[1],
-                    .B = bytes[2],
+                    .r = bytes[0],
+                    .g = bytes[1],
+                    .b = bytes[2],
                 };
 
                 var height: usize = 0;
@@ -1215,9 +1215,9 @@ pub const PNG = struct {
             },
             .rgb48 => |data| {
                 const pixel = color.Rgb48{
-                    .R = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &bytes[0])),
-                    .G = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &bytes[2])),
-                    .B = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &bytes[4])),
+                    .r = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &bytes[0])),
+                    .g = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &bytes[2])),
+                    .b = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &bytes[4])),
                 };
 
                 var height: usize = 0;
@@ -1361,10 +1361,10 @@ pub const PNG = struct {
             },
             .rgba32 => |data| {
                 const pixel = color.Rgba32{
-                    .R = bytes[0],
-                    .G = bytes[1],
-                    .B = bytes[2],
-                    .A = bytes[3],
+                    .r = bytes[0],
+                    .g = bytes[1],
+                    .b = bytes[2],
+                    .a = bytes[3],
                 };
 
                 var height: usize = 0;
@@ -1385,10 +1385,10 @@ pub const PNG = struct {
             },
             .rgba64 => |data| {
                 const pixel = color.Rgba64{
-                    .R = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &bytes[0])),
-                    .G = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &bytes[2])),
-                    .B = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &bytes[4])),
-                    .A = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &bytes[6])),
+                    .r = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &bytes[0])),
+                    .g = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &bytes[2])),
+                    .b = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &bytes[4])),
+                    .a = std.mem.readIntBig(u16, @ptrCast(*const [2]u8, &bytes[6])),
                 };
 
                 var height: usize = 0;

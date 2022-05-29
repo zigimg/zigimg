@@ -195,25 +195,25 @@ test "Read basi2c08 data properly" {
     if (pixelsOpt) |pixels| {
         try testing.expect(pixels == .rgb24);
 
-        try helpers.expectEq(pixels.rgb24[0].R, 0xFF);
-        try helpers.expectEq(pixels.rgb24[0].G, 0xFF);
-        try helpers.expectEq(pixels.rgb24[0].B, 0xFF);
+        try helpers.expectEq(pixels.rgb24[0].r, 0xFF);
+        try helpers.expectEq(pixels.rgb24[0].g, 0xFF);
+        try helpers.expectEq(pixels.rgb24[0].b, 0xFF);
 
-        try helpers.expectEq(pixels.rgb24[7 * 32 + 31].R, 0xFF);
-        try helpers.expectEq(pixels.rgb24[7 * 32 + 31].G, 0xFF);
-        try helpers.expectEq(pixels.rgb24[7 * 32 + 31].B, 0);
+        try helpers.expectEq(pixels.rgb24[7 * 32 + 31].r, 0xFF);
+        try helpers.expectEq(pixels.rgb24[7 * 32 + 31].g, 0xFF);
+        try helpers.expectEq(pixels.rgb24[7 * 32 + 31].b, 0);
 
-        try helpers.expectEq(pixels.rgb24[15 * 32 + 31].R, 0xFF);
-        try helpers.expectEq(pixels.rgb24[15 * 32 + 31].G, 0);
-        try helpers.expectEq(pixels.rgb24[15 * 32 + 31].B, 0xFF);
+        try helpers.expectEq(pixels.rgb24[15 * 32 + 31].r, 0xFF);
+        try helpers.expectEq(pixels.rgb24[15 * 32 + 31].g, 0);
+        try helpers.expectEq(pixels.rgb24[15 * 32 + 31].b, 0xFF);
 
-        try helpers.expectEq(pixels.rgb24[23 * 32 + 31].R, 0x0);
-        try helpers.expectEq(pixels.rgb24[23 * 32 + 31].G, 0xFF);
-        try helpers.expectEq(pixels.rgb24[23 * 32 + 31].B, 0xFF);
+        try helpers.expectEq(pixels.rgb24[23 * 32 + 31].r, 0x0);
+        try helpers.expectEq(pixels.rgb24[23 * 32 + 31].g, 0xFF);
+        try helpers.expectEq(pixels.rgb24[23 * 32 + 31].b, 0xFF);
 
-        try helpers.expectEq(pixels.rgb24[31 * 32 + 31].R, 0x0);
-        try helpers.expectEq(pixels.rgb24[31 * 32 + 31].G, 0x0);
-        try helpers.expectEq(pixels.rgb24[31 * 32 + 31].B, 0x0);
+        try helpers.expectEq(pixels.rgb24[31 * 32 + 31].r, 0x0);
+        try helpers.expectEq(pixels.rgb24[31 * 32 + 31].g, 0x0);
+        try helpers.expectEq(pixels.rgb24[31 * 32 + 31].b, 0x0);
     }
 }
 
@@ -240,17 +240,17 @@ test "Read basi2c16 data properly" {
     if (pixelsOpt) |pixels| {
         try testing.expect(pixels == .rgb48);
 
-        try helpers.expectEq(pixels.rgb48[0].R, 0xFFFF);
-        try helpers.expectEq(pixels.rgb48[0].G, 0xFFFF);
-        try helpers.expectEq(pixels.rgb48[0].B, 0);
+        try helpers.expectEq(pixels.rgb48[0].r, 0xFFFF);
+        try helpers.expectEq(pixels.rgb48[0].g, 0xFFFF);
+        try helpers.expectEq(pixels.rgb48[0].b, 0);
 
-        try helpers.expectEq(pixels.rgb48[16 * 32 + 16].R, 0x7bde);
-        try helpers.expectEq(pixels.rgb48[16 * 32 + 16].G, 0x7bde);
-        try helpers.expectEq(pixels.rgb48[16 * 32 + 16].B, 0x842);
+        try helpers.expectEq(pixels.rgb48[16 * 32 + 16].r, 0x7bde);
+        try helpers.expectEq(pixels.rgb48[16 * 32 + 16].g, 0x7bde);
+        try helpers.expectEq(pixels.rgb48[16 * 32 + 16].b, 0x842);
 
-        try helpers.expectEq(pixels.rgb48[31 * 32 + 31].R, 0);
-        try helpers.expectEq(pixels.rgb48[31 * 32 + 31].G, 0);
-        try helpers.expectEq(pixels.rgb48[31 * 32 + 31].B, 0xFFFF);
+        try helpers.expectEq(pixels.rgb48[31 * 32 + 31].r, 0);
+        try helpers.expectEq(pixels.rgb48[31 * 32 + 31].g, 0);
+        try helpers.expectEq(pixels.rgb48[31 * 32 + 31].b, 0xFFFF);
     }
 }
 
@@ -279,32 +279,32 @@ test "Read basi3p01 data properly" {
     try testing.expect(palette_chunk_opt != null);
 
     if (palette_chunk_opt) |palette_chunk| {
-        const first_color = palette_chunk.palette[0].toIntegerColor8();
-        const second_color = palette_chunk.palette[1].toIntegerColor8();
+        const first_color = palette_chunk.palette[0].toRgba32();
+        const second_color = palette_chunk.palette[1].toRgba32();
 
-        try helpers.expectEq(first_color.R, 0xee);
-        try helpers.expectEq(first_color.G, 0xff);
-        try helpers.expectEq(first_color.B, 0x22);
+        try helpers.expectEq(first_color.r, 0xee);
+        try helpers.expectEq(first_color.g, 0xff);
+        try helpers.expectEq(first_color.b, 0x22);
 
-        try helpers.expectEq(second_color.R, 0x22);
-        try helpers.expectEq(second_color.G, 0x66);
-        try helpers.expectEq(second_color.B, 0xff);
+        try helpers.expectEq(second_color.r, 0x22);
+        try helpers.expectEq(second_color.g, 0x66);
+        try helpers.expectEq(second_color.b, 0xff);
     }
 
     if (pixelsOpt) |pixels| {
         try testing.expect(pixels == .indexed1);
         try helpers.expectEq(pixels.indexed1.palette.len, 2);
 
-        const first_color = pixels.indexed1.palette[0].toIntegerColor8();
-        const second_color = pixels.indexed1.palette[1].toIntegerColor8();
+        const first_color = pixels.indexed1.palette[0].toRgba32();
+        const second_color = pixels.indexed1.palette[1].toRgba32();
 
-        try helpers.expectEq(first_color.R, 0xee);
-        try helpers.expectEq(first_color.G, 0xff);
-        try helpers.expectEq(first_color.B, 0x22);
+        try helpers.expectEq(first_color.r, 0xee);
+        try helpers.expectEq(first_color.g, 0xff);
+        try helpers.expectEq(first_color.b, 0x22);
 
-        try helpers.expectEq(second_color.R, 0x22);
-        try helpers.expectEq(second_color.G, 0x66);
-        try helpers.expectEq(second_color.B, 0xff);
+        try helpers.expectEq(second_color.r, 0x22);
+        try helpers.expectEq(second_color.g, 0x66);
+        try helpers.expectEq(second_color.b, 0xff);
 
         var i: usize = 0;
         while (i < pixels.indexed1.indices.len) : (i += 1) {
@@ -349,26 +349,26 @@ test "Read basi3p02 data properly" {
         try testing.expect(pixels == .indexed2);
         try helpers.expectEq(pixels.indexed2.palette.len, 4);
 
-        const color0 = pixels.indexed2.palette[0].toIntegerColor8();
-        const color1 = pixels.indexed2.palette[1].toIntegerColor8();
-        const color2 = pixels.indexed2.palette[2].toIntegerColor8();
-        const color3 = pixels.indexed2.palette[3].toIntegerColor8();
+        const color0 = pixels.indexed2.palette[0].toRgba32();
+        const color1 = pixels.indexed2.palette[1].toRgba32();
+        const color2 = pixels.indexed2.palette[2].toRgba32();
+        const color3 = pixels.indexed2.palette[3].toRgba32();
 
-        try helpers.expectEq(color0.R, 0x00);
-        try helpers.expectEq(color0.G, 0xff);
-        try helpers.expectEq(color0.B, 0x00);
+        try helpers.expectEq(color0.r, 0x00);
+        try helpers.expectEq(color0.g, 0xff);
+        try helpers.expectEq(color0.b, 0x00);
 
-        try helpers.expectEq(color1.R, 0xff);
-        try helpers.expectEq(color1.G, 0x00);
-        try helpers.expectEq(color1.B, 0x00);
+        try helpers.expectEq(color1.r, 0xff);
+        try helpers.expectEq(color1.g, 0x00);
+        try helpers.expectEq(color1.b, 0x00);
 
-        try helpers.expectEq(color2.R, 0xff);
-        try helpers.expectEq(color2.G, 0xff);
-        try helpers.expectEq(color2.B, 0x00);
+        try helpers.expectEq(color2.r, 0xff);
+        try helpers.expectEq(color2.g, 0xff);
+        try helpers.expectEq(color2.b, 0x00);
 
-        try helpers.expectEq(color3.R, 0x00);
-        try helpers.expectEq(color3.G, 0x00);
-        try helpers.expectEq(color3.B, 0xff);
+        try helpers.expectEq(color3.r, 0x00);
+        try helpers.expectEq(color3.g, 0x00);
+        try helpers.expectEq(color3.b, 0xff);
 
         try helpers.expectEq(pixels.indexed2.indices[0], 3);
         try helpers.expectEq(pixels.indexed2.indices[4], 1);
@@ -410,81 +410,81 @@ test "Read basi3p04 data properly" {
     if (pixelsOpt) |pixels| {
         try testing.expect(pixels == .indexed4);
 
-        const color0 = pixels.indexed4.palette[0].toIntegerColor8();
-        const color1 = pixels.indexed4.palette[1].toIntegerColor8();
-        const color2 = pixels.indexed4.palette[2].toIntegerColor8();
-        const color3 = pixels.indexed4.palette[3].toIntegerColor8();
-        const color4 = pixels.indexed4.palette[4].toIntegerColor8();
-        const color5 = pixels.indexed4.palette[5].toIntegerColor8();
-        const color6 = pixels.indexed4.palette[6].toIntegerColor8();
-        const color7 = pixels.indexed4.palette[7].toIntegerColor8();
-        const color8 = pixels.indexed4.palette[8].toIntegerColor8();
-        const color9 = pixels.indexed4.palette[9].toIntegerColor8();
-        const color10 = pixels.indexed4.palette[10].toIntegerColor8();
-        const color11 = pixels.indexed4.palette[11].toIntegerColor8();
-        const color12 = pixels.indexed4.palette[12].toIntegerColor8();
-        const color13 = pixels.indexed4.palette[13].toIntegerColor8();
-        const color14 = pixels.indexed4.palette[14].toIntegerColor8();
+        const color0 = pixels.indexed4.palette[0].toRgba32();
+        const color1 = pixels.indexed4.palette[1].toRgba32();
+        const color2 = pixels.indexed4.palette[2].toRgba32();
+        const color3 = pixels.indexed4.palette[3].toRgba32();
+        const color4 = pixels.indexed4.palette[4].toRgba32();
+        const color5 = pixels.indexed4.palette[5].toRgba32();
+        const color6 = pixels.indexed4.palette[6].toRgba32();
+        const color7 = pixels.indexed4.palette[7].toRgba32();
+        const color8 = pixels.indexed4.palette[8].toRgba32();
+        const color9 = pixels.indexed4.palette[9].toRgba32();
+        const color10 = pixels.indexed4.palette[10].toRgba32();
+        const color11 = pixels.indexed4.palette[11].toRgba32();
+        const color12 = pixels.indexed4.palette[12].toRgba32();
+        const color13 = pixels.indexed4.palette[13].toRgba32();
+        const color14 = pixels.indexed4.palette[14].toRgba32();
 
-        try helpers.expectEq(color0.R, 0x22);
-        try helpers.expectEq(color0.G, 0x00);
-        try helpers.expectEq(color0.B, 0xff);
+        try helpers.expectEq(color0.r, 0x22);
+        try helpers.expectEq(color0.g, 0x00);
+        try helpers.expectEq(color0.b, 0xff);
 
-        try helpers.expectEq(color1.R, 0x00);
-        try helpers.expectEq(color1.G, 0xff);
-        try helpers.expectEq(color1.B, 0xff);
+        try helpers.expectEq(color1.r, 0x00);
+        try helpers.expectEq(color1.g, 0xff);
+        try helpers.expectEq(color1.b, 0xff);
 
-        try helpers.expectEq(color2.R, 0x88);
-        try helpers.expectEq(color2.G, 0x00);
-        try helpers.expectEq(color2.B, 0xff);
+        try helpers.expectEq(color2.r, 0x88);
+        try helpers.expectEq(color2.g, 0x00);
+        try helpers.expectEq(color2.b, 0xff);
 
-        try helpers.expectEq(color3.R, 0x22);
-        try helpers.expectEq(color3.G, 0xff);
-        try helpers.expectEq(color3.B, 0x00);
+        try helpers.expectEq(color3.r, 0x22);
+        try helpers.expectEq(color3.g, 0xff);
+        try helpers.expectEq(color3.b, 0x00);
 
-        try helpers.expectEq(color4.R, 0x00);
-        try helpers.expectEq(color4.G, 0x99);
-        try helpers.expectEq(color4.B, 0xff);
+        try helpers.expectEq(color4.r, 0x00);
+        try helpers.expectEq(color4.g, 0x99);
+        try helpers.expectEq(color4.b, 0xff);
 
-        try helpers.expectEq(color5.R, 0xff);
-        try helpers.expectEq(color5.G, 0x66);
-        try helpers.expectEq(color5.B, 0x00);
+        try helpers.expectEq(color5.r, 0xff);
+        try helpers.expectEq(color5.g, 0x66);
+        try helpers.expectEq(color5.b, 0x00);
 
-        try helpers.expectEq(color6.R, 0xdd);
-        try helpers.expectEq(color6.G, 0x00);
-        try helpers.expectEq(color6.B, 0xff);
+        try helpers.expectEq(color6.r, 0xdd);
+        try helpers.expectEq(color6.g, 0x00);
+        try helpers.expectEq(color6.b, 0xff);
 
-        try helpers.expectEq(color7.R, 0x77);
-        try helpers.expectEq(color7.G, 0xff);
-        try helpers.expectEq(color7.B, 0x00);
+        try helpers.expectEq(color7.r, 0x77);
+        try helpers.expectEq(color7.g, 0xff);
+        try helpers.expectEq(color7.b, 0x00);
 
-        try helpers.expectEq(color8.R, 0xff);
-        try helpers.expectEq(color8.G, 0x00);
-        try helpers.expectEq(color8.B, 0x00);
+        try helpers.expectEq(color8.r, 0xff);
+        try helpers.expectEq(color8.g, 0x00);
+        try helpers.expectEq(color8.b, 0x00);
 
-        try helpers.expectEq(color9.R, 0x00);
-        try helpers.expectEq(color9.G, 0xff);
-        try helpers.expectEq(color9.B, 0x99);
+        try helpers.expectEq(color9.r, 0x00);
+        try helpers.expectEq(color9.g, 0xff);
+        try helpers.expectEq(color9.b, 0x99);
 
-        try helpers.expectEq(color10.R, 0xdd);
-        try helpers.expectEq(color10.G, 0xff);
-        try helpers.expectEq(color10.B, 0x00);
+        try helpers.expectEq(color10.r, 0xdd);
+        try helpers.expectEq(color10.g, 0xff);
+        try helpers.expectEq(color10.b, 0x00);
 
-        try helpers.expectEq(color11.R, 0xff);
-        try helpers.expectEq(color11.G, 0x00);
-        try helpers.expectEq(color11.B, 0xbb);
+        try helpers.expectEq(color11.r, 0xff);
+        try helpers.expectEq(color11.g, 0x00);
+        try helpers.expectEq(color11.b, 0xbb);
 
-        try helpers.expectEq(color12.R, 0xff);
-        try helpers.expectEq(color12.G, 0xbb);
-        try helpers.expectEq(color12.B, 0x00);
+        try helpers.expectEq(color12.r, 0xff);
+        try helpers.expectEq(color12.g, 0xbb);
+        try helpers.expectEq(color12.b, 0x00);
 
-        try helpers.expectEq(color13.R, 0x00);
-        try helpers.expectEq(color13.G, 0x44);
-        try helpers.expectEq(color13.B, 0xff);
+        try helpers.expectEq(color13.r, 0x00);
+        try helpers.expectEq(color13.g, 0x44);
+        try helpers.expectEq(color13.b, 0xff);
 
-        try helpers.expectEq(color14.R, 0x00);
-        try helpers.expectEq(color14.G, 0xff);
-        try helpers.expectEq(color14.B, 0x44);
+        try helpers.expectEq(color14.r, 0x00);
+        try helpers.expectEq(color14.g, 0xff);
+        try helpers.expectEq(color14.b, 0x44);
 
         try helpers.expectEq(pixels.indexed4.indices[0], 8);
         try helpers.expectEq(pixels.indexed4.indices[4], 5);
@@ -530,31 +530,31 @@ test "Read basi3p08 data properly" {
     if (pixelsOpt) |pixels| {
         try testing.expect(pixels == .indexed8);
 
-        const color0 = pixels.indexed8.palette[0].toIntegerColor8();
-        const color64 = pixels.indexed8.palette[64].toIntegerColor8();
-        const color128 = pixels.indexed8.palette[128].toIntegerColor8();
-        const color192 = pixels.indexed8.palette[192].toIntegerColor8();
-        const color255 = pixels.indexed8.palette[255].toIntegerColor8();
+        const color0 = pixels.indexed8.palette[0].toRgba32();
+        const color64 = pixels.indexed8.palette[64].toRgba32();
+        const color128 = pixels.indexed8.palette[128].toRgba32();
+        const color192 = pixels.indexed8.palette[192].toRgba32();
+        const color255 = pixels.indexed8.palette[255].toRgba32();
 
-        try helpers.expectEq(color0.R, 0x22);
-        try helpers.expectEq(color0.G, 0x44);
-        try helpers.expectEq(color0.B, 0x00);
+        try helpers.expectEq(color0.r, 0x22);
+        try helpers.expectEq(color0.g, 0x44);
+        try helpers.expectEq(color0.b, 0x00);
 
-        try helpers.expectEq(color64.R, 0x66);
-        try helpers.expectEq(color64.G, 0x00);
-        try helpers.expectEq(color64.B, 0x00);
+        try helpers.expectEq(color64.r, 0x66);
+        try helpers.expectEq(color64.g, 0x00);
+        try helpers.expectEq(color64.b, 0x00);
 
-        try helpers.expectEq(color128.R, 0xff);
-        try helpers.expectEq(color128.G, 0xff);
-        try helpers.expectEq(color128.B, 0x44);
+        try helpers.expectEq(color128.r, 0xff);
+        try helpers.expectEq(color128.g, 0xff);
+        try helpers.expectEq(color128.b, 0x44);
 
-        try helpers.expectEq(color192.R, 0xba);
-        try helpers.expectEq(color192.G, 0x00);
-        try helpers.expectEq(color192.B, 0x00);
+        try helpers.expectEq(color192.r, 0xba);
+        try helpers.expectEq(color192.g, 0x00);
+        try helpers.expectEq(color192.b, 0x00);
 
-        try helpers.expectEq(color255.R, 0xff);
-        try helpers.expectEq(color255.G, 0x33);
-        try helpers.expectEq(color255.B, 0xff);
+        try helpers.expectEq(color255.r, 0xff);
+        try helpers.expectEq(color255.g, 0x33);
+        try helpers.expectEq(color255.b, 0xff);
 
         try helpers.expectEq(pixels.indexed8.indices[0], 165);
         try helpers.expectEq(pixels.indexed8.indices[16 * 32], 107);
@@ -668,25 +668,25 @@ test "Read basi6a08 data properly" {
         const color31 = pixels.rgba32[31];
         const color16_16 = pixels.rgba32[16 * 32 + 16];
 
-        try helpers.expectEq(color0.R, 0xFF);
-        try helpers.expectEq(color0.G, 0x00);
-        try helpers.expectEq(color0.B, 0x08);
-        try helpers.expectEq(color0.A, 0x00);
+        try helpers.expectEq(color0.r, 0xFF);
+        try helpers.expectEq(color0.g, 0x00);
+        try helpers.expectEq(color0.b, 0x08);
+        try helpers.expectEq(color0.a, 0x00);
 
-        try helpers.expectEq(color16.R, 0xFF);
-        try helpers.expectEq(color16.G, 0x00);
-        try helpers.expectEq(color16.B, 0x08);
-        try helpers.expectEq(color16.A, 131);
+        try helpers.expectEq(color16.r, 0xFF);
+        try helpers.expectEq(color16.g, 0x00);
+        try helpers.expectEq(color16.b, 0x08);
+        try helpers.expectEq(color16.a, 131);
 
-        try helpers.expectEq(color31.R, 0xFF);
-        try helpers.expectEq(color31.G, 0x00);
-        try helpers.expectEq(color31.B, 0x08);
-        try helpers.expectEq(color31.A, 0xFF);
+        try helpers.expectEq(color31.r, 0xFF);
+        try helpers.expectEq(color31.g, 0x00);
+        try helpers.expectEq(color31.b, 0x08);
+        try helpers.expectEq(color31.a, 0xFF);
 
-        try helpers.expectEq(color16_16.R, 0x04);
-        try helpers.expectEq(color16_16.G, 0xFF);
-        try helpers.expectEq(color16_16.B, 0x00);
-        try helpers.expectEq(color16_16.A, 131);
+        try helpers.expectEq(color16_16.r, 0x04);
+        try helpers.expectEq(color16_16.g, 0xFF);
+        try helpers.expectEq(color16_16.b, 0x00);
+        try helpers.expectEq(color16_16.a, 131);
     }
 }
 
@@ -719,29 +719,29 @@ test "Read basi6a16 data properly" {
         const color16_16 = pixels.rgba64[16 * 32 + 16];
         const color25_17 = pixels.rgba64[17 * 32 + 25];
 
-        try helpers.expectEq(color0.R, 0xFFFF);
-        try helpers.expectEq(color0.G, 0xFFFF);
-        try helpers.expectEq(color0.B, 0x0000);
-        try helpers.expectEq(color0.A, 0x0000);
+        try helpers.expectEq(color0.r, 0xFFFF);
+        try helpers.expectEq(color0.g, 0xFFFF);
+        try helpers.expectEq(color0.b, 0x0000);
+        try helpers.expectEq(color0.a, 0x0000);
 
-        try helpers.expectEq(color16.R, 0x7BDE);
-        try helpers.expectEq(color16.G, 0xFFFF);
-        try helpers.expectEq(color16.B, 0x0000);
-        try helpers.expectEq(color16.A, 0x0000);
+        try helpers.expectEq(color16.r, 0x7BDE);
+        try helpers.expectEq(color16.g, 0xFFFF);
+        try helpers.expectEq(color16.b, 0x0000);
+        try helpers.expectEq(color16.a, 0x0000);
 
-        try helpers.expectEq(color31.R, 0x0000);
-        try helpers.expectEq(color31.G, 0xFFFF);
-        try helpers.expectEq(color31.B, 0x0000);
-        try helpers.expectEq(color31.A, 0x0000);
+        try helpers.expectEq(color31.r, 0x0000);
+        try helpers.expectEq(color31.g, 0xFFFF);
+        try helpers.expectEq(color31.b, 0x0000);
+        try helpers.expectEq(color31.a, 0x0000);
 
-        try helpers.expectEq(color16_16.R, 0x0000);
-        try helpers.expectEq(color16_16.G, 0x0000);
-        try helpers.expectEq(color16_16.B, 0xFFFF);
-        try helpers.expectEq(color16_16.A, 0xF7BD);
+        try helpers.expectEq(color16_16.r, 0x0000);
+        try helpers.expectEq(color16_16.g, 0x0000);
+        try helpers.expectEq(color16_16.b, 0xFFFF);
+        try helpers.expectEq(color16_16.a, 0xF7BD);
 
-        try helpers.expectEq(color25_17.R, 0x0000);
-        try helpers.expectEq(color25_17.G, 0x6BC9);
-        try helpers.expectEq(color25_17.B, 0x9435);
-        try helpers.expectEq(color25_17.A, 0x6319);
+        try helpers.expectEq(color25_17.r, 0x0000);
+        try helpers.expectEq(color25_17.g, 0x6BC9);
+        try helpers.expectEq(color25_17.b, 0x9435);
+        try helpers.expectEq(color25_17.a, 0x6319);
     }
 }

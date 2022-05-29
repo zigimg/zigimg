@@ -11,13 +11,13 @@ const helpers = @import("helpers.zig");
 test "Build the oct tree with 3 colors" {
     var quantizer = OctTreeQuantizer.init(helpers.zigimg_test_allocator);
     defer quantizer.deinit();
-    const red = color.IntegerColor8.initRGB(0xFF, 0, 0);
-    const green = color.IntegerColor8.initRGB(0, 0xFF, 0);
-    const blue = color.IntegerColor8.initRGB(0, 0, 0xFF);
+    const red = color.Rgba32.initRgb(0xFF, 0, 0);
+    const green = color.Rgba32.initRgb(0, 0xFF, 0);
+    const blue = color.Rgba32.initRgb(0, 0, 0xFF);
     try quantizer.addColor(red);
     try quantizer.addColor(green);
     try quantizer.addColor(blue);
-    var paletteStorage: [256]color.IntegerColor8 = undefined;
+    var paletteStorage: [256]color.Rgba32 = undefined;
     var palette = try quantizer.makePalette(256, paletteStorage[0..]);
     try helpers.expectEq(palette.len, 3);
 
@@ -25,9 +25,9 @@ test "Build the oct tree with 3 colors" {
     try helpers.expectEq(try quantizer.getPaletteIndex(green), 1);
     try helpers.expectEq(try quantizer.getPaletteIndex(blue), 0);
 
-    try helpers.expectEq(palette[0].B, 0xFF);
-    try helpers.expectEq(palette[1].G, 0xFF);
-    try helpers.expectEq(palette[2].R, 0xFF);
+    try helpers.expectEq(palette[0].b, 0xFF);
+    try helpers.expectEq(palette[1].g, 0xFF);
+    try helpers.expectEq(palette[2].r, 0xFF);
 }
 
 test "Build a oct tree with 32-bit RGBA bitmap" {
@@ -43,24 +43,24 @@ test "Build a oct tree with 32-bit RGBA bitmap" {
     var colorIt = image.iterator();
 
     while (colorIt.next()) |pixel| {
-        try quantizer.addColor(pixel.premultipliedAlpha().toIntegerColor8());
+        try quantizer.addColor(pixel.toPremultipliedAlpha().toRgba32());
     }
 
-    var paletteStorage: [256]color.IntegerColor8 = undefined;
+    var paletteStorage: [256]color.Rgba32 = undefined;
     var palette = try quantizer.makePalette(255, paletteStorage[0..]);
     try helpers.expectEq(palette.len, 255);
 
-    var paletteIndex = try quantizer.getPaletteIndex(color.IntegerColor8.initRGBA(110, 0, 0, 255));
+    var paletteIndex = try quantizer.getPaletteIndex(color.Rgba32.initRgba(110, 0, 0, 255));
     try helpers.expectEq(paletteIndex, 93);
-    try helpers.expectEq(palette[93].R, 110);
-    try helpers.expectEq(palette[93].G, 2);
-    try helpers.expectEq(palette[93].B, 2);
-    try helpers.expectEq(palette[93].A, 255);
+    try helpers.expectEq(palette[93].r, 110);
+    try helpers.expectEq(palette[93].g, 2);
+    try helpers.expectEq(palette[93].b, 2);
+    try helpers.expectEq(palette[93].a, 255);
 
-    var secondPaletteIndex = try quantizer.getPaletteIndex(color.IntegerColor8.initRGBA(0, 0, 119, 255));
+    var secondPaletteIndex = try quantizer.getPaletteIndex(color.Rgba32.initRgba(0, 0, 119, 255));
     try helpers.expectEq(secondPaletteIndex, 53);
-    try helpers.expectEq(palette[53].R, 0);
-    try helpers.expectEq(palette[53].G, 0);
-    try helpers.expectEq(palette[53].B, 117);
-    try helpers.expectEq(palette[53].A, 255);
+    try helpers.expectEq(palette[53].r, 0);
+    try helpers.expectEq(palette[53].g, 0);
+    try helpers.expectEq(palette[53].b, 117);
+    try helpers.expectEq(palette[53].a, 255);
 }

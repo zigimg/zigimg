@@ -325,60 +325,60 @@ test "Should read a 24-bit bitmap" {
         try testing.expect(pixels == .bgr24);
 
         const red = pixels.bgr24[0];
-        try helpers.expectEq(red.R, 0xFF);
-        try helpers.expectEq(red.G, 0x00);
-        try helpers.expectEq(red.B, 0x00);
+        try helpers.expectEq(red.r, 0xFF);
+        try helpers.expectEq(red.g, 0x00);
+        try helpers.expectEq(red.b, 0x00);
 
         const green = pixels.bgr24[1];
-        try helpers.expectEq(green.R, 0x00);
-        try helpers.expectEq(green.G, 0xFF);
-        try helpers.expectEq(green.B, 0x00);
+        try helpers.expectEq(green.r, 0x00);
+        try helpers.expectEq(green.g, 0xFF);
+        try helpers.expectEq(green.b, 0x00);
 
         const blue = pixels.bgr24[2];
-        try helpers.expectEq(blue.R, 0x00);
-        try helpers.expectEq(blue.G, 0x00);
-        try helpers.expectEq(blue.B, 0xFF);
+        try helpers.expectEq(blue.r, 0x00);
+        try helpers.expectEq(blue.g, 0x00);
+        try helpers.expectEq(blue.b, 0xFF);
 
         const cyan = pixels.bgr24[3];
-        try helpers.expectEq(cyan.R, 0x00);
-        try helpers.expectEq(cyan.G, 0xFF);
-        try helpers.expectEq(cyan.B, 0xFF);
+        try helpers.expectEq(cyan.r, 0x00);
+        try helpers.expectEq(cyan.g, 0xFF);
+        try helpers.expectEq(cyan.b, 0xFF);
 
         const magenta = pixels.bgr24[4];
-        try helpers.expectEq(magenta.R, 0xFF);
-        try helpers.expectEq(magenta.G, 0x00);
-        try helpers.expectEq(magenta.B, 0xFF);
+        try helpers.expectEq(magenta.r, 0xFF);
+        try helpers.expectEq(magenta.g, 0x00);
+        try helpers.expectEq(magenta.b, 0xFF);
 
         const yellow = pixels.bgr24[5];
-        try helpers.expectEq(yellow.R, 0xFF);
-        try helpers.expectEq(yellow.G, 0xFF);
-        try helpers.expectEq(yellow.B, 0x00);
+        try helpers.expectEq(yellow.r, 0xFF);
+        try helpers.expectEq(yellow.g, 0xFF);
+        try helpers.expectEq(yellow.b, 0x00);
 
         const black = pixels.bgr24[6];
-        try helpers.expectEq(black.R, 0x00);
-        try helpers.expectEq(black.G, 0x00);
-        try helpers.expectEq(black.B, 0x00);
+        try helpers.expectEq(black.r, 0x00);
+        try helpers.expectEq(black.g, 0x00);
+        try helpers.expectEq(black.b, 0x00);
 
         const white = pixels.bgr24[7];
-        try helpers.expectEq(white.R, 0xFF);
-        try helpers.expectEq(white.G, 0xFF);
-        try helpers.expectEq(white.B, 0xFF);
+        try helpers.expectEq(white.r, 0xFF);
+        try helpers.expectEq(white.g, 0xFF);
+        try helpers.expectEq(white.b, 0xFF);
     }
 }
 
-test "Test Color iterator" {
+test "Test Colorf32 iterator" {
     var test_image = try helpers.testImageFromFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
     defer test_image.deinit();
 
-    const expectedColors = [_]color.Color{
-        color.Color.initRGB(1.0, 0.0, 0.0),
-        color.Color.initRGB(0.0, 1.0, 0.0),
-        color.Color.initRGB(0.0, 0.0, 1.0),
-        color.Color.initRGB(0.0, 1.0, 1.0),
-        color.Color.initRGB(1.0, 0.0, 1.0),
-        color.Color.initRGB(1.0, 1.0, 0.0),
-        color.Color.initRGB(0.0, 0.0, 0.0),
-        color.Color.initRGB(1.0, 1.0, 1.0),
+    const expectedColors = [_]color.Colorf32{
+        color.Colorf32.initRgb(1.0, 0.0, 0.0),
+        color.Colorf32.initRgb(0.0, 1.0, 0.0),
+        color.Colorf32.initRgb(0.0, 0.0, 1.0),
+        color.Colorf32.initRgb(0.0, 1.0, 1.0),
+        color.Colorf32.initRgb(1.0, 0.0, 1.0),
+        color.Colorf32.initRgb(1.0, 1.0, 0.0),
+        color.Colorf32.initRgb(0.0, 0.0, 0.0),
+        color.Colorf32.initRgb(1.0, 1.0, 1.0),
     };
 
     try helpers.expectEq(test_image.width, 8);
@@ -388,9 +388,9 @@ test "Test Color iterator" {
     var i: usize = 0;
     while (it.next()) |actual| {
         const expected = expectedColors[i];
-        try helpers.expectEq(actual.R, expected.R);
-        try helpers.expectEq(actual.G, expected.G);
-        try helpers.expectEq(actual.B, expected.B);
+        try helpers.expectEq(actual.r, expected.r);
+        try helpers.expectEq(actual.g, expected.g);
+        try helpers.expectEq(actual.b, expected.b);
         i += 1;
     }
 }
