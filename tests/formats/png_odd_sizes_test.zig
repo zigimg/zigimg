@@ -38,15 +38,15 @@ test "Read s01i3p01 data properly" {
 
         try helpers.expectEq(pixels.indexed1.palette.len, 2);
 
-        const firstColor = pixels.indexed1.palette[0].toIntegerColor8();
-        try helpers.expectEq(firstColor.R, 0);
-        try helpers.expectEq(firstColor.G, 0);
-        try helpers.expectEq(firstColor.B, 255);
+        const firstColor = pixels.indexed1.palette[0].toRgba32();
+        try helpers.expectEq(firstColor.r, 0);
+        try helpers.expectEq(firstColor.g, 0);
+        try helpers.expectEq(firstColor.b, 255);
 
-        const secondColor = pixels.indexed1.palette[1].toIntegerColor8();
-        try helpers.expectEq(secondColor.R, 0);
-        try helpers.expectEq(secondColor.G, 0);
-        try helpers.expectEq(secondColor.B, 0);
+        const secondColor = pixels.indexed1.palette[1].toRgba32();
+        try helpers.expectEq(secondColor.r, 0);
+        try helpers.expectEq(secondColor.g, 0);
+        try helpers.expectEq(secondColor.b, 0);
 
         try helpers.expectEq(pixels.indexed1.indices[0], 0);
     }
@@ -80,15 +80,15 @@ test "Read s01n3p01 data properly" {
 
         try helpers.expectEq(pixels.indexed1.palette.len, 2);
 
-        const firstColor = pixels.indexed1.palette[0].toIntegerColor8();
-        try helpers.expectEq(firstColor.R, 0);
-        try helpers.expectEq(firstColor.G, 0);
-        try helpers.expectEq(firstColor.B, 255);
+        const firstColor = pixels.indexed1.palette[0].toRgba32();
+        try helpers.expectEq(firstColor.r, 0);
+        try helpers.expectEq(firstColor.g, 0);
+        try helpers.expectEq(firstColor.b, 255);
 
-        const secondColor = pixels.indexed1.palette[1].toIntegerColor8();
-        try helpers.expectEq(secondColor.R, 0);
-        try helpers.expectEq(secondColor.G, 0);
-        try helpers.expectEq(secondColor.B, 0);
+        const secondColor = pixels.indexed1.palette[1].toRgba32();
+        try helpers.expectEq(secondColor.r, 0);
+        try helpers.expectEq(secondColor.g, 0);
+        try helpers.expectEq(secondColor.b, 0);
 
         try helpers.expectEq(pixels.indexed1.indices[0], 0);
     }
@@ -122,15 +122,15 @@ test "Read s02i3p01 data properly" {
 
         try helpers.expectEq(pixels.indexed1.palette.len, 2);
 
-        const firstColor = pixels.indexed1.palette[0].toIntegerColor8();
-        try helpers.expectEq(firstColor.R, 0);
-        try helpers.expectEq(firstColor.G, 255);
-        try helpers.expectEq(firstColor.B, 255);
+        const firstColor = pixels.indexed1.palette[0].toRgba32();
+        try helpers.expectEq(firstColor.r, 0);
+        try helpers.expectEq(firstColor.g, 255);
+        try helpers.expectEq(firstColor.b, 255);
 
-        const secondColor = pixels.indexed1.palette[1].toIntegerColor8();
-        try helpers.expectEq(secondColor.R, 0);
-        try helpers.expectEq(secondColor.G, 0);
-        try helpers.expectEq(secondColor.B, 0);
+        const secondColor = pixels.indexed1.palette[1].toRgba32();
+        try helpers.expectEq(secondColor.r, 0);
+        try helpers.expectEq(secondColor.g, 0);
+        try helpers.expectEq(secondColor.b, 0);
 
         try helpers.expectEq(pixels.indexed1.indices.len, 4);
         try helpers.expectEq(pixels.indexed1.indices[0], 0);
@@ -168,15 +168,15 @@ test "Read s02n3p01 data properly" {
 
         try helpers.expectEq(pixels.indexed1.palette.len, 2);
 
-        const firstColor = pixels.indexed1.palette[0].toIntegerColor8();
-        try helpers.expectEq(firstColor.R, 0);
-        try helpers.expectEq(firstColor.G, 255);
-        try helpers.expectEq(firstColor.B, 255);
+        const firstColor = pixels.indexed1.palette[0].toRgba32();
+        try helpers.expectEq(firstColor.r, 0);
+        try helpers.expectEq(firstColor.g, 255);
+        try helpers.expectEq(firstColor.b, 255);
 
-        const secondColor = pixels.indexed1.palette[1].toIntegerColor8();
-        try helpers.expectEq(secondColor.R, 0);
-        try helpers.expectEq(secondColor.G, 0);
-        try helpers.expectEq(secondColor.B, 0);
+        const secondColor = pixels.indexed1.palette[1].toRgba32();
+        try helpers.expectEq(secondColor.r, 0);
+        try helpers.expectEq(secondColor.g, 0);
+        try helpers.expectEq(secondColor.b, 0);
 
         try helpers.expectEq(pixels.indexed1.indices.len, 4);
         try helpers.expectEq(pixels.indexed1.indices[0], 0);
@@ -214,15 +214,15 @@ test "Read s03i3p01 data properly" {
 
         try helpers.expectEq(pixels.indexed1.palette.len, 2);
 
-        const firstColor = pixels.indexed1.palette[0].toIntegerColor8();
-        try helpers.expectEq(firstColor.R, 0);
-        try helpers.expectEq(firstColor.G, 255);
-        try helpers.expectEq(firstColor.B, 0);
+        const firstColor = pixels.indexed1.palette[0].toRgba32();
+        try helpers.expectEq(firstColor.r, 0);
+        try helpers.expectEq(firstColor.g, 255);
+        try helpers.expectEq(firstColor.b, 0);
 
-        const secondColor = pixels.indexed1.palette[1].toIntegerColor8();
-        try helpers.expectEq(secondColor.R, 0xFF);
-        try helpers.expectEq(secondColor.G, 0x77);
-        try helpers.expectEq(secondColor.B, 0);
+        const secondColor = pixels.indexed1.palette[1].toRgba32();
+        try helpers.expectEq(secondColor.r, 0xFF);
+        try helpers.expectEq(secondColor.g, 0x77);
+        try helpers.expectEq(secondColor.b, 0);
 
         try helpers.expectEq(pixels.indexed1.indices.len, 3 * 3);
         var index: usize = 0;
@@ -264,15 +264,15 @@ test "Read s03n3p01 data properly" {
 
         try helpers.expectEq(pixels.indexed1.palette.len, 2);
 
-        const firstColor = pixels.indexed1.palette[0].toIntegerColor8();
-        try helpers.expectEq(firstColor.R, 0);
-        try helpers.expectEq(firstColor.G, 255);
-        try helpers.expectEq(firstColor.B, 0);
+        const firstColor = pixels.indexed1.palette[0].toRgba32();
+        try helpers.expectEq(firstColor.r, 0);
+        try helpers.expectEq(firstColor.g, 255);
+        try helpers.expectEq(firstColor.b, 0);
 
-        const secondColor = pixels.indexed1.palette[1].toIntegerColor8();
-        try helpers.expectEq(secondColor.R, 0xFF);
-        try helpers.expectEq(secondColor.G, 0x77);
-        try helpers.expectEq(secondColor.B, 0);
+        const secondColor = pixels.indexed1.palette[1].toRgba32();
+        try helpers.expectEq(secondColor.r, 0xFF);
+        try helpers.expectEq(secondColor.g, 0x77);
+        try helpers.expectEq(secondColor.b, 0);
 
         try helpers.expectEq(pixels.indexed1.indices.len, 3 * 3);
         var index: usize = 0;
@@ -314,15 +314,15 @@ test "Read s04i3p01 data properly" {
 
         try helpers.expectEq(pixels.indexed1.palette.len, 2);
 
-        const firstColor = pixels.indexed1.palette[0].toIntegerColor8();
-        try helpers.expectEq(firstColor.R, 255);
-        try helpers.expectEq(firstColor.G, 0);
-        try helpers.expectEq(firstColor.B, 119);
+        const firstColor = pixels.indexed1.palette[0].toRgba32();
+        try helpers.expectEq(firstColor.r, 255);
+        try helpers.expectEq(firstColor.g, 0);
+        try helpers.expectEq(firstColor.b, 119);
 
-        const secondColor = pixels.indexed1.palette[1].toIntegerColor8();
-        try helpers.expectEq(secondColor.R, 255);
-        try helpers.expectEq(secondColor.G, 255);
-        try helpers.expectEq(secondColor.B, 0);
+        const secondColor = pixels.indexed1.palette[1].toRgba32();
+        try helpers.expectEq(secondColor.r, 255);
+        try helpers.expectEq(secondColor.g, 255);
+        try helpers.expectEq(secondColor.b, 0);
 
         try helpers.expectEq(pixels.indexed1.indices.len, 4 * 4);
 
@@ -367,15 +367,15 @@ test "Read s04n3p01 data properly" {
 
         try helpers.expectEq(pixels.indexed1.palette.len, 2);
 
-        const firstColor = pixels.indexed1.palette[0].toIntegerColor8();
-        try helpers.expectEq(firstColor.R, 255);
-        try helpers.expectEq(firstColor.G, 0);
-        try helpers.expectEq(firstColor.B, 119);
+        const firstColor = pixels.indexed1.palette[0].toRgba32();
+        try helpers.expectEq(firstColor.r, 255);
+        try helpers.expectEq(firstColor.g, 0);
+        try helpers.expectEq(firstColor.b, 119);
 
-        const secondColor = pixels.indexed1.palette[1].toIntegerColor8();
-        try helpers.expectEq(secondColor.R, 255);
-        try helpers.expectEq(secondColor.G, 255);
-        try helpers.expectEq(secondColor.B, 0);
+        const secondColor = pixels.indexed1.palette[1].toRgba32();
+        try helpers.expectEq(secondColor.r, 255);
+        try helpers.expectEq(secondColor.g, 255);
+        try helpers.expectEq(secondColor.b, 0);
 
         try helpers.expectEq(pixels.indexed1.indices.len, 4 * 4);
 
@@ -422,20 +422,20 @@ test "Read s05i3p02 data properly" {
 
         try helpers.expectEq(pixels.indexed2.palette.len, 4);
 
-        const color0 = pixels.indexed2.palette[0].toIntegerColor8();
-        try helpers.expectEq(color0.R, 0);
-        try helpers.expectEq(color0.G, 255);
-        try helpers.expectEq(color0.B, 255);
+        const color0 = pixels.indexed2.palette[0].toRgba32();
+        try helpers.expectEq(color0.r, 0);
+        try helpers.expectEq(color0.g, 255);
+        try helpers.expectEq(color0.b, 255);
 
-        const color1 = pixels.indexed2.palette[1].toIntegerColor8();
-        try helpers.expectEq(color1.R, 119);
-        try helpers.expectEq(color1.G, 0);
-        try helpers.expectEq(color1.B, 255);
+        const color1 = pixels.indexed2.palette[1].toRgba32();
+        try helpers.expectEq(color1.r, 119);
+        try helpers.expectEq(color1.g, 0);
+        try helpers.expectEq(color1.b, 255);
 
-        const color2 = pixels.indexed2.palette[2].toIntegerColor8();
-        try helpers.expectEq(color2.R, 255);
-        try helpers.expectEq(color2.G, 0);
-        try helpers.expectEq(color2.B, 0);
+        const color2 = pixels.indexed2.palette[2].toRgba32();
+        try helpers.expectEq(color2.r, 255);
+        try helpers.expectEq(color2.g, 0);
+        try helpers.expectEq(color2.b, 0);
 
         try helpers.expectEq(pixels.indexed2.indices.len, total_size);
 
@@ -483,20 +483,20 @@ test "Read s05n3p02 data properly" {
 
         try helpers.expectEq(pixels.indexed2.palette.len, 4);
 
-        const color0 = pixels.indexed2.palette[0].toIntegerColor8();
-        try helpers.expectEq(color0.R, 0);
-        try helpers.expectEq(color0.G, 255);
-        try helpers.expectEq(color0.B, 255);
+        const color0 = pixels.indexed2.palette[0].toRgba32();
+        try helpers.expectEq(color0.r, 0);
+        try helpers.expectEq(color0.g, 255);
+        try helpers.expectEq(color0.b, 255);
 
-        const color1 = pixels.indexed2.palette[1].toIntegerColor8();
-        try helpers.expectEq(color1.R, 119);
-        try helpers.expectEq(color1.G, 0);
-        try helpers.expectEq(color1.B, 255);
+        const color1 = pixels.indexed2.palette[1].toRgba32();
+        try helpers.expectEq(color1.r, 119);
+        try helpers.expectEq(color1.g, 0);
+        try helpers.expectEq(color1.b, 255);
 
-        const color2 = pixels.indexed2.palette[2].toIntegerColor8();
-        try helpers.expectEq(color2.R, 255);
-        try helpers.expectEq(color2.G, 0);
-        try helpers.expectEq(color2.B, 0);
+        const color2 = pixels.indexed2.palette[2].toRgba32();
+        try helpers.expectEq(color2.r, 255);
+        try helpers.expectEq(color2.g, 0);
+        try helpers.expectEq(color2.b, 0);
 
         try helpers.expectEq(pixels.indexed2.indices.len, total_size);
 
@@ -544,20 +544,20 @@ test "Read s06i3p02 data properly" {
 
         try helpers.expectEq(pixels.indexed2.palette.len, 4);
 
-        const color0 = pixels.indexed2.palette[0].toIntegerColor8();
-        try helpers.expectEq(color0.R, 0);
-        try helpers.expectEq(color0.G, 255);
-        try helpers.expectEq(color0.B, 0);
+        const color0 = pixels.indexed2.palette[0].toRgba32();
+        try helpers.expectEq(color0.r, 0);
+        try helpers.expectEq(color0.g, 255);
+        try helpers.expectEq(color0.b, 0);
 
-        const color1 = pixels.indexed2.palette[1].toIntegerColor8();
-        try helpers.expectEq(color1.R, 0);
-        try helpers.expectEq(color1.G, 119);
-        try helpers.expectEq(color1.B, 255);
+        const color1 = pixels.indexed2.palette[1].toRgba32();
+        try helpers.expectEq(color1.r, 0);
+        try helpers.expectEq(color1.g, 119);
+        try helpers.expectEq(color1.b, 255);
 
-        const color2 = pixels.indexed2.palette[2].toIntegerColor8();
-        try helpers.expectEq(color2.R, 255);
-        try helpers.expectEq(color2.G, 0);
-        try helpers.expectEq(color2.B, 255);
+        const color2 = pixels.indexed2.palette[2].toRgba32();
+        try helpers.expectEq(color2.r, 255);
+        try helpers.expectEq(color2.g, 0);
+        try helpers.expectEq(color2.b, 255);
 
         try helpers.expectEq(pixels.indexed2.indices.len, total_size);
 
@@ -606,20 +606,20 @@ test "Read s06n3p02 data properly" {
 
         try helpers.expectEq(pixels.indexed2.palette.len, 4);
 
-        const color0 = pixels.indexed2.palette[0].toIntegerColor8();
-        try helpers.expectEq(color0.R, 0);
-        try helpers.expectEq(color0.G, 255);
-        try helpers.expectEq(color0.B, 0);
+        const color0 = pixels.indexed2.palette[0].toRgba32();
+        try helpers.expectEq(color0.r, 0);
+        try helpers.expectEq(color0.g, 255);
+        try helpers.expectEq(color0.b, 0);
 
-        const color1 = pixels.indexed2.palette[1].toIntegerColor8();
-        try helpers.expectEq(color1.R, 0);
-        try helpers.expectEq(color1.G, 119);
-        try helpers.expectEq(color1.B, 255);
+        const color1 = pixels.indexed2.palette[1].toRgba32();
+        try helpers.expectEq(color1.r, 0);
+        try helpers.expectEq(color1.g, 119);
+        try helpers.expectEq(color1.b, 255);
 
-        const color2 = pixels.indexed2.palette[2].toIntegerColor8();
-        try helpers.expectEq(color2.R, 255);
-        try helpers.expectEq(color2.G, 0);
-        try helpers.expectEq(color2.B, 255);
+        const color2 = pixels.indexed2.palette[2].toRgba32();
+        try helpers.expectEq(color2.r, 255);
+        try helpers.expectEq(color2.g, 0);
+        try helpers.expectEq(color2.b, 255);
 
         try helpers.expectEq(pixels.indexed2.indices.len, total_size);
 
@@ -668,25 +668,25 @@ test "Read s07i3p02 data properly" {
 
         try helpers.expectEq(pixels.indexed2.palette.len, 4);
 
-        const color0 = pixels.indexed2.palette[0].toIntegerColor8();
-        try helpers.expectEq(color0.R, 255);
-        try helpers.expectEq(color0.G, 0);
-        try helpers.expectEq(color0.B, 119);
+        const color0 = pixels.indexed2.palette[0].toRgba32();
+        try helpers.expectEq(color0.r, 255);
+        try helpers.expectEq(color0.g, 0);
+        try helpers.expectEq(color0.b, 119);
 
-        const color1 = pixels.indexed2.palette[1].toIntegerColor8();
-        try helpers.expectEq(color1.R, 0);
-        try helpers.expectEq(color1.G, 255);
-        try helpers.expectEq(color1.B, 119);
+        const color1 = pixels.indexed2.palette[1].toRgba32();
+        try helpers.expectEq(color1.r, 0);
+        try helpers.expectEq(color1.g, 255);
+        try helpers.expectEq(color1.b, 119);
 
-        const color2 = pixels.indexed2.palette[2].toIntegerColor8();
-        try helpers.expectEq(color2.R, 255);
-        try helpers.expectEq(color2.G, 255);
-        try helpers.expectEq(color2.B, 0);
+        const color2 = pixels.indexed2.palette[2].toRgba32();
+        try helpers.expectEq(color2.r, 255);
+        try helpers.expectEq(color2.g, 255);
+        try helpers.expectEq(color2.b, 0);
 
-        const color3 = pixels.indexed2.palette[3].toIntegerColor8();
-        try helpers.expectEq(color3.R, 0);
-        try helpers.expectEq(color3.G, 0);
-        try helpers.expectEq(color3.B, 255);
+        const color3 = pixels.indexed2.palette[3].toRgba32();
+        try helpers.expectEq(color3.r, 0);
+        try helpers.expectEq(color3.g, 0);
+        try helpers.expectEq(color3.b, 255);
 
         try helpers.expectEq(pixels.indexed2.indices.len, total_size);
 
@@ -736,25 +736,25 @@ test "Read s07n3p02 data properly" {
 
         try helpers.expectEq(pixels.indexed2.palette.len, 4);
 
-        const color0 = pixels.indexed2.palette[0].toIntegerColor8();
-        try helpers.expectEq(color0.R, 255);
-        try helpers.expectEq(color0.G, 0);
-        try helpers.expectEq(color0.B, 119);
+        const color0 = pixels.indexed2.palette[0].toRgba32();
+        try helpers.expectEq(color0.r, 255);
+        try helpers.expectEq(color0.g, 0);
+        try helpers.expectEq(color0.b, 119);
 
-        const color1 = pixels.indexed2.palette[1].toIntegerColor8();
-        try helpers.expectEq(color1.R, 0);
-        try helpers.expectEq(color1.G, 255);
-        try helpers.expectEq(color1.B, 119);
+        const color1 = pixels.indexed2.palette[1].toRgba32();
+        try helpers.expectEq(color1.r, 0);
+        try helpers.expectEq(color1.g, 255);
+        try helpers.expectEq(color1.b, 119);
 
-        const color2 = pixels.indexed2.palette[2].toIntegerColor8();
-        try helpers.expectEq(color2.R, 255);
-        try helpers.expectEq(color2.G, 255);
-        try helpers.expectEq(color2.B, 0);
+        const color2 = pixels.indexed2.palette[2].toRgba32();
+        try helpers.expectEq(color2.r, 255);
+        try helpers.expectEq(color2.g, 255);
+        try helpers.expectEq(color2.b, 0);
 
-        const color3 = pixels.indexed2.palette[3].toIntegerColor8();
-        try helpers.expectEq(color3.R, 0);
-        try helpers.expectEq(color3.G, 0);
-        try helpers.expectEq(color3.B, 255);
+        const color3 = pixels.indexed2.palette[3].toRgba32();
+        try helpers.expectEq(color3.r, 0);
+        try helpers.expectEq(color3.g, 0);
+        try helpers.expectEq(color3.b, 255);
 
         try helpers.expectEq(pixels.indexed2.indices.len, total_size);
 
@@ -804,25 +804,25 @@ test "Read s08i3p02 data properly" {
 
         try helpers.expectEq(pixels.indexed2.palette.len, 4);
 
-        const color0 = pixels.indexed2.palette[0].toIntegerColor8();
-        try helpers.expectEq(color0.R, 0);
-        try helpers.expectEq(color0.G, 255);
-        try helpers.expectEq(color0.B, 255);
+        const color0 = pixels.indexed2.palette[0].toRgba32();
+        try helpers.expectEq(color0.r, 0);
+        try helpers.expectEq(color0.g, 255);
+        try helpers.expectEq(color0.b, 255);
 
-        const color1 = pixels.indexed2.palette[1].toIntegerColor8();
-        try helpers.expectEq(color1.R, 119);
-        try helpers.expectEq(color1.G, 0);
-        try helpers.expectEq(color1.B, 255);
+        const color1 = pixels.indexed2.palette[1].toRgba32();
+        try helpers.expectEq(color1.r, 119);
+        try helpers.expectEq(color1.g, 0);
+        try helpers.expectEq(color1.b, 255);
 
-        const color2 = pixels.indexed2.palette[2].toIntegerColor8();
-        try helpers.expectEq(color2.R, 119);
-        try helpers.expectEq(color2.G, 255);
-        try helpers.expectEq(color2.B, 0);
+        const color2 = pixels.indexed2.palette[2].toRgba32();
+        try helpers.expectEq(color2.r, 119);
+        try helpers.expectEq(color2.g, 255);
+        try helpers.expectEq(color2.b, 0);
 
-        const color3 = pixels.indexed2.palette[3].toIntegerColor8();
-        try helpers.expectEq(color3.R, 255);
-        try helpers.expectEq(color3.G, 0);
-        try helpers.expectEq(color3.B, 0);
+        const color3 = pixels.indexed2.palette[3].toRgba32();
+        try helpers.expectEq(color3.r, 255);
+        try helpers.expectEq(color3.g, 0);
+        try helpers.expectEq(color3.b, 0);
 
         try helpers.expectEq(pixels.indexed2.indices.len, total_size);
 
@@ -873,25 +873,25 @@ test "Read s08n3p02 data properly" {
 
         try helpers.expectEq(pixels.indexed2.palette.len, 4);
 
-        const color0 = pixels.indexed2.palette[0].toIntegerColor8();
-        try helpers.expectEq(color0.R, 0);
-        try helpers.expectEq(color0.G, 255);
-        try helpers.expectEq(color0.B, 255);
+        const color0 = pixels.indexed2.palette[0].toRgba32();
+        try helpers.expectEq(color0.r, 0);
+        try helpers.expectEq(color0.g, 255);
+        try helpers.expectEq(color0.b, 255);
 
-        const color1 = pixels.indexed2.palette[1].toIntegerColor8();
-        try helpers.expectEq(color1.R, 119);
-        try helpers.expectEq(color1.G, 0);
-        try helpers.expectEq(color1.B, 255);
+        const color1 = pixels.indexed2.palette[1].toRgba32();
+        try helpers.expectEq(color1.r, 119);
+        try helpers.expectEq(color1.g, 0);
+        try helpers.expectEq(color1.b, 255);
 
-        const color2 = pixels.indexed2.palette[2].toIntegerColor8();
-        try helpers.expectEq(color2.R, 119);
-        try helpers.expectEq(color2.G, 255);
-        try helpers.expectEq(color2.B, 0);
+        const color2 = pixels.indexed2.palette[2].toRgba32();
+        try helpers.expectEq(color2.r, 119);
+        try helpers.expectEq(color2.g, 255);
+        try helpers.expectEq(color2.b, 0);
 
-        const color3 = pixels.indexed2.palette[3].toIntegerColor8();
-        try helpers.expectEq(color3.R, 255);
-        try helpers.expectEq(color3.G, 0);
-        try helpers.expectEq(color3.B, 0);
+        const color3 = pixels.indexed2.palette[3].toRgba32();
+        try helpers.expectEq(color3.r, 255);
+        try helpers.expectEq(color3.g, 0);
+        try helpers.expectEq(color3.b, 0);
 
         try helpers.expectEq(pixels.indexed2.indices.len, total_size);
 
@@ -942,25 +942,25 @@ test "Read s09i3p02 data properly" {
 
         try helpers.expectEq(pixels.indexed2.palette.len, 4);
 
-        const color0 = pixels.indexed2.palette[0].toIntegerColor8();
-        try helpers.expectEq(color0.R, 0);
-        try helpers.expectEq(color0.G, 255);
-        try helpers.expectEq(color0.B, 0);
+        const color0 = pixels.indexed2.palette[0].toRgba32();
+        try helpers.expectEq(color0.r, 0);
+        try helpers.expectEq(color0.g, 255);
+        try helpers.expectEq(color0.b, 0);
 
-        const color1 = pixels.indexed2.palette[1].toIntegerColor8();
-        try helpers.expectEq(color1.R, 0);
-        try helpers.expectEq(color1.G, 119);
-        try helpers.expectEq(color1.B, 255);
+        const color1 = pixels.indexed2.palette[1].toRgba32();
+        try helpers.expectEq(color1.r, 0);
+        try helpers.expectEq(color1.g, 119);
+        try helpers.expectEq(color1.b, 255);
 
-        const color2 = pixels.indexed2.palette[2].toIntegerColor8();
-        try helpers.expectEq(color2.R, 255);
-        try helpers.expectEq(color2.G, 0);
-        try helpers.expectEq(color2.B, 255);
+        const color2 = pixels.indexed2.palette[2].toRgba32();
+        try helpers.expectEq(color2.r, 255);
+        try helpers.expectEq(color2.g, 0);
+        try helpers.expectEq(color2.b, 255);
 
-        const color3 = pixels.indexed2.palette[3].toIntegerColor8();
-        try helpers.expectEq(color3.R, 255);
-        try helpers.expectEq(color3.G, 119);
-        try helpers.expectEq(color3.B, 0);
+        const color3 = pixels.indexed2.palette[3].toRgba32();
+        try helpers.expectEq(color3.r, 255);
+        try helpers.expectEq(color3.g, 119);
+        try helpers.expectEq(color3.b, 0);
 
         try helpers.expectEq(pixels.indexed2.indices.len, total_size);
 
@@ -1012,25 +1012,25 @@ test "Read s09n3p02 data properly" {
 
         try helpers.expectEq(pixels.indexed2.palette.len, 4);
 
-        const color0 = pixels.indexed2.palette[0].toIntegerColor8();
-        try helpers.expectEq(color0.R, 0);
-        try helpers.expectEq(color0.G, 255);
-        try helpers.expectEq(color0.B, 0);
+        const color0 = pixels.indexed2.palette[0].toRgba32();
+        try helpers.expectEq(color0.r, 0);
+        try helpers.expectEq(color0.g, 255);
+        try helpers.expectEq(color0.b, 0);
 
-        const color1 = pixels.indexed2.palette[1].toIntegerColor8();
-        try helpers.expectEq(color1.R, 0);
-        try helpers.expectEq(color1.G, 119);
-        try helpers.expectEq(color1.B, 255);
+        const color1 = pixels.indexed2.palette[1].toRgba32();
+        try helpers.expectEq(color1.r, 0);
+        try helpers.expectEq(color1.g, 119);
+        try helpers.expectEq(color1.b, 255);
 
-        const color2 = pixels.indexed2.palette[2].toIntegerColor8();
-        try helpers.expectEq(color2.R, 255);
-        try helpers.expectEq(color2.G, 0);
-        try helpers.expectEq(color2.B, 255);
+        const color2 = pixels.indexed2.palette[2].toRgba32();
+        try helpers.expectEq(color2.r, 255);
+        try helpers.expectEq(color2.g, 0);
+        try helpers.expectEq(color2.b, 255);
 
-        const color3 = pixels.indexed2.palette[3].toIntegerColor8();
-        try helpers.expectEq(color3.R, 255);
-        try helpers.expectEq(color3.G, 119);
-        try helpers.expectEq(color3.B, 0);
+        const color3 = pixels.indexed2.palette[3].toRgba32();
+        try helpers.expectEq(color3.r, 255);
+        try helpers.expectEq(color3.g, 119);
+        try helpers.expectEq(color3.b, 0);
 
         try helpers.expectEq(pixels.indexed2.indices.len, total_size);
 
@@ -1083,25 +1083,23 @@ test "Read s32i3p04 data properly" {
         try helpers.expectEq(pixels.indexed4.palette.len, 16);
 
         const palette = [_]u32{
-            0x000000,
-            0xff0077,
-            0x00ffff,
-            0x00ff00,
-            0x7700ff,
-            0x0077ff,
-            0x77ff00,
-            0xff00ff,
-            0xff0000,
-            0x00ff77,
-            0xffff00,
-            0xff7700,
-            0x0000ff,
+            0x000000ff,
+            0xff0077ff,
+            0x00ffffff,
+            0x00ff00ff,
+            0x7700ffff,
+            0x0077ffff,
+            0x77ff00ff,
+            0xff00ffff,
+            0xff0000ff,
+            0x00ff77ff,
+            0xffff00ff,
+            0xff7700ff,
+            0x0000ffff,
         };
 
-        for (palette) |raw_color, i| {
-            const expected = color.IntegerColor8.fromHtmlHex(raw_color);
-
-            try helpers.expectEq(pixels.indexed4.palette[i].toIntegerColor8(), expected);
+        for (palette) |expected, i| {
+            try helpers.expectEq(pixels.indexed4.palette[i].toU32Rgba(), expected);
         }
 
         try helpers.expectEq(pixels.indexed4.indices.len, total_size);
@@ -1181,25 +1179,23 @@ test "Read s32n3p04 data properly" {
         try helpers.expectEq(pixels.indexed4.palette.len, 16);
 
         const palette = [_]u32{
-            0x000000,
-            0xff0077,
-            0x00ffff,
-            0x00ff00,
-            0x7700ff,
-            0x0077ff,
-            0x77ff00,
-            0xff00ff,
-            0xff0000,
-            0x00ff77,
-            0xffff00,
-            0xff7700,
-            0x0000ff,
+            0x000000ff,
+            0xff0077ff,
+            0x00ffffff,
+            0x00ff00ff,
+            0x7700ffff,
+            0x0077ffff,
+            0x77ff00ff,
+            0xff00ffff,
+            0xff0000ff,
+            0x00ff77ff,
+            0xffff00ff,
+            0xff7700ff,
+            0x0000ffff,
         };
 
-        for (palette) |raw_color, i| {
-            const expected = color.IntegerColor8.fromHtmlHex(raw_color);
-
-            try helpers.expectEq(pixels.indexed4.palette[i].toIntegerColor8(), expected);
+        for (palette) |expected, i| {
+            try helpers.expectEq(pixels.indexed4.palette[i].toU32Rgba(), expected);
         }
 
         try helpers.expectEq(pixels.indexed4.indices.len, total_size);
@@ -1279,25 +1275,23 @@ test "Read s33i3p04 data properly" {
         try helpers.expectEq(pixels.indexed4.palette.len, 16);
 
         const palette = [_]u32{
-            0x000000,
-            0xff0077,
-            0x00ffff,
-            0x00ff00,
-            0x7700ff,
-            0x0077ff,
-            0x77ff00,
-            0xff00ff,
-            0xff0000,
-            0x00ff77,
-            0xffff00,
-            0xff7700,
-            0x0000ff,
+            0x000000ff,
+            0xff0077ff,
+            0x00ffffff,
+            0x00ff00ff,
+            0x7700ffff,
+            0x0077ffff,
+            0x77ff00ff,
+            0xff00ffff,
+            0xff0000ff,
+            0x00ff77ff,
+            0xffff00ff,
+            0xff7700ff,
+            0x0000ffff,
         };
 
-        for (palette) |raw_color, i| {
-            const expected = color.IntegerColor8.fromHtmlHex(raw_color);
-
-            try helpers.expectEq(pixels.indexed4.palette[i].toIntegerColor8(), expected);
+        for (palette) |expected, i| {
+            try helpers.expectEq(pixels.indexed4.palette[i].toU32Rgba(), expected);
         }
 
         try helpers.expectEq(pixels.indexed4.indices.len, total_size);
@@ -1378,25 +1372,23 @@ test "Read s33n3p04 data properly" {
         try helpers.expectEq(pixels.indexed4.palette.len, 16);
 
         const palette = [_]u32{
-            0x000000,
-            0xff0077,
-            0x00ffff,
-            0x00ff00,
-            0x7700ff,
-            0x0077ff,
-            0x77ff00,
-            0xff00ff,
-            0xff0000,
-            0x00ff77,
-            0xffff00,
-            0xff7700,
-            0x0000ff,
+            0x000000ff,
+            0xff0077ff,
+            0x00ffffff,
+            0x00ff00ff,
+            0x7700ffff,
+            0x0077ffff,
+            0x77ff00ff,
+            0xff00ffff,
+            0xff0000ff,
+            0x00ff77ff,
+            0xffff00ff,
+            0xff7700ff,
+            0x0000ffff,
         };
 
-        for (palette) |raw_color, i| {
-            const expected = color.IntegerColor8.fromHtmlHex(raw_color);
-
-            try helpers.expectEq(pixels.indexed4.palette[i].toIntegerColor8(), expected);
+        for (palette) |expected, i| {
+            try helpers.expectEq(pixels.indexed4.palette[i].toU32Rgba(), expected);
         }
 
         try helpers.expectEq(pixels.indexed4.indices.len, total_size);
@@ -1477,25 +1469,23 @@ test "Read s34i3p04 data properly" {
         try helpers.expectEq(pixels.indexed4.palette.len, 16);
 
         const palette = [_]u32{
-            0x000000,
-            0xff0077,
-            0x00ffff,
-            0x00ff00,
-            0x7700ff,
-            0x0077ff,
-            0x77ff00,
-            0xff00ff,
-            0xff0000,
-            0x00ff77,
-            0xffff00,
-            0xff7700,
-            0x0000ff,
+            0x000000ff,
+            0xff0077ff,
+            0x00ffffff,
+            0x00ff00ff,
+            0x7700ffff,
+            0x0077ffff,
+            0x77ff00ff,
+            0xff00ffff,
+            0xff0000ff,
+            0x00ff77ff,
+            0xffff00ff,
+            0xff7700ff,
+            0x0000ffff,
         };
 
-        for (palette) |raw_color, i| {
-            const expected = color.IntegerColor8.fromHtmlHex(raw_color);
-
-            try helpers.expectEq(pixels.indexed4.palette[i].toIntegerColor8(), expected);
+        for (palette) |expected, i| {
+            try helpers.expectEq(pixels.indexed4.palette[i].toU32Rgba(), expected);
         }
 
         try helpers.expectEq(pixels.indexed4.indices.len, total_size);
@@ -1577,25 +1567,23 @@ test "Read s34n3p04 data properly" {
         try helpers.expectEq(pixels.indexed4.palette.len, 16);
 
         const palette = [_]u32{
-            0x000000,
-            0xff0077,
-            0x00ffff,
-            0x00ff00,
-            0x7700ff,
-            0x0077ff,
-            0x77ff00,
-            0xff00ff,
-            0xff0000,
-            0x00ff77,
-            0xffff00,
-            0xff7700,
-            0x0000ff,
+            0x000000ff,
+            0xff0077ff,
+            0x00ffffff,
+            0x00ff00ff,
+            0x7700ffff,
+            0x0077ffff,
+            0x77ff00ff,
+            0xff00ffff,
+            0xff0000ff,
+            0x00ff77ff,
+            0xffff00ff,
+            0xff7700ff,
+            0x0000ffff,
         };
 
-        for (palette) |raw_color, i| {
-            const expected = color.IntegerColor8.fromHtmlHex(raw_color);
-
-            try helpers.expectEq(pixels.indexed4.palette[i].toIntegerColor8(), expected);
+        for (palette) |expected, i| {
+            try helpers.expectEq(pixels.indexed4.palette[i].toU32Rgba(), expected);
         }
 
         try helpers.expectEq(pixels.indexed4.indices.len, total_size);
@@ -1677,25 +1665,23 @@ test "Read s35i3p04 data properly" {
         try helpers.expectEq(pixels.indexed4.palette.len, 16);
 
         const palette = [_]u32{
-            0x000000,
-            0xff0077,
-            0x00ffff,
-            0x00ff00,
-            0x7700ff,
-            0x0077ff,
-            0x77ff00,
-            0xff00ff,
-            0xff0000,
-            0x00ff77,
-            0xffff00,
-            0xff7700,
-            0x0000ff,
+            0x000000ff,
+            0xff0077ff,
+            0x00ffffff,
+            0x00ff00ff,
+            0x7700ffff,
+            0x0077ffff,
+            0x77ff00ff,
+            0xff00ffff,
+            0xff0000ff,
+            0x00ff77ff,
+            0xffff00ff,
+            0xff7700ff,
+            0x0000ffff,
         };
 
-        for (palette) |raw_color, i| {
-            const expected = color.IntegerColor8.fromHtmlHex(raw_color);
-
-            try helpers.expectEq(pixels.indexed4.palette[i].toIntegerColor8(), expected);
+        for (palette) |expected, i| {
+            try helpers.expectEq(pixels.indexed4.palette[i].toU32Rgba(), expected);
         }
 
         try helpers.expectEq(pixels.indexed4.indices.len, total_size);
@@ -1778,25 +1764,23 @@ test "Read s35n3p04 data properly" {
         try helpers.expectEq(pixels.indexed4.palette.len, 16);
 
         const palette = [_]u32{
-            0x000000,
-            0xff0077,
-            0x00ffff,
-            0x00ff00,
-            0x7700ff,
-            0x0077ff,
-            0x77ff00,
-            0xff00ff,
-            0xff0000,
-            0x00ff77,
-            0xffff00,
-            0xff7700,
-            0x0000ff,
+            0x000000ff,
+            0xff0077ff,
+            0x00ffffff,
+            0x00ff00ff,
+            0x7700ffff,
+            0x0077ffff,
+            0x77ff00ff,
+            0xff00ffff,
+            0xff0000ff,
+            0x00ff77ff,
+            0xffff00ff,
+            0xff7700ff,
+            0x0000ffff,
         };
 
-        for (palette) |raw_color, i| {
-            const expected = color.IntegerColor8.fromHtmlHex(raw_color);
-
-            try helpers.expectEq(pixels.indexed4.palette[i].toIntegerColor8(), expected);
+        for (palette) |expected, i| {
+            try helpers.expectEq(pixels.indexed4.palette[i].toU32Rgba(), expected);
         }
 
         try helpers.expectEq(pixels.indexed4.indices.len, total_size);
@@ -1879,25 +1863,23 @@ test "Read s36i3p04 data properly" {
         try helpers.expectEq(pixels.indexed4.palette.len, 16);
 
         const palette = [_]u32{
-            0x000000,
-            0xff0077,
-            0x00ffff,
-            0x00ff00,
-            0x7700ff,
-            0x0077ff,
-            0x77ff00,
-            0xff00ff,
-            0xff0000,
-            0x00ff77,
-            0xffff00,
-            0xff7700,
-            0x0000ff,
+            0x000000ff,
+            0xff0077ff,
+            0x00ffffff,
+            0x00ff00ff,
+            0x7700ffff,
+            0x0077ffff,
+            0x77ff00ff,
+            0xff00ffff,
+            0xff0000ff,
+            0x00ff77ff,
+            0xffff00ff,
+            0xff7700ff,
+            0x0000ffff,
         };
 
-        for (palette) |raw_color, i| {
-            const expected = color.IntegerColor8.fromHtmlHex(raw_color);
-
-            try helpers.expectEq(pixels.indexed4.palette[i].toIntegerColor8(), expected);
+        for (palette) |expected, i| {
+            try helpers.expectEq(pixels.indexed4.palette[i].toU32Rgba(), expected);
         }
 
         try helpers.expectEq(pixels.indexed4.indices.len, total_size);
@@ -1981,25 +1963,23 @@ test "Read s36n3p04 data properly" {
         try helpers.expectEq(pixels.indexed4.palette.len, 16);
 
         const palette = [_]u32{
-            0x000000,
-            0xff0077,
-            0x00ffff,
-            0x00ff00,
-            0x7700ff,
-            0x0077ff,
-            0x77ff00,
-            0xff00ff,
-            0xff0000,
-            0x00ff77,
-            0xffff00,
-            0xff7700,
-            0x0000ff,
+            0x000000ff,
+            0xff0077ff,
+            0x00ffffff,
+            0x00ff00ff,
+            0x7700ffff,
+            0x0077ffff,
+            0x77ff00ff,
+            0xff00ffff,
+            0xff0000ff,
+            0x00ff77ff,
+            0xffff00ff,
+            0xff7700ff,
+            0x0000ffff,
         };
 
-        for (palette) |raw_color, i| {
-            const expected = color.IntegerColor8.fromHtmlHex(raw_color);
-
-            try helpers.expectEq(pixels.indexed4.palette[i].toIntegerColor8(), expected);
+        for (palette) |expected, i| {
+            try helpers.expectEq(pixels.indexed4.palette[i].toU32Rgba(), expected);
         }
 
         try helpers.expectEq(pixels.indexed4.indices.len, total_size);
@@ -2083,25 +2063,23 @@ test "Read s37i3p04 data properly" {
         try helpers.expectEq(pixels.indexed4.palette.len, 16);
 
         const palette = [_]u32{
-            0x000000,
-            0xff0077,
-            0x00ffff,
-            0x00ff00,
-            0x7700ff,
-            0x0077ff,
-            0x77ff00,
-            0xff00ff,
-            0xff0000,
-            0x00ff77,
-            0xffff00,
-            0xff7700,
-            0x0000ff,
+            0x000000ff,
+            0xff0077ff,
+            0x00ffffff,
+            0x00ff00ff,
+            0x7700ffff,
+            0x0077ffff,
+            0x77ff00ff,
+            0xff00ffff,
+            0xff0000ff,
+            0x00ff77ff,
+            0xffff00ff,
+            0xff7700ff,
+            0x0000ffff,
         };
 
-        for (palette) |raw_color, i| {
-            const expected = color.IntegerColor8.fromHtmlHex(raw_color);
-
-            try helpers.expectEq(pixels.indexed4.palette[i].toIntegerColor8(), expected);
+        for (palette) |expected, i| {
+            try helpers.expectEq(pixels.indexed4.palette[i].toU32Rgba(), expected);
         }
 
         try helpers.expectEq(pixels.indexed4.indices.len, total_size);
@@ -2186,25 +2164,23 @@ test "Read s37n3p04 data properly" {
         try helpers.expectEq(pixels.indexed4.palette.len, 16);
 
         const palette = [_]u32{
-            0x000000,
-            0xff0077,
-            0x00ffff,
-            0x00ff00,
-            0x7700ff,
-            0x0077ff,
-            0x77ff00,
-            0xff00ff,
-            0xff0000,
-            0x00ff77,
-            0xffff00,
-            0xff7700,
-            0x0000ff,
+            0x000000ff,
+            0xff0077ff,
+            0x00ffffff,
+            0x00ff00ff,
+            0x7700ffff,
+            0x0077ffff,
+            0x77ff00ff,
+            0xff00ffff,
+            0xff0000ff,
+            0x00ff77ff,
+            0xffff00ff,
+            0xff7700ff,
+            0x0000ffff,
         };
 
-        for (palette) |raw_color, i| {
-            const expected = color.IntegerColor8.fromHtmlHex(raw_color);
-
-            try helpers.expectEq(pixels.indexed4.palette[i].toIntegerColor8(), expected);
+        for (palette) |expected, i| {
+            try helpers.expectEq(pixels.indexed4.palette[i].toU32Rgba(), expected);
         }
 
         try helpers.expectEq(pixels.indexed4.indices.len, total_size);
@@ -2289,25 +2265,23 @@ test "Read s38i3p04 data properly" {
         try helpers.expectEq(pixels.indexed4.palette.len, 16);
 
         const palette = [_]u32{
-            0x000000,
-            0xff0077,
-            0x00ffff,
-            0x00ff00,
-            0x7700ff,
-            0x0077ff,
-            0x77ff00,
-            0xff00ff,
-            0xff0000,
-            0x00ff77,
-            0xffff00,
-            0xff7700,
-            0x0000ff,
+            0x000000ff,
+            0xff0077ff,
+            0x00ffffff,
+            0x00ff00ff,
+            0x7700ffff,
+            0x0077ffff,
+            0x77ff00ff,
+            0xff00ffff,
+            0xff0000ff,
+            0x00ff77ff,
+            0xffff00ff,
+            0xff7700ff,
+            0x0000ffff,
         };
 
-        for (palette) |raw_color, i| {
-            const expected = color.IntegerColor8.fromHtmlHex(raw_color);
-
-            try helpers.expectEq(pixels.indexed4.palette[i].toIntegerColor8(), expected);
+        for (palette) |expected, i| {
+            try helpers.expectEq(pixels.indexed4.palette[i].toU32Rgba(), expected);
         }
 
         try helpers.expectEq(pixels.indexed4.indices.len, total_size);
@@ -2393,25 +2367,23 @@ test "Read s38n3p04 data properly" {
         try helpers.expectEq(pixels.indexed4.palette.len, 16);
 
         const palette = [_]u32{
-            0x000000,
-            0xff0077,
-            0x00ffff,
-            0x00ff00,
-            0x7700ff,
-            0x0077ff,
-            0x77ff00,
-            0xff00ff,
-            0xff0000,
-            0x00ff77,
-            0xffff00,
-            0xff7700,
-            0x0000ff,
+            0x000000ff,
+            0xff0077ff,
+            0x00ffffff,
+            0x00ff00ff,
+            0x7700ffff,
+            0x0077ffff,
+            0x77ff00ff,
+            0xff00ffff,
+            0xff0000ff,
+            0x00ff77ff,
+            0xffff00ff,
+            0xff7700ff,
+            0x0000ffff,
         };
 
-        for (palette) |raw_color, i| {
-            const expected = color.IntegerColor8.fromHtmlHex(raw_color);
-
-            try helpers.expectEq(pixels.indexed4.palette[i].toIntegerColor8(), expected);
+        for (palette) |expected, i| {
+            try helpers.expectEq(pixels.indexed4.palette[i].toU32Rgba(), expected);
         }
 
         try helpers.expectEq(pixels.indexed4.indices.len, total_size);
@@ -2497,25 +2469,23 @@ test "Read s39i3p04 data properly" {
         try helpers.expectEq(pixels.indexed4.palette.len, 16);
 
         const palette = [_]u32{
-            0x000000,
-            0xff0077,
-            0x00ffff,
-            0x00ff00,
-            0x7700ff,
-            0x0077ff,
-            0x77ff00,
-            0xff00ff,
-            0xff0000,
-            0x00ff77,
-            0xffff00,
-            0xff7700,
-            0x0000ff,
+            0x000000ff,
+            0xff0077ff,
+            0x00ffffff,
+            0x00ff00ff,
+            0x7700ffff,
+            0x0077ffff,
+            0x77ff00ff,
+            0xff00ffff,
+            0xff0000ff,
+            0x00ff77ff,
+            0xffff00ff,
+            0xff7700ff,
+            0x0000ffff,
         };
 
-        for (palette) |raw_color, i| {
-            const expected = color.IntegerColor8.fromHtmlHex(raw_color);
-
-            try helpers.expectEq(pixels.indexed4.palette[i].toIntegerColor8(), expected);
+        for (palette) |expected, i| {
+            try helpers.expectEq(pixels.indexed4.palette[i].toU32Rgba(), expected);
         }
 
         try helpers.expectEq(pixels.indexed4.indices.len, total_size);
@@ -2602,25 +2572,23 @@ test "Read s39n3p04 data properly" {
         try helpers.expectEq(pixels.indexed4.palette.len, 16);
 
         const palette = [_]u32{
-            0x000000,
-            0xff0077,
-            0x00ffff,
-            0x00ff00,
-            0x7700ff,
-            0x0077ff,
-            0x77ff00,
-            0xff00ff,
-            0xff0000,
-            0x00ff77,
-            0xffff00,
-            0xff7700,
-            0x0000ff,
+            0x000000ff,
+            0xff0077ff,
+            0x00ffffff,
+            0x00ff00ff,
+            0x7700ffff,
+            0x0077ffff,
+            0x77ff00ff,
+            0xff00ffff,
+            0xff0000ff,
+            0x00ff77ff,
+            0xffff00ff,
+            0xff7700ff,
+            0x0000ffff,
         };
 
-        for (palette) |raw_color, i| {
-            const expected = color.IntegerColor8.fromHtmlHex(raw_color);
-
-            try helpers.expectEq(pixels.indexed4.palette[i].toIntegerColor8(), expected);
+        for (palette) |expected, i| {
+            try helpers.expectEq(pixels.indexed4.palette[i].toU32Rgba(), expected);
         }
 
         try helpers.expectEq(pixels.indexed4.indices.len, total_size);
@@ -2707,25 +2675,23 @@ test "Read s40i3p04 data properly" {
         try helpers.expectEq(pixels.indexed4.palette.len, 16);
 
         const palette = [_]u32{
-            0x000000,
-            0xff0077,
-            0x00ffff,
-            0x00ff00,
-            0x7700ff,
-            0x0077ff,
-            0x77ff00,
-            0xff00ff,
-            0xff0000,
-            0x00ff77,
-            0xffff00,
-            0xff7700,
-            0x0000ff,
+            0x000000ff,
+            0xff0077ff,
+            0x00ffffff,
+            0x00ff00ff,
+            0x7700ffff,
+            0x0077ffff,
+            0x77ff00ff,
+            0xff00ffff,
+            0xff0000ff,
+            0x00ff77ff,
+            0xffff00ff,
+            0xff7700ff,
+            0x0000ffff,
         };
 
-        for (palette) |raw_color, i| {
-            const expected = color.IntegerColor8.fromHtmlHex(raw_color);
-
-            try helpers.expectEq(pixels.indexed4.palette[i].toIntegerColor8(), expected);
+        for (palette) |expected, i| {
+            try helpers.expectEq(pixels.indexed4.palette[i].toU32Rgba(), expected);
         }
 
         try helpers.expectEq(pixels.indexed4.indices.len, total_size);
@@ -2813,25 +2779,23 @@ test "Read s40n3p04 data properly" {
         try helpers.expectEq(pixels.indexed4.palette.len, 16);
 
         const palette = [_]u32{
-            0x000000,
-            0xff0077,
-            0x00ffff,
-            0x00ff00,
-            0x7700ff,
-            0x0077ff,
-            0x77ff00,
-            0xff00ff,
-            0xff0000,
-            0x00ff77,
-            0xffff00,
-            0xff7700,
-            0x0000ff,
+            0x000000ff,
+            0xff0077ff,
+            0x00ffffff,
+            0x00ff00ff,
+            0x7700ffff,
+            0x0077ffff,
+            0x77ff00ff,
+            0xff00ffff,
+            0xff0000ff,
+            0x00ff77ff,
+            0xffff00ff,
+            0xff7700ff,
+            0x0000ffff,
         };
 
-        for (palette) |raw_color, i| {
-            const expected = color.IntegerColor8.fromHtmlHex(raw_color);
-
-            try helpers.expectEq(pixels.indexed4.palette[i].toIntegerColor8(), expected);
+        for (palette) |expected, i| {
+            try helpers.expectEq(pixels.indexed4.palette[i].toU32Rgba(), expected);
         }
 
         try helpers.expectEq(pixels.indexed4.indices.len, total_size);

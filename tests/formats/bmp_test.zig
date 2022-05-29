@@ -65,34 +65,34 @@ fn verifyBitmapRGBAV5(the_bitmap: bmp.Bitmap, pixels_opt: ?color.PixelStorage) !
         try helpers.expectEq(pixels.len(), 240 * 160);
 
         const first_pixel = pixels.bgra32[0];
-        try helpers.expectEq(first_pixel.R, 0xFF);
-        try helpers.expectEq(first_pixel.G, 0xFF);
-        try helpers.expectEq(first_pixel.B, 0xFF);
-        try helpers.expectEq(first_pixel.A, 0xFF);
+        try helpers.expectEq(first_pixel.r, 0xFF);
+        try helpers.expectEq(first_pixel.g, 0xFF);
+        try helpers.expectEq(first_pixel.b, 0xFF);
+        try helpers.expectEq(first_pixel.a, 0xFF);
 
         const second_pixel = pixels.bgra32[1];
-        try helpers.expectEq(second_pixel.R, 0xFF);
-        try helpers.expectEq(second_pixel.G, 0x00);
-        try helpers.expectEq(second_pixel.B, 0x00);
-        try helpers.expectEq(second_pixel.A, 0xFF);
+        try helpers.expectEq(second_pixel.r, 0xFF);
+        try helpers.expectEq(second_pixel.g, 0x00);
+        try helpers.expectEq(second_pixel.b, 0x00);
+        try helpers.expectEq(second_pixel.a, 0xFF);
 
         const third_pixel = pixels.bgra32[2];
-        try helpers.expectEq(third_pixel.R, 0x00);
-        try helpers.expectEq(third_pixel.G, 0xFF);
-        try helpers.expectEq(third_pixel.B, 0x00);
-        try helpers.expectEq(third_pixel.A, 0xFF);
+        try helpers.expectEq(third_pixel.r, 0x00);
+        try helpers.expectEq(third_pixel.g, 0xFF);
+        try helpers.expectEq(third_pixel.b, 0x00);
+        try helpers.expectEq(third_pixel.a, 0xFF);
 
         const fourth_pixel = pixels.bgra32[3];
-        try helpers.expectEq(fourth_pixel.R, 0x00);
-        try helpers.expectEq(fourth_pixel.G, 0x00);
-        try helpers.expectEq(fourth_pixel.B, 0xFF);
-        try helpers.expectEq(fourth_pixel.A, 0xFF);
+        try helpers.expectEq(fourth_pixel.r, 0x00);
+        try helpers.expectEq(fourth_pixel.g, 0x00);
+        try helpers.expectEq(fourth_pixel.b, 0xFF);
+        try helpers.expectEq(fourth_pixel.a, 0xFF);
 
         const colored_pixel = pixels.bgra32[(22 * 240) + 16];
-        try helpers.expectEq(colored_pixel.R, 195);
-        try helpers.expectEq(colored_pixel.G, 195);
-        try helpers.expectEq(colored_pixel.B, 255);
-        try helpers.expectEq(colored_pixel.A, 255);
+        try helpers.expectEq(colored_pixel.r, 195);
+        try helpers.expectEq(colored_pixel.g, 195);
+        try helpers.expectEq(colored_pixel.b, 255);
+        try helpers.expectEq(colored_pixel.a, 255);
     }
 }
 
@@ -122,44 +122,44 @@ test "Read simple version 4 24-bit RGB bitmap" {
         try testing.expect(pixels == .bgr24);
 
         const red = pixels.bgr24[0];
-        try helpers.expectEq(red.R, 0xFF);
-        try helpers.expectEq(red.G, 0x00);
-        try helpers.expectEq(red.B, 0x00);
+        try helpers.expectEq(red.r, 0xFF);
+        try helpers.expectEq(red.g, 0x00);
+        try helpers.expectEq(red.b, 0x00);
 
         const green = pixels.bgr24[1];
-        try helpers.expectEq(green.R, 0x00);
-        try helpers.expectEq(green.G, 0xFF);
-        try helpers.expectEq(green.B, 0x00);
+        try helpers.expectEq(green.r, 0x00);
+        try helpers.expectEq(green.g, 0xFF);
+        try helpers.expectEq(green.b, 0x00);
 
         const blue = pixels.bgr24[2];
-        try helpers.expectEq(blue.R, 0x00);
-        try helpers.expectEq(blue.G, 0x00);
-        try helpers.expectEq(blue.B, 0xFF);
+        try helpers.expectEq(blue.r, 0x00);
+        try helpers.expectEq(blue.g, 0x00);
+        try helpers.expectEq(blue.b, 0xFF);
 
         const cyan = pixels.bgr24[3];
-        try helpers.expectEq(cyan.R, 0x00);
-        try helpers.expectEq(cyan.G, 0xFF);
-        try helpers.expectEq(cyan.B, 0xFF);
+        try helpers.expectEq(cyan.r, 0x00);
+        try helpers.expectEq(cyan.g, 0xFF);
+        try helpers.expectEq(cyan.b, 0xFF);
 
         const magenta = pixels.bgr24[4];
-        try helpers.expectEq(magenta.R, 0xFF);
-        try helpers.expectEq(magenta.G, 0x00);
-        try helpers.expectEq(magenta.B, 0xFF);
+        try helpers.expectEq(magenta.r, 0xFF);
+        try helpers.expectEq(magenta.g, 0x00);
+        try helpers.expectEq(magenta.b, 0xFF);
 
         const yellow = pixels.bgr24[5];
-        try helpers.expectEq(yellow.R, 0xFF);
-        try helpers.expectEq(yellow.G, 0xFF);
-        try helpers.expectEq(yellow.B, 0x00);
+        try helpers.expectEq(yellow.r, 0xFF);
+        try helpers.expectEq(yellow.g, 0xFF);
+        try helpers.expectEq(yellow.b, 0x00);
 
         const black = pixels.bgr24[6];
-        try helpers.expectEq(black.R, 0x00);
-        try helpers.expectEq(black.G, 0x00);
-        try helpers.expectEq(black.B, 0x00);
+        try helpers.expectEq(black.r, 0x00);
+        try helpers.expectEq(black.g, 0x00);
+        try helpers.expectEq(black.b, 0x00);
 
         const white = pixels.bgr24[7];
-        try helpers.expectEq(white.R, 0xFF);
-        try helpers.expectEq(white.G, 0xFF);
-        try helpers.expectEq(white.B, 0xFF);
+        try helpers.expectEq(white.r, 0xFF);
+        try helpers.expectEq(white.g, 0xFF);
+        try helpers.expectEq(white.b, 0xFF);
     }
 }
 

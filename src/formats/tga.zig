@@ -440,10 +440,10 @@ pub const TGA = struct {
         while (data_index < data_end) : (data_index += 1) {
             const raw_color = try stream.readIntLittle(u16);
 
-            data.palette[data_index].R = color.toColorFloat(@intCast(u5, (raw_color >> (5 * 2)) & 0x1F));
-            data.palette[data_index].G = color.toColorFloat(@intCast(u5, (raw_color >> 5) & 0x1F));
-            data.palette[data_index].B = color.toColorFloat(@intCast(u5, raw_color & 0x1F));
-            data.palette[data_index].A = 1.0;
+            data.palette[data_index].r = color.toF32Color(@intCast(u5, (raw_color >> (5 * 2)) & 0x1F));
+            data.palette[data_index].g = color.toF32Color(@intCast(u5, (raw_color >> 5) & 0x1F));
+            data.palette[data_index].b = color.toF32Color(@intCast(u5, raw_color & 0x1F));
+            data.palette[data_index].a = 1.0;
         }
     }
 
@@ -454,9 +454,9 @@ pub const TGA = struct {
         while (data_index < data_end) : (data_index += 1) {
             const raw_color = try stream.readIntLittle(u16);
 
-            data[data_index].R = @intCast(u5, (raw_color >> (5 * 2)) & 0x1F);
-            data[data_index].G = @intCast(u5, (raw_color >> 5) & 0x1F);
-            data[data_index].B = @intCast(u5, raw_color & 0x1F);
+            data[data_index].r = @intCast(u5, (raw_color >> (5 * 2)) & 0x1F);
+            data[data_index].g = @intCast(u5, (raw_color >> 5) & 0x1F);
+            data[data_index].b = @intCast(u5, raw_color & 0x1F);
         }
     }
 
@@ -465,9 +465,9 @@ pub const TGA = struct {
         const data_end: usize = self.width() * self.height();
 
         while (data_index < data_end) : (data_index += 1) {
-            data[data_index].B = try stream.readByte();
-            data[data_index].G = try stream.readByte();
-            data[data_index].R = try stream.readByte();
+            data[data_index].b = try stream.readByte();
+            data[data_index].g = try stream.readByte();
+            data[data_index].r = try stream.readByte();
         }
     }
 
@@ -476,14 +476,14 @@ pub const TGA = struct {
         const data_end: usize = self.width() * self.height();
 
         while (data_index < data_end) : (data_index += 1) {
-            data[data_index].B = try stream.readByte();
-            data[data_index].G = try stream.readByte();
-            data[data_index].R = try stream.readByte();
-            data[data_index].A = try stream.readByte();
+            data[data_index].b = try stream.readByte();
+            data[data_index].g = try stream.readByte();
+            data[data_index].r = try stream.readByte();
+            data[data_index].a = try stream.readByte();
 
             if (self.extension) |extended_info| {
                 if (extended_info.attributes != TGAAttributeType.useful_alpha_channel) {
-                    data[data_index].A = 0xFF;
+                    data[data_index].a = 0xFF;
                 }
             }
         }

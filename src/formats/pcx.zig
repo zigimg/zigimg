@@ -240,13 +240,13 @@ pub const PCX = struct {
                             const current_color = offset / (actual_width);
                             switch (current_color) {
                                 0 => {
-                                    storage[y_stride + pixel_x].R = byte;
+                                    storage[y_stride + pixel_x].r = byte;
                                 },
                                 1 => {
-                                    storage[y_stride + pixel_x].G = byte;
+                                    storage[y_stride + pixel_x].g = byte;
                                 },
                                 2 => {
-                                    storage[y_stride + pixel_x].B = byte;
+                                    storage[y_stride + pixel_x].b = byte;
                                 },
                                 else => {},
                             }
@@ -277,10 +277,10 @@ pub const PCX = struct {
 
                 var i: usize = 0;
                 while (i < std.math.min(pal.len, self.header.builtin_palette.len / 3)) : (i += 1) {
-                    pal[i].R = color.toColorFloat(self.header.builtin_palette[3 * i + 0]);
-                    pal[i].G = color.toColorFloat(self.header.builtin_palette[3 * i + 1]);
-                    pal[i].B = color.toColorFloat(self.header.builtin_palette[3 * i + 2]);
-                    pal[i].A = 1.0;
+                    pal[i].r = color.toF32Color(self.header.builtin_palette[3 * i + 0]);
+                    pal[i].g = color.toF32Color(self.header.builtin_palette[3 * i + 1]);
+                    pal[i].b = color.toF32Color(self.header.builtin_palette[3 * i + 2]);
+                    pal[i].a = 1.0;
                 }
 
                 if (pixels == .indexed8) {
@@ -291,10 +291,10 @@ pub const PCX = struct {
                         return error.MissingPalette;
 
                     for (pal) |*c| {
-                        c.R = color.toColorFloat(try reader.readByte());
-                        c.G = color.toColorFloat(try reader.readByte());
-                        c.B = color.toColorFloat(try reader.readByte());
-                        c.A = 1.0;
+                        c.r = color.toF32Color(try reader.readByte());
+                        c.g = color.toF32Color(try reader.readByte());
+                        c.b = color.toF32Color(try reader.readByte());
+                        c.a = 1.0;
                     }
                 }
             }

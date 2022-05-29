@@ -1,6 +1,6 @@
 const AllImageFormats = @import("formats/all.zig");
 const Allocator = std.mem.Allocator;
-const Color = color.Color;
+const Colorf32 = color.Colorf32;
 const PixelStorage = color.PixelStorage;
 const FormatInterface = @import("format_interface.zig").FormatInterface;
 const PixelFormat = @import("pixel_format.zig").PixelFormat;

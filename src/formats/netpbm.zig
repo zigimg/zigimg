@@ -210,9 +210,9 @@ fn loadBinaryRgbmap(header: Header, data: []color.Rgb24, stream: ImageReader) !v
 
     while (data_index < data_end) : (data_index += 1) {
         data[data_index] = color.Rgb24{
-            .R = try readLinearizedValue(stream, header.max_value),
-            .G = try readLinearizedValue(stream, header.max_value),
-            .B = try readLinearizedValue(stream, header.max_value),
+            .r = try readLinearizedValue(stream, header.max_value),
+            .g = try readLinearizedValue(stream, header.max_value),
+            .b = try readLinearizedValue(stream, header.max_value),
         };
     }
 }
@@ -229,9 +229,9 @@ fn loadAsciiRgbmap(header: Header, data: []color.Rgb24, stream: ImageReader) !vo
         var b = try parseNumber(stream, read_buffer[0..]);
 
         data[data_index] = color.Rgb24{
-            .R = @truncate(u8, 255 * r / header.max_value),
-            .G = @truncate(u8, 255 * g / header.max_value),
-            .B = @truncate(u8, 255 * b / header.max_value),
+            .r = @truncate(u8, 255 * r / header.max_value),
+            .g = @truncate(u8, 255 * g / header.max_value),
+            .b = @truncate(u8, 255 * b / header.max_value),
         };
     }
 }
@@ -419,9 +419,9 @@ fn Netpbm(comptime image_format: ImageFormat, comptime header_numbers: []const u
                         switch (pixels) {
                             .rgb24 => {
                                 for (pixels.rgb24) |entry| {
-                                    try write_stream.writeByte(entry.R);
-                                    try write_stream.writeByte(entry.G);
-                                    try write_stream.writeByte(entry.B);
+                                    try write_stream.writeByte(entry.r);
+                                    try write_stream.writeByte(entry.g);
+                                    try write_stream.writeByte(entry.b);
                                 }
                             },
                             else => {
@@ -478,7 +478,7 @@ fn Netpbm(comptime image_format: ImageFormat, comptime header_numbers: []const u
                         switch (pixels) {
                             .rgb24 => {
                                 for (pixels.rgb24) |entry| {
-                                    try write_stream.print("{} {} {}\n", .{ entry.R, entry.G, entry.B });
+                                    try write_stream.print("{} {} {}\n", .{ entry.r, entry.g, entry.b });
                                 }
                             },
                             else => {

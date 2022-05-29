@@ -228,25 +228,25 @@ test "Load ASCII PPM image" {
     if (pixelsOpt) |pixels| {
         try testing.expect(pixels == .rgb24);
 
-        try helpers.expectEq(pixels.rgb24[0].R, 0x34);
-        try helpers.expectEq(pixels.rgb24[0].G, 0x53);
-        try helpers.expectEq(pixels.rgb24[0].B, 0x9f);
+        try helpers.expectEq(pixels.rgb24[0].r, 0x34);
+        try helpers.expectEq(pixels.rgb24[0].g, 0x53);
+        try helpers.expectEq(pixels.rgb24[0].b, 0x9f);
 
-        try helpers.expectEq(pixels.rgb24[1].R, 0x32);
-        try helpers.expectEq(pixels.rgb24[1].G, 0x5b);
-        try helpers.expectEq(pixels.rgb24[1].B, 0x96);
+        try helpers.expectEq(pixels.rgb24[1].r, 0x32);
+        try helpers.expectEq(pixels.rgb24[1].g, 0x5b);
+        try helpers.expectEq(pixels.rgb24[1].b, 0x96);
 
-        try helpers.expectEq(pixels.rgb24[26].R, 0xa8);
-        try helpers.expectEq(pixels.rgb24[26].G, 0x5a);
-        try helpers.expectEq(pixels.rgb24[26].B, 0x78);
+        try helpers.expectEq(pixels.rgb24[26].r, 0xa8);
+        try helpers.expectEq(pixels.rgb24[26].g, 0x5a);
+        try helpers.expectEq(pixels.rgb24[26].b, 0x78);
 
-        try helpers.expectEq(pixels.rgb24[27].R, 0x2e);
-        try helpers.expectEq(pixels.rgb24[27].G, 0x54);
-        try helpers.expectEq(pixels.rgb24[27].B, 0x99);
+        try helpers.expectEq(pixels.rgb24[27].r, 0x2e);
+        try helpers.expectEq(pixels.rgb24[27].g, 0x54);
+        try helpers.expectEq(pixels.rgb24[27].b, 0x99);
 
-        try helpers.expectEq(pixels.rgb24[26 * 27 + 26].R, 0x88);
-        try helpers.expectEq(pixels.rgb24[26 * 27 + 26].G, 0xb7);
-        try helpers.expectEq(pixels.rgb24[26 * 27 + 26].B, 0x55);
+        try helpers.expectEq(pixels.rgb24[26 * 27 + 26].r, 0x88);
+        try helpers.expectEq(pixels.rgb24[26 * 27 + 26].g, 0xb7);
+        try helpers.expectEq(pixels.rgb24[26 * 27 + 26].b, 0x55);
     }
 }
 
@@ -276,25 +276,25 @@ test "Load binary PPM image" {
     if (pixelsOpt) |pixels| {
         try testing.expect(pixels == .rgb24);
 
-        try helpers.expectEq(pixels.rgb24[0].R, 0x34);
-        try helpers.expectEq(pixels.rgb24[0].G, 0x53);
-        try helpers.expectEq(pixels.rgb24[0].B, 0x9f);
+        try helpers.expectEq(pixels.rgb24[0].r, 0x34);
+        try helpers.expectEq(pixels.rgb24[0].g, 0x53);
+        try helpers.expectEq(pixels.rgb24[0].b, 0x9f);
 
-        try helpers.expectEq(pixels.rgb24[1].R, 0x32);
-        try helpers.expectEq(pixels.rgb24[1].G, 0x5b);
-        try helpers.expectEq(pixels.rgb24[1].B, 0x96);
+        try helpers.expectEq(pixels.rgb24[1].r, 0x32);
+        try helpers.expectEq(pixels.rgb24[1].g, 0x5b);
+        try helpers.expectEq(pixels.rgb24[1].b, 0x96);
 
-        try helpers.expectEq(pixels.rgb24[26].R, 0xa8);
-        try helpers.expectEq(pixels.rgb24[26].G, 0x5a);
-        try helpers.expectEq(pixels.rgb24[26].B, 0x78);
+        try helpers.expectEq(pixels.rgb24[26].r, 0xa8);
+        try helpers.expectEq(pixels.rgb24[26].g, 0x5a);
+        try helpers.expectEq(pixels.rgb24[26].b, 0x78);
 
-        try helpers.expectEq(pixels.rgb24[27].R, 0x2e);
-        try helpers.expectEq(pixels.rgb24[27].G, 0x54);
-        try helpers.expectEq(pixels.rgb24[27].B, 0x99);
+        try helpers.expectEq(pixels.rgb24[27].r, 0x2e);
+        try helpers.expectEq(pixels.rgb24[27].g, 0x54);
+        try helpers.expectEq(pixels.rgb24[27].b, 0x99);
 
-        try helpers.expectEq(pixels.rgb24[26 * 27 + 26].R, 0x88);
-        try helpers.expectEq(pixels.rgb24[26 * 27 + 26].G, 0xb7);
-        try helpers.expectEq(pixels.rgb24[26 * 27 + 26].B, 0x55);
+        try helpers.expectEq(pixels.rgb24[26 * 27 + 26].r, 0x88);
+        try helpers.expectEq(pixels.rgb24[26 * 27 + 26].g, 0xb7);
+        try helpers.expectEq(pixels.rgb24[26 * 27 + 26].b, 0x55);
     }
 }
 
@@ -496,18 +496,18 @@ test "Writing Rgb24 ASCII PPM format" {
         try testing.expect(pixels.rgb24.len == width * height);
 
         // R, G, B
-        pixels.rgb24[0] = color.Rgb24.initRGB(255, 0, 0);
-        pixels.rgb24[1] = color.Rgb24.initRGB(0, 255, 0);
-        pixels.rgb24[2] = color.Rgb24.initRGB(0, 0, 255);
+        pixels.rgb24[0] = color.Rgb24.initRgb(255, 0, 0);
+        pixels.rgb24[1] = color.Rgb24.initRgb(0, 255, 0);
+        pixels.rgb24[2] = color.Rgb24.initRgb(0, 0, 255);
 
         // Black, white
-        pixels.rgb24[3] = color.Rgb24.initRGB(0, 0, 0);
-        pixels.rgb24[4] = color.Rgb24.initRGB(255, 255, 255);
+        pixels.rgb24[3] = color.Rgb24.initRgb(0, 0, 0);
+        pixels.rgb24[4] = color.Rgb24.initRgb(255, 255, 255);
 
         // Cyan, Magenta, Yellow
-        pixels.rgb24[5] = color.Rgb24.initRGB(0, 255, 255);
-        pixels.rgb24[6] = color.Rgb24.initRGB(255, 0, 255);
-        pixels.rgb24[7] = color.Rgb24.initRGB(255, 255, 0);
+        pixels.rgb24[5] = color.Rgb24.initRgb(0, 255, 255);
+        pixels.rgb24[6] = color.Rgb24.initRgb(255, 0, 255);
+        pixels.rgb24[7] = color.Rgb24.initRgb(255, 255, 0);
     }
 
     try source_image.writeToFilePath(image_file_name, image.ImageFormat.ppm, image.ImageEncoderOptions{
@@ -530,7 +530,7 @@ test "Writing Rgb24 ASCII PPM format" {
         try testing.expect(read_image_pixels == .rgb24);
 
         for (expected_colors) |hex_color, index| {
-            try helpers.expectEq(read_image_pixels.rgb24[index].toColor().toIntegerColor8(), color.IntegerColor8.fromHtmlHex(hex_color));
+            try helpers.expectEq(read_image_pixels.rgb24[index].toU32Rgb(), hex_color);
         }
     }
 }
@@ -552,18 +552,18 @@ test "Writing Rgb24 binary PPM format" {
         try testing.expect(pixels.rgb24.len == width * height);
 
         // R, G, B
-        pixels.rgb24[0] = color.Rgb24.initRGB(255, 0, 0);
-        pixels.rgb24[1] = color.Rgb24.initRGB(0, 255, 0);
-        pixels.rgb24[2] = color.Rgb24.initRGB(0, 0, 255);
+        pixels.rgb24[0] = color.Rgb24.initRgb(255, 0, 0);
+        pixels.rgb24[1] = color.Rgb24.initRgb(0, 255, 0);
+        pixels.rgb24[2] = color.Rgb24.initRgb(0, 0, 255);
 
         // Black, white
-        pixels.rgb24[3] = color.Rgb24.initRGB(0, 0, 0);
-        pixels.rgb24[4] = color.Rgb24.initRGB(255, 255, 255);
+        pixels.rgb24[3] = color.Rgb24.initRgb(0, 0, 0);
+        pixels.rgb24[4] = color.Rgb24.initRgb(255, 255, 255);
 
         // Cyan, Magenta, Yellow
-        pixels.rgb24[5] = color.Rgb24.initRGB(0, 255, 255);
-        pixels.rgb24[6] = color.Rgb24.initRGB(255, 0, 255);
-        pixels.rgb24[7] = color.Rgb24.initRGB(255, 255, 0);
+        pixels.rgb24[5] = color.Rgb24.initRgb(0, 255, 255);
+        pixels.rgb24[6] = color.Rgb24.initRgb(255, 0, 255);
+        pixels.rgb24[7] = color.Rgb24.initRgb(255, 255, 0);
     }
 
     try source_image.writeToFilePath(image_file_name, image.ImageFormat.ppm, image.ImageEncoderOptions{
@@ -586,7 +586,7 @@ test "Writing Rgb24 binary PPM format" {
         try testing.expect(read_image_pixels == .rgb24);
 
         for (expected_colors) |hex_color, index| {
-            try helpers.expectEq(read_image_pixels.rgb24[index].toColor().toIntegerColor8(), color.IntegerColor8.fromHtmlHex(hex_color));
+            try helpers.expectEq(read_image_pixels.rgb24[index].toU32Rgb(), hex_color);
         }
     }
 }

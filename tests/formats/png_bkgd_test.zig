@@ -203,25 +203,25 @@ test "Read bgan6a08 properly" {
     if (pixelsOpt) |pixels| {
         try testing.expect(pixels == .rgba32);
 
-        try helpers.expectEq(pixels.rgba32[0].R, 255);
-        try helpers.expectEq(pixels.rgba32[0].G, 0);
-        try helpers.expectEq(pixels.rgba32[0].B, 8);
-        try helpers.expectEq(pixels.rgba32[0].A, 0);
+        try helpers.expectEq(pixels.rgba32[0].r, 255);
+        try helpers.expectEq(pixels.rgba32[0].g, 0);
+        try helpers.expectEq(pixels.rgba32[0].b, 8);
+        try helpers.expectEq(pixels.rgba32[0].a, 0);
 
-        try helpers.expectEq(pixels.rgba32[31].R, 255);
-        try helpers.expectEq(pixels.rgba32[31].G, 0);
-        try helpers.expectEq(pixels.rgba32[31].B, 8);
-        try helpers.expectEq(pixels.rgba32[31].A, 255);
+        try helpers.expectEq(pixels.rgba32[31].r, 255);
+        try helpers.expectEq(pixels.rgba32[31].g, 0);
+        try helpers.expectEq(pixels.rgba32[31].b, 8);
+        try helpers.expectEq(pixels.rgba32[31].a, 255);
 
-        try helpers.expectEq(pixels.rgba32[15 * 32 + 15].R, 32);
-        try helpers.expectEq(pixels.rgba32[15 * 32 + 15].G, 255);
-        try helpers.expectEq(pixels.rgba32[15 * 32 + 15].B, 4);
-        try helpers.expectEq(pixels.rgba32[15 * 32 + 15].A, 123);
+        try helpers.expectEq(pixels.rgba32[15 * 32 + 15].r, 32);
+        try helpers.expectEq(pixels.rgba32[15 * 32 + 15].g, 255);
+        try helpers.expectEq(pixels.rgba32[15 * 32 + 15].b, 4);
+        try helpers.expectEq(pixels.rgba32[15 * 32 + 15].a, 123);
 
-        try helpers.expectEq(pixels.rgba32[31 * 32 + 31].R, 0);
-        try helpers.expectEq(pixels.rgba32[31 * 32 + 31].G, 32);
-        try helpers.expectEq(pixels.rgba32[31 * 32 + 31].B, 255);
-        try helpers.expectEq(pixels.rgba32[31 * 32 + 31].A, 255);
+        try helpers.expectEq(pixels.rgba32[31 * 32 + 31].r, 0);
+        try helpers.expectEq(pixels.rgba32[31 * 32 + 31].g, 32);
+        try helpers.expectEq(pixels.rgba32[31 * 32 + 31].b, 255);
+        try helpers.expectEq(pixels.rgba32[31 * 32 + 31].a, 255);
     }
 }
 
@@ -258,25 +258,25 @@ test "Read bgwn6a08 properly" {
     if (pixelsOpt) |pixels| {
         try testing.expect(pixels == .rgba32);
 
-        try helpers.expectEq(pixels.rgba32[0].R, 255);
-        try helpers.expectEq(pixels.rgba32[0].G, 0);
-        try helpers.expectEq(pixels.rgba32[0].B, 8);
-        try helpers.expectEq(pixels.rgba32[0].A, 0);
+        try helpers.expectEq(pixels.rgba32[0].r, 255);
+        try helpers.expectEq(pixels.rgba32[0].g, 0);
+        try helpers.expectEq(pixels.rgba32[0].b, 8);
+        try helpers.expectEq(pixels.rgba32[0].a, 0);
 
-        try helpers.expectEq(pixels.rgba32[31].R, 255);
-        try helpers.expectEq(pixels.rgba32[31].G, 0);
-        try helpers.expectEq(pixels.rgba32[31].B, 8);
-        try helpers.expectEq(pixels.rgba32[31].A, 255);
+        try helpers.expectEq(pixels.rgba32[31].r, 255);
+        try helpers.expectEq(pixels.rgba32[31].g, 0);
+        try helpers.expectEq(pixels.rgba32[31].b, 8);
+        try helpers.expectEq(pixels.rgba32[31].a, 255);
 
-        try helpers.expectEq(pixels.rgba32[15 * 32 + 15].R, 32);
-        try helpers.expectEq(pixels.rgba32[15 * 32 + 15].G, 255);
-        try helpers.expectEq(pixels.rgba32[15 * 32 + 15].B, 4);
-        try helpers.expectEq(pixels.rgba32[15 * 32 + 15].A, 123);
+        try helpers.expectEq(pixels.rgba32[15 * 32 + 15].r, 32);
+        try helpers.expectEq(pixels.rgba32[15 * 32 + 15].g, 255);
+        try helpers.expectEq(pixels.rgba32[15 * 32 + 15].b, 4);
+        try helpers.expectEq(pixels.rgba32[15 * 32 + 15].a, 123);
 
-        try helpers.expectEq(pixels.rgba32[31 * 32 + 31].R, 0);
-        try helpers.expectEq(pixels.rgba32[31 * 32 + 31].G, 32);
-        try helpers.expectEq(pixels.rgba32[31 * 32 + 31].B, 255);
-        try helpers.expectEq(pixels.rgba32[31 * 32 + 31].A, 255);
+        try helpers.expectEq(pixels.rgba32[31 * 32 + 31].r, 0);
+        try helpers.expectEq(pixels.rgba32[31 * 32 + 31].g, 32);
+        try helpers.expectEq(pixels.rgba32[31 * 32 + 31].b, 255);
+        try helpers.expectEq(pixels.rgba32[31 * 32 + 31].a, 255);
     }
 }
 
@@ -305,25 +305,25 @@ test "Read bgan6a16 properly" {
     if (pixelsOpt) |pixels| {
         try testing.expect(pixels == .rgba64);
 
-        try helpers.expectEq(pixels.rgba64[0].R, 65535);
-        try helpers.expectEq(pixels.rgba64[0].G, 65535);
-        try helpers.expectEq(pixels.rgba64[0].B, 0);
-        try helpers.expectEq(pixels.rgba64[0].A, 0);
+        try helpers.expectEq(pixels.rgba64[0].r, 65535);
+        try helpers.expectEq(pixels.rgba64[0].g, 65535);
+        try helpers.expectEq(pixels.rgba64[0].b, 0);
+        try helpers.expectEq(pixels.rgba64[0].a, 0);
 
-        try helpers.expectEq(pixels.rgba64[31].R, 0);
-        try helpers.expectEq(pixels.rgba64[31].G, 65535);
-        try helpers.expectEq(pixels.rgba64[31].B, 0);
-        try helpers.expectEq(pixels.rgba64[31].A, 0);
+        try helpers.expectEq(pixels.rgba64[31].r, 0);
+        try helpers.expectEq(pixels.rgba64[31].g, 65535);
+        try helpers.expectEq(pixels.rgba64[31].b, 0);
+        try helpers.expectEq(pixels.rgba64[31].a, 0);
 
-        try helpers.expectEq(pixels.rgba64[15 * 32 + 15].R, 65535);
-        try helpers.expectEq(pixels.rgba64[15 * 32 + 15].G, 65535);
-        try helpers.expectEq(pixels.rgba64[15 * 32 + 15].B, 0);
-        try helpers.expectEq(pixels.rgba64[15 * 32 + 15].A, 63421);
+        try helpers.expectEq(pixels.rgba64[15 * 32 + 15].r, 65535);
+        try helpers.expectEq(pixels.rgba64[15 * 32 + 15].g, 65535);
+        try helpers.expectEq(pixels.rgba64[15 * 32 + 15].b, 0);
+        try helpers.expectEq(pixels.rgba64[15 * 32 + 15].a, 63421);
 
-        try helpers.expectEq(pixels.rgba64[31 * 32 + 31].R, 0);
-        try helpers.expectEq(pixels.rgba64[31 * 32 + 31].G, 0);
-        try helpers.expectEq(pixels.rgba64[31 * 32 + 31].B, 65535);
-        try helpers.expectEq(pixels.rgba64[31 * 32 + 31].A, 0);
+        try helpers.expectEq(pixels.rgba64[31 * 32 + 31].r, 0);
+        try helpers.expectEq(pixels.rgba64[31 * 32 + 31].g, 0);
+        try helpers.expectEq(pixels.rgba64[31 * 32 + 31].b, 65535);
+        try helpers.expectEq(pixels.rgba64[31 * 32 + 31].a, 0);
     }
 }
 
@@ -360,24 +360,24 @@ test "Read bgyn6a16 properly" {
     if (pixelsOpt) |pixels| {
         try testing.expect(pixels == .rgba64);
 
-        try helpers.expectEq(pixels.rgba64[0].R, 65535);
-        try helpers.expectEq(pixels.rgba64[0].G, 65535);
-        try helpers.expectEq(pixels.rgba64[0].B, 0);
-        try helpers.expectEq(pixels.rgba64[0].A, 0);
+        try helpers.expectEq(pixels.rgba64[0].r, 65535);
+        try helpers.expectEq(pixels.rgba64[0].g, 65535);
+        try helpers.expectEq(pixels.rgba64[0].b, 0);
+        try helpers.expectEq(pixels.rgba64[0].a, 0);
 
-        try helpers.expectEq(pixels.rgba64[31].R, 0);
-        try helpers.expectEq(pixels.rgba64[31].G, 65535);
-        try helpers.expectEq(pixels.rgba64[31].B, 0);
-        try helpers.expectEq(pixels.rgba64[31].A, 0);
+        try helpers.expectEq(pixels.rgba64[31].r, 0);
+        try helpers.expectEq(pixels.rgba64[31].g, 65535);
+        try helpers.expectEq(pixels.rgba64[31].b, 0);
+        try helpers.expectEq(pixels.rgba64[31].a, 0);
 
-        try helpers.expectEq(pixels.rgba64[15 * 32 + 15].R, 65535);
-        try helpers.expectEq(pixels.rgba64[15 * 32 + 15].G, 65535);
-        try helpers.expectEq(pixels.rgba64[15 * 32 + 15].B, 0);
-        try helpers.expectEq(pixels.rgba64[15 * 32 + 15].A, 63421);
+        try helpers.expectEq(pixels.rgba64[15 * 32 + 15].r, 65535);
+        try helpers.expectEq(pixels.rgba64[15 * 32 + 15].g, 65535);
+        try helpers.expectEq(pixels.rgba64[15 * 32 + 15].b, 0);
+        try helpers.expectEq(pixels.rgba64[15 * 32 + 15].a, 63421);
 
-        try helpers.expectEq(pixels.rgba64[31 * 32 + 31].R, 0);
-        try helpers.expectEq(pixels.rgba64[31 * 32 + 31].G, 0);
-        try helpers.expectEq(pixels.rgba64[31 * 32 + 31].B, 65535);
-        try helpers.expectEq(pixels.rgba64[31 * 32 + 31].A, 0);
+        try helpers.expectEq(pixels.rgba64[31 * 32 + 31].r, 0);
+        try helpers.expectEq(pixels.rgba64[31 * 32 + 31].g, 0);
+        try helpers.expectEq(pixels.rgba64[31 * 32 + 31].b, 65535);
+        try helpers.expectEq(pixels.rgba64[31 * 32 + 31].a, 0);
     }
 }
