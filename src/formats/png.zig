@@ -77,7 +77,7 @@ pub const IHDR = packed struct {
 };
 
 pub const PLTE = struct {
-    palette: []color.Colorf32,
+    palette: []color.Rgba32,
 
     pub const ChunkType = "PLTE";
     pub const ChunkID = utils.toMagicNumberBig(ChunkType);
@@ -95,15 +95,15 @@ pub const PLTE = struct {
             return errors.PngError.InvalidPalette;
         }
 
-        self.palette = try allocator.alloc(color.Colorf32, read_buffer.len / 3);
+        self.palette = try allocator.alloc(color.Rgba32, read_buffer.len / 3);
 
         var palette_index: usize = 0;
         var buffer_index: usize = 0;
         while (buffer_index < read_buffer.len) {
-            self.palette[palette_index].r = color.toF32Color(read_buffer[buffer_index]);
-            self.palette[palette_index].g = color.toF32Color(read_buffer[buffer_index + 1]);
-            self.palette[palette_index].b = color.toF32Color(read_buffer[buffer_index + 2]);
-            self.palette[palette_index].a = 1.0;
+            self.palette[palette_index].r = read_buffer[buffer_index];
+            self.palette[palette_index].g = read_buffer[buffer_index + 1];
+            self.palette[palette_index].b = read_buffer[buffer_index + 2];
+            self.palette[palette_index].a = 255;
 
             palette_index += 1;
             buffer_index += 3;
@@ -615,16 +615,16 @@ pub const PNG = struct {
                 if (self.getPalette()) |palette_chunk| {
                     switch (pixels.*) {
                         .indexed1 => |instance| {
-                            std.mem.copy(color.Colorf32, instance.palette, palette_chunk.palette);
+                            std.mem.copy(color.Rgba32, instance.palette, palette_chunk.palette);
                         },
                         .indexed2 => |instance| {
-                            std.mem.copy(color.Colorf32, instance.palette, palette_chunk.palette);
+                            std.mem.copy(color.Rgba32, instance.palette, palette_chunk.palette);
                         },
                         .indexed4 => |instance| {
-                            std.mem.copy(color.Colorf32, instance.palette, palette_chunk.palette);
+                            std.mem.copy(color.Rgba32, instance.palette, palette_chunk.palette);
                         },
                         .indexed8 => |instance| {
-                            std.mem.copy(color.Colorf32, instance.palette, palette_chunk.palette);
+                            std.mem.copy(color.Rgba32, instance.palette, palette_chunk.palette);
                         },
                         else => {
                             return error.NotIndexedPixelFormat;

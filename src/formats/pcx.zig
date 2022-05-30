@@ -277,9 +277,9 @@ pub const PCX = struct {
 
                 var i: usize = 0;
                 while (i < std.math.min(pal.len, self.header.builtin_palette.len / 3)) : (i += 1) {
-                    pal[i].r = color.toF32Color(self.header.builtin_palette[3 * i + 0]);
-                    pal[i].g = color.toF32Color(self.header.builtin_palette[3 * i + 1]);
-                    pal[i].b = color.toF32Color(self.header.builtin_palette[3 * i + 2]);
+                    pal[i].r = self.header.builtin_palette[3 * i + 0];
+                    pal[i].g = self.header.builtin_palette[3 * i + 1];
+                    pal[i].b = self.header.builtin_palette[3 * i + 2];
                     pal[i].a = 1.0;
                 }
 
@@ -291,9 +291,9 @@ pub const PCX = struct {
                         return error.MissingPalette;
 
                     for (pal) |*c| {
-                        c.r = color.toF32Color(try reader.readByte());
-                        c.g = color.toF32Color(try reader.readByte());
-                        c.b = color.toF32Color(try reader.readByte());
+                        c.r = try reader.readByte();
+                        c.g = try reader.readByte();
+                        c.b = try reader.readByte();
                         c.a = 1.0;
                     }
                 }

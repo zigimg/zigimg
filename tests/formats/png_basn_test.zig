@@ -279,8 +279,8 @@ test "Read basn3p01 data properly" {
     try testing.expect(palette_chunk_opt != null);
 
     if (palette_chunk_opt) |palette_chunk| {
-        const first_color = palette_chunk.palette[0].toRgba32();
-        const second_color = palette_chunk.palette[1].toRgba32();
+        const first_color = palette_chunk.palette[0];
+        const second_color = palette_chunk.palette[1];
 
         try helpers.expectEq(first_color.r, 0xee);
         try helpers.expectEq(first_color.g, 0xff);
@@ -295,8 +295,8 @@ test "Read basn3p01 data properly" {
         try testing.expect(pixels == .indexed1);
         try helpers.expectEq(pixels.indexed1.palette.len, 2);
 
-        const first_color = pixels.indexed1.palette[0].toRgba32();
-        const second_color = pixels.indexed1.palette[1].toRgba32();
+        const first_color = pixels.indexed1.palette[0];
+        const second_color = pixels.indexed1.palette[1];
 
         try helpers.expectEq(first_color.r, 0xee);
         try helpers.expectEq(first_color.g, 0xff);
@@ -349,10 +349,10 @@ test "Read basn3p02 data properly" {
         try testing.expect(pixels == .indexed2);
         try helpers.expectEq(pixels.indexed2.palette.len, 4);
 
-        const color0 = pixels.indexed2.palette[0].toRgba32();
-        const color1 = pixels.indexed2.palette[1].toRgba32();
-        const color2 = pixels.indexed2.palette[2].toRgba32();
-        const color3 = pixels.indexed2.palette[3].toRgba32();
+        const color0 = pixels.indexed2.palette[0];
+        const color1 = pixels.indexed2.palette[1];
+        const color2 = pixels.indexed2.palette[2];
+        const color3 = pixels.indexed2.palette[3];
 
         try helpers.expectEq(color0.r, 0x00);
         try helpers.expectEq(color0.g, 0xff);
@@ -410,21 +410,21 @@ test "Read basn3p04 data properly" {
     if (pixelsOpt) |pixels| {
         try testing.expect(pixels == .indexed4);
 
-        const color0 = pixels.indexed4.palette[0].toRgba32();
-        const color1 = pixels.indexed4.palette[1].toRgba32();
-        const color2 = pixels.indexed4.palette[2].toRgba32();
-        const color3 = pixels.indexed4.palette[3].toRgba32();
-        const color4 = pixels.indexed4.palette[4].toRgba32();
-        const color5 = pixels.indexed4.palette[5].toRgba32();
-        const color6 = pixels.indexed4.palette[6].toRgba32();
-        const color7 = pixels.indexed4.palette[7].toRgba32();
-        const color8 = pixels.indexed4.palette[8].toRgba32();
-        const color9 = pixels.indexed4.palette[9].toRgba32();
-        const color10 = pixels.indexed4.palette[10].toRgba32();
-        const color11 = pixels.indexed4.palette[11].toRgba32();
-        const color12 = pixels.indexed4.palette[12].toRgba32();
-        const color13 = pixels.indexed4.palette[13].toRgba32();
-        const color14 = pixels.indexed4.palette[14].toRgba32();
+        const color0 = pixels.indexed4.palette[0];
+        const color1 = pixels.indexed4.palette[1];
+        const color2 = pixels.indexed4.palette[2];
+        const color3 = pixels.indexed4.palette[3];
+        const color4 = pixels.indexed4.palette[4];
+        const color5 = pixels.indexed4.palette[5];
+        const color6 = pixels.indexed4.palette[6];
+        const color7 = pixels.indexed4.palette[7];
+        const color8 = pixels.indexed4.palette[8];
+        const color9 = pixels.indexed4.palette[9];
+        const color10 = pixels.indexed4.palette[10];
+        const color11 = pixels.indexed4.palette[11];
+        const color12 = pixels.indexed4.palette[12];
+        const color13 = pixels.indexed4.palette[13];
+        const color14 = pixels.indexed4.palette[14];
 
         try helpers.expectEq(color0.r, 0x22);
         try helpers.expectEq(color0.g, 0x00);
@@ -530,11 +530,11 @@ test "Read basn3p08 data properly" {
     if (pixelsOpt) |pixels| {
         try testing.expect(pixels == .indexed8);
 
-        const color0 = pixels.indexed8.palette[0].toRgba32();
-        const color64 = pixels.indexed8.palette[64].toRgba32();
-        const color128 = pixels.indexed8.palette[128].toRgba32();
-        const color192 = pixels.indexed8.palette[192].toRgba32();
-        const color255 = pixels.indexed8.palette[255].toRgba32();
+        const color0 = pixels.indexed8.palette[0];
+        const color64 = pixels.indexed8.palette[64];
+        const color128 = pixels.indexed8.palette[128];
+        const color192 = pixels.indexed8.palette[192];
+        const color255 = pixels.indexed8.palette[255];
 
         try helpers.expectEq(color0.r, 0x22);
         try helpers.expectEq(color0.g, 0x44);
