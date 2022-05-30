@@ -440,9 +440,9 @@ pub const TGA = struct {
         while (data_index < data_end) : (data_index += 1) {
             const raw_color = try stream.readIntLittle(u16);
 
-            data.palette[data_index].r = color.toF32Color(@intCast(u5, (raw_color >> (5 * 2)) & 0x1F));
-            data.palette[data_index].g = color.toF32Color(@intCast(u5, (raw_color >> 5) & 0x1F));
-            data.palette[data_index].b = color.toF32Color(@intCast(u5, raw_color & 0x1F));
+            data.palette[data_index].r = color.toF32Color(@truncate(u5, raw_color >> (5 * 2)));
+            data.palette[data_index].g = color.toF32Color(@truncate(u5, raw_color >> 5));
+            data.palette[data_index].b = color.toF32Color(@truncate(u5, raw_color));
             data.palette[data_index].a = 1.0;
         }
     }
@@ -454,9 +454,9 @@ pub const TGA = struct {
         while (data_index < data_end) : (data_index += 1) {
             const raw_color = try stream.readIntLittle(u16);
 
-            data[data_index].r = @intCast(u5, (raw_color >> (5 * 2)) & 0x1F);
-            data[data_index].g = @intCast(u5, (raw_color >> 5) & 0x1F);
-            data[data_index].b = @intCast(u5, raw_color & 0x1F);
+            data[data_index].r = @truncate(u5, raw_color >> (5 * 2));
+            data[data_index].g = @truncate(u5, raw_color >> 5);
+            data[data_index].b = @truncate(u5, raw_color);
         }
     }
 

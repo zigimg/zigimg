@@ -9,6 +9,24 @@ pub inline fn toIntColor(comptime T: type, value: f32) T {
     return @floatToInt(T, math.clamp(float_value, math.minInt(T), math.maxInt(T)));
 }
 
+pub inline fn scaleToIntColor(comptime T: type, value: anytype) T {
+    const ValueT = @TypeOf(value);
+    if (ValueT == comptime_int) return @as(T, value);
+    const ValueTypeInfo = @typeInfo(ValueT);
+    if (ValueTypeInfo != .Int or ValueTypeInfo.Int.signedness != .unsigned) {
+        @compileError("scaleToInColor only accepts unsigned integers as values. Got " ++ @typeName(ValueT) ++ ".");
+    }
+    const cur_value_bits = @bitSizeOf(ValueT);
+    const new_value_bits = @bitSizeOf(T);
+    if (cur_value_bits > new_value_bits) {
+        return @truncate(T, value >> (cur_value_bits - new_value_bits));
+    } else if (cur_value_bits < new_value_bits) {
+        const cur_value_max = math.maxInt(ValueT);
+        const new_value_max = math.maxInt(T);
+        return @truncate(T, (@as(u32, value) * new_value_max + cur_value_max / 2) / cur_value_max);
+    } else return @as(T, value);
+}
+
 pub inline fn toF32Color(value: anytype) f32 {
     return @intToFloat(f32, value) / @intToFloat(f32, math.maxInt(@TypeOf(value)));
 }
@@ -107,15 +125,12 @@ pub const Colorf32 = packed struct {
 
 fn RgbMethods(comptime Self: type) type {
     return struct {
-        const RedComponentType = std.meta.fieldInfo(Self, .r).field_type;
-        const GreenComponentType = std.meta.fieldInfo(Self, .g).field_type;
-        const BlueComponentType = std.meta.fieldInfo(Self, .b).field_type;
-        const r_bits = @typeInfo(RedComponentType).Int.bits;
-        const g_bits = @typeInfo(GreenComponentType).Int.bits;
-        const b_bits = @typeInfo(BlueComponentType).Int.bits;
-        const AT = RedComponentType; // We assume Alpha type is same as Red type
+        const RedT = std.meta.fieldInfo(Self, .r).field_type;
+        const GreenT = std.meta.fieldInfo(Self, .g).field_type;
+        const BlueT = std.meta.fieldInfo(Self, .b).field_type;
+        const AlphaT = RedT; // We assume Alpha type is same as Red type
 
-        pub fn initRgb(r: RedComponentType, g: GreenComponentType, b: BlueComponentType) Self {
+        pub fn initRgb(r: RedT, g: GreenT, b: BlueT) Self {
             return Self{
                 .r = r,
                 .g = g,
@@ -133,165 +148,65 @@ fn RgbMethods(comptime Self: type) type {
         }
 
         pub fn fromU32Rgba(value: u32) Self {
-            return switch (RedComponentType) {
-                u5, u8 => blk: {
-                    var res = Self{
-                        .r = @truncate(RedComponentType, value >> (32 - r_bits)),
-                        .g = @truncate(GreenComponentType, value >> (24 - g_bits)),
-                        .b = @truncate(BlueComponentType, value >> (16 - b_bits)),
-                    };
-                    // This if can only be true for u8 here
-                    if (@hasField(Self, "a")) res.a = @truncate(AT, value);
-                    break :blk res;
-                },
-                u16 => blk: {
-                    var res = Self{
-                        .r = @truncate(RedComponentType, value >> 24) * 257,
-                        .g = @truncate(GreenComponentType, value >> 16 & 0xff) * 257,
-                        .b = @truncate(BlueComponentType, value >> 8 & 0xff) * 257,
-                    };
-                    if (@hasField(Self, "a")) res.a = @truncate(AT, value & 0xff) * 257;
-                    break :blk res;
-                },
-                else => unreachable,
+            var res = Self{
+                .r = scaleToIntColor(RedT, @truncate(u8, value >> 24)),
+                .g = scaleToIntColor(GreenT, @truncate(u8, value >> 16)),
+                .b = scaleToIntColor(BlueT, @truncate(u8, value >> 8)),
             };
+            if (@hasField(Self, "a")) res.a = scaleToIntColor(AlphaT, @truncate(u8, value));
+            return res;
         }
 
         pub fn fromU32Rgb(value: u32) Self {
-            return switch (RedComponentType) {
-                u5, u8 => Self{
-                    .r = @truncate(RedComponentType, value >> (24 - r_bits)),
-                    .g = @truncate(GreenComponentType, value >> (16 - g_bits)),
-                    .b = @truncate(BlueComponentType, value >> (8 - b_bits)),
-                },
-                u16 => Self{
-                    .r = @truncate(RedComponentType, value >> 16 & 0xff) * 257,
-                    .g = @truncate(GreenComponentType, value >> 8 & 0xff) * 257,
-                    .b = @truncate(BlueComponentType, value & 0xff) * 257,
-                },
-                else => unreachable,
+            return Self{
+                .r = scaleToIntColor(RedT, @truncate(u8, value >> 16)),
+                .g = scaleToIntColor(GreenT, @truncate(u8, value >> 8)),
+                .b = scaleToIntColor(BlueT, @truncate(u8, value)),
             };
         }
 
         pub fn fromU64Rgba(value: u64) Self {
-            return switch (RedComponentType) {
-                u5, u8 => blk: {
-                    var res = Self{
-                        .r = @truncate(RedComponentType, value >> (64 - r_bits)),
-                        .g = @truncate(GreenComponentType, value >> (48 - g_bits)),
-                        .b = @truncate(BlueComponentType, value >> (32 - b_bits)),
-                    };
-                    // This if can only be true for u8 here
-                    if (@hasField(Self, "a")) res.a = @truncate(AT, value >> 8);
-                    break :blk res;
-                },
-                u16 => blk: {
-                    var res = Self{
-                        .r = @truncate(RedComponentType, value >> 48),
-                        .g = @truncate(GreenComponentType, value >> 32),
-                        .b = @truncate(BlueComponentType, value >> 16),
-                    };
-                    if (@hasField(Self, "a")) res.a = @truncate(AT, value);
-                    break :blk res;
-                },
-                else => unreachable,
+            var res = Self{
+                .r = scaleToIntColor(RedT, @truncate(u16, value >> 48)),
+                .g = scaleToIntColor(GreenT, @truncate(u16, value >> 32)),
+                .b = scaleToIntColor(BlueT, @truncate(u16, value >> 16)),
             };
+            if (@hasField(Self, "a")) res.a = scaleToIntColor(AlphaT, @truncate(u16, value));
+            return res;
         }
 
         pub fn fromU64Rgb(value: u64) Self {
-            return switch (RedComponentType) {
-                u5, u8 => Self{
-                    .r = @truncate(RedComponentType, value >> (48 - r_bits)),
-                    .g = @truncate(GreenComponentType, value >> (32 - g_bits)),
-                    .b = @truncate(BlueComponentType, value >> (16 - b_bits)),
-                },
-                u16 => Self{
-                    .r = @truncate(RedComponentType, value >> 32),
-                    .g = @truncate(GreenComponentType, value >> 16),
-                    .b = @truncate(BlueComponentType, value),
-                },
-                else => unreachable,
+            return Self{
+                .r = scaleToIntColor(RedT, @truncate(u16, value >> 32)),
+                .g = scaleToIntColor(GreenT, @truncate(u16, value >> 16)),
+                .b = scaleToIntColor(BlueT, @truncate(u16, value)),
             };
         }
 
         pub fn toU32Rgba(self: Self) u32 {
-            return switch (GreenComponentType) {
-                u5 => ((@as(u32, self.r) * 255 + 15) / 31) << 24 |
-                    ((@as(u32, self.g) * 255 + 15) / 31) << 16 |
-                    ((@as(u32, self.b) * 255 + 15) / 31) << 8 |
-                    0xff,
-                u6 => ((@as(u32, self.r) * 255 + 15) / 31) << 24 |
-                    ((@as(u32, self.g) * 255 + 31) / 63) << 16 |
-                    ((@as(u32, self.b) * 255 + 15) / 31) << 8 |
-                    0xff,
-                u8 => @as(u32, self.r) << 24 |
-                    @as(u32, self.g) << 16 |
-                    @as(u32, self.b) << 8 |
-                    if (@hasField(Self, "a")) @as(u32, self.a) else 0xff,
-                u16 => @as(u32, self.r & 0xff00) << 16 |
-                    @as(u32, self.g & 0xff00) << 8 |
-                    @as(u32, self.b & 0xff00) |
-                    if (@hasField(Self, "a")) @as(u32, self.a) >> 8 else 0xff,
-                else => unreachable,
-            };
+            return @as(u32, scaleToIntColor(u8, self.r)) << 24 |
+                @as(u32, scaleToIntColor(u8, self.g)) << 16 |
+                @as(u32, scaleToIntColor(u8, self.b)) << 8 |
+                if (@hasField(Self, "a")) scaleToIntColor(u8, self.a) else 0xff;
         }
 
         pub fn toU32Rgb(self: Self) u32 {
-            return switch (GreenComponentType) {
-                u5 => ((@as(u32, self.r) * 255 + 15) / 31) << 16 |
-                    ((@as(u32, self.g) * 255 + 15) / 31) << 8 |
-                    ((@as(u32, self.b) * 255 + 15) / 31),
-                u6 => ((@as(u32, self.r) * 255 + 15) / 31) << 16 |
-                    ((@as(u32, self.g) * 255 + 31) / 63) << 8 |
-                    ((@as(u32, self.b) * 255 + 15) / 31),
-                u8 => @as(u32, self.r) << 16 |
-                    @as(u32, self.g) << 8 |
-                    @as(u32, self.b),
-                u16 => @as(u32, self.r & 0xff00) << 8 |
-                    @as(u32, self.g & 0xff00) |
-                    @as(u32, self.b & 0xff00) >> 8,
-                else => unreachable,
-            };
+            return @as(u32, scaleToIntColor(u8, self.r)) << 16 |
+                @as(u32, scaleToIntColor(u8, self.g)) << 8 |
+                scaleToIntColor(u8, self.b);
         }
 
         pub fn toU64Rgba(self: Self) u64 {
-            return switch (GreenComponentType) {
-                u5 => ((@as(u64, self.r) * 65535 + 15) / 31) << 48 |
-                    ((@as(u64, self.g) * 65535 + 15) / 31) << 32 |
-                    ((@as(u64, self.b) * 65535 + 15) / 31) << 16 |
-                    0xff,
-                u6 => ((@as(u64, self.r) * 65535 + 15) / 31) << 48 |
-                    ((@as(u64, self.g) * 65535 + 31) / 63) << 32 |
-                    ((@as(u64, self.b) * 65535 + 15) / 31) << 16 |
-                    0xff,
-                u8 => ((@as(u64, self.r) * 65535 + 127) / 255) << 48 |
-                    ((@as(u64, self.g) * 65535 + 127) / 255) << 32 |
-                    ((@as(u64, self.b) * 65535 + 127) / 255) << 16 |
-                    if (@hasField(Self, "a")) (@as(u64, self.a) * 65535 + 127) / 255 else 0xffff,
-                u16 => @as(u64, self.r) << 48 |
-                    @as(u64, self.g) << 32 |
-                    @as(u64, self.b) << 16 |
-                    if (@hasField(Self, "a")) @as(u64, self.a) else 0xffff,
-                else => unreachable,
-            };
+            return @as(u64, scaleToIntColor(u16, self.r)) << 48 |
+                @as(u64, scaleToIntColor(u16, self.g)) << 32 |
+                @as(u64, scaleToIntColor(u16, self.b)) << 16 |
+                if (@hasField(Self, "a")) scaleToIntColor(u16, self.a) else 0xffff;
         }
 
         pub fn toU64Rgb(self: Self) u64 {
-            return switch (GreenComponentType) {
-                u5 => ((@as(u64, self.r) * 65535 + 15) / 31) << 32 |
-                    ((@as(u64, self.g) * 65535 + 15) / 31) << 16 |
-                    ((@as(u64, self.b) * 65535 + 15) / 31),
-                u6 => ((@as(u64, self.r) * 65535 + 15) / 31) << 32 |
-                    ((@as(u64, self.g) * 65535 + 31) / 63) << 16 |
-                    ((@as(u64, self.b) * 65535 + 15) / 31),
-                u8 => ((@as(u64, self.r) * 65535 + 127) / 255) << 32 |
-                    ((@as(u64, self.g) * 65535 + 127) / 255) << 16 |
-                    ((@as(u64, self.b) * 65535 + 127) / 255),
-                u16 => @as(u64, self.r) << 16 |
-                    @as(u64, self.g) << 8 |
-                    @as(u64, self.b),
-                else => unreachable,
-            };
+            return @as(u64, scaleToIntColor(u16, self.r)) << 32 |
+                @as(u64, scaleToIntColor(u16, self.g)) << 16 |
+                scaleToIntColor(u16, self.b);
         }
     };
 }
