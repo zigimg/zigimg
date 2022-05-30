@@ -337,7 +337,7 @@ pub const Bgra32 = BgraColor(u8);
 
 pub fn IndexedStorage(comptime T: type) type {
     return struct {
-        palette: []Colorf32,
+        palette: []Rgba32,
         indices: []T,
 
         pub const PaletteSize = 1 << @bitSizeOf(T);
@@ -345,10 +345,15 @@ pub fn IndexedStorage(comptime T: type) type {
         const Self = @This();
 
         pub fn init(allocator: Allocator, pixel_count: usize) !Self {
-            return Self{
+            var res = Self{
                 .indices = try allocator.alloc(T, pixel_count),
-                .palette = try allocator.alloc(Colorf32, PaletteSize),
+                .palette = try allocator.alloc(Rgba32, PaletteSize),
             };
+
+            // Since not all palette entries need to be filled we make sure
+            // they are all zero at the start.
+            std.mem.set(Rgba32, res.palette, Rgba32.initRgba(0, 0, 0, 0));
+            return res;
         }
 
         pub fn deinit(self: Self, allocator: Allocator) void {
@@ -632,11 +637,11 @@ pub const PixelStorageIterator = struct {
         }
 
         const result: ?Colorf32 = switch (self.pixels.*) {
-            .indexed1 => |data| data.palette[data.indices[self.current_index]],
-            .indexed2 => |data| data.palette[data.indices[self.current_index]],
-            .indexed4 => |data| data.palette[data.indices[self.current_index]],
-            .indexed8 => |data| data.palette[data.indices[self.current_index]],
-            .indexed16 => |data| data.palette[data.indices[self.current_index]],
+            .indexed1 => |data| data.palette[data.indices[self.current_index]].toColorf32(),
+            .indexed2 => |data| data.palette[data.indices[self.current_index]].toColorf32(),
+            .indexed4 => |data| data.palette[data.indices[self.current_index]].toColorf32(),
+            .indexed8 => |data| data.palette[data.indices[self.current_index]].toColorf32(),
+            .indexed16 => |data| data.palette[data.indices[self.current_index]].toColorf32(),
             .grayscale1 => |data| data[self.current_index].toColorf32(),
             .grayscale2 => |data| data[self.current_index].toColorf32(),
             .grayscale4 => |data| data[self.current_index].toColorf32(),

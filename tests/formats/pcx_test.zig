@@ -43,13 +43,13 @@ test "PCX indexed1 (linear)" {
         try helpers.expectEq(pixels.indexed1.indices[20], 1);
         try helpers.expectEq(pixels.indexed1.indices[22 * 27 + 11], 1);
 
-        const palette0 = pixels.indexed1.palette[0].toRgba32();
+        const palette0 = pixels.indexed1.palette[0];
 
         try helpers.expectEq(palette0.r, 102);
         try helpers.expectEq(palette0.g, 90);
         try helpers.expectEq(palette0.b, 155);
 
-        const palette1 = pixels.indexed1.palette[1].toRgba32();
+        const palette1 = pixels.indexed1.palette[1];
 
         try helpers.expectEq(palette1.r, 115);
         try helpers.expectEq(palette1.g, 137);
@@ -91,13 +91,13 @@ test "PCX indexed4 (linear)" {
         try helpers.expectEq(pixels.indexed4.indices[14 * 27 + 9], 6);
         try helpers.expectEq(pixels.indexed4.indices[25 * 27 + 25], 7);
 
-        const palette0 = pixels.indexed4.palette[0].toRgba32();
+        const palette0 = pixels.indexed4.palette[0];
 
         try helpers.expectEq(palette0.r, 0x5e);
         try helpers.expectEq(palette0.g, 0x37);
         try helpers.expectEq(palette0.b, 0x97);
 
-        const palette15 = pixels.indexed4.palette[15].toRgba32();
+        const palette15 = pixels.indexed4.palette[15];
 
         try helpers.expectEq(palette15.r, 0x60);
         try helpers.expectEq(palette15.g, 0xb5);
@@ -135,19 +135,19 @@ test "PCX indexed8 (linear)" {
         try helpers.expectEq(pixels.indexed8.indices[3 * 27 + 15], 60);
         try helpers.expectEq(pixels.indexed8.indices[26 * 27 + 26], 254);
 
-        const palette0 = pixels.indexed8.palette[0].toRgba32();
+        const palette0 = pixels.indexed8.palette[0];
 
         try helpers.expectEq(palette0.r, 0x46);
         try helpers.expectEq(palette0.g, 0x1c);
         try helpers.expectEq(palette0.b, 0x71);
 
-        const palette15 = pixels.indexed8.palette[15].toRgba32();
+        const palette15 = pixels.indexed8.palette[15];
 
         try helpers.expectEq(palette15.r, 0x41);
         try helpers.expectEq(palette15.g, 0x49);
         try helpers.expectEq(palette15.b, 0x30);
 
-        const palette219 = pixels.indexed8.palette[219].toRgba32();
+        const palette219 = pixels.indexed8.palette[219];
 
         try helpers.expectEq(palette219.r, 0x61);
         try helpers.expectEq(palette219.g, 0x8e);

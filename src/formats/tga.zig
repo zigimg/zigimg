@@ -440,10 +440,10 @@ pub const TGA = struct {
         while (data_index < data_end) : (data_index += 1) {
             const raw_color = try stream.readIntLittle(u16);
 
-            data.palette[data_index].r = color.toF32Color(@truncate(u5, raw_color >> (5 * 2)));
-            data.palette[data_index].g = color.toF32Color(@truncate(u5, raw_color >> 5));
-            data.palette[data_index].b = color.toF32Color(@truncate(u5, raw_color));
-            data.palette[data_index].a = 1.0;
+            data.palette[data_index].r = color.scaleToIntColor(u8, (@truncate(u5, raw_color >> (5 * 2))));
+            data.palette[data_index].g = color.scaleToIntColor(u8, (@truncate(u5, raw_color >> 5)));
+            data.palette[data_index].b = color.scaleToIntColor(u8, (@truncate(u5, raw_color)));
+            data.palette[data_index].a = 255;
         }
     }
 
