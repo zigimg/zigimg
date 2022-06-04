@@ -123,6 +123,10 @@ pub const Colorf32 = packed struct {
     }
 };
 
+fn isAll8BitColor(comptime red_type: type, comptime green_type: type, comptime blue_type: type) bool {
+    return red_type == u8 and green_type == u8 and blue_type == u8;
+}
+
 fn RgbMethods(comptime Self: type) type {
     return struct {
         const RedT = std.meta.fieldInfo(Self, .r).field_type;
@@ -182,6 +186,57 @@ fn RgbMethods(comptime Self: type) type {
                 .b = scaleToIntColor(BlueT, @truncate(u16, value)),
             };
         }
+
+        // Only enable fromHtmlHex when all color component type are u8
+        pub usingnamespace if (isAll8BitColor(RedT, GreenT, BlueT))
+            struct {
+                pub fn fromHtmlHex(hex_string: []const u8) !Self {
+                    if (hex_string.len == 0) {
+                        return error.InvalidHtmlHexString;
+                    }
+
+                    if (hex_string[0] != '#') {
+                        return error.InvalidHtmlHexString;
+                    }
+
+                    if (hex_string.len != 4 and hex_string.len != 7) {
+                        return error.InvalidHtmlHexString;
+                    }
+
+                    if (hex_string.len == 7) {
+                        var storage: [3]u8 = undefined;
+                        const output = std.fmt.hexToBytes(storage[0..], hex_string[1..]) catch {
+                            return error.InvalidHtmlHexString;
+                        };
+
+                        return Self{
+                            .r = output[0],
+                            .g = output[1],
+                            .b = output[2],
+                        };
+                    } else if (hex_string.len == 4) {
+                        const red_digit = std.fmt.charToDigit(hex_string[1], 16) catch {
+                            return error.InvalidHtmlHexString;
+                        };
+                        const green_digit = std.fmt.charToDigit(hex_string[2], 16) catch {
+                            return error.InvalidHtmlHexString;
+                        };
+                        const blue_digit = std.fmt.charToDigit(hex_string[3], 16) catch {
+                            return error.InvalidHtmlHexString;
+                        };
+
+                        return Self{
+                            .r = red_digit | (red_digit << 4),
+                            .g = green_digit | (green_digit << 4),
+                            .b = blue_digit | (blue_digit << 4),
+                        };
+                    } else {
+                        return error.InvalidHtmlHexString;
+                    }
+                }
+            }
+        else
+            struct {};
 
         pub fn toU32Rgba(self: Self) u32 {
             return @as(u32, scaleToIntColor(u8, self.r)) << 24 |

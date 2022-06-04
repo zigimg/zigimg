@@ -1,5 +1,5 @@
-const assert = @import("std").debug.assert;
-const testing = @import("std").testing;
+const std = @import("std");
+const testing = std.testing;
 const color = @import("../src/color.zig");
 const helpers = @import("helpers.zig");
 
@@ -131,7 +131,7 @@ test "Convert Grayscale16 to Colorf32" {
     try helpers.expectEq(result.a, 255);
 }
 
-test "Rgba.toFromU32" {
+test "Rgb from and to U32" {
     const expected = color.Rgba32.initRgba(0x87, 0x63, 0x47, 0xff);
     const actualU32 = expected.toU32Rgba();
     const actual = color.Rgba32.fromU32Rgba(actualU32);
@@ -161,7 +161,7 @@ test "toIntColor" {
     try helpers.expectEq(color.toIntColor(u16, -0.33), 0);
 }
 
-test "Colorf32.toFromU32Rgba" {
+test "Colorf32.toFromU32Rgba()" {
     const expected_u32 = [_]u32{ 0xb7e795d2, 0x9967044f, 0xefa1f714, 0x26ce0589, 0xf50f68ea };
     const expected_c32 = [_]color.Colorf32{
         color.Colorf32.initRgba(0xb7 / 255.0, 0xe7 / 255.0, 0x95 / 255.0, 0xd2 / 255.0),
@@ -177,7 +177,7 @@ test "Colorf32.toFromU32Rgba" {
     }
 }
 
-test "Colorf32.toFromU64Rgba" {
+test "Colorf32.toFromU64Rgba()" {
     const expected_u64 = [_]u64{ 0xf034da495288b4f0, 0x8f43957daf1fad51, 0xb2c84b7efea70316, 0x68bb87b393a1c104, 0x48b7f617a4520099 };
     const expected_c32 = [_]color.Colorf32{
         color.Colorf32.initRgba(0xf034 / 65535.0, 0xda49 / 65535.0, 0x5288 / 65535.0, 0xb4f0 / 65535.0),
@@ -193,7 +193,7 @@ test "Colorf32.toFromU64Rgba" {
     }
 }
 
-test "Rgb.toFromU32Rgba" {
+test "Rgb.toFromU32Rgba()" {
     const expected_u32 = [_]u32{ 0xb7e795d2, 0x9967044f, 0xefa1f714, 0x26ce0589, 0xf50f68ea };
     const expected_rgb24_from_rgba = [_]color.Rgb24{
         color.Rgb24.initRgb(0xb7, 0xe7, 0x95),
@@ -275,7 +275,7 @@ test "Rgb.toFromU32Rgba" {
     }
 }
 
-test "Rgb.toFromU64Rgba" {
+test "Rgb.toFromU64Rgba()" {
     const expected_u64 = [_]u64{ 0xf034da495288b4f0, 0x8f43957daf1fad51, 0xb2c84b7efea70316, 0x68bb87b393a1c104, 0x48b7f617a4520099 };
     const expected_rgb48_from_rgba = [_]color.Rgb48{
         color.Rgb48.initRgb(0xf034, 0xda49, 0x5288),
@@ -312,7 +312,7 @@ test "Rgb.toFromU64Rgba" {
     }
 }
 
-test "Rgba.toFromU32Rgba" {
+test "Rgba.toFromU32Rgba()" {
     const expected_u32 = [_]u32{ 0xb7e795d2, 0x9967044f, 0xefa1f714, 0x26ce0589, 0xf50f68ea };
     const expected_rgba32_from_rgba = [_]color.Rgba32{
         color.Rgba32.initRgba(0xb7, 0xe7, 0x95, 0xd2),
@@ -354,7 +354,7 @@ test "Rgba.toFromU32Rgba" {
     }
 }
 
-test "Rgba.toFromU64Rgba" {
+test "Rgba.toFromU64Rgba())" {
     const expected_u64 = [_]u64{ 0xf034da495288b4f0, 0x8f43957daf1fad51, 0xb2c84b7efea70316, 0x68bb87b393a1c104, 0x48b7f617a4520099 };
     const expected_rgba64_from_rgba = [_]color.Rgba64{
         color.Rgba64.initRgba(0xf034, 0xda49, 0x5288, 0xb4f0),
@@ -381,7 +381,7 @@ test "Rgba.toFromU64Rgba" {
     }
 }
 
-test "Colorf32ToFromArray" {
+test "Colorf32 from and to [4]f32 array" {
     const expected = [_]f32{ 0.12, 0.34, 0.56, 0.78 };
     const sample = color.Colorf32.fromArray(expected);
 
@@ -391,4 +391,74 @@ test "Colorf32ToFromArray" {
     try helpers.expectEq(sample.a, 0.78);
     const actual = sample.toArray();
     try helpers.expectEqSlice(f32, actual[0..], expected[0..]);
+}
+
+test "Rgb.fromHtmlHex() with valid inputs" {
+    const inputs = [_][]const u8{
+        "#fff",
+        "#ffffff",
+        "#000",
+        "#000000",
+        "#123456",
+        "#123",
+        "#AFCDEB",
+    };
+
+    const expected_colors = [_]color.Rgb24{
+        color.Rgb24.initRgb(0xff, 0xff, 0xff),
+        color.Rgb24.initRgb(0xff, 0xff, 0xff),
+        color.Rgb24.initRgb(0x00, 0x00, 0x00),
+        color.Rgb24.initRgb(0x00, 0x00, 0x00),
+        color.Rgb24.initRgb(0x12, 0x34, 0x56),
+        color.Rgb24.initRgb(0x11, 0x22, 0x33),
+        color.Rgb24.initRgb(0xAF, 0xCD, 0xEB),
+    };
+
+    std.debug.assert(inputs.len == expected_colors.len);
+
+    var index: usize = 0;
+    while (index < inputs.len) : (index += 1) {
+        const actual_color = try color.Rgb24.fromHtmlHex(inputs[index]);
+
+        const expected_color = expected_colors[index];
+
+        try helpers.expectEq(actual_color.r, expected_color.r);
+        try helpers.expectEq(actual_color.g, expected_color.g);
+        try helpers.expectEq(actual_color.b, expected_color.b);
+    }
+}
+
+test "Rgb.fromHtmlHex() with invalid inputs" {
+    const inputs = [_][]const u8{
+        "#zzz",
+        "#ag",
+        "#agerty",
+        "zxczfet",
+        "ffFFFF",
+        "abcdef",
+        "123456",
+        "",
+        "#a",
+    };
+
+    var index: usize = 0;
+    while (index < inputs.len) : (index += 1) {
+        const actual_error = color.Rgb24.fromHtmlHex(inputs[index]);
+
+        try helpers.expectError(actual_error, error.InvalidHtmlHexString);
+    }
+}
+
+test "u8 Rgb colors should have fromHtmlHex" {
+    try helpers.expectEq(@hasDecl(color.Rgb24, "fromHtmlHex"), true);
+    try helpers.expectEq(@hasDecl(color.Rgba32, "fromHtmlHex"), true);
+    try helpers.expectEq(@hasDecl(color.Bgr24, "fromHtmlHex"), true);
+    try helpers.expectEq(@hasDecl(color.Bgra32, "fromHtmlHex"), true);
+}
+
+test "Non u8 Rgb colors should not have fromHtmlHex" {
+    try helpers.expectEq(@hasDecl(color.Rgb555, "fromHtmlHex"), false);
+    try helpers.expectEq(@hasDecl(color.Rgb48, "fromHtmlHex"), false);
+    try helpers.expectEq(@hasDecl(color.Rgba64, "fromHtmlHex"), false);
+    try helpers.expectEq(@hasDecl(color.Rgb565, "fromHtmlHex"), false);
 }
