@@ -6,7 +6,7 @@ const image = @import("../image.zig");
 const FormatInterface = @import("../format_interface.zig").FormatInterface;
 const color = @import("../color.zig");
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
-const ImageReader = image.ImageReader;
+const RealImageReader = image.ImageReader;
 const ImageSeekStream = image.ImageSeekStream;
 const ImageFormat = image.ImageFormat;
 const ImageInfo = image.ImageInfo;
@@ -18,6 +18,45 @@ const ImageInfo = image.ImageInfo;
 
 const JPEG_DEBUG = false;
 const JPEG_VERY_DEBUG = false;
+
+fn LoggingReader(comptime ReaderType: type) type {
+    return struct {
+        const log: bool = true;
+        underlying_reader: ReaderType,
+
+        const Self = @This();
+        pub const Error = ReaderType.Error;
+        pub const Reader = std.io.Reader(*Self, Error, read);
+
+        pub fn read(self: *Self, dest: []u8) Error!usize {
+            const size = try self.underlying_reader.read(dest);
+            if (Self.log) {
+                const n = 16;
+                var i: usize = 0;
+                while (i < size) {
+                    std.debug.print("read: ", .{});
+                    var j: usize = 0;
+                    while (j < n and (i + j) < size) : (j += 1) {
+                        std.debug.print("{x:0>2}", .{dest[i + j]});
+                    }
+                    i += j;
+                    std.debug.print("\n", .{});
+                }
+            }
+            return size;
+        }
+
+        pub fn reader(self: *Self) Reader {
+            return .{ .context = self };
+        }
+    };
+}
+
+fn loggingReader(reader: anytype) LoggingReader(@TypeOf(reader)) {
+    return .{ .underlying_reader = reader };
+}
+
+const ImageReader = LoggingReader(RealImageReader).Reader;
 
 // Marker codes
 
@@ -234,6 +273,13 @@ const HuffmanTable = struct {
     pub fn deinit(self: *HuffmanTable) void {
         self.code_map.deinit();
     }
+
+    pub fn debug_print(self: *const HuffmanTable) void {
+        var iter = self.code_map.iterator();
+        while (iter.next()) |e| {
+            std.debug.print("  {:2} {b:16} 0x{X:0>2}\n", .{ e.key_ptr.*.length_minus_one, e.key_ptr.*.code, e.value_ptr.* });
+        }
+    }
 };
 
 const HuffmanReader = struct {
@@ -279,9 +325,13 @@ const HuffmanReader = struct {
         while (i < 16) : (i += 1) {
             code = (code << 1) | (try self.readBit());
             if (self.table.?.code_map.get(.{ .length_minus_one = @intCast(u4, i), .code = code })) |value| {
+                //std.debug.print("readCode: {} {b}\n", .{ i + 1, code });
                 return value;
             }
         }
+
+        if (JPEG_DEBUG) std.debug.print("readCode: {b} not found in\n", .{code});
+        if (JPEG_DEBUG) self.table.?.debug_print();
 
         return error.NoSuchHuffmanCode;
     }
@@ -303,6 +353,7 @@ const HuffmanReader = struct {
             return 0;
 
         const bits = try self.readLiteralBits(magnitude);
+        //std.debug.print("readMagnitudeCoded: {} {b}\n", .{ magnitude, bits });
 
         // The sign of the read bits value.
         const bits_sign = (bits >> (magnitude - 1)) & 1;
@@ -588,6 +639,7 @@ const Scan = struct {
         var huffman_reader = HuffmanReader.init(reader);
         var mcu_id: usize = 0;
         while (mcu_id < frame.mcu_storage.len) : (mcu_id += 1) {
+            std.debug.print("Reading mcu {}/{}\n", .{ mcu_id, frame.mcu_storage.len });
             try Scan.decodeMCU(frame, scan_header, mcu_id, &huffman_reader, &prediction_values);
         }
     }
@@ -616,15 +668,27 @@ const Scan = struct {
             return error.UnknownComponentInScan;
         };
 
-        const mcu = &frame.mcu_storage[mcu_id][component_destination];
-
+        const vmax = frame.frame_header.components[component_destination].vertical_sampling_factor;
+        const hmax = frame.frame_header.components[component_destination].horizontal_sampling_factor;
+        var mcu = frame.mcu_storage[mcu_id][component_destination];
+        var v: usize = 0;
+        while (v < vmax) : (v += 1) {
+            var h: usize = 0;
+            while (h < hmax) : (h += 1) {
+                std.debug.print("mcu {s} {} {}\n", .{ @tagName(@intToEnum(Frame.ComponentKind, component_destination)), h, v });
+                const mcu_buffer = mcu.getBuffer(v, h);
+                try Scan.decodeMCUChunk(frame, component, mcu_buffer, reader, &prediction_values[component_destination]);
+            }
+        }
+    }
+    fn decodeMCUChunk(frame: *Frame, component: ScanComponentSpec, mcu: []i32, reader: *HuffmanReader, prediction_value: *i12) !void {
         // Decode the DC coefficient
         if (frame.dc_huffman_tables[component.dc_table_selector] == null)
             return error.NonexistentDCHuffmanTableReferenced;
 
         reader.setHuffmanTable(&frame.dc_huffman_tables[component.dc_table_selector].?);
 
-        const dc_coefficient = try Scan.decodeDCCoefficient(reader, &prediction_values[component_destination]);
+        const dc_coefficient = try Scan.decodeDCCoefficient(reader, prediction_value);
         mcu[0] = dc_coefficient;
 
         // Decode the AC coefficients
@@ -638,6 +702,7 @@ const Scan = struct {
 
     fn decodeDCCoefficient(reader: *HuffmanReader, prediction: *i12) !i12 {
         const maybe_magnitude = try reader.readCode();
+        //std.debug.print("dc {x:0>2}\n", .{maybe_magnitude});
         if (maybe_magnitude > 11) return error.InvalidDCMagnitude;
         const magnitude = @intCast(u4, maybe_magnitude);
 
@@ -648,7 +713,7 @@ const Scan = struct {
         return dc_coefficient;
     }
 
-    fn decodeACCoefficients(reader: *HuffmanReader, mcu: *Frame.MCU) !void {
+    fn decodeACCoefficients(reader: *HuffmanReader, mcu: []i32) !void {
         var ac: usize = 1;
         var did_see_eob = false;
         while (ac < 64) : (ac += 1) {
@@ -658,8 +723,10 @@ const Scan = struct {
             }
 
             const zero_run_length_and_magnitude = try reader.readCode();
+            //std.debug.print("rrrrssss: {x:0>2} {b:0>8} at ac={x:0>2}\n", .{ zero_run_length_and_magnitude, zero_run_length_and_magnitude, ac });
             // 00 == EOB
             if (zero_run_length_and_magnitude == 0x00) {
+                std.debug.print("EOB\n", .{});
                 did_see_eob = true;
                 mcu[ZigzagOffsets[ac]] = 0;
                 continue;
@@ -690,17 +757,39 @@ const Frame = struct {
     quantization_tables: *[4]?QuantizationTable,
     dc_huffman_tables: [2]?HuffmanTable,
     ac_huffman_tables: [2]?HuffmanTable,
-    mcu_storage: [][MAX_COMPONENTS]MCU,
+    mcu_storage: [][NUM_COMPONENTS]MCU,
 
-    const MCU = [64]i32;
+    const ComponentKind = enum {
+        Y,
+        Cb,
+        Cr,
+    };
 
-    const MAX_COMPONENTS = 3;
+    const NUM_COMPONENTS = @typeInfo(ComponentKind).Enum.fields.len;
+
+    const MCU = struct {
+        buffer: [64 * 4]i32,
+
+        const Self = @This();
+
+        fn getBuffer(self: *Self, v: usize, h: usize) []i32 {
+            std.debug.assert(v < 2 and h < 2);
+            const idx = v * 128 + h * 64;
+            return self.buffer[idx..(idx + 64)];
+        }
+
+        fn getBufferC(self: *const Self, v: usize, h: usize) []const i32 {
+            std.debug.assert(v < 2 and h < 2);
+            const idx = v * 128 + h * 64;
+            return self.buffer[idx..(idx + 64)];
+        }
+    };
 
     pub fn read(allocator: Allocator, quantization_tables: *[4]?QuantizationTable, reader: ImageReader, seek_stream: ImageSeekStream) !Frame {
         var frame_header = try FrameHeader.read(allocator, reader);
         const mcu_count = Frame.calculateMCUCountInFrame(&frame_header);
 
-        const mcu_storage = try allocator.alloc([MAX_COMPONENTS]MCU, mcu_count);
+        const mcu_storage = try allocator.alloc([NUM_COMPONENTS]MCU, mcu_count);
 
         var self = Frame{
             .allocator = allocator,
@@ -764,7 +853,10 @@ const Frame = struct {
         while (segment_size > 0) {
             const class_and_destination = try reader.readByte();
             const table_class = class_and_destination >> 4;
-            const table_destination = class_and_destination & 0b1;
+            const table_destination = class_and_destination & 0b11;
+
+            // Extended not supported (yet)
+            std.debug.assert(table_destination < 2);
 
             const huffman_table = try HuffmanTable.read(self.allocator, table_class, reader);
 
@@ -789,8 +881,12 @@ const Frame = struct {
 
     fn calculateMCUCountInFrame(frame_header: *FrameHeader) usize {
         // FIXME: This is very naive and probably only works for Baseline DCT.
-        const sample_count = @as(usize, frame_header.row_count) * @as(usize, frame_header.samples_per_row);
-        return (sample_count / 64) + (if (sample_count % 64 != 0) @as(u1, 1) else @as(u1, 0));
+        // TODO: sampling factor
+        //const sample_count = @as(usize, frame_header.row_count) * @as(usize, frame_header.samples_per_row);
+        //return (sample_count / 256) + (if (sample_count % 256 != 0) @as(u1, 1) else @as(u1, 0));
+        std.debug.print("row {}, samples/row {}\n", .{ frame_header.row_count, frame_header.samples_per_row });
+        _ = frame_header;
+        return 5076;
     }
 
     fn parseScan(self: *Frame, reader: ImageReader) !void {
@@ -802,13 +898,28 @@ const Frame = struct {
         while (mcu_id < self.mcu_storage.len) : (mcu_id += 1) {
             for (self.frame_header.components) |component, component_id| {
                 const mcu = &self.mcu_storage[mcu_id][component_id];
-
-                if (self.quantization_tables[component.quantization_table_id]) |quantization_table| {
-                    var sample_id: usize = 0;
-                    while (sample_id < 64) : (sample_id += 1) {
-                        mcu[sample_id] = mcu[sample_id] * quantization_table.q8[sample_id];
+                const vmax = self.frame_header.components[component_id].vertical_sampling_factor;
+                const hmax = self.frame_header.components[component_id].horizontal_sampling_factor;
+                var v: usize = 0;
+                while (v < vmax) : (v += 1) {
+                    var h: usize = 0;
+                    while (h < hmax) : (h += 1) {
+                        var mcu_buffer = mcu.getBuffer(v, h);
+                        if (self.quantization_tables[component.quantization_table_id]) |quantization_table| {
+                            var sample_id: usize = 0;
+                            while (sample_id < 64) : (sample_id += 1) {
+                                const s = mcu_buffer[sample_id];
+                                const q = quantization_table.q8[sample_id];
+                                var overflow = s;
+                                if (@mulWithOverflow(@TypeOf(s), s, q, &overflow)) {
+                                    //std.debug.print("{}x{} overflowed to {}\n", .{ s, q, overflow });
+                                } else {
+                                    mcu_buffer[sample_id] = overflow;
+                                }
+                            }
+                        } else return error.UnknownQuantizationTableReferenced;
                     }
-                } else return error.UnknownQuantizationTableReferenced;
+                }
             }
         }
     }
@@ -873,11 +984,14 @@ const Frame = struct {
     fn idct(mcu: *const MCU, x: u3, y: u3, mcu_id: usize, component_id: usize) i8 {
         var reconstructed_pixel: f32 = 0.0;
 
+        // TODO
+        const mcu_buffer = mcu.getBufferC(0, 0);
+
         var u: usize = 0;
         while (u < 8) : (u += 1) {
             var v: usize = 0;
             while (v < 8) : (v += 1) {
-                const mcu_value = mcu[v * 8 + u];
+                const mcu_value = mcu_buffer[v * 8 + u];
                 reconstructed_pixel += IDCTMultipliers[y][x][u][v] * @intToFloat(f32, mcu_value);
             }
         }
@@ -946,7 +1060,8 @@ pub const JPEG = struct {
         } else return error.FrameDoesNotExist;
     }
 
-    pub fn read(self: *JPEG, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.PixelStorage) !Frame {
+    pub fn read(self: *JPEG, img_reader: RealImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.PixelStorage) !Frame {
+        var reader = loggingReader(img_reader).reader();
         _ = pixels_opt;
         const jfif_header = JFIFHeader.read(reader, seek_stream) catch |err| switch (err) {
             error.App0MarkerDoesNotExist, error.JfifIdentifierNotSet, error.ThumbnailImagesUnsupported, error.ExtraneousApplicationMarker => return errors.ImageError.InvalidMagicHeader,

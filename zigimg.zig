@@ -18,14 +18,14 @@ pub const tga = @import("src/formats/tga.zig");
 
 test {
     @import("std").testing.refAllDecls(@This());
-    _ = @import("tests/color_test.zig");
-    _ = @import("tests/formats/bmp_test.zig");
+    //_ = @import("tests/color_test.zig");
+    //_ = @import("tests/formats/bmp_test.zig");
     _ = @import("tests/formats/jpeg_test.zig");
-    _ = @import("tests/formats/netpbm_test.zig");
-    _ = @import("tests/formats/pcx_test.zig");
-    _ = @import("tests/formats/png_test.zig");
-    _ = @import("tests/formats/qoi_test.zig");
-    _ = @import("tests/formats/tga_test.zig");
-    _ = @import("tests/image_test.zig");
-    _ = @import("tests/octree_quantizer_test.zig");
+    //_ = @import("tests/formats/netpbm_test.zig");
+    //_ = @import("tests/formats/pcx_test.zig");
+    //_ = @import("tests/formats/png_test.zig");
+    //_ = @import("tests/formats/qoi_test.zig");
+    //_ = @import("tests/formats/tga_test.zig");
+    //_ = @import("tests/image_test.zig");
+    //_ = @import("tests/octree_quantizer_test.zig");
 }
