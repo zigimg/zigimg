@@ -428,6 +428,40 @@ test "Rgb.fromHtmlHex() with valid inputs" {
     }
 }
 
+test "Rgba.fromHtmlHex() with valid inputs" {
+    const inputs = [_][]const u8{
+        "#ffff",
+        "#1234",
+        "#ffffffff",
+        "#12345678",
+        "#ABCDEF9D",
+        "#fedcba34",
+    };
+
+    const expected_colors = [_]color.Rgba32{
+        color.Rgba32.initRgba(0xff, 0xff, 0xff, 0xff),
+        color.Rgba32.initRgba(0x11, 0x22, 0x33, 0x44),
+        color.Rgba32.initRgba(0xff, 0xff, 0xff, 0xff),
+        color.Rgba32.initRgba(0x12, 0x34, 0x56, 0x78),
+        color.Rgba32.initRgba(0xAB, 0xCD, 0xEF, 0x9D),
+        color.Rgba32.initRgba(0xfe, 0xdc, 0xba, 0x34),
+    };
+
+    std.debug.assert(inputs.len == expected_colors.len);
+
+    var index: usize = 0;
+    while (index < inputs.len) : (index += 1) {
+        const actual_color = try color.Rgba32.fromHtmlHex(inputs[index]);
+
+        const expected_color = expected_colors[index];
+
+        try helpers.expectEq(actual_color.r, expected_color.r);
+        try helpers.expectEq(actual_color.g, expected_color.g);
+        try helpers.expectEq(actual_color.b, expected_color.b);
+        try helpers.expectEq(actual_color.a, expected_color.a);
+    }
+}
+
 test "Rgb.fromHtmlHex() with invalid inputs" {
     const inputs = [_][]const u8{
         "#zzz",
@@ -439,11 +473,36 @@ test "Rgb.fromHtmlHex() with invalid inputs" {
         "123456",
         "",
         "#a",
+        "#aaaa", // #RGBA should not be valid with Rgb24
+        "#12345678", // #RRGGBBAA should not be valid with Rgb24
     };
 
     var index: usize = 0;
     while (index < inputs.len) : (index += 1) {
         const actual_error = color.Rgb24.fromHtmlHex(inputs[index]);
+
+        try helpers.expectError(actual_error, error.InvalidHtmlHexString);
+    }
+}
+
+test "Rgba.fromHtmlHex() with invalid inputs" {
+    const inputs = [_][]const u8{
+        "#zzz",
+        "#ag",
+        "#agerty",
+        "zxczfet",
+        "ffFFFF",
+        "abcdef",
+        "123456",
+        "",
+        "#a",
+        "#zzzz",
+        "12345678",
+    };
+
+    var index: usize = 0;
+    while (index < inputs.len) : (index += 1) {
+        const actual_error = color.Rgba32.fromHtmlHex(inputs[index]);
 
         try helpers.expectError(actual_error, error.InvalidHtmlHexString);
     }
