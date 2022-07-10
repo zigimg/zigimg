@@ -3,9 +3,8 @@
 const Allocator = std.mem.Allocator;
 const FormatInterface = @import("../format_interface.zig").FormatInterface;
 const ImageFormat = image.ImageFormat;
-const ImageReader = image.ImageReader;
+const ImageStream = image.ImageStream;
 const ImageInfo = image.ImageInfo;
-const ImageSeekStream = image.ImageSeekStream;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const color = @import("../color.zig");
 const errors = @import("../errors.zig");
@@ -46,12 +45,12 @@ const RLEDecoder = struct {
         remaining: usize,
     };
 
-    stream: ImageReader,
+    reader: ImageStream.Reader,
     current_run: ?Run,
 
-    fn init(stream: ImageReader) RLEDecoder {
+    fn init(reader: ImageStream.Reader) RLEDecoder {
         return RLEDecoder{
-            .stream = stream,
+            .reader = reader,
             .current_run = null,
         };
     }
@@ -66,13 +65,13 @@ const RLEDecoder = struct {
             return result;
         } else {
             while (true) {
-                var byte = try self.stream.readByte();
+                var byte = try self.reader.readByte();
                 if (byte == 0xC0) // skip over "zero length runs"
                     continue;
                 if ((byte & 0xC0) == 0xC0) {
                     const len = byte & 0x3F;
                     std.debug.assert(len > 0);
-                    const result = try self.stream.readByte();
+                    const result = try self.reader.readByte();
                     if (len > 1) {
                         // we only need to store a run in the decoder if it is longer than 1
                         self.current_run = .{
@@ -115,10 +114,9 @@ pub const PCX = struct {
         return ImageFormat.pcx;
     }
 
-    pub fn formatDetect(reader: ImageReader, seek_stream: ImageSeekStream) !bool {
-        _ = seek_stream;
+    pub fn formatDetect(stream: *ImageStream) !bool {
         var magic_number_bufffer: [2]u8 = undefined;
-        _ = try reader.read(magic_number_bufffer[0..]);
+        _ = try stream.read(magic_number_bufffer[0..]);
 
         if (magic_number_bufffer[0] != 0x0A) {
             return false;
@@ -131,10 +129,10 @@ pub const PCX = struct {
         return true;
     }
 
-    pub fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels: *?color.PixelStorage) !ImageInfo {
+    pub fn readForImage(allocator: Allocator, stream: *ImageStream, pixels: *?color.PixelStorage) !ImageInfo {
         var pcx = PCX{};
 
-        try pcx.read(allocator, reader, seek_stream, pixels);
+        try pcx.read(allocator, stream, pixels);
 
         var image_info = ImageInfo{};
         image_info.width = pcx.width;
@@ -143,10 +141,9 @@ pub const PCX = struct {
         return image_info;
     }
 
-    pub fn writeForImage(allocator: Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) !void {
+    pub fn writeForImage(allocator: Allocator, write_stream: *ImageStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) !void {
         _ = allocator;
         _ = write_stream;
-        _ = seek_stream;
         _ = pixels;
         _ = save_info;
     }
@@ -169,9 +166,10 @@ pub const PCX = struct {
         }
     }
 
-    pub fn read(self: *Self, allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.PixelStorage) !void {
+    pub fn read(self: *Self, allocator: Allocator, stream: *ImageStream, pixels_opt: *?color.PixelStorage) !void {
+        const reader = stream.reader();
         self.header = try utils.readStructLittle(reader, PCXHeader);
-        _ = try reader.read(PCXHeader.padding[0..]);
+        _ = try stream.read(PCXHeader.padding[0..]);
 
         if (self.header.id != 0x0A) {
             return errors.ImageError.InvalidMagicHeader;
@@ -284,8 +282,8 @@ pub const PCX = struct {
                 }
 
                 if (pixels == .indexed8) {
-                    const end_pos = try seek_stream.getEndPos();
-                    try seek_stream.seekTo(end_pos - 769);
+                    const end_pos = try stream.getEndPos();
+                    try stream.seekTo(end_pos - 769);
 
                     if ((try reader.readByte()) != 0x0C)
                         return error.MissingPalette;

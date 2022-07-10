@@ -2,9 +2,8 @@ const Allocator = std.mem.Allocator;
 const File = std.fs.File;
 const FormatInterface = @import("../format_interface.zig").FormatInterface;
 const ImageFormat = image.ImageFormat;
-const ImageReader = image.ImageReader;
+const ImageStream = image.ImageStream;
 const ImageInfo = image.ImageInfo;
-const ImageSeekStream = image.ImageSeekStream;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const color = @import("../color.zig");
 const errors = @import("../errors.zig");
@@ -160,10 +159,9 @@ pub const Bitmap = struct {
         return ImageFormat.bmp;
     }
 
-    pub fn formatDetect(reader: ImageReader, seek_stream: ImageSeekStream) !bool {
-        _ = seek_stream;
+    pub fn formatDetect(stream: *ImageStream) !bool {
         var magic_number_buffer: [2]u8 = undefined;
-        _ = try reader.read(magic_number_buffer[0..]);
+        _ = try stream.read(magic_number_buffer[0..]);
         if (std.mem.eql(u8, magic_number_buffer[0..], BitmapMagicHeader[0..])) {
             return true;
         }
@@ -171,10 +169,10 @@ pub const Bitmap = struct {
         return false;
     }
 
-    pub fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels: *?color.PixelStorage) !ImageInfo {
+    pub fn readForImage(allocator: Allocator, stream: *ImageStream, pixels: *?color.PixelStorage) !ImageInfo {
         var bmp = Self{};
 
-        try bmp.read(allocator, reader, seek_stream, pixels);
+        try bmp.read(allocator, stream, pixels);
 
         var image_info = ImageInfo{};
         image_info.width = @intCast(usize, bmp.width());
@@ -182,10 +180,9 @@ pub const Bitmap = struct {
         return image_info;
     }
 
-    pub fn writeForImage(allocator: Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) !void {
+    pub fn writeForImage(allocator: Allocator, write_stream: *ImageStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) !void {
         _ = allocator;
         _ = write_stream;
-        _ = seek_stream;
         _ = pixels;
         _ = save_info;
     }
@@ -226,17 +223,18 @@ pub const Bitmap = struct {
         };
     }
 
-    pub fn read(self: *Self, allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.PixelStorage) !void {
+    pub fn read(self: *Self, allocator: Allocator, stream: *ImageStream, pixels_opt: *?color.PixelStorage) !void {
         // Read file header
+        const reader = stream.reader();
         self.file_header = try utils.readStructLittle(reader, BitmapFileHeader);
         if (!mem.eql(u8, self.file_header.magic_header[0..], BitmapMagicHeader[0..])) {
             return errors.ImageError.InvalidMagicHeader;
         }
 
         // Read header size to figure out the header type, also TODO: Use PeekableStream when I understand how to use it
-        const current_header_pos = try seek_stream.getPos();
+        const current_header_pos = try stream.getPos();
         var header_size = try reader.readIntLittle(u32);
-        try seek_stream.seekTo(current_header_pos);
+        try stream.seekTo(current_header_pos);
 
         // Read info header
         self.info_header = switch (header_size) {
@@ -284,7 +282,7 @@ pub const Bitmap = struct {
         }
     }
 
-    fn readPixels(reader: ImageReader, pixel_width: i32, pixel_height: i32, pixel_format: PixelFormat, pixels: *color.PixelStorage) !void {
+    fn readPixels(reader: ImageStream.Reader, pixel_width: i32, pixel_height: i32, pixel_format: PixelFormat, pixels: *color.PixelStorage) !void {
         return switch (pixel_format) {
             PixelFormat.bgr24 => {
                 return readPixelsInternal(pixels.bgr24, reader, pixel_width, pixel_height);
@@ -298,7 +296,7 @@ pub const Bitmap = struct {
         };
     }
 
-    fn readPixelsInternal(pixels: anytype, reader: ImageReader, pixel_width: i32, pixel_height: i32) !void {
+    fn readPixelsInternal(pixels: anytype, reader: ImageStream.Reader, pixel_width: i32, pixel_height: i32) !void {
         const ColorBufferType = @typeInfo(@TypeOf(pixels)).Pointer.child;
 
         var x: i32 = 0;

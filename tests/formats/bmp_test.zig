@@ -1,5 +1,4 @@
-const ImageReader = image.ImageReader;
-const ImageSeekStream = image.ImageSeekStream;
+const ImageStream = image.ImageStream;
 const PixelFormat = @import("../../src/pixel_format.zig").PixelFormat;
 const assert = std.debug.assert;
 const bmp = @import("../../src/formats/bmp.zig");
@@ -105,7 +104,7 @@ test "Read simple version 4 24-bit RGB bitmap" {
     var stream_source = std.io.StreamSource{ .file = file };
 
     var pixels_opt: ?color.PixelStorage = null;
-    try the_bitmap.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixels_opt);
+    try the_bitmap.read(helpers.zigimg_test_allocator, &stream_source, &pixels_opt);
 
     defer {
         if (pixels_opt) |pixels| {
@@ -172,7 +171,7 @@ test "Read a valid version 5 RGBA bitmap from file" {
     var the_bitmap = bmp.Bitmap{};
 
     var pixels_opt: ?color.PixelStorage = null;
-    try the_bitmap.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixels_opt);
+    try the_bitmap.read(helpers.zigimg_test_allocator, &stream_source, &pixels_opt);
 
     defer {
         if (pixels_opt) |pixels| {
@@ -191,7 +190,7 @@ test "Read a valid version 5 RGBA bitmap from memory" {
     var the_bitmap = bmp.Bitmap{};
 
     var pixels_opt: ?color.PixelStorage = null;
-    try the_bitmap.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixels_opt);
+    try the_bitmap.read(helpers.zigimg_test_allocator, &stream_source, &pixels_opt);
 
     defer {
         if (pixels_opt) |pixels| {
@@ -211,6 +210,6 @@ test "Should error when reading an invalid file" {
     var the_bitmap = bmp.Bitmap{};
 
     var pixels: ?color.PixelStorage = null;
-    const invalidFile = the_bitmap.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixels);
+    const invalidFile = the_bitmap.read(helpers.zigimg_test_allocator, &stream_source, &pixels);
     try helpers.expectError(invalidFile, errors.ImageError.InvalidMagicHeader);
 }
