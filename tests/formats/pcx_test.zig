@@ -1,5 +1,4 @@
-const ImageReader = image.ImageReader;
-const ImageSeekStream = image.ImageSeekStream;
+const ImageStream = image.ImageStream;
 const PixelFormat = @import("../../src/pixel_format.zig").PixelFormat;
 const assert = std.debug.assert;
 const color = @import("../../src/color.zig");
@@ -19,7 +18,7 @@ test "PCX indexed1 (linear)" {
     var pcxFile = pcx.PCX{};
 
     var pixelsOpt: ?color.PixelStorage = null;
-    try pcxFile.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
+    try pcxFile.read(helpers.zigimg_test_allocator, &stream_source, &pixelsOpt);
 
     defer {
         if (pixelsOpt) |pixels| {
@@ -66,7 +65,7 @@ test "PCX indexed4 (linear)" {
     var pcxFile = pcx.PCX{};
 
     var pixelsOpt: ?color.PixelStorage = null;
-    try pcxFile.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
+    try pcxFile.read(helpers.zigimg_test_allocator, &stream_source, &pixelsOpt);
 
     defer {
         if (pixelsOpt) |pixels| {
@@ -114,7 +113,7 @@ test "PCX indexed8 (linear)" {
     var pcxFile = pcx.PCX{};
 
     var pixelsOpt: ?color.PixelStorage = null;
-    try pcxFile.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
+    try pcxFile.read(helpers.zigimg_test_allocator, &stream_source, &pixelsOpt);
 
     defer {
         if (pixelsOpt) |pixels| {
@@ -164,7 +163,7 @@ test "PCX indexed24 (planar)" {
     var pcxFile = pcx.PCX{};
 
     var pixelsOpt: ?color.PixelStorage = null;
-    try pcxFile.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
+    try pcxFile.read(helpers.zigimg_test_allocator, &stream_source, &pixelsOpt);
 
     defer {
         if (pixelsOpt) |pixels| {

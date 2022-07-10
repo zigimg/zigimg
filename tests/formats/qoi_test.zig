@@ -1,5 +1,4 @@
-const ImageReader = image.ImageReader;
-const ImageSeekStream = image.ImageSeekStream;
+const ImageStream = image.ImageStream;
 const PixelFormat = @import("../../src/pixel_format.zig").PixelFormat;
 const assert = std.debug.assert;
 const qoi = @import("../../src/formats/qoi.zig");
@@ -22,7 +21,7 @@ test "Should error on non QOI images" {
     var qoi_file = qoi.QOI{};
 
     var pixels_opt: ?color.PixelStorage = null;
-    const invalid_file = qoi_file.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixels_opt);
+    const invalid_file = qoi_file.read(helpers.zigimg_test_allocator, &stream_source, &pixels_opt);
     defer {
         if (pixels_opt) |pixels| {
             pixels.deinit(helpers.zigimg_test_allocator);
@@ -41,7 +40,7 @@ test "Read zero.qoi file" {
     var qoi_file = qoi.QOI{};
 
     var pixels_opt: ?color.PixelStorage = null;
-    try qoi_file.read(helpers.zigimg_test_allocator, stream_source.reader(), stream_source.seekableStream(), &pixels_opt);
+    try qoi_file.read(helpers.zigimg_test_allocator, &stream_source, &pixels_opt);
 
     defer {
         if (pixels_opt) |pixels| {

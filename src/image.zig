@@ -22,9 +22,7 @@ pub const ImageFormat = enum {
     tga,
 };
 
-pub const ImageReader = io.StreamSource.Reader;
-pub const ImageSeekStream = io.StreamSource.SeekableStream;
-pub const ImageWriterStream = io.StreamSource.Writer;
+pub const ImageStream = io.StreamSource;
 
 pub const ImageEncoderOptions = AllImageFormats.ImageEncoderOptions;
 
@@ -102,7 +100,7 @@ pub const Image = struct {
 
         var stream_source = io.StreamSource{ .file = file.* };
 
-        try result.internalRead(allocator, stream_source.reader(), stream_source.seekableStream());
+        try result.internalRead(allocator, &stream_source);
 
         return result;
     }
@@ -113,7 +111,7 @@ pub const Image = struct {
 
         var stream_source = io.StreamSource{ .const_buffer = io.fixedBufferStream(buffer) };
 
-        try result.internalRead(allocator, stream_source.reader(), stream_source.seekableStream());
+        try result.internalRead(allocator, &stream_source);
 
         return result;
     }
@@ -217,7 +215,7 @@ pub const Image = struct {
         var stream_source = io.StreamSource{ .file = file.* };
 
         if (self.pixels) |pixels| {
-            try format_interface.writeForImage(self.allocator, stream_source.writer(), stream_source.seekableStream(), pixels, image_save_info);
+            try format_interface.writeForImage(self.allocator, &stream_source, pixels, image_save_info);
         }
     }
 
@@ -239,7 +237,7 @@ pub const Image = struct {
         var stream_source = io.StreamSource{ .buffer = std.io.fixedBufferStream(write_buffer) };
 
         if (self.pixels) |pixels| {
-            try format_interface.writeForImage(self.allocator, stream_source.writer(), stream_source.seekableStream(), pixels, image_save_info);
+            try format_interface.writeForImage(self.allocator, &stream_source, pixels, image_save_info);
         }
 
         return stream_source.buffer.getWritten();
@@ -254,24 +252,24 @@ pub const Image = struct {
         return color.PixelStorageIterator.initNull();
     }
 
-    fn internalRead(self: *Self, allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream) !void {
-        var format_interface = try findImageInterfaceFromStream(reader, seek_stream);
+    fn internalRead(self: *Self, allocator: Allocator, stream: *ImageStream) !void {
+        var format_interface = try findImageInterfaceFromStream(stream);
         self.image_format = format_interface.format();
 
-        try seek_stream.seekTo(0);
+        try stream.seekTo(0);
 
-        const image_info = try format_interface.readForImage(allocator, reader, seek_stream, &self.pixels);
+        const image_info = try format_interface.readForImage(allocator, stream, &self.pixels);
 
         self.width = image_info.width;
         self.height = image_info.height;
     }
 
-    fn findImageInterfaceFromStream(reader: ImageReader, seek_stream: ImageSeekStream) !FormatInterface {
+    fn findImageInterfaceFromStream(stream: *ImageStream) !FormatInterface {
         for (all_interface_funcs) |intefaceFn| {
             const formatInterface = intefaceFn();
 
-            try seek_stream.seekTo(0);
-            const found = try formatInterface.formatDetect(reader, seek_stream);
+            try stream.seekTo(0);
+            const found = try formatInterface.formatDetect(stream);
             if (found) {
                 return formatInterface;
             }

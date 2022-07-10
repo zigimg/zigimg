@@ -1,5 +1,4 @@
-const ImageReader = image.ImageReader;
-const ImageSeekStream = image.ImageSeekStream;
+const ImageStream = image.ImageStream;
 const PixelFormat = @import("../../src/pixel_format.zig").PixelFormat;
 const assert = std.debug.assert;
 const color = @import("../../src/color.zig");
@@ -20,7 +19,7 @@ test "Should error on non PNG images" {
     defer png_file.deinit();
 
     var pixelsOpt: ?color.PixelStorage = null;
-    const invalidFile = png_file.read(stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
+    const invalidFile = png_file.read(&stream_source, &pixelsOpt);
     defer {
         if (pixelsOpt) |pixels| {
             pixels.deinit(helpers.zigimg_test_allocator);
@@ -40,7 +39,7 @@ test "Read PNG header properly" {
     defer png_file.deinit();
 
     var pixelsOpt: ?color.PixelStorage = null;
-    try png_file.read(stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
+    try png_file.read(&stream_source, &pixelsOpt);
 
     defer {
         if (pixelsOpt) |pixels| {
@@ -73,7 +72,7 @@ test "Read gAMA chunk properly" {
     defer png_file.deinit();
 
     var pixelsOpt: ?color.PixelStorage = null;
-    try png_file.read(stream_source.reader(), stream_source.seekableStream(), &pixelsOpt);
+    try png_file.read(&stream_source, &pixelsOpt);
 
     defer {
         if (pixelsOpt) |pixels| {

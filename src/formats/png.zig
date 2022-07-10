@@ -4,9 +4,8 @@ const Allocator = std.mem.Allocator;
 const crc = std.hash.crc;
 const FormatInterface = @import("../format_interface.zig").FormatInterface;
 const ImageFormat = image.ImageFormat;
-const ImageReader = image.ImageReader;
+const ImageStream = image.ImageStream;
 const ImageInfo = image.ImageInfo;
-const ImageSeekStream = image.ImageSeekStream;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const color = @import("../color.zig");
 const errors = @import("../errors.zig");
@@ -485,10 +484,9 @@ pub const PNG = struct {
         return ImageFormat.png;
     }
 
-    pub fn formatDetect(reader: ImageReader, seek_stream: ImageSeekStream) !bool {
-        _ = seek_stream;
+    pub fn formatDetect(stream: *ImageStream) !bool {
         var magic_number_buffer: [8]u8 = undefined;
-        _ = try reader.read(magic_number_buffer[0..]);
+        _ = try stream.read(magic_number_buffer[0..]);
 
         return std.mem.eql(u8, magic_number_buffer[0..], PNGMagicHeader);
     }
@@ -570,11 +568,11 @@ pub const PNG = struct {
         return null;
     }
 
-    pub fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.PixelStorage) !ImageInfo {
+    pub fn readForImage(allocator: Allocator, stream: *ImageStream, pixels_opt: *?color.PixelStorage) !ImageInfo {
         var png = PNG.init(allocator);
         defer png.deinit();
 
-        try png.read(reader, seek_stream, pixels_opt);
+        try png.read(stream, pixels_opt);
 
         var image_info = ImageInfo{};
         image_info.width = png.header.width;
@@ -583,23 +581,22 @@ pub const PNG = struct {
         return image_info;
     }
 
-    pub fn writeForImage(allocator: Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) !void {
+    pub fn writeForImage(allocator: Allocator, write_stream: *ImageStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) !void {
         _ = allocator;
         _ = write_stream;
-        _ = seek_stream;
         _ = pixels;
         _ = save_info;
     }
 
-    pub fn read(self: *Self, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.PixelStorage) !void {
-        _ = seek_stream;
+    pub fn read(self: *Self, stream: *ImageStream, pixels_opt: *?color.PixelStorage) !void {
         var magic_number_buffer: [8]u8 = undefined;
-        _ = try reader.read(magic_number_buffer[0..]);
+        _ = try stream.read(magic_number_buffer[0..]);
 
         if (!std.mem.eql(u8, magic_number_buffer[0..], PNGMagicHeader)) {
             return errors.ImageError.InvalidMagicHeader;
         }
 
+        const reader = stream.reader();
         while (try self.readChunk(reader)) {}
 
         if (!self.validateBitDepth()) {
@@ -650,7 +647,7 @@ pub const PNG = struct {
         }
     }
 
-    fn readChunk(self: *Self, reader: ImageReader) !bool {
+    fn readChunk(self: *Self, reader: ImageStream.Reader) !bool {
         const chunk_size = try reader.readIntBig(u32);
 
         var chunk_type: [4]u8 = undefined;

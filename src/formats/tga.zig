@@ -1,9 +1,8 @@
 const Allocator = std.mem.Allocator;
 const FormatInterface = @import("../format_interface.zig").FormatInterface;
 const ImageFormat = image.ImageFormat;
-const ImageReader = image.ImageReader;
+const ImageStream = image.ImageStream;
 const ImageInfo = image.ImageInfo;
-const ImageSeekStream = image.ImageSeekStream;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const color = @import("../color.zig");
 const errors = @import("../errors.zig");
@@ -104,7 +103,7 @@ comptime {
 }
 
 const TargaRLEDecoder = struct {
-    source_stream: ImageReader,
+    source_reader: ImageStream.Reader,
     allocator: Allocator,
     bytes_per_pixel: usize,
 
@@ -132,10 +131,10 @@ const TargaRLEDecoder = struct {
         packet_type: PacketType,
     };
 
-    pub fn init(allocator: Allocator, source_stream: ImageReader, bytes_per_pixels: usize) !Self {
+    pub fn init(allocator: Allocator, source_reader: ImageStream.Reader, bytes_per_pixels: usize) !Self {
         var result = Self{
             .allocator = allocator,
-            .source_stream = source_stream,
+            .source_reader = source_reader,
             .bytes_per_pixel = bytes_per_pixels,
         };
 
@@ -152,14 +151,14 @@ const TargaRLEDecoder = struct {
         var read_count: usize = 0;
 
         if (self.state == .read_header) {
-            const packet_header = utils.readStructLittle(self.source_stream, PacketHeader) catch return ReadError.InputOutput;
+            const packet_header = utils.readStructLittle(self.source_reader, PacketHeader) catch return ReadError.InputOutput;
 
             if (packet_header.packet_type == .repeated) {
                 self.state = .repeated;
 
                 self.repeat_count = @intCast(usize, packet_header.pixel_count) + 1;
 
-                _ = try self.source_stream.read(self.repeat_data);
+                _ = try self.source_reader.read(self.repeat_data);
 
                 self.data_stream.reset();
             } else if (packet_header.packet_type == .raw) {
@@ -183,7 +182,7 @@ const TargaRLEDecoder = struct {
                 read_count = dest.len;
             },
             .raw => {
-                const read_bytes = try self.source_stream.read(dest);
+                const read_bytes = try self.source_reader.read(dest);
 
                 self.repeat_count -= read_bytes;
 
@@ -201,16 +200,16 @@ const TargaRLEDecoder = struct {
         return read_count;
     }
 
-    pub fn reader(self: *Self) ImageReader {
+    pub fn reader(self: *Self) ImageStream {
         return .{ .context = @ptrCast(*std.io.StreamSource, self) };
     }
 };
 
 pub const TargaStream = union(enum) {
-    image: ImageReader,
+    image: ImageStream.Reader,
     rle: TargaRLEDecoder,
 
-    pub const ReadError = ImageReader.Error || TargaRLEDecoder.ReadError;
+    pub const ReadError = ImageStream.ReadError || TargaRLEDecoder.ReadError;
     pub const Reader = std.io.Reader(*TargaStream, ReadError, read);
 
     pub fn read(self: *TargaStream, dest: []u8) ReadError!usize {
@@ -244,14 +243,14 @@ pub const TGA = struct {
         return ImageFormat.tga;
     }
 
-    pub fn formatDetect(reader: ImageReader, seek_stream: ImageSeekStream) !bool {
-        const end_pos = try seek_stream.getEndPos();
+    pub fn formatDetect(stream: *ImageStream) !bool {
+        const end_pos = try stream.getEndPos();
 
         if (@sizeOf(TGAFooter) < end_pos) {
             const footer_position = end_pos - @sizeOf(TGAFooter);
 
-            try seek_stream.seekTo(footer_position);
-            const footer: TGAFooter = try utils.readStructLittle(reader, TGAFooter);
+            try stream.seekTo(footer_position);
+            const footer: TGAFooter = try utils.readStructLittle(stream.reader(), TGAFooter);
 
             if (footer.dot != '.') {
                 return false;
@@ -269,10 +268,10 @@ pub const TGA = struct {
         return false;
     }
 
-    pub fn readForImage(allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels: *?color.PixelStorage) !ImageInfo {
+    pub fn readForImage(allocator: Allocator, stream: *ImageStream, pixels: *?color.PixelStorage) !ImageInfo {
         var tga = Self{};
 
-        try tga.read(allocator, reader, seek_stream, pixels);
+        try tga.read(allocator, stream, pixels);
 
         var image_info = ImageInfo{};
         image_info.width = tga.width();
@@ -280,10 +279,9 @@ pub const TGA = struct {
         return image_info;
     }
 
-    pub fn writeForImage(allocator: Allocator, write_stream: image.ImageWriterStream, seek_stream: ImageSeekStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) !void {
+    pub fn writeForImage(allocator: Allocator, write_stream: *ImageStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) !void {
         _ = allocator;
         _ = write_stream;
-        _ = seek_stream;
         _ = pixels;
         _ = save_info;
     }
@@ -315,16 +313,18 @@ pub const TGA = struct {
         return errors.ImageError.UnsupportedPixelFormat;
     }
 
-    pub fn read(self: *Self, allocator: Allocator, reader: ImageReader, seek_stream: ImageSeekStream, pixels_opt: *?color.PixelStorage) !void {
+    pub fn read(self: *Self, allocator: Allocator, stream: *ImageStream, pixels_opt: *?color.PixelStorage) !void {
         // Read footage
-        const end_pos = try seek_stream.getEndPos();
+        const end_pos = try stream.getEndPos();
 
         if (@sizeOf(TGAFooter) > end_pos) {
             return errors.ImageFormatInvalid;
         }
 
+        const reader = stream.reader();
+
         _ = end_pos - @sizeOf(TGAFooter);
-        try seek_stream.seekTo(end_pos - @sizeOf(TGAFooter));
+        try stream.seekTo(end_pos - @sizeOf(TGAFooter));
         const footer: TGAFooter = try utils.readStructLittle(reader, TGAFooter);
 
         if (!std.mem.eql(u8, footer.signature[0..], TGASignature[0..])) {
@@ -334,12 +334,12 @@ pub const TGA = struct {
         // Read extension
         if (footer.extension_offset > 0) {
             const extension_pos = @intCast(u64, footer.extension_offset);
-            try seek_stream.seekTo(extension_pos);
+            try stream.seekTo(extension_pos);
             self.extension = try utils.readStructLittle(reader, TGAExtension);
         }
 
         // Read header
-        try seek_stream.seekTo(0);
+        try stream.seekTo(0);
         self.header = try utils.readStructLittle(reader, TGAHeader);
 
         // Read ID
@@ -347,7 +347,7 @@ pub const TGA = struct {
             var id_buffer: [256]u8 = undefined;
             std.mem.set(u8, id_buffer[0..], 0);
 
-            const read_id_size = try reader.read(id_buffer[0..self.header.id_length]);
+            const read_id_size = try stream.read(id_buffer[0..self.header.id_length]);
 
             if (read_id_size != self.header.id_length) {
                 return errors.ImageError.InvalidMagicHeader;

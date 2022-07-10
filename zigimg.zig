@@ -6,7 +6,6 @@ pub const FormatInterface = @import("src/format_interface.zig").FormatInterface;
 pub const image = @import("src/image.zig");
 pub const Image = image.Image;
 pub const ImageFormat = image.ImageFormat;
-pub const ImageSeekStream = image.ImageSeekStream;
 pub const netpbm = @import("src/formats/netpbm.zig");
 pub const OctTreeQuantizer = @import("src/octree_quantizer.zig").OctTreeQuantizer;
 pub const pcx = @import("src/formats/pcx.zig");
