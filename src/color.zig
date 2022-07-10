@@ -123,16 +123,18 @@ pub const Colorf32 = packed struct {
     }
 };
 
-fn isAll8BitColor(comptime red_type: type, comptime green_type: type, comptime blue_type: type) bool {
-    return red_type == u8 and green_type == u8 and blue_type == u8;
+fn isAll8BitColor(comptime red_type: type, comptime green_type: type, comptime blue_type: type, comptime alpha_type: type) bool {
+    return red_type == u8 and green_type == u8 and blue_type == u8 and (alpha_type == u8 or alpha_type == void);
 }
 
 fn RgbMethods(comptime Self: type) type {
+    const has_alpha_type = @hasField(Self, "a");
+
     return struct {
         const RedT = std.meta.fieldInfo(Self, .r).field_type;
         const GreenT = std.meta.fieldInfo(Self, .g).field_type;
         const BlueT = std.meta.fieldInfo(Self, .b).field_type;
-        const AlphaT = RedT; // We assume Alpha type is same as Red type
+        const AlphaT = if (has_alpha_type) std.meta.fieldInfo(Self, .a).field_type else void;
 
         pub fn initRgb(r: RedT, g: GreenT, b: BlueT) Self {
             return Self{
@@ -147,7 +149,7 @@ fn RgbMethods(comptime Self: type) type {
                 .r = toF32Color(self.r),
                 .g = toF32Color(self.g),
                 .b = toF32Color(self.b),
-                .a = if (@hasField(Self, "a")) toF32Color(self.a) else 1.0,
+                .a = if (has_alpha_type) toF32Color(self.a) else 1.0,
             };
         }
 
@@ -157,7 +159,7 @@ fn RgbMethods(comptime Self: type) type {
                 .g = scaleToIntColor(GreenT, @truncate(u8, value >> 16)),
                 .b = scaleToIntColor(BlueT, @truncate(u8, value >> 8)),
             };
-            if (@hasField(Self, "a")) res.a = scaleToIntColor(AlphaT, @truncate(u8, value));
+            if (has_alpha_type) res.a = scaleToIntColor(AlphaT, @truncate(u8, value));
             return res;
         }
 
@@ -175,7 +177,7 @@ fn RgbMethods(comptime Self: type) type {
                 .g = scaleToIntColor(GreenT, @truncate(u16, value >> 32)),
                 .b = scaleToIntColor(BlueT, @truncate(u16, value >> 16)),
             };
-            if (@hasField(Self, "a")) res.a = scaleToIntColor(AlphaT, @truncate(u16, value));
+            if (has_alpha_type) res.a = scaleToIntColor(AlphaT, @truncate(u16, value));
             return res;
         }
 
@@ -188,7 +190,7 @@ fn RgbMethods(comptime Self: type) type {
         }
 
         // Only enable fromHtmlHex when all color component type are u8
-        pub usingnamespace if (isAll8BitColor(RedT, GreenT, BlueT))
+        pub usingnamespace if (isAll8BitColor(RedT, GreenT, BlueT, AlphaT))
             struct {
                 pub fn fromHtmlHex(hex_string: []const u8) !Self {
                     if (hex_string.len == 0) {
@@ -199,8 +201,14 @@ fn RgbMethods(comptime Self: type) type {
                         return error.InvalidHtmlHexString;
                     }
 
-                    if (hex_string.len != 4 and hex_string.len != 7) {
-                        return error.InvalidHtmlHexString;
+                    if (has_alpha_type) {
+                        if (hex_string.len != 4 and hex_string.len != 7 and hex_string.len != 5 and hex_string.len != 9) {
+                            return error.InvalidHtmlHexString;
+                        }
+                    } else {
+                        if (hex_string.len != 4 and hex_string.len != 7) {
+                            return error.InvalidHtmlHexString;
+                        }
                     }
 
                     if (hex_string.len == 7) {
@@ -213,6 +221,18 @@ fn RgbMethods(comptime Self: type) type {
                             .r = output[0],
                             .g = output[1],
                             .b = output[2],
+                        };
+                    } else if (has_alpha_type and hex_string.len == 9) {
+                        var storage: [4]u8 = undefined;
+                        const output = std.fmt.hexToBytes(storage[0..], hex_string[1..]) catch {
+                            return error.InvalidHtmlHexString;
+                        };
+
+                        return Self{
+                            .r = output[0],
+                            .g = output[1],
+                            .b = output[2],
+                            .a = output[3],
                         };
                     } else if (hex_string.len == 4) {
                         const red_digit = std.fmt.charToDigit(hex_string[1], 16) catch {
@@ -229,6 +249,26 @@ fn RgbMethods(comptime Self: type) type {
                             .r = red_digit | (red_digit << 4),
                             .g = green_digit | (green_digit << 4),
                             .b = blue_digit | (blue_digit << 4),
+                        };
+                    } else if (has_alpha_type and hex_string.len == 5) {
+                        const red_digit = std.fmt.charToDigit(hex_string[1], 16) catch {
+                            return error.InvalidHtmlHexString;
+                        };
+                        const green_digit = std.fmt.charToDigit(hex_string[2], 16) catch {
+                            return error.InvalidHtmlHexString;
+                        };
+                        const blue_digit = std.fmt.charToDigit(hex_string[3], 16) catch {
+                            return error.InvalidHtmlHexString;
+                        };
+                        const alpha_digit = std.fmt.charToDigit(hex_string[4], 16) catch {
+                            return error.InvalidHtmlHexString;
+                        };
+
+                        return Self{
+                            .r = red_digit | (red_digit << 4),
+                            .g = green_digit | (green_digit << 4),
+                            .b = blue_digit | (blue_digit << 4),
+                            .a = alpha_digit | (alpha_digit << 4),
                         };
                     } else {
                         return error.InvalidHtmlHexString;
