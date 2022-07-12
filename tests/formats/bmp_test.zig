@@ -211,5 +211,5 @@ test "Should error when reading an invalid file" {
 
     var pixels: ?color.PixelStorage = null;
     const invalidFile = the_bitmap.read(helpers.zigimg_test_allocator, &stream_source, &pixels);
-    try helpers.expectError(invalidFile, errors.ImageError.InvalidMagicHeader);
+    try helpers.expectError(invalidFile, error.InvalidData);
 }

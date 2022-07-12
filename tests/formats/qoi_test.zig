@@ -28,7 +28,7 @@ test "Should error on non QOI images" {
         }
     }
 
-    try helpers.expectError(invalid_file, errors.ImageError.InvalidMagicHeader);
+    try helpers.expectError(invalid_file, error.InvalidData);
 }
 
 test "Read zero.qoi file" {

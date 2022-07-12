@@ -147,11 +147,11 @@ pub const Image = struct {
                 .rgba32 => |data| return std.mem.sliceAsBytes(data),
                 .bgra32 => |data| return std.mem.sliceAsBytes(data),
                 .float32 => |data| return std.mem.sliceAsBytes(data),
-                else => return errors.ImageError.UnsupportedPixelFormat,
+                else => return error.Unsupported,
             };
         }
 
-        return errors.ImageError.AllocationFailed;
+        return &[_]u8{};
     }
 
     /// Return the byte size of a row in the image
@@ -163,11 +163,11 @@ pub const Image = struct {
                 .rgba32 => return self.width * 4,
                 .bgra32 => return self.width * 4,
                 .float32 => return self.width * (4 * @sizeOf(f32)),
-                else => return errors.ImageError.UnsupportedPixelFormat,
+                else => return error.Unsupported,
             };
         }
 
-        return errors.ImageError.AllocationFailed;
+        return 0;
     }
 
     /// Return the byte size of the whole image
@@ -179,11 +179,11 @@ pub const Image = struct {
                 .rgba32 => return self.width * self.height * 4,
                 .bgra32 => return self.width * self.height * 4,
                 .float32 => return self.width * self.height * (4 * @sizeOf(f32)),
-                else => return errors.ImageError.UnsupportedPixelFormat,
+                else => return error.Unsupported,
             };
         }
 
-        return errors.ImageError.AllocationFailed;
+        return 0;
     }
 
     /// Write the image to an image format to the specified path
@@ -275,7 +275,7 @@ pub const Image = struct {
             }
         }
 
-        return errors.ImageFormatInvalid;
+        return error.Unsupported;
     }
 
     fn findImageInterfaceFromImageFormat(image_format: ImageFormat) !FormatInterface {
@@ -287,6 +287,6 @@ pub const Image = struct {
             }
         }
 
-        return errors.ImageFormatInvalid;
+        return error.Unsupported;
     }
 };

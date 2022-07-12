@@ -37,7 +37,7 @@ pub const Header = struct {
     max_value: usize,
 };
 
-fn parseHeader(reader: ImageStream.Reader) !Header {
+fn parseHeader(reader: ImageStream.Reader) errors.ImageReadError!Header {
     var header: Header = undefined;
 
     var magic: [2]u8 = undefined;
@@ -64,7 +64,7 @@ fn parseHeader(reader: ImageStream.Reader) !Header {
         header.binary = true;
         header.format = .rgb;
     } else {
-        return errors.ImageError.InvalidMagicHeader;
+        return error.InvalidData;
     }
 
     var read_buffer: [16]u8 = undefined;
@@ -86,7 +86,7 @@ fn isWhitespace(b: u8) bool {
     };
 }
 
-fn readNextByte(reader: ImageStream.Reader) !u8 {
+fn readNextByte(reader: ImageStream.Reader) errors.ImageReadError!u8 {
     while (true) {
         var b = try reader.readByte();
         switch (b) {
@@ -113,13 +113,13 @@ fn readNextByte(reader: ImageStream.Reader) !u8 {
 
 /// skips whitespace and comments, then reads a number from the stream.
 /// this function reads one whitespace behind the number as a terminator.
-fn parseNumber(reader: ImageStream.Reader, buffer: []u8) !usize {
+fn parseNumber(reader: ImageStream.Reader, buffer: []u8) errors.ImageReadError!usize {
     var input_length: usize = 0;
     while (true) {
         var b = try readNextByte(reader);
         if (isWhitespace(b)) {
             if (input_length > 0) {
-                return try std.fmt.parseInt(usize, buffer[0..input_length], 10);
+                return std.fmt.parseInt(usize, buffer[0..input_length], 10) catch return error.InvalidData;
             } else {
                 continue;
             }
@@ -132,7 +132,7 @@ fn parseNumber(reader: ImageStream.Reader, buffer: []u8) !usize {
     }
 }
 
-fn loadBinaryBitmap(header: Header, data: []color.Grayscale1, reader: ImageStream.Reader) !void {
+fn loadBinaryBitmap(header: Header, data: []color.Grayscale1, reader: ImageStream.Reader) errors.ImageReadError!void {
     var data_index: usize = 0;
     const data_end = header.width * header.height;
 
@@ -146,7 +146,7 @@ fn loadBinaryBitmap(header: Header, data: []color.Grayscale1, reader: ImageStrea
     }
 }
 
-fn loadAsciiBitmap(header: Header, data: []color.Grayscale1, reader: ImageStream.Reader) !void {
+fn loadAsciiBitmap(header: Header, data: []color.Grayscale1, reader: ImageStream.Reader) errors.ImageReadError!void {
     var data_index: usize = 0;
     const data_end = header.width * header.height;
 
@@ -165,14 +165,14 @@ fn loadAsciiBitmap(header: Header, data: []color.Grayscale1, reader: ImageStream
     }
 }
 
-fn readLinearizedValue(reader: ImageStream.Reader, max_value: usize) !u8 {
+fn readLinearizedValue(reader: ImageStream.Reader, max_value: usize) errors.ImageReadError!u8 {
     return if (max_value > 255)
         @truncate(u8, 255 * @as(usize, try reader.readIntBig(u16)) / max_value)
     else
         @truncate(u8, 255 * @as(usize, try reader.readByte()) / max_value);
 }
 
-fn loadBinaryGraymap(header: Header, pixels: *color.PixelStorage, reader: ImageStream.Reader) !void {
+fn loadBinaryGraymap(header: Header, pixels: *color.PixelStorage, reader: ImageStream.Reader) errors.ImageReadError!void {
     var data_index: usize = 0;
     const data_end = header.width * header.height;
     if (header.max_value <= 255) {
@@ -186,7 +186,7 @@ fn loadBinaryGraymap(header: Header, pixels: *color.PixelStorage, reader: ImageS
     }
 }
 
-fn loadAsciiGraymap(header: Header, pixels: *color.PixelStorage, reader: ImageStream.Reader) !void {
+fn loadAsciiGraymap(header: Header, pixels: *color.PixelStorage, reader: ImageStream.Reader) errors.ImageReadError!void {
     var read_buffer: [16]u8 = undefined;
 
     var data_index: usize = 0;
@@ -203,7 +203,7 @@ fn loadAsciiGraymap(header: Header, pixels: *color.PixelStorage, reader: ImageSt
     }
 }
 
-fn loadBinaryRgbmap(header: Header, data: []color.Rgb24, reader: ImageStream.Reader) !void {
+fn loadBinaryRgbmap(header: Header, data: []color.Rgb24, reader: ImageStream.Reader) errors.ImageReadError!void {
     var data_index: usize = 0;
     const data_end = header.width * header.height;
 
@@ -216,7 +216,7 @@ fn loadBinaryRgbmap(header: Header, data: []color.Rgb24, reader: ImageStream.Rea
     }
 }
 
-fn loadAsciiRgbmap(header: Header, data: []color.Rgb24, reader: ImageStream.Reader) !void {
+fn loadAsciiRgbmap(header: Header, data: []color.Rgb24, reader: ImageStream.Reader) errors.ImageReadError!void {
     var read_buffer: [16]u8 = undefined;
 
     var data_index: usize = 0;
@@ -258,7 +258,7 @@ fn Netpbm(comptime image_format: ImageFormat, comptime header_numbers: []const u
             return image_format;
         }
 
-        pub fn formatDetect(stream: *ImageStream) !bool {
+        pub fn formatDetect(stream: *ImageStream) errors.ImageReadError!bool {
             var magic_number_buffer: [2]u8 = undefined;
             _ = try stream.read(magic_number_buffer[0..]);
 
@@ -278,7 +278,7 @@ fn Netpbm(comptime image_format: ImageFormat, comptime header_numbers: []const u
             return found;
         }
 
-        pub fn readForImage(allocator: Allocator, stream: *ImageStream, pixels: *?color.PixelStorage) !ImageInfo {
+        pub fn readForImage(allocator: Allocator, stream: *ImageStream, pixels: *?color.PixelStorage) errors.ImageReadError!ImageInfo {
             var netpbm_file = Self{};
 
             try netpbm_file.read(allocator, stream, pixels);
@@ -290,7 +290,7 @@ fn Netpbm(comptime image_format: ImageFormat, comptime header_numbers: []const u
             return image_info;
         }
 
-        pub fn writeForImage(allocator: Allocator, write_stream: *ImageStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) !void {
+        pub fn writeForImage(allocator: Allocator, write_stream: *ImageStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) errors.ImageWriteError!void {
             _ = allocator;
             var netpbm_file = Self{};
             netpbm_file.header.binary = switch (save_info.encoder_options) {
@@ -306,7 +306,7 @@ fn Netpbm(comptime image_format: ImageFormat, comptime header_numbers: []const u
                 .grayscale1 => Format.bitmap,
                 .grayscale8, .grayscale16 => Format.grayscale,
                 .rgb24 => Format.rgb,
-                else => return errors.ImageError.UnsupportedPixelFormat,
+                else => return error.Unsupported,
             };
 
             netpbm_file.header.max_value = switch (pixels) {
@@ -318,7 +318,7 @@ fn Netpbm(comptime image_format: ImageFormat, comptime header_numbers: []const u
             try netpbm_file.write(write_stream, pixels);
         }
 
-        pub fn pixelFormat(self: Self) !PixelFormat {
+        pub fn pixelFormat(self: Self) errors.ImageReadError!PixelFormat {
             return switch (self.header.format) {
                 .bitmap => PixelFormat.grayscale1,
                 .grayscale => switch (self.header.max_value) {
@@ -329,7 +329,7 @@ fn Netpbm(comptime image_format: ImageFormat, comptime header_numbers: []const u
             };
         }
 
-        pub fn read(self: *Self, allocator: Allocator, stream: *ImageStream, pixels_opt: *?color.PixelStorage) !void {
+        pub fn read(self: *Self, allocator: Allocator, stream: *ImageStream, pixels_opt: *?color.PixelStorage) errors.ImageReadError!void {
             const reader = stream.reader();
             self.header = try parseHeader(reader);
 
@@ -364,7 +364,7 @@ fn Netpbm(comptime image_format: ImageFormat, comptime header_numbers: []const u
             }
         }
 
-        pub fn write(self: *Self, write_stream: *ImageStream, pixels: color.PixelStorage) !void {
+        pub fn write(self: *Self, write_stream: *ImageStream, pixels: color.PixelStorage) errors.ImageWriteError!void {
             const image_type = if (self.header.binary) header_numbers[1] else header_numbers[0];
             const writer = write_stream.writer();
             try writer.print("P{c}\n", .{image_type});
@@ -390,7 +390,7 @@ fn Netpbm(comptime image_format: ImageFormat, comptime header_numbers: []const u
                                 try bit_writer.flushBits();
                             },
                             else => {
-                                return errors.ImageError.UnsupportedPixelFormat;
+                                return error.Unsupported;
                             },
                         }
                     },
@@ -408,7 +408,7 @@ fn Netpbm(comptime image_format: ImageFormat, comptime header_numbers: []const u
                                 }
                             },
                             else => {
-                                return errors.ImageError.UnsupportedPixelFormat;
+                                return error.Unsupported;
                             },
                         }
                     },
@@ -422,7 +422,7 @@ fn Netpbm(comptime image_format: ImageFormat, comptime header_numbers: []const u
                                 }
                             },
                             else => {
-                                return errors.ImageError.UnsupportedPixelFormat;
+                                return error.Unsupported;
                             },
                         }
                     },
@@ -438,7 +438,7 @@ fn Netpbm(comptime image_format: ImageFormat, comptime header_numbers: []const u
                                 _ = try writer.write("\n");
                             },
                             else => {
-                                return errors.ImageError.UnsupportedPixelFormat;
+                                return error.Unsupported;
                             },
                         }
                     },
@@ -467,7 +467,7 @@ fn Netpbm(comptime image_format: ImageFormat, comptime header_numbers: []const u
                                 _ = try writer.write("\n");
                             },
                             else => {
-                                return errors.ImageError.UnsupportedPixelFormat;
+                                return error.Unsupported;
                             },
                         }
                     },
@@ -479,7 +479,7 @@ fn Netpbm(comptime image_format: ImageFormat, comptime header_numbers: []const u
                                 }
                             },
                             else => {
-                                return errors.ImageError.UnsupportedPixelFormat;
+                                return error.Unsupported;
                             },
                         }
                     },

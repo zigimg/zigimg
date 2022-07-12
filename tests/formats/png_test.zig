@@ -26,7 +26,7 @@ test "Should error on non PNG images" {
         }
     }
 
-    try helpers.expectError(invalidFile, errors.ImageError.InvalidMagicHeader);
+    try helpers.expectError(invalidFile, error.InvalidData);
 }
 
 test "Read PNG header properly" {

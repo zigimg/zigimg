@@ -122,7 +122,7 @@ pub const QOI = struct {
         return ImageFormat.qoi;
     }
 
-    pub fn formatDetect(stream: *ImageStream) !bool {
+    pub fn formatDetect(stream: *ImageStream) errors.ImageReadError!bool {
         var magic_buffer: [std.mem.len(Header.correct_magic)]u8 = undefined;
 
         _ = try stream.read(magic_buffer[0..]);
@@ -130,7 +130,7 @@ pub const QOI = struct {
         return std.mem.eql(u8, magic_buffer[0..], Header.correct_magic[0..]);
     }
 
-    pub fn readForImage(allocator: Allocator, stream: *ImageStream, pixels: *?color.PixelStorage) !ImageInfo {
+    pub fn readForImage(allocator: Allocator, stream: *ImageStream, pixels: *?color.PixelStorage) errors.ImageReadError!ImageInfo {
         var qoi = Self{};
 
         try qoi.read(allocator, stream, pixels);
@@ -141,7 +141,7 @@ pub const QOI = struct {
         return image_info;
     }
 
-    pub fn writeForImage(allocator: Allocator, write_stream: *ImageStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) !void {
+    pub fn writeForImage(allocator: Allocator, write_stream: *ImageStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) errors.ImageWriteError!void {
         _ = allocator;
 
         var qoi = Self{};
@@ -150,7 +150,7 @@ pub const QOI = struct {
         qoi.header.format = switch (pixels) {
             .rgb24 => Format.rgb,
             .rgba32 => Format.rgba,
-            else => return errors.ImageError.UnsupportedPixelFormat,
+            else => return error.Unsupported,
         };
         switch (save_info.encoder_options) {
             .qoi => |qoi_encode_options| {
@@ -179,7 +179,7 @@ pub const QOI = struct {
         };
     }
 
-    pub fn read(self: *Self, allocator: Allocator, stream: *ImageStream, pixels_opt: *?color.PixelStorage) !void {
+    pub fn read(self: *Self, allocator: Allocator, stream: *ImageStream, pixels_opt: *?color.PixelStorage) errors.ImageReadError!void {
         var magic_buffer: [std.mem.len(Header.correct_magic)]u8 = undefined;
 
         const reader = stream.reader();
@@ -187,7 +187,7 @@ pub const QOI = struct {
         _ = try stream.read(magic_buffer[0..]);
 
         if (!std.mem.eql(u8, magic_buffer[0..], Header.correct_magic[0..])) {
-            return errors.ImageError.InvalidMagicHeader;
+            return error.InvalidData;
         }
 
         self.header = try utils.readStructBig(reader, Header);
@@ -275,7 +275,7 @@ pub const QOI = struct {
         }
     }
 
-    pub fn write(self: Self, write_stream: *ImageStream, pixels: color.PixelStorage) !void {
+    pub fn write(self: Self, write_stream: *ImageStream, pixels: color.PixelStorage) errors.ImageWriteError!void {
         const writer = write_stream.writer();
         try writer.writeAll(&self.header.encode());
 
@@ -287,7 +287,7 @@ pub const QOI = struct {
                 try writeData(writer, data);
             },
             else => {
-                return errors.ImageError.UnsupportedPixelFormat;
+                return error.Unsupported;
             },
         }
 
@@ -303,7 +303,7 @@ pub const QOI = struct {
         });
     }
 
-    fn writeData(write_stream: ImageStream.Writer, pixels_data: anytype) !void {
+    fn writeData(write_stream: ImageStream.Writer, pixels_data: anytype) errors.ImageWriteError!void {
         var color_lut = std.mem.zeroes([64]QoiColor);
 
         var previous_pixel = QoiColor{ .r = 0, .g = 0, .b = 0, .a = 0xFF };

@@ -25,7 +25,7 @@ test "Should error on non TGA images" {
         }
     }
 
-    try helpers.expectError(invalidFile, errors.ImageError.InvalidMagicHeader);
+    try helpers.expectError(invalidFile, error.InvalidData);
 }
 
 test "Read ubw8 TGA file" {

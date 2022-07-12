@@ -311,7 +311,7 @@ test "Should detect JPEG properly" {
 
 test "Should error on invalid file" {
     var invalidFile = helpers.testImageFromFile("tests/helpers.zig");
-    try helpers.expectError(invalidFile, error.ImageFormatInvalid);
+    try helpers.expectError(invalidFile, error.Unsupported);
 }
 
 test "Should read a 24-bit bitmap" {

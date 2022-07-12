@@ -55,7 +55,7 @@ const RLEDecoder = struct {
         };
     }
 
-    fn readByte(self: *RLEDecoder) !u8 {
+    fn readByte(self: *RLEDecoder) errors.ImageReadError!u8 {
         if (self.current_run) |*run| {
             var result = run.value;
             run.remaining -= 1;
@@ -87,9 +87,9 @@ const RLEDecoder = struct {
         }
     }
 
-    fn finish(decoder: RLEDecoder) !void {
+    fn finish(decoder: RLEDecoder) errors.ImageReadError!void {
         if (decoder.current_run != null) {
-            return error.RLEStreamIncomplete;
+            return error.InvalidData;
         }
     }
 };
@@ -114,7 +114,7 @@ pub const PCX = struct {
         return ImageFormat.pcx;
     }
 
-    pub fn formatDetect(stream: *ImageStream) !bool {
+    pub fn formatDetect(stream: *ImageStream) errors.ImageReadError!bool {
         var magic_number_bufffer: [2]u8 = undefined;
         _ = try stream.read(magic_number_bufffer[0..]);
 
@@ -129,7 +129,7 @@ pub const PCX = struct {
         return true;
     }
 
-    pub fn readForImage(allocator: Allocator, stream: *ImageStream, pixels: *?color.PixelStorage) !ImageInfo {
+    pub fn readForImage(allocator: Allocator, stream: *ImageStream, pixels: *?color.PixelStorage) errors.ImageReadError!ImageInfo {
         var pcx = PCX{};
 
         try pcx.read(allocator, stream, pixels);
@@ -141,46 +141,46 @@ pub const PCX = struct {
         return image_info;
     }
 
-    pub fn writeForImage(allocator: Allocator, write_stream: *ImageStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) !void {
+    pub fn writeForImage(allocator: Allocator, write_stream: *ImageStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) errors.ImageWriteError!void {
         _ = allocator;
         _ = write_stream;
         _ = pixels;
         _ = save_info;
     }
 
-    pub fn pixelFormat(self: Self) !PixelFormat {
+    pub fn pixelFormat(self: Self) errors.ImageReadError!PixelFormat {
         if (self.header.planes == 1) {
             switch (self.header.bpp) {
                 1 => return PixelFormat.indexed1,
                 4 => return PixelFormat.indexed4,
                 8 => return PixelFormat.indexed8,
-                else => return errors.ImageError.UnsupportedPixelFormat,
+                else => return error.Unsupported,
             }
         } else if (self.header.planes == 3) {
             switch (self.header.bpp) {
                 8 => return PixelFormat.rgb24,
-                else => return errors.ImageError.UnsupportedPixelFormat,
+                else => return error.Unsupported,
             }
         } else {
-            return errors.ImageError.UnsupportedPixelFormat;
+            return error.Unsupported;
         }
     }
 
-    pub fn read(self: *Self, allocator: Allocator, stream: *ImageStream, pixels_opt: *?color.PixelStorage) !void {
+    pub fn read(self: *Self, allocator: Allocator, stream: *ImageStream, pixels_opt: *?color.PixelStorage) errors.ImageReadError!void {
         const reader = stream.reader();
         self.header = try utils.readStructLittle(reader, PCXHeader);
         _ = try stream.read(PCXHeader.padding[0..]);
 
         if (self.header.id != 0x0A) {
-            return errors.ImageError.InvalidMagicHeader;
+            return error.InvalidData;
         }
 
         if (self.header.version > 0x05) {
-            return errors.ImageError.InvalidMagicHeader;
+            return error.InvalidData;
         }
 
         if (self.header.planes > 3) {
-            return errors.ImageError.UnsupportedPixelFormat;
+            return error.Unsupported;
         }
 
         const pixel_format = try self.pixelFormat();
@@ -253,7 +253,7 @@ pub const PCX = struct {
                                 x += 1;
                             }
                         },
-                        else => return error.UnsupportedPixelFormat,
+                        else => return error.Unsupported,
                     }
                 }
 
@@ -286,7 +286,7 @@ pub const PCX = struct {
                     try stream.seekTo(end_pos - 769);
 
                     if ((try reader.readByte()) != 0x0C)
-                        return error.MissingPalette;
+                        return error.InvalidData;
 
                     for (pal) |*c| {
                         c.r = try reader.readByte();

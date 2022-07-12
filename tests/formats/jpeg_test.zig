@@ -23,7 +23,7 @@ test "Should error on non JPEG images" {
         }
     }
 
-    try helpers.expectError(invalidFile, errors.ImageError.InvalidMagicHeader);
+    try helpers.expectError(invalidFile, error.InvalidData);
 }
 
 test "Read JFIF header properly and decode simple Huffman stream" {

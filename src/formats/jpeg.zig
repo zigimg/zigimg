@@ -124,7 +124,7 @@ const QuantizationTable = union(enum) {
     q8: [64]u8,
     q16: [64]u16,
 
-    pub fn read(precision: u8, reader: ImageStream.Reader) !QuantizationTable {
+    pub fn read(precision: u8, reader: ImageStream.Reader) errors.ImageReadError!QuantizationTable {
         // 0 = 8 bits, 1 = 16 bits
         switch (precision) {
             0 => {
@@ -160,7 +160,7 @@ const QuantizationTable = union(enum) {
 
                 return table;
             },
-            else => return error.UnknownQuantizationTablePrecision,
+            else => return error.InvalidData,
         }
     }
 };
@@ -176,13 +176,13 @@ const HuffmanTable = struct {
 
     table_class: u8,
 
-    pub fn read(allocator: Allocator, table_class: u8, reader: ImageStream.Reader) !HuffmanTable {
+    pub fn read(allocator: Allocator, table_class: u8, reader: ImageStream.Reader) errors.ImageReadError!HuffmanTable {
         if (table_class & 1 != table_class)
-            return error.InvalidHuffmanTableClass;
+            return error.InvalidData;
 
         var code_counts: [16]u8 = undefined;
         if ((try reader.read(code_counts[0..])) < 16) {
-            return error.IncompleteHuffmanTable;
+            return error.InvalidData;
         }
 
         if (JPEG_DEBUG) std.debug.print("  Code counts: {any}\n", .{code_counts});
@@ -210,7 +210,7 @@ const HuffmanTable = struct {
             while (j < count) : (j += 1) {
                 // Check if we hit all 1s, i.e. 111111 for i == 6, which is an invalid value
                 if (code == (@intCast(u17, 1) << (@intCast(u5, i) + 1)) - 1) {
-                    return error.InvalidHuffmanTable;
+                    return error.InvalidData;
                 }
 
                 const byte = try reader.readByte();
@@ -253,7 +253,7 @@ const HuffmanReader = struct {
         self.table = table;
     }
 
-    fn readBit(self: *HuffmanReader) !u1 {
+    fn readBit(self: *HuffmanReader) errors.ImageReadError!u1 {
         if (self.bits_left == 0) {
             self.byte_buffer = try self.reader.readByte();
 
@@ -272,7 +272,7 @@ const HuffmanReader = struct {
         return bit;
     }
 
-    pub fn readCode(self: *HuffmanReader) !u8 {
+    pub fn readCode(self: *HuffmanReader) errors.ImageReadError!u8 {
         var code: u16 = 0;
 
         var i: u5 = 0;
@@ -283,10 +283,10 @@ const HuffmanReader = struct {
             }
         }
 
-        return error.NoSuchHuffmanCode;
+        return error.InvalidData;
     }
 
-    pub fn readLiteralBits(self: *HuffmanReader, bitsNeeded: u8) !u32 {
+    pub fn readLiteralBits(self: *HuffmanReader, bitsNeeded: u8) errors.ImageReadError!u32 {
         var bits: u32 = 0;
 
         var i: usize = 0;
@@ -298,7 +298,7 @@ const HuffmanReader = struct {
     }
 
     /// This function implements T.81 section F1.2.1, Huffman encoding of DC coefficients.
-    pub fn readMagnitudeCoded(self: *HuffmanReader, magnitude: u5) !i32 {
+    pub fn readMagnitudeCoded(self: *HuffmanReader, magnitude: u5) errors.ImageReadError!i32 {
         if (magnitude == 0)
             return 0;
 
@@ -328,7 +328,7 @@ const Component = struct {
     vertical_sampling_factor: u4,
     quantization_table_id: u8,
 
-    pub fn read(reader: ImageStream.Reader) !Component {
+    pub fn read(reader: ImageStream.Reader) errors.ImageReadError!Component {
         const component_id = try reader.readByte();
         const sampling_factors = try reader.readByte();
         const quantization_table_id = try reader.readByte();
@@ -337,11 +337,11 @@ const Component = struct {
         const vertical_sampling_factor = @intCast(u4, sampling_factors & 0xF);
 
         if (horizontal_sampling_factor < 1 or horizontal_sampling_factor > 4) {
-            return error.InvalidSamplingFactor;
+            return error.InvalidData;
         }
 
         if (vertical_sampling_factor < 1 or vertical_sampling_factor > 4) {
-            return error.InvalidSamplingFactor;
+            return error.InvalidData;
         }
 
         return Component{
@@ -362,7 +362,7 @@ const FrameHeader = struct {
 
     components: []Component,
 
-    pub fn read(allocator: Allocator, reader: ImageStream.Reader) !FrameHeader {
+    pub fn read(allocator: Allocator, reader: ImageStream.Reader) errors.ImageReadError!FrameHeader {
         var segment_size = try reader.readIntBig(u16);
         if (JPEG_DEBUG) std.debug.print("StartOfFrame: frame size = 0x{X}\n", .{segment_size});
         segment_size -= 2;
@@ -374,7 +374,7 @@ const FrameHeader = struct {
         const component_count = try reader.readByte();
 
         if (component_count != 1 and component_count != 3) {
-            return error.InvalidComponentCount;
+            return error.InvalidData;
         }
 
         if (JPEG_DEBUG) std.debug.print("  {}x{}, precision={}, {} components\n", .{ samples_per_row, row_count, sample_precision, component_count });
@@ -418,7 +418,7 @@ const ScanComponentSpec = struct {
     dc_table_selector: u4,
     ac_table_selector: u4,
 
-    pub fn read(reader: ImageStream.Reader) !ScanComponentSpec {
+    pub fn read(reader: ImageStream.Reader) errors.ImageReadError!ScanComponentSpec {
         const component_selector = try reader.readByte();
         const entropy_coding_selectors = try reader.readByte();
 
@@ -444,14 +444,14 @@ const ScanHeader = struct {
     approximation_high: u4,
     approximation_low: u4,
 
-    pub fn read(reader: ImageStream.Reader) !ScanHeader {
+    pub fn read(reader: ImageStream.Reader) errors.ImageReadError!ScanHeader {
         var segment_size = try reader.readIntBig(u16);
         if (JPEG_DEBUG) std.debug.print("StartOfScan: segment size = 0x{X}\n", .{segment_size});
         segment_size -= 2;
 
         const component_count = try reader.readByte();
         if (component_count < 1 or component_count > 4) {
-            return error.InvalidComponentCount;
+            return error.InvalidData;
         }
 
         segment_size -= 1;
@@ -469,16 +469,16 @@ const ScanHeader = struct {
         const end_of_spectral_selection = try reader.readByte();
 
         if (start_of_spectral_selection > 63) {
-            return error.InvalidSpectralSelectionValue;
+            return error.InvalidData;
         }
 
         if (end_of_spectral_selection < start_of_spectral_selection or end_of_spectral_selection > 63) {
-            return error.InvalidSpectralSelectionValue;
+            return error.InvalidData;
         }
 
         // If Ss = 0, then Se = 63.
         if (start_of_spectral_selection == 0 and end_of_spectral_selection != 63) {
-            return error.InvalidSpectralSelectionValue;
+            return error.InvalidData;
         }
 
         segment_size -= 2;
@@ -581,7 +581,7 @@ const IDCTMultipliers = blk: {
 };
 
 const Scan = struct {
-    pub fn performScan(frame: *Frame, reader: ImageStream.Reader) !void {
+    pub fn performScan(frame: *Frame, reader: ImageStream.Reader) errors.ImageReadError!void {
         const scan_header = try ScanHeader.read(reader);
 
         var prediction_values = [3]i12{ 0, 0, 0 };
@@ -592,7 +592,7 @@ const Scan = struct {
         }
     }
 
-    fn decodeMCU(frame: *Frame, scan_header: ScanHeader, mcu_id: usize, reader: *HuffmanReader, prediction_values: *[3]i12) !void {
+    fn decodeMCU(frame: *Frame, scan_header: ScanHeader, mcu_id: usize, reader: *HuffmanReader, prediction_values: *[3]i12) errors.ImageReadError!void {
         for (scan_header.components) |maybe_component, component_id| {
             _ = component_id;
             if (maybe_component == null)
@@ -602,7 +602,7 @@ const Scan = struct {
         }
     }
 
-    fn decodeMCUComponent(frame: *Frame, component: ScanComponentSpec, mcu_id: usize, reader: *HuffmanReader, prediction_values: *[3]i12) !void {
+    fn decodeMCUComponent(frame: *Frame, component: ScanComponentSpec, mcu_id: usize, reader: *HuffmanReader, prediction_values: *[3]i12) errors.ImageReadError!void {
         // The encoder might reorder components or omit one if it decides that the
         // file size can be reduced that way. Therefore we need to select the correct
         // destination for this component.
@@ -613,14 +613,14 @@ const Scan = struct {
                 }
             }
 
-            return error.UnknownComponentInScan;
+            return error.InvalidData;
         };
 
         const mcu = &frame.mcu_storage[mcu_id][component_destination];
 
         // Decode the DC coefficient
         if (frame.dc_huffman_tables[component.dc_table_selector] == null)
-            return error.NonexistentDCHuffmanTableReferenced;
+            return error.InvalidData;
 
         reader.setHuffmanTable(&frame.dc_huffman_tables[component.dc_table_selector].?);
 
@@ -629,16 +629,16 @@ const Scan = struct {
 
         // Decode the AC coefficients
         if (frame.ac_huffman_tables[component.ac_table_selector] == null)
-            return error.NonexistentACHuffmanTableReferenced;
+            return error.InvalidData;
 
         reader.setHuffmanTable(&frame.ac_huffman_tables[component.ac_table_selector].?);
 
         try Scan.decodeACCoefficients(reader, mcu);
     }
 
-    fn decodeDCCoefficient(reader: *HuffmanReader, prediction: *i12) !i12 {
+    fn decodeDCCoefficient(reader: *HuffmanReader, prediction: *i12) errors.ImageReadError!i12 {
         const maybe_magnitude = try reader.readCode();
-        if (maybe_magnitude > 11) return error.InvalidDCMagnitude;
+        if (maybe_magnitude > 11) return error.InvalidData;
         const magnitude = @intCast(u4, maybe_magnitude);
 
         const diff = @intCast(i12, try reader.readMagnitudeCoded(magnitude));
@@ -648,7 +648,7 @@ const Scan = struct {
         return dc_coefficient;
     }
 
-    fn decodeACCoefficients(reader: *HuffmanReader, mcu: *Frame.MCU) !void {
+    fn decodeACCoefficients(reader: *HuffmanReader, mcu: *Frame.MCU) errors.ImageReadError!void {
         var ac: usize = 1;
         var did_see_eob = false;
         while (ac < 64) : (ac += 1) {
@@ -668,7 +668,7 @@ const Scan = struct {
             const zero_run_length = zero_run_length_and_magnitude >> 4;
 
             const maybe_magnitude = zero_run_length_and_magnitude & 0xF;
-            if (maybe_magnitude > 10) return error.InvalidACMagnitude;
+            if (maybe_magnitude > 10) return error.InvalidData;
             const magnitude = @intCast(u4, maybe_magnitude);
 
             const ac_coefficient = @intCast(i11, try reader.readMagnitudeCoded(magnitude));
@@ -696,7 +696,7 @@ const Frame = struct {
 
     const MAX_COMPONENTS = 3;
 
-    pub fn read(allocator: Allocator, quantization_tables: *[4]?QuantizationTable, stream: *ImageStream) !Frame {
+    pub fn read(allocator: Allocator, quantization_tables: *[4]?QuantizationTable, stream: *ImageStream) errors.ImageReadError!Frame {
         const reader = stream.reader();
         var frame_header = try FrameHeader.read(allocator, reader);
         const mcu_count = Frame.calculateMCUCountInFrame(&frame_header);
@@ -722,7 +722,7 @@ const Frame = struct {
                     try self.parseDefineHuffmanTables(reader);
                 },
                 else => {
-                    return error.UnknownMarkerInFrame;
+                    return error.InvalidData;
                 },
             }
         }
@@ -757,7 +757,7 @@ const Frame = struct {
         self.allocator.free(self.mcu_storage);
     }
 
-    fn parseDefineHuffmanTables(self: *Frame, reader: ImageStream.Reader) !void {
+    fn parseDefineHuffmanTables(self: *Frame, reader: ImageStream.Reader) errors.ImageReadError!void {
         var segment_size = try reader.readIntBig(u16);
         if (JPEG_DEBUG) std.debug.print("DefineHuffmanTables: segment size = 0x{X}\n", .{segment_size});
         segment_size -= 2;
@@ -794,7 +794,7 @@ const Frame = struct {
         return (sample_count / 64) + (if (sample_count % 64 != 0) @as(u1, 1) else @as(u1, 0));
     }
 
-    fn parseScan(self: *Frame, reader: ImageStream.Reader) !void {
+    fn parseScan(self: *Frame, reader: ImageStream.Reader) errors.ImageReadError!void {
         try Scan.performScan(self, reader);
     }
 
@@ -809,12 +809,12 @@ const Frame = struct {
                     while (sample_id < 64) : (sample_id += 1) {
                         mcu[sample_id] = mcu[sample_id] * quantization_table.q8[sample_id];
                     }
-                } else return error.UnknownQuantizationTableReferenced;
+                } else return error.InvalidData;
             }
         }
     }
 
-    pub fn renderToPixels(self: *Frame, pixels: *color.PixelStorage) !void {
+    pub fn renderToPixels(self: *Frame, pixels: *color.PixelStorage) errors.ImageReadError!void {
         switch (self.frame_header.components.len) {
             1 => try self.renderToPixelsGrayscale(pixels.grayscale8),
             3 => try self.renderToPixelsRgb(pixels.rgb24),
@@ -822,13 +822,13 @@ const Frame = struct {
         }
     }
 
-    fn renderToPixelsGrayscale(self: *Frame, pixels: []color.Grayscale8) !void {
+    fn renderToPixelsGrayscale(self: *Frame, pixels: []color.Grayscale8) errors.ImageReadError!void {
         _ = self;
         _ = pixels;
-        return error.NotImplemented;
+        return error.Unsupported;
     }
 
-    fn renderToPixelsRgb(self: *Frame, pixels: []color.Rgb24) !void {
+    fn renderToPixelsRgb(self: *Frame, pixels: []color.Rgb24) errors.ImageReadError!void {
         var width = self.frame_header.samples_per_row;
         var mcu_id: usize = 0;
         while (mcu_id < self.mcu_storage.len) : (mcu_id += 1) {
@@ -912,7 +912,7 @@ pub const JPEG = struct {
         }
     }
 
-    fn parseDefineQuantizationTables(self: *JPEG, reader: ImageStream.Reader) !void {
+    fn parseDefineQuantizationTables(self: *JPEG, reader: ImageStream.Reader) errors.ImageReadError!void {
         var segment_size = try reader.readIntBig(u16);
         if (JPEG_DEBUG) std.debug.print("DefineQuantizationTables: segment size = 0x{X}\n", .{segment_size});
         segment_size -= 2;
@@ -933,7 +933,7 @@ pub const JPEG = struct {
         }
     }
 
-    fn initializePixels(self: *JPEG, pixels_opt: *?color.PixelStorage) !void {
+    fn initializePixels(self: *JPEG, pixels_opt: *?color.PixelStorage) errors.ImageReadError!void {
         if (self.frame) |frame| {
             var pixel_format: PixelFormat = undefined;
             switch (frame.frame_header.components.len) {
@@ -944,13 +944,13 @@ pub const JPEG = struct {
 
             const pixel_count = @intCast(usize, frame.frame_header.samples_per_row) * @intCast(usize, frame.frame_header.row_count);
             pixels_opt.* = try color.PixelStorage.init(self.allocator, pixel_format, pixel_count);
-        } else return error.FrameDoesNotExist;
+        } else return error.InvalidData;
     }
 
-    pub fn read(self: *JPEG, stream: *ImageStream, pixels_opt: *?color.PixelStorage) !Frame {
+    pub fn read(self: *JPEG, stream: *ImageStream, pixels_opt: *?color.PixelStorage) errors.ImageReadError!Frame {
         _ = pixels_opt;
         const jfif_header = JFIFHeader.read(stream) catch |err| switch (err) {
-            error.App0MarkerDoesNotExist, error.JfifIdentifierNotSet, error.ThumbnailImagesUnsupported, error.ExtraneousApplicationMarker => return errors.ImageError.InvalidMagicHeader,
+            error.App0MarkerDoesNotExist, error.JfifIdentifierNotSet, error.ThumbnailImagesUnsupported, error.ExtraneousApplicationMarker => return error.InvalidData,
             else => |e| return e,
         };
         _ = jfif_header;
@@ -977,7 +977,7 @@ pub const JPEG = struct {
             switch (@intToEnum(Markers, marker)) {
                 .sof0 => {
                     if (self.frame != null) {
-                        return error.UnsupportedMultiframe;
+                        return error.Unsupported;
                     }
 
                     self.frame = try Frame.read(self.allocator, &self.quantization_tables, stream);
@@ -985,18 +985,18 @@ pub const JPEG = struct {
                     try self.frame.?.renderToPixels(&pixels_opt.*.?);
                 },
 
-                .sof1 => return error.UnsupportedFrameFormat,
-                .sof2 => return error.UnsupportedFrameFormat,
-                .sof3 => return error.UnsupportedFrameFormat,
-                .sof5 => return error.UnsupportedFrameFormat,
-                .sof6 => return error.UnsupportedFrameFormat,
-                .sof7 => return error.UnsupportedFrameFormat,
-                .sof9 => return error.UnsupportedFrameFormat,
-                .sof10 => return error.UnsupportedFrameFormat,
-                .sof11 => return error.UnsupportedFrameFormat,
-                .sof13 => return error.UnsupportedFrameFormat,
-                .sof14 => return error.UnsupportedFrameFormat,
-                .sof15 => return error.UnsupportedFrameFormat,
+                .sof1 => return error.Unsupported,
+                .sof2 => return error.Unsupported,
+                .sof3 => return error.Unsupported,
+                .sof5 => return error.Unsupported,
+                .sof6 => return error.Unsupported,
+                .sof7 => return error.Unsupported,
+                .sof9 => return error.Unsupported,
+                .sof10 => return error.Unsupported,
+                .sof11 => return error.Unsupported,
+                .sof13 => return error.Unsupported,
+                .sof14 => return error.Unsupported,
+                .sof15 => return error.Unsupported,
 
                 .define_quantization_tables => {
                     try self.parseDefineQuantizationTables(reader);
@@ -1010,12 +1010,12 @@ pub const JPEG = struct {
                 },
 
                 else => {
-                    return error.UnknownMarker;
+                    return error.InvalidData;
                 },
             }
         }
 
-        return if (self.frame) |frame| frame else error.FrameHeaderDoesNotExist;
+        return if (self.frame) |frame| frame else error.InvalidData;
     }
 
     // Format interface
@@ -1033,7 +1033,7 @@ pub const JPEG = struct {
         return ImageFormat.jpg;
     }
 
-    fn formatDetect(stream: *ImageStream) !bool {
+    fn formatDetect(stream: *ImageStream) errors.ImageReadError!bool {
         const reader = stream.reader();
         const maybe_start_of_image = try reader.readIntBig(u16);
         if (maybe_start_of_image != @enumToInt(Markers.start_of_image)) {
@@ -1047,7 +1047,7 @@ pub const JPEG = struct {
         return std.mem.eql(u8, identifier_buffer[0..], "JFIF");
     }
 
-    fn readForImage(allocator: Allocator, stream: *ImageStream, pixels_opt: *?color.PixelStorage) !ImageInfo {
+    fn readForImage(allocator: Allocator, stream: *ImageStream, pixels_opt: *?color.PixelStorage) errors.ImageReadError!ImageInfo {
         var jpeg = JPEG.init(allocator);
         defer jpeg.deinit();
 
@@ -1058,7 +1058,7 @@ pub const JPEG = struct {
         };
     }
 
-    fn writeForImage(allocator: Allocator, write_stream: *ImageStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) !void {
+    fn writeForImage(allocator: Allocator, write_stream: *ImageStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) errors.ImageWriteError!void {
         _ = allocator;
         _ = write_stream;
         _ = pixels;
