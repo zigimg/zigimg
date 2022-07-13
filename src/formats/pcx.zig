@@ -8,6 +8,9 @@ const ImageInfo = image.ImageInfo;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const color = @import("../color.zig");
 const errors = @import("../errors.zig");
+const ImageError = errors.ImageError;
+const ImageReadError = errors.ImageReadError;
+const ImageWriteError = errors.ImageWriteError;
 const image = @import("../image.zig");
 const std = @import("std");
 const utils = @import("../utils.zig");
@@ -55,7 +58,7 @@ const RLEDecoder = struct {
         };
     }
 
-    fn readByte(self: *RLEDecoder) errors.ImageReadError!u8 {
+    fn readByte(self: *RLEDecoder) ImageReadError!u8 {
         if (self.current_run) |*run| {
             var result = run.value;
             run.remaining -= 1;
@@ -87,9 +90,9 @@ const RLEDecoder = struct {
         }
     }
 
-    fn finish(decoder: RLEDecoder) errors.ImageReadError!void {
+    fn finish(decoder: RLEDecoder) ImageReadError!void {
         if (decoder.current_run != null) {
-            return error.InvalidData;
+            return ImageReadError.InvalidData;
         }
     }
 };
@@ -114,7 +117,7 @@ pub const PCX = struct {
         return ImageFormat.pcx;
     }
 
-    pub fn formatDetect(stream: *ImageStream) errors.ImageReadError!bool {
+    pub fn formatDetect(stream: *ImageStream) ImageReadError!bool {
         var magic_number_bufffer: [2]u8 = undefined;
         _ = try stream.read(magic_number_bufffer[0..]);
 
@@ -129,7 +132,7 @@ pub const PCX = struct {
         return true;
     }
 
-    pub fn readForImage(allocator: Allocator, stream: *ImageStream, pixels: *?color.PixelStorage) errors.ImageReadError!ImageInfo {
+    pub fn readForImage(allocator: Allocator, stream: *ImageStream, pixels: *?color.PixelStorage) ImageReadError!ImageInfo {
         var pcx = PCX{};
 
         try pcx.read(allocator, stream, pixels);
@@ -141,46 +144,46 @@ pub const PCX = struct {
         return image_info;
     }
 
-    pub fn writeForImage(allocator: Allocator, write_stream: *ImageStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) errors.ImageWriteError!void {
+    pub fn writeForImage(allocator: Allocator, write_stream: *ImageStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) ImageWriteError!void {
         _ = allocator;
         _ = write_stream;
         _ = pixels;
         _ = save_info;
     }
 
-    pub fn pixelFormat(self: Self) errors.ImageReadError!PixelFormat {
+    pub fn pixelFormat(self: Self) ImageReadError!PixelFormat {
         if (self.header.planes == 1) {
             switch (self.header.bpp) {
                 1 => return PixelFormat.indexed1,
                 4 => return PixelFormat.indexed4,
                 8 => return PixelFormat.indexed8,
-                else => return error.Unsupported,
+                else => return ImageError.Unsupported,
             }
         } else if (self.header.planes == 3) {
             switch (self.header.bpp) {
                 8 => return PixelFormat.rgb24,
-                else => return error.Unsupported,
+                else => return ImageError.Unsupported,
             }
         } else {
-            return error.Unsupported;
+            return ImageError.Unsupported;
         }
     }
 
-    pub fn read(self: *Self, allocator: Allocator, stream: *ImageStream, pixels_opt: *?color.PixelStorage) errors.ImageReadError!void {
+    pub fn read(self: *Self, allocator: Allocator, stream: *ImageStream, pixels_opt: *?color.PixelStorage) ImageReadError!void {
         const reader = stream.reader();
         self.header = try utils.readStructLittle(reader, PCXHeader);
         _ = try stream.read(PCXHeader.padding[0..]);
 
         if (self.header.id != 0x0A) {
-            return error.InvalidData;
+            return ImageReadError.InvalidData;
         }
 
         if (self.header.version > 0x05) {
-            return error.InvalidData;
+            return ImageReadError.InvalidData;
         }
 
         if (self.header.planes > 3) {
-            return error.Unsupported;
+            return ImageError.Unsupported;
         }
 
         const pixel_format = try self.pixelFormat();
@@ -253,7 +256,7 @@ pub const PCX = struct {
                                 x += 1;
                             }
                         },
-                        else => return error.Unsupported,
+                        else => return ImageError.Unsupported,
                     }
                 }
 
@@ -286,7 +289,7 @@ pub const PCX = struct {
                     try stream.seekTo(end_pos - 769);
 
                     if ((try reader.readByte()) != 0x0C)
-                        return error.InvalidData;
+                        return ImageReadError.InvalidData;
 
                     for (pal) |*c| {
                         c.r = try reader.readByte();

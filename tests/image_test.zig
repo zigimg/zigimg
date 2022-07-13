@@ -5,6 +5,8 @@ const Image = @import("../src/image.zig").Image;
 const color = @import("../src/color.zig");
 const PixelFormat = @import("../src/pixel_format.zig").PixelFormat;
 const helpers = @import("helpers.zig");
+const errors = @import("../src/errors.zig");
+const ImageError = errors.ImageError;
 
 test "Create Image indexed1" {
     const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed1, .raw);
@@ -311,7 +313,7 @@ test "Should detect JPEG properly" {
 
 test "Should error on invalid file" {
     var invalidFile = helpers.testImageFromFile("tests/helpers.zig");
-    try helpers.expectError(invalidFile, error.Unsupported);
+    try helpers.expectError(invalidFile, ImageError.Unsupported);
 }
 
 test "Should read a 24-bit bitmap" {

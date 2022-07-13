@@ -8,6 +8,9 @@ const ImageInfo = image.ImageInfo;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const color = @import("../color.zig");
 const errors = @import("../errors.zig");
+const ImageError = errors.ImageError;
+const ImageReadError = errors.ImageReadError;
+const ImageWriteError = errors.ImageWriteError;
 const fs = std.fs;
 const image = @import("../image.zig");
 const io = std.io;
@@ -122,7 +125,7 @@ pub const QOI = struct {
         return ImageFormat.qoi;
     }
 
-    pub fn formatDetect(stream: *ImageStream) errors.ImageReadError!bool {
+    pub fn formatDetect(stream: *ImageStream) ImageReadError!bool {
         var magic_buffer: [std.mem.len(Header.correct_magic)]u8 = undefined;
 
         _ = try stream.read(magic_buffer[0..]);
@@ -130,7 +133,7 @@ pub const QOI = struct {
         return std.mem.eql(u8, magic_buffer[0..], Header.correct_magic[0..]);
     }
 
-    pub fn readForImage(allocator: Allocator, stream: *ImageStream, pixels: *?color.PixelStorage) errors.ImageReadError!ImageInfo {
+    pub fn readForImage(allocator: Allocator, stream: *ImageStream, pixels: *?color.PixelStorage) ImageReadError!ImageInfo {
         var qoi = Self{};
 
         try qoi.read(allocator, stream, pixels);
@@ -141,7 +144,7 @@ pub const QOI = struct {
         return image_info;
     }
 
-    pub fn writeForImage(allocator: Allocator, write_stream: *ImageStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) errors.ImageWriteError!void {
+    pub fn writeForImage(allocator: Allocator, write_stream: *ImageStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) ImageWriteError!void {
         _ = allocator;
 
         var qoi = Self{};
@@ -150,7 +153,7 @@ pub const QOI = struct {
         qoi.header.format = switch (pixels) {
             .rgb24 => Format.rgb,
             .rgba32 => Format.rgba,
-            else => return error.Unsupported,
+            else => return ImageError.Unsupported,
         };
         switch (save_info.encoder_options) {
             .qoi => |qoi_encode_options| {
@@ -179,7 +182,7 @@ pub const QOI = struct {
         };
     }
 
-    pub fn read(self: *Self, allocator: Allocator, stream: *ImageStream, pixels_opt: *?color.PixelStorage) errors.ImageReadError!void {
+    pub fn read(self: *Self, allocator: Allocator, stream: *ImageStream, pixels_opt: *?color.PixelStorage) ImageReadError!void {
         var magic_buffer: [std.mem.len(Header.correct_magic)]u8 = undefined;
 
         const reader = stream.reader();
@@ -187,10 +190,10 @@ pub const QOI = struct {
         _ = try stream.read(magic_buffer[0..]);
 
         if (!std.mem.eql(u8, magic_buffer[0..], Header.correct_magic[0..])) {
-            return error.InvalidData;
+            return ImageReadError.InvalidData;
         }
 
-        self.header = try utils.readStructBig(reader, Header);
+        self.header = utils.readStructBig(reader, Header) catch return ImageReadError.InvalidData;
 
         const pixel_format = try self.pixelFormat();
 
@@ -253,7 +256,7 @@ pub const QOI = struct {
             // this will happen when a file has an invalid run length
             // and we would decode more pixels than there are in the image.
             if (index + count > pixels_size) {
-                return error.InvalidData;
+                return ImageReadError.InvalidData;
             }
 
             while (count > 0) {
@@ -275,7 +278,7 @@ pub const QOI = struct {
         }
     }
 
-    pub fn write(self: Self, write_stream: *ImageStream, pixels: color.PixelStorage) errors.ImageWriteError!void {
+    pub fn write(self: Self, write_stream: *ImageStream, pixels: color.PixelStorage) ImageWriteError!void {
         const writer = write_stream.writer();
         try writer.writeAll(&self.header.encode());
 
@@ -287,7 +290,7 @@ pub const QOI = struct {
                 try writeData(writer, data);
             },
             else => {
-                return error.Unsupported;
+                return ImageError.Unsupported;
             },
         }
 
@@ -303,7 +306,7 @@ pub const QOI = struct {
         });
     }
 
-    fn writeData(write_stream: ImageStream.Writer, pixels_data: anytype) errors.ImageWriteError!void {
+    fn writeData(write_stream: ImageStream.Writer, pixels_data: anytype) ImageWriteError!void {
         var color_lut = std.mem.zeroes([64]QoiColor);
 
         var previous_pixel = QoiColor{ .r = 0, .g = 0, .b = 0, .a = 0xFF };

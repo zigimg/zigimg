@@ -4,6 +4,7 @@ const assert = std.debug.assert;
 const bmp = @import("../../src/formats/bmp.zig");
 const color = @import("../../src/color.zig");
 const errors = @import("../../src/errors.zig");
+const ImageReadError = errors.ImageReadError;
 const std = @import("std");
 const testing = std.testing;
 const image = @import("../../src/image.zig");
@@ -211,5 +212,5 @@ test "Should error when reading an invalid file" {
 
     var pixels: ?color.PixelStorage = null;
     const invalidFile = the_bitmap.read(helpers.zigimg_test_allocator, &stream_source, &pixels);
-    try helpers.expectError(invalidFile, error.InvalidData);
+    try helpers.expectError(invalidFile, ImageReadError.InvalidData);
 }

@@ -9,6 +9,9 @@ const ImageInfo = image.ImageInfo;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const color = @import("../color.zig");
 const errors = @import("../errors.zig");
+const ImageError = errors.ImageError;
+const ImageReadError = errors.ImageReadError;
+const ImageWriteError = errors.ImageWriteError;
 const image = @import("../image.zig");
 const std = @import("std");
 const utils = @import("../utils.zig");
@@ -67,10 +70,10 @@ pub const IHDR = packed struct {
         _ = allocator;
     }
 
-    pub fn read(self: *Self, allocator: Allocator, read_buffer: []u8) errors.ImageReadError!bool {
+    pub fn read(self: *Self, allocator: Allocator, read_buffer: []u8) ImageReadError!bool {
         _ = allocator;
         var stream = std.io.StreamSource{ .buffer = std.io.fixedBufferStream(read_buffer) };
-        self.* = try utils.readStructBig(stream.reader(), Self);
+        self.* = utils.readStructBig(stream.reader(), Self) catch return ImageReadError.InvalidData;
         return true;
     }
 };
@@ -87,11 +90,11 @@ pub const PLTE = struct {
         allocator.free(self.palette);
     }
 
-    pub fn read(self: *Self, header: IHDR, allocator: Allocator, read_buffer: []u8) errors.ImageReadError!bool {
+    pub fn read(self: *Self, header: IHDR, allocator: Allocator, read_buffer: []u8) ImageReadError!bool {
         _ = header;
 
         if (read_buffer.len % 3 != 0) {
-            return error.InvalidData;
+            return ImageReadError.InvalidData;
         }
 
         self.palette = try allocator.alloc(color.Rgba32, read_buffer.len / 3);
@@ -124,7 +127,7 @@ pub const IDAT = struct {
         allocator.free(self.data);
     }
 
-    pub fn read(self: *Self, header: IHDR, allocator: Allocator, read_buffer: []u8) errors.ImageReadError!bool {
+    pub fn read(self: *Self, header: IHDR, allocator: Allocator, read_buffer: []u8) ImageReadError!bool {
         _ = header;
         _ = allocator;
         self.data = read_buffer;
@@ -143,7 +146,7 @@ pub const IEND = packed struct {
         _ = allocator;
     }
 
-    pub fn read(self: *Self, header: IHDR, allocator: Allocator, read_buffer: []u8) errors.ImageReadError!bool {
+    pub fn read(self: *Self, header: IHDR, allocator: Allocator, read_buffer: []u8) ImageReadError!bool {
         _ = self;
         _ = header;
         _ = allocator;
@@ -165,7 +168,7 @@ pub const gAMA = packed struct {
         _ = allocator;
     }
 
-    pub fn read(self: *Self, header: IHDR, allocator: Allocator, read_buffer: []u8) errors.ImageReadError!bool {
+    pub fn read(self: *Self, header: IHDR, allocator: Allocator, read_buffer: []u8) ImageReadError!bool {
         _ = header;
         _ = allocator;
         var stream = std.io.fixedBufferStream(read_buffer);
@@ -201,7 +204,7 @@ pub const bKGD = packed struct {
         _ = allocator;
     }
 
-    pub fn read(self: *Self, header: IHDR, allocator: Allocator, read_buffer: []u8) errors.ImageReadError!bool {
+    pub fn read(self: *Self, header: IHDR, allocator: Allocator, read_buffer: []u8) ImageReadError!bool {
         _ = allocator;
         var stream = std.io.fixedBufferStream(read_buffer);
 
@@ -318,7 +321,7 @@ const PngFilter = struct {
 
     const Self = @This();
 
-    pub fn init(allocator: Allocator, line_stride: usize, bit_depth: usize) errors.ImageReadError!Self {
+    pub fn init(allocator: Allocator, line_stride: usize, bit_depth: usize) ImageReadError!Self {
         const context = try allocator.alloc(u8, line_stride * 2);
         std.mem.set(u8, context[0..], 0);
         return Self{
@@ -332,7 +335,7 @@ const PngFilter = struct {
         allocator.free(self.context);
     }
 
-    pub fn decode(self: *Self, filter_type: FilterType, input: []const u8) errors.ImageReadError!void {
+    pub fn decode(self: *Self, filter_type: FilterType, input: []const u8) ImageReadError!void {
         const current_start_position = self.startPosition();
         const previous_start_position: usize = if (self.index < self.line_stride) 0 else ((self.index - self.line_stride) % self.context.len);
 
@@ -419,7 +422,7 @@ const PngFilter = struct {
         }
     }
 
-    fn paethPredictor(a: u8, b: u8, c: u8) errors.ImageReadError!u8 {
+    fn paethPredictor(a: u8, b: u8, c: u8) ImageReadError!u8 {
         const large_a = @intCast(isize, a);
         const large_b = @intCast(isize, b);
         const large_c = @intCast(isize, c);
@@ -487,14 +490,14 @@ pub const PNG = struct {
         return ImageFormat.png;
     }
 
-    pub fn formatDetect(stream: *ImageStream) errors.ImageReadError!bool {
+    pub fn formatDetect(stream: *ImageStream) ImageReadError!bool {
         var magic_number_buffer: [8]u8 = undefined;
         _ = try stream.read(magic_number_buffer[0..]);
 
         return std.mem.eql(u8, magic_number_buffer[0..], PNGMagicHeader);
     }
 
-    pub fn pixelFormat(self: Self) errors.ImageReadError!PixelFormat {
+    pub fn pixelFormat(self: Self) ImageReadError!PixelFormat {
         switch (self.header.color_type) {
             .grayscale => {
                 return switch (self.header.bit_depth) {
@@ -503,14 +506,14 @@ pub const PNG = struct {
                     4 => PixelFormat.grayscale4,
                     8 => PixelFormat.grayscale8,
                     16 => PixelFormat.grayscale16,
-                    else => return error.Unsupported,
+                    else => return ImageError.Unsupported,
                 };
             },
             .truecolor => {
                 return switch (self.header.bit_depth) {
                     8 => PixelFormat.rgb24,
                     16 => PixelFormat.rgb48,
-                    else => return error.Unsupported,
+                    else => return ImageError.Unsupported,
                 };
             },
             .indexed => {
@@ -519,21 +522,21 @@ pub const PNG = struct {
                     2 => PixelFormat.indexed2,
                     4 => PixelFormat.indexed4,
                     8 => PixelFormat.indexed8,
-                    else => return error.Unsupported,
+                    else => return ImageError.Unsupported,
                 };
             },
             .grayscale_alpha => {
                 return switch (self.header.bit_depth) {
                     8 => PixelFormat.grayscale8Alpha,
                     16 => PixelFormat.grayscale16Alpha,
-                    else => return error.Unsupported,
+                    else => return ImageError.Unsupported,
                 };
             },
             .truecolor_alpha => {
                 return switch (self.header.bit_depth) {
                     8 => PixelFormat.rgba32,
                     16 => PixelFormat.rgba64,
-                    else => return error.Unsupported,
+                    else => return ImageError.Unsupported,
                 };
             },
         }
@@ -571,7 +574,7 @@ pub const PNG = struct {
         return null;
     }
 
-    pub fn readForImage(allocator: Allocator, stream: *ImageStream, pixels_opt: *?color.PixelStorage) errors.ImageReadError!ImageInfo {
+    pub fn readForImage(allocator: Allocator, stream: *ImageStream, pixels_opt: *?color.PixelStorage) ImageReadError!ImageInfo {
         var png = PNG.init(allocator);
         defer png.deinit();
 
@@ -584,26 +587,26 @@ pub const PNG = struct {
         return image_info;
     }
 
-    pub fn writeForImage(allocator: Allocator, write_stream: *ImageStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) errors.ImageWriteError!void {
+    pub fn writeForImage(allocator: Allocator, write_stream: *ImageStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) ImageWriteError!void {
         _ = allocator;
         _ = write_stream;
         _ = pixels;
         _ = save_info;
     }
 
-    pub fn read(self: *Self, stream: *ImageStream, pixels_opt: *?color.PixelStorage) errors.ImageReadError!void {
+    pub fn read(self: *Self, stream: *ImageStream, pixels_opt: *?color.PixelStorage) ImageReadError!void {
         var magic_number_buffer: [8]u8 = undefined;
         _ = try stream.read(magic_number_buffer[0..]);
 
         if (!std.mem.eql(u8, magic_number_buffer[0..], PNGMagicHeader)) {
-            return error.InvalidData;
+            return ImageReadError.InvalidData;
         }
 
         const reader = stream.reader();
         while (try self.readChunk(reader)) {}
 
         if (!self.validateBitDepth()) {
-            return error.InvalidData;
+            return ImageReadError.InvalidData;
         }
 
         const pixel_format = try self.pixelFormat();
@@ -627,7 +630,7 @@ pub const PNG = struct {
                         std.mem.copy(color.Rgba32, instance.palette, palette_chunk.palette);
                     },
                     else => {
-                        return error.InvalidData;
+                        return ImageReadError.InvalidData;
                     },
                 }
             }
@@ -647,7 +650,7 @@ pub const PNG = struct {
         try self.readPixelsFromCompressedData(&decompression_context);
     }
 
-    fn readChunk(self: *Self, reader: ImageStream.Reader) errors.ImageReadError!bool {
+    fn readChunk(self: *Self, reader: ImageStream.Reader) ImageReadError!bool {
         const chunk_size = try reader.readIntBig(u32);
 
         var chunk_type: [4]u8 = undefined;
@@ -667,7 +670,7 @@ pub const PNG = struct {
         const computed_crc = crc_hash.final();
 
         if (computed_crc != read_crc) {
-            return error.InvalidData;
+            return ImageReadError.InvalidData;
         }
 
         var found = false;
@@ -740,19 +743,19 @@ pub const PNG = struct {
         const chunk_is_critical = (chunk_type[0] & (1 << 5)) == 0;
 
         if (chunk_is_critical and !found) {
-            return error.InvalidData;
+            return ImageReadError.InvalidData;
         }
 
         return continue_reading;
     }
 
-    fn readPixelsFromCompressedData(self: Self, context: *DecompressionContext) errors.ImageReadError!void {
+    fn readPixelsFromCompressedData(self: Self, context: *DecompressionContext) ImageReadError!void {
         var data_stream = std.io.fixedBufferStream(context.compressed_data.items);
 
-        var uncompress_stream = std.compress.zlib.zlibStream(self.allocator, data_stream.reader()) catch return error.InvalidData;
+        var uncompress_stream = std.compress.zlib.zlibStream(self.allocator, data_stream.reader()) catch return ImageReadError.InvalidData;
         defer uncompress_stream.deinit();
 
-        const final_data = uncompress_stream.reader().readAllAlloc(self.allocator, std.math.maxInt(usize)) catch return error.InvalidData;
+        const final_data = uncompress_stream.reader().readAllAlloc(self.allocator, std.math.maxInt(usize)) catch return ImageReadError.InvalidData;
         defer self.allocator.free(final_data);
 
         var final_data_stream = std.io.fixedBufferStream(final_data);
@@ -769,7 +772,7 @@ pub const PNG = struct {
         }
     }
 
-    fn readPixelsNonInterlaced(self: Self, context: *DecompressionContext, pixel_stream_source: anytype, pixel_stream: anytype) errors.ImageReadError!void {
+    fn readPixelsNonInterlaced(self: Self, context: *DecompressionContext, pixel_stream_source: anytype, pixel_stream: anytype) ImageReadError!void {
         var scanline = try self.allocator.alloc(u8, context.filter.line_stride);
         defer self.allocator.free(scanline);
 
@@ -982,7 +985,7 @@ pub const PNG = struct {
                     }
                 },
                 else => {
-                    return error.Unsupported;
+                    return ImageError.Unsupported;
                 },
             }
 
@@ -1023,7 +1026,7 @@ pub const PNG = struct {
         };
     }
 
-    fn readPixelsInterlaced(self: Self, context: *DecompressionContext, pixel_stream_source: anytype, pixel_stream: anytype) errors.ImageReadError!void {
+    fn readPixelsInterlaced(self: Self, context: *DecompressionContext, pixel_stream_source: anytype, pixel_stream: anytype) ImageReadError!void {
         var pixel_current_pos = try pixel_stream_source.getPos();
         const pixel_end_pos = try pixel_stream_source.getEndPos();
         _ = pixel_current_pos;
@@ -1087,7 +1090,7 @@ pub const PNG = struct {
         }
     }
 
-    fn writePixelInterlaced(self: Self, bytes: []const u8, pixel_index: usize, context: *DecompressionContext, block_width: usize, block_height: usize) errors.ImageReadError!void {
+    fn writePixelInterlaced(self: Self, bytes: []const u8, pixel_index: usize, context: *DecompressionContext, block_width: usize, block_height: usize) ImageReadError!void {
         switch (context.pixels.*) {
             .grayscale1 => |data| {
                 const bit = (pixel_index & 0b111);
@@ -1405,7 +1408,7 @@ pub const PNG = struct {
                 }
             },
             else => {
-                return error.Unsupported;
+                return ImageError.Unsupported;
             },
         }
     }

@@ -1,7 +1,6 @@
 const std = @import("std");
 
 pub const ImageError = error{
-    InvalidData,
     Unsupported,
 };
 
@@ -10,9 +9,9 @@ pub const ImageReadError = ImageError ||
     std.io.StreamSource.ReadError ||
     std.io.StreamSource.SeekError ||
     std.io.StreamSource.GetSeekPosError ||
-    error{ EndOfStream, StreamTooLong };
+    error{ EndOfStream, StreamTooLong, InvalidData };
 
-pub const ImageWriteError = error{Unsupported} ||
+pub const ImageWriteError = ImageError ||
     std.mem.Allocator.Error ||
     std.io.StreamSource.WriteError ||
     std.io.StreamSource.SeekError ||

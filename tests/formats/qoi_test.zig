@@ -4,6 +4,7 @@ const assert = std.debug.assert;
 const qoi = @import("../../src/formats/qoi.zig");
 const color = @import("../../src/color.zig");
 const errors = @import("../../src/errors.zig");
+const ImageReadError = errors.ImageReadError;
 const std = @import("std");
 const testing = std.testing;
 const image = @import("../../src/image.zig");
@@ -28,7 +29,7 @@ test "Should error on non QOI images" {
         }
     }
 
-    try helpers.expectError(invalid_file, error.InvalidData);
+    try helpers.expectError(invalid_file, ImageReadError.InvalidData);
 }
 
 test "Read zero.qoi file" {
