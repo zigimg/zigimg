@@ -60,7 +60,9 @@ fn swapFieldBytes(data: anytype) error{InvalidEnumTag}!void {
     inline for (meta.fields(T)) |entry| {
         switch (@typeInfo(entry.field_type)) {
             .Int => |int| {
-                if (int.bits > 8) @field(data, entry.name) = @byteSwap(entry.field_type, @field(data, entry.name));
+                if (int.bits > 8) {
+                    @field(data, entry.name) = @byteSwap(entry.field_type, @field(data, entry.name));
+                }
             },
             .Struct => {
                 try swapFieldBytes(&@field(data, entry.name));
