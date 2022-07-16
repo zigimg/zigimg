@@ -1,4 +1,5 @@
 const std = @import("std");
+const utils = @import("utils.zig");
 
 pub const ImageError = error{
     Unsupported,
@@ -6,7 +7,7 @@ pub const ImageError = error{
 
 pub const ImageReadError = ImageError ||
     std.mem.Allocator.Error ||
-    std.io.StreamSource.ReadError ||
+    utils.StructReadError ||
     std.io.StreamSource.SeekError ||
     std.io.StreamSource.GetSeekPosError ||
     error{ EndOfStream, StreamTooLong, InvalidData };
