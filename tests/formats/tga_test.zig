@@ -4,6 +4,7 @@ const assert = std.debug.assert;
 const tga = @import("../../src/formats/tga.zig");
 const color = @import("../../src/color.zig");
 const errors = @import("../../src/errors.zig");
+const ImageReadError = errors.ImageReadError;
 const std = @import("std");
 const testing = std.testing;
 const image = @import("../../src/image.zig");
@@ -25,7 +26,7 @@ test "Should error on non TGA images" {
         }
     }
 
-    try helpers.expectError(invalidFile, errors.ImageError.InvalidMagicHeader);
+    try helpers.expectError(invalidFile, ImageReadError.InvalidData);
 }
 
 test "Read ubw8 TGA file" {

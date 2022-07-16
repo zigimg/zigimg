@@ -5,6 +5,8 @@ const meta = std.meta;
 
 const native_endian = @import("builtin").target.cpu.arch.endian();
 
+pub const StructReadError = error{ EndOfStream, InvalidEnumTag } || io.StreamSource.ReadError;
+
 pub fn toMagicNumberNative(magic: []const u8) u32 {
     var result: u32 = 0;
     for (magic) |character, index| {
@@ -31,35 +33,64 @@ pub const toMagicNumberLittle = switch (native_endian) {
     builtin.Endian.Big => toMagicNumberForeign,
 };
 
-pub fn readStructNative(reader: io.StreamSource.Reader, comptime T: type) !T {
-    return try reader.readStruct(T);
-}
-
-pub fn readStructForeign(reader: io.StreamSource.Reader, comptime T: type) !T {
-    comptime std.debug.assert(@typeInfo(T).Struct.layout != builtin.TypeInfo.ContainerLayout.Auto);
-
-    var result: T = undefined;
-
+fn checkEnumFields(data: anytype) error{InvalidEnumTag}!void {
+    const T = @typeInfo(@TypeOf(data)).Pointer.child;
     inline for (meta.fields(T)) |entry| {
         switch (@typeInfo(entry.field_type)) {
-            .ComptimeInt, .Int => {
-                @field(result, entry.name) = try reader.readIntForeign(entry.field_type);
+            .Enum => {
+                const value = @enumToInt(@field(data, entry.name));
+                _ = try std.meta.intToEnum(entry.field_type, value);
             },
             .Struct => {
-                @field(result, entry.name) = try readStructForeign(reader, entry.field_type);
+                try checkEnumFields(&@field(data, entry.name));
+            },
+            else => {},
+        }
+    }
+}
+
+pub fn readStructNative(reader: io.StreamSource.Reader, comptime T: type) StructReadError!T {
+    var result: T = try reader.readStruct(T);
+    try checkEnumFields(&result);
+    return result;
+}
+
+fn swapFieldBytes(data: anytype) error{InvalidEnumTag}!void {
+    const T = @typeInfo(@TypeOf(data)).Pointer.child;
+    inline for (meta.fields(T)) |entry| {
+        switch (@typeInfo(entry.field_type)) {
+            .Int => |int| {
+                if (int.bits > 8) {
+                    @field(data, entry.name) = @byteSwap(entry.field_type, @field(data, entry.name));
+                }
+            },
+            .Struct => {
+                try swapFieldBytes(&@field(data, entry.name));
             },
             .Enum => {
-                @field(result, entry.name) = try reader.readEnum(entry.field_type, switch (native_endian) {
-                    builtin.Endian.Little => builtin.Endian.Big,
-                    builtin.Endian.Big => builtin.Endian.Little,
-                });
+                const value = @enumToInt(@field(data, entry.name));
+                if (@bitSizeOf(@TypeOf(value)) > 8) {
+                    @field(data, entry.name) = try std.meta.intToEnum(entry.field_type, @byteSwap(@TypeOf(value), value));
+                } else {
+                    _ = try std.meta.intToEnum(entry.field_type, value);
+                }
             },
+            .Array => |array| {
+                if (array.child != u8) {
+                    @compileError("Add support for type " ++ @typeName(T) ++ "." ++ @typeName(entry.field_type) ++ " in swapFieldBytes");
+                }
+            },
+            .Bool => {},
             else => {
-                @compileError(std.fmt.comptimePrint("Add support for type {} in readStructForeign", .{@typeName(entry.field_type)}));
+                @compileError("Add support for type " ++ @typeName(T) ++ "." ++ @typeName(entry.field_type) ++ " in swapFieldBytes");
             },
         }
     }
+}
 
+pub fn readStructForeign(reader: io.StreamSource.Reader, comptime T: type) StructReadError!T {
+    var result: T = try reader.readStruct(T);
+    try swapFieldBytes(&result);
     return result;
 }
 

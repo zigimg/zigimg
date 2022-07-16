@@ -4,6 +4,7 @@ const helpers = @import("../helpers.zig");
 const jpeg = @import("../../src/formats/jpeg.zig");
 const color = @import("../../src/color.zig");
 const errors = @import("../../src/errors.zig");
+const ImageReadError = errors.ImageReadError;
 const testing = std.testing;
 
 test "Should error on non JPEG images" {
@@ -23,7 +24,7 @@ test "Should error on non JPEG images" {
         }
     }
 
-    try helpers.expectError(invalidFile, errors.ImageError.InvalidMagicHeader);
+    try helpers.expectError(invalidFile, ImageReadError.InvalidData);
 }
 
 test "Read JFIF header properly and decode simple Huffman stream" {

@@ -3,6 +3,7 @@ const PixelFormat = @import("../../src/pixel_format.zig").PixelFormat;
 const assert = std.debug.assert;
 const color = @import("../../src/color.zig");
 const errors = @import("../../src/errors.zig");
+const ImageReadError = errors.ImageReadError;
 const png = @import("../../src/formats/png.zig");
 const std = @import("std");
 const testing = std.testing;
@@ -26,7 +27,7 @@ test "Should error on non PNG images" {
         }
     }
 
-    try helpers.expectError(invalidFile, errors.ImageError.InvalidMagicHeader);
+    try helpers.expectError(invalidFile, ImageReadError.InvalidData);
 }
 
 test "Read PNG header properly" {
