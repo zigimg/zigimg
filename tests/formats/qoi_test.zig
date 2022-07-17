@@ -66,7 +66,7 @@ test "Read zero.qoi file" {
 }
 
 test "Write qoi file" {
-    const source_image = try image.Image.create(helpers.zigimg_test_allocator, 512, 512, PixelFormat.rgba32, .qoi);
+    const source_image = try image.Image.create(helpers.zigimg_test_allocator, 512, 512, PixelFormat.rgba32);
     defer source_image.deinit();
 
     var buffer: [1025 * 1024]u8 = undefined;

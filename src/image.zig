@@ -19,7 +19,6 @@ pub const ImageFormat = enum {
     png,
     ppm,
     qoi,
-    raw,
     tga,
 };
 
@@ -44,7 +43,6 @@ pub const Image = struct {
     width: usize = 0,
     height: usize = 0,
     pixels: ?PixelStorage = null,
-    image_format: ImageFormat = undefined,
 
     const Self = @This();
 
@@ -118,12 +116,11 @@ pub const Image = struct {
     }
 
     /// Create a pixel surface from scratch
-    pub fn create(allocator: Allocator, width: usize, height: usize, pixel_format: PixelFormat, image_format: ImageFormat) !Self {
+    pub fn create(allocator: Allocator, width: usize, height: usize, pixel_format: PixelFormat) !Self {
         var result = Self{
             .allocator = allocator,
             .width = width,
             .height = height,
-            .image_format = image_format,
             .pixels = try PixelStorage.init(allocator, pixel_format, width * height),
         };
 
@@ -254,8 +251,7 @@ pub const Image = struct {
     }
 
     fn internalRead(self: *Self, allocator: Allocator, stream: *ImageStream) !void {
-        var format_interface = try findImageInterfaceFromStream(stream);
-        self.image_format = format_interface.format();
+        const format_interface = try findImageInterfaceFromStream(stream);
 
         try stream.seekTo(0);
 

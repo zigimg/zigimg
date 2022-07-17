@@ -309,7 +309,7 @@ test "Write bitmap(grayscale1) ASCII PBM file" {
     const width = grayscales.len;
     const height = 1;
 
-    const source_image = try image.Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale1, .raw);
+    const source_image = try image.Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale1);
     defer source_image.deinit();
 
     if (source_image.pixels) |source| {
@@ -356,7 +356,7 @@ test "Write bitmap(Grayscale1) binary PBM file" {
     const width = grayscales.len;
     const height = 1;
 
-    const source_image = try image.Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale1, .raw);
+    const source_image = try image.Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale1);
     defer source_image.deinit();
 
     if (source_image.pixels) |source| {
@@ -400,7 +400,7 @@ test "Write grayscale8 ASCII PGM file" {
     const width = grayscales.len;
     const height = 1;
 
-    const source_image = try image.Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale8, .raw);
+    const source_image = try image.Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale8);
     defer source_image.deinit();
 
     if (source_image.pixels) |source| {
@@ -444,7 +444,7 @@ test "Write grayscale8 binary PGM file" {
     const width = grayscales.len;
     const height = 1;
 
-    const source_image = try image.Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale8, .raw);
+    const source_image = try image.Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale8);
     defer source_image.deinit();
 
     if (source_image.pixels) |source| {
@@ -485,7 +485,7 @@ test "Writing Rgb24 ASCII PPM format" {
     const width = expected_colors.len;
     const height = 1;
 
-    const source_image = try image.Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.rgb24, .raw);
+    const source_image = try image.Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.rgb24);
     defer source_image.deinit();
 
     try testing.expect(source_image.pixels != null);
@@ -541,7 +541,7 @@ test "Writing Rgb24 binary PPM format" {
     const width = expected_colors.len;
     const height = 1;
 
-    const source_image = try image.Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.rgb24, .raw);
+    const source_image = try image.Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.rgb24);
     defer source_image.deinit();
 
     try testing.expect(source_image.pixels != null);
