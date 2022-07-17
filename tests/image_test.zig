@@ -9,7 +9,7 @@ const errors = @import("../src/errors.zig");
 const ImageError = errors.ImageError;
 
 test "Create Image indexed1" {
-    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed1, .raw);
+    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed1);
     defer test_image.deinit();
 
     try helpers.expectEq(test_image.width, 24);
@@ -25,7 +25,7 @@ test "Create Image indexed1" {
 }
 
 test "Create Image indexed2" {
-    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed2, .raw);
+    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed2);
     defer test_image.deinit();
 
     try helpers.expectEq(test_image.width, 24);
@@ -41,7 +41,7 @@ test "Create Image indexed2" {
 }
 
 test "Create Image indexed4" {
-    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed4, .raw);
+    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed4);
     defer test_image.deinit();
 
     try helpers.expectEq(test_image.width, 24);
@@ -57,7 +57,7 @@ test "Create Image indexed4" {
 }
 
 test "Create Image indexed8" {
-    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed8, .raw);
+    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed8);
     defer test_image.deinit();
 
     try helpers.expectEq(test_image.width, 24);
@@ -73,7 +73,7 @@ test "Create Image indexed8" {
 }
 
 test "Create Image indexed16" {
-    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed16, .raw);
+    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed16);
     defer test_image.deinit();
 
     try helpers.expectEq(test_image.width, 24);
@@ -89,7 +89,7 @@ test "Create Image indexed16" {
 }
 
 test "Create Image Rgb24" {
-    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.rgb24, .raw);
+    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.rgb24);
     defer test_image.deinit();
 
     try helpers.expectEq(test_image.width, 24);
@@ -104,7 +104,7 @@ test "Create Image Rgb24" {
 }
 
 test "Create Image Rgba32" {
-    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.rgba32, .raw);
+    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.rgba32);
     defer test_image.deinit();
 
     try helpers.expectEq(test_image.width, 24);
@@ -119,7 +119,7 @@ test "Create Image Rgba32" {
 }
 
 test "Create Image Rgb565" {
-    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.rgb565, .raw);
+    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.rgb565);
     defer test_image.deinit();
 
     try helpers.expectEq(test_image.width, 24);
@@ -134,7 +134,7 @@ test "Create Image Rgb565" {
 }
 
 test "Create Image Rgb555" {
-    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.rgb555, .raw);
+    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.rgb555);
     defer test_image.deinit();
 
     try helpers.expectEq(test_image.width, 24);
@@ -149,7 +149,7 @@ test "Create Image Rgb555" {
 }
 
 test "Create Image Bgra32" {
-    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.bgra32, .raw);
+    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.bgra32);
     defer test_image.deinit();
 
     try helpers.expectEq(test_image.width, 24);
@@ -164,7 +164,7 @@ test "Create Image Bgra32" {
 }
 
 test "Create Image float32" {
-    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.float32, .raw);
+    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.float32);
     defer test_image.deinit();
 
     try helpers.expectEq(test_image.width, 24);
@@ -187,7 +187,6 @@ test "Should detect BMP properly" {
     for (image_tests) |image_path| {
         const test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
-        try testing.expect(test_image.image_format == .bmp);
     }
 }
 
@@ -197,7 +196,6 @@ test "Should detect Memory BMP properly" {
 
     const test_image = try Image.fromMemory(helpers.zigimg_test_allocator, buffer);
     defer test_image.deinit();
-    try testing.expect(test_image.image_format == .bmp);
 }
 
 test "Should detect PCX properly" {
@@ -211,7 +209,6 @@ test "Should detect PCX properly" {
     for (image_tests) |image_path| {
         const test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
-        try testing.expect(test_image.image_format == .pcx);
     }
 }
 
@@ -224,7 +221,6 @@ test "Should detect PBM properly" {
     for (image_tests) |image_path| {
         const test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
-        try testing.expect(test_image.image_format == .pbm);
     }
 }
 
@@ -239,7 +235,6 @@ test "Should detect PGM properly" {
     for (image_tests) |image_path| {
         const test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
-        try testing.expect(test_image.image_format == .pgm);
     }
 }
 
@@ -252,7 +247,6 @@ test "Should detect PPM properly" {
     for (image_tests) |image_path| {
         const test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
-        try testing.expect(test_image.image_format == .ppm);
     }
 }
 
@@ -265,7 +259,6 @@ test "Should detect PNG properly" {
     for (image_tests) |image_path| {
         const test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
-        try testing.expect(test_image.image_format == .png);
     }
 }
 
@@ -284,7 +277,6 @@ test "Should detect TGA properly" {
     for (image_tests) |image_path| {
         const test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
-        try testing.expect(test_image.image_format == .tga);
     }
 }
 
@@ -294,7 +286,6 @@ test "Should detect QOI properly" {
     for (image_tests) |image_path| {
         const test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
-        try testing.expect(test_image.image_format == .qoi);
     }
 }
 
@@ -307,7 +298,6 @@ test "Should detect JPEG properly" {
     for (image_tests) |image_path| {
         const test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
-        try testing.expect(test_image.image_format == .jpg);
     }
 }
 
