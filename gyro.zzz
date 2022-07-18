@@ -1,6 +1,6 @@
 pkgs:
   zigimg:
-    varsion: a224b3c942d48dbf580a75f2f87de16046cb335f
+    version: a224b3c942d48dbf580a75f2f87de16046cb335f
     license: MIT
     description: Zig library for reading and writing different image formats 
     source_url: https://github.com/zigimg/zigimg
