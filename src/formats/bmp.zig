@@ -1,16 +1,12 @@
 const Allocator = std.mem.Allocator;
 const File = std.fs.File;
 const FormatInterface = @import("../format_interface.zig").FormatInterface;
-const ImageFormat = image.ImageFormat;
-const ImageStream = image.ImageStream;
-const ImageInfo = image.ImageInfo;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const color = @import("../color.zig");
-const errors = @import("../errors.zig");
-const ImageError = errors.ImageError;
-const ImageReadError = errors.ImageReadError;
+const Image = @import("../Image.zig");
+const ImageError = Image.Error;
+const ImageReadError = Image.ReadError;
 const fs = std.fs;
-const image = @import("../image.zig");
 const io = std.io;
 const mem = std.mem;
 const path = std.fs.path;
@@ -157,11 +153,11 @@ pub const Bitmap = struct {
         };
     }
 
-    pub fn format() ImageFormat {
-        return ImageFormat.bmp;
+    pub fn format() Image.Format {
+        return Image.Format.bmp;
     }
 
-    pub fn formatDetect(stream: *ImageStream) ImageStream.ReadError!bool {
+    pub fn formatDetect(stream: *Image.Stream) Image.Stream.ReadError!bool {
         var magic_number_buffer: [2]u8 = undefined;
         _ = try stream.read(magic_number_buffer[0..]);
         if (std.mem.eql(u8, magic_number_buffer[0..], BitmapMagicHeader[0..])) {
@@ -171,18 +167,18 @@ pub const Bitmap = struct {
         return false;
     }
 
-    pub fn readForImage(allocator: Allocator, stream: *ImageStream, pixels: *?color.PixelStorage) ImageReadError!ImageInfo {
+    pub fn readForImage(allocator: Allocator, stream: *Image.Stream, pixels: *?color.PixelStorage) ImageReadError!Image.Info {
         var bmp = Self{};
 
         try bmp.read(allocator, stream, pixels);
 
-        var image_info = ImageInfo{};
+        var image_info = Image.Info{};
         image_info.width = @intCast(usize, bmp.width());
         image_info.height = @intCast(usize, bmp.height());
         return image_info;
     }
 
-    pub fn writeForImage(allocator: Allocator, write_stream: *ImageStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) ImageStream.WriteError!void {
+    pub fn writeForImage(allocator: Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage, save_info: Image.SaveInfo) Image.Stream.WriteError!void {
         _ = allocator;
         _ = write_stream;
         _ = pixels;
@@ -225,7 +221,7 @@ pub const Bitmap = struct {
         };
     }
 
-    pub fn read(self: *Self, allocator: Allocator, stream: *ImageStream, pixels_opt: *?color.PixelStorage) ImageReadError!void {
+    pub fn read(self: *Self, allocator: Allocator, stream: *Image.Stream, pixels_opt: *?color.PixelStorage) ImageReadError!void {
         // Read file header
         const reader = stream.reader();
         self.file_header = try utils.readStructLittle(reader, BitmapFileHeader);
@@ -284,7 +280,7 @@ pub const Bitmap = struct {
         }
     }
 
-    fn readPixels(reader: ImageStream.Reader, pixel_width: i32, pixel_height: i32, pixel_format: PixelFormat, pixels: *color.PixelStorage) ImageReadError!void {
+    fn readPixels(reader: Image.Stream.Reader, pixel_width: i32, pixel_height: i32, pixel_format: PixelFormat, pixels: *color.PixelStorage) ImageReadError!void {
         return switch (pixel_format) {
             PixelFormat.bgr24 => {
                 return readPixelsInternal(pixels.bgr24, reader, pixel_width, pixel_height);
@@ -298,7 +294,7 @@ pub const Bitmap = struct {
         };
     }
 
-    fn readPixelsInternal(pixels: anytype, reader: ImageStream.Reader, pixel_width: i32, pixel_height: i32) ImageReadError!void {
+    fn readPixelsInternal(pixels: anytype, reader: Image.Stream.Reader, pixel_width: i32, pixel_height: i32) ImageReadError!void {
         const ColorBufferType = @typeInfo(@TypeOf(pixels)).Pointer.child;
 
         var x: i32 = 0;

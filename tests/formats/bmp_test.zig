@@ -1,13 +1,11 @@
-const ImageStream = image.ImageStream;
 const PixelFormat = @import("../../src/pixel_format.zig").PixelFormat;
 const assert = std.debug.assert;
 const bmp = @import("../../src/formats/bmp.zig");
 const color = @import("../../src/color.zig");
-const errors = @import("../../src/errors.zig");
-const ImageReadError = errors.ImageReadError;
+const ImageReadError = Image.ReadError;
 const std = @import("std");
 const testing = std.testing;
-const image = @import("../../src/image.zig");
+const Image = @import("../../src/Image.zig");
 const helpers = @import("../helpers.zig");
 
 fn verifyBitmapRGBAV5(the_bitmap: bmp.Bitmap, pixels_opt: ?color.PixelStorage) !void {

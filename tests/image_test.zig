@@ -1,12 +1,11 @@
 const assert = std.debug.assert;
 const std = @import("std");
 const testing = std.testing;
-const Image = @import("../src/image.zig").Image;
+const Image = @import("../src/Image.zig");
 const color = @import("../src/color.zig");
 const PixelFormat = @import("../src/pixel_format.zig").PixelFormat;
 const helpers = @import("helpers.zig");
-const errors = @import("../src/errors.zig");
-const ImageError = errors.ImageError;
+const ImageError = Image.Error;
 
 test "Create Image indexed1" {
     const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed1);

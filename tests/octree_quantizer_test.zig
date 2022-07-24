@@ -1,6 +1,6 @@
 const ArrayList = std.ArrayList;
 const HeapAllocator = std.heap.HeapAllocator;
-const Image = @import("../src/image.zig").Image;
+const Image = @import("../src/Image.zig");
 const OctTreeQuantizer = @import("../src/octree_quantizer.zig").OctTreeQuantizer;
 const assert = std.debug.assert;
 const color = @import("../src/color.zig");

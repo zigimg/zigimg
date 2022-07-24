@@ -1,12 +1,10 @@
-const ImageStream = image.ImageStream;
 const PixelFormat = @import("../../src/pixel_format.zig").PixelFormat;
 const assert = std.debug.assert;
 const color = @import("../../src/color.zig");
-const errors = @import("../../src/errors.zig");
 const std = @import("std");
 const testing = std.testing;
 const netpbm = @import("../../src/formats/netpbm.zig");
-const image = @import("../../src/image.zig");
+const Image = @import("../../src/Image.zig");
 const helpers = @import("../helpers.zig");
 
 test "Load ASCII PBM image" {
@@ -309,7 +307,7 @@ test "Write bitmap(grayscale1) ASCII PBM file" {
     const width = grayscales.len;
     const height = 1;
 
-    const source_image = try image.Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale1);
+    const source_image = try Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale1);
     defer source_image.deinit();
 
     if (source_image.pixels) |source| {
@@ -318,7 +316,7 @@ test "Write bitmap(grayscale1) ASCII PBM file" {
         }
     }
 
-    try source_image.writeToFilePath(image_file_name, image.ImageFormat.pbm, image.ImageEncoderOptions{
+    try source_image.writeToFilePath(image_file_name, Image.Format.pbm, Image.EncoderOptions{
         .pbm = .{ .binary = false },
     });
 
@@ -326,7 +324,7 @@ test "Write bitmap(grayscale1) ASCII PBM file" {
         std.fs.cwd().deleteFile(image_file_name) catch unreachable;
     }
 
-    const read_image = try image.Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name);
+    const read_image = try Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name);
     defer read_image.deinit();
 
     try helpers.expectEq(read_image.width, width);
@@ -356,7 +354,7 @@ test "Write bitmap(Grayscale1) binary PBM file" {
     const width = grayscales.len;
     const height = 1;
 
-    const source_image = try image.Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale1);
+    const source_image = try Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale1);
     defer source_image.deinit();
 
     if (source_image.pixels) |source| {
@@ -365,7 +363,7 @@ test "Write bitmap(Grayscale1) binary PBM file" {
         }
     }
 
-    try source_image.writeToFilePath(image_file_name, image.ImageFormat.pbm, image.ImageEncoderOptions{
+    try source_image.writeToFilePath(image_file_name, Image.Format.pbm, Image.EncoderOptions{
         .pbm = .{ .binary = true },
     });
 
@@ -373,7 +371,7 @@ test "Write bitmap(Grayscale1) binary PBM file" {
         std.fs.cwd().deleteFile(image_file_name) catch unreachable;
     }
 
-    const read_image = try image.Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name);
+    const read_image = try Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name);
     defer read_image.deinit();
 
     try helpers.expectEq(read_image.width, width);
@@ -400,7 +398,7 @@ test "Write grayscale8 ASCII PGM file" {
     const width = grayscales.len;
     const height = 1;
 
-    const source_image = try image.Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale8);
+    const source_image = try Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale8);
     defer source_image.deinit();
 
     if (source_image.pixels) |source| {
@@ -409,7 +407,7 @@ test "Write grayscale8 ASCII PGM file" {
         }
     }
 
-    try source_image.writeToFilePath(image_file_name, image.ImageFormat.pgm, image.ImageEncoderOptions{
+    try source_image.writeToFilePath(image_file_name, Image.Format.pgm, Image.EncoderOptions{
         .pgm = .{ .binary = false },
     });
 
@@ -417,7 +415,7 @@ test "Write grayscale8 ASCII PGM file" {
         std.fs.cwd().deleteFile(image_file_name) catch unreachable;
     }
 
-    const read_image = try image.Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name);
+    const read_image = try Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name);
     defer read_image.deinit();
 
     try helpers.expectEq(read_image.width, width);
@@ -444,7 +442,7 @@ test "Write grayscale8 binary PGM file" {
     const width = grayscales.len;
     const height = 1;
 
-    const source_image = try image.Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale8);
+    const source_image = try Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale8);
     defer source_image.deinit();
 
     if (source_image.pixels) |source| {
@@ -453,7 +451,7 @@ test "Write grayscale8 binary PGM file" {
         }
     }
 
-    try source_image.writeToFilePath(image_file_name, image.ImageFormat.pgm, image.ImageEncoderOptions{
+    try source_image.writeToFilePath(image_file_name, Image.Format.pgm, Image.EncoderOptions{
         .pgm = .{ .binary = true },
     });
 
@@ -461,7 +459,7 @@ test "Write grayscale8 binary PGM file" {
         std.fs.cwd().deleteFile(image_file_name) catch unreachable;
     }
 
-    const read_image = try image.Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name);
+    const read_image = try Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name);
     defer read_image.deinit();
 
     try helpers.expectEq(read_image.width, width);
@@ -485,7 +483,7 @@ test "Writing Rgb24 ASCII PPM format" {
     const width = expected_colors.len;
     const height = 1;
 
-    const source_image = try image.Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.rgb24);
+    const source_image = try Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.rgb24);
     defer source_image.deinit();
 
     try testing.expect(source_image.pixels != null);
@@ -509,7 +507,7 @@ test "Writing Rgb24 ASCII PPM format" {
         pixels.rgb24[7] = color.Rgb24.initRgb(255, 255, 0);
     }
 
-    try source_image.writeToFilePath(image_file_name, image.ImageFormat.ppm, image.ImageEncoderOptions{
+    try source_image.writeToFilePath(image_file_name, Image.Format.ppm, Image.EncoderOptions{
         .ppm = .{ .binary = false },
     });
 
@@ -517,7 +515,7 @@ test "Writing Rgb24 ASCII PPM format" {
         std.fs.cwd().deleteFile(image_file_name) catch unreachable;
     }
 
-    const read_image = try image.Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name);
+    const read_image = try Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name);
     defer read_image.deinit();
 
     try helpers.expectEq(read_image.width, width);
@@ -541,7 +539,7 @@ test "Writing Rgb24 binary PPM format" {
     const width = expected_colors.len;
     const height = 1;
 
-    const source_image = try image.Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.rgb24);
+    const source_image = try Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.rgb24);
     defer source_image.deinit();
 
     try testing.expect(source_image.pixels != null);
@@ -565,7 +563,7 @@ test "Writing Rgb24 binary PPM format" {
         pixels.rgb24[7] = color.Rgb24.initRgb(255, 255, 0);
     }
 
-    try source_image.writeToFilePath(image_file_name, image.ImageFormat.ppm, image.ImageEncoderOptions{
+    try source_image.writeToFilePath(image_file_name, Image.Format.ppm, Image.EncoderOptions{
         .ppm = .{ .binary = true },
     });
 
@@ -573,7 +571,7 @@ test "Writing Rgb24 binary PPM format" {
         std.fs.cwd().deleteFile(image_file_name) catch unreachable;
     }
 
-    const read_image = try image.Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name);
+    const read_image = try Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name);
     defer read_image.deinit();
 
     try helpers.expectEq(read_image.width, width);

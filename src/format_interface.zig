@@ -1,9 +1,8 @@
-const image = @import("image.zig");
+const Image = @import("Image.zig");
 const color = @import("color.zig");
 const Allocator = @import("std").mem.Allocator;
-const errors = @import("errors.zig");
-const ImageReadError = errors.ImageReadError;
-const ImageWriteError = errors.ImageWriteError;
+const ImageReadError = Image.ReadError;
+const ImageWriteError = Image.WriteError;
 
 // mlarouche: Because this is a interface, I use Zig function naming convention instead of the variable naming convention
 pub const FormatInterface = struct {
@@ -12,8 +11,8 @@ pub const FormatInterface = struct {
     readForImage: ReadForImageFn,
     writeForImage: WriteForImageFn,
 
-    pub const FormatFn = fn () image.ImageFormat;
-    pub const FormatDetectFn = fn (stream: *image.ImageStream) ImageReadError!bool;
-    pub const ReadForImageFn = fn (allocator: Allocator, stream: *image.ImageStream, pixels: *?color.PixelStorage) ImageReadError!image.ImageInfo;
-    pub const WriteForImageFn = fn (allocator: Allocator, write_stream: *image.ImageStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) ImageWriteError!void;
+    pub const FormatFn = fn () Image.Format;
+    pub const FormatDetectFn = fn (stream: *Image.Stream) ImageReadError!bool;
+    pub const ReadForImageFn = fn (allocator: Allocator, stream: *Image.Stream, pixels: *?color.PixelStorage) ImageReadError!Image.Info;
+    pub const WriteForImageFn = fn (allocator: Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage, save_info: Image.SaveInfo) ImageWriteError!void;
 };

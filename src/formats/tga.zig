@@ -1,16 +1,12 @@
 const Allocator = std.mem.Allocator;
 const FormatInterface = @import("../format_interface.zig").FormatInterface;
-const ImageFormat = image.ImageFormat;
-const ImageStream = image.ImageStream;
-const ImageInfo = image.ImageInfo;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const color = @import("../color.zig");
-const errors = @import("../errors.zig");
-const ImageError = errors.ImageError;
-const ImageReadError = errors.ImageReadError;
-const ImageWriteError = errors.ImageWriteError;
+const ImageError = Image.Error;
+const ImageReadError = Image.ReadError;
+const ImageWriteError = Image.WriteError;
 const fs = std.fs;
-const image = @import("../image.zig");
+const Image = @import("../Image.zig");
 const io = std.io;
 const mem = std.mem;
 const path = std.fs.path;
@@ -106,7 +102,7 @@ comptime {
 }
 
 const TargaRLEDecoder = struct {
-    source_reader: ImageStream.Reader,
+    source_reader: Image.Stream.Reader,
     allocator: Allocator,
     bytes_per_pixel: usize,
 
@@ -132,7 +128,7 @@ const TargaRLEDecoder = struct {
         packet_type: PacketType,
     };
 
-    pub fn init(allocator: Allocator, source_reader: ImageStream.Reader, bytes_per_pixels: usize) !Self {
+    pub fn init(allocator: Allocator, source_reader: Image.Stream.Reader, bytes_per_pixels: usize) !Self {
         var result = Self{
             .allocator = allocator,
             .source_reader = source_reader,
@@ -201,16 +197,16 @@ const TargaRLEDecoder = struct {
         return read_count;
     }
 
-    pub fn reader(self: *Self) ImageStream {
+    pub fn reader(self: *Self) Image.Stream {
         return .{ .context = @ptrCast(*std.io.StreamSource, self) };
     }
 };
 
 pub const TargaStream = union(enum) {
-    image: ImageStream.Reader,
+    image: Image.Stream.Reader,
     rle: TargaRLEDecoder,
 
-    pub const Reader = std.io.Reader(*TargaStream, errors.ImageReadError, read);
+    pub const Reader = std.io.Reader(*TargaStream, ImageReadError, read);
 
     pub fn read(self: *TargaStream, dest: []u8) ImageReadError!usize {
         switch (self.*) {
@@ -239,11 +235,11 @@ pub const TGA = struct {
         };
     }
 
-    pub fn format() ImageFormat {
-        return ImageFormat.tga;
+    pub fn format() Image.Format {
+        return Image.Format.tga;
     }
 
-    pub fn formatDetect(stream: *ImageStream) ImageReadError!bool {
+    pub fn formatDetect(stream: *Image.Stream) ImageReadError!bool {
         const end_pos = try stream.getEndPos();
 
         if (@sizeOf(TGAFooter) < end_pos) {
@@ -268,18 +264,18 @@ pub const TGA = struct {
         return false;
     }
 
-    pub fn readForImage(allocator: Allocator, stream: *ImageStream, pixels: *?color.PixelStorage) ImageReadError!ImageInfo {
+    pub fn readForImage(allocator: Allocator, stream: *Image.Stream, pixels: *?color.PixelStorage) ImageReadError!Image.Info {
         var tga = Self{};
 
         try tga.read(allocator, stream, pixels);
 
-        var image_info = ImageInfo{};
+        var image_info = Image.Info{};
         image_info.width = tga.width();
         image_info.height = tga.height();
         return image_info;
     }
 
-    pub fn writeForImage(allocator: Allocator, write_stream: *ImageStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) ImageWriteError!void {
+    pub fn writeForImage(allocator: Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage, save_info: Image.SaveInfo) ImageWriteError!void {
         _ = allocator;
         _ = write_stream;
         _ = pixels;
@@ -313,7 +309,7 @@ pub const TGA = struct {
         return ImageError.Unsupported;
     }
 
-    pub fn read(self: *Self, allocator: Allocator, stream: *ImageStream, pixels_opt: *?color.PixelStorage) !void {
+    pub fn read(self: *Self, allocator: Allocator, stream: *Image.Stream, pixels_opt: *?color.PixelStorage) !void {
         // Read footage
         const end_pos = try stream.getEndPos();
 

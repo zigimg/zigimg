@@ -1,12 +1,10 @@
-const ImageStream = image.ImageStream;
 const PixelFormat = @import("../../src/pixel_format.zig").PixelFormat;
 const assert = std.debug.assert;
 const color = @import("../../src/color.zig");
-const errors = @import("../../src/errors.zig");
 const png = @import("../../src/formats/png.zig");
 const std = @import("std");
 const testing = std.testing;
-const image = @import("../../src/image.zig");
+const Image = @import("../../src/Image.zig");
 const helpers = @import("../helpers.zig");
 
 test "Read leroycep1 properly" {

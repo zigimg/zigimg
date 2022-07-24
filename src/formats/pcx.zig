@@ -2,16 +2,12 @@
 // with permission from Felix Queißner
 const Allocator = std.mem.Allocator;
 const FormatInterface = @import("../format_interface.zig").FormatInterface;
-const ImageFormat = image.ImageFormat;
-const ImageStream = image.ImageStream;
-const ImageInfo = image.ImageInfo;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const color = @import("../color.zig");
-const errors = @import("../errors.zig");
-const ImageError = errors.ImageError;
-const ImageReadError = errors.ImageReadError;
-const ImageWriteError = errors.ImageWriteError;
-const image = @import("../image.zig");
+const ImageError = Image.Error;
+const ImageReadError = Image.ReadError;
+const ImageWriteError = Image.WriteError;
+const Image = @import("../Image.zig");
 const std = @import("std");
 const utils = @import("../utils.zig");
 
@@ -48,10 +44,10 @@ const RLEDecoder = struct {
         remaining: usize,
     };
 
-    reader: ImageStream.Reader,
+    reader: Image.Stream.Reader,
     current_run: ?Run,
 
-    fn init(reader: ImageStream.Reader) RLEDecoder {
+    fn init(reader: Image.Stream.Reader) RLEDecoder {
         return RLEDecoder{
             .reader = reader,
             .current_run = null,
@@ -113,11 +109,11 @@ pub const PCX = struct {
         };
     }
 
-    pub fn format() ImageFormat {
-        return ImageFormat.pcx;
+    pub fn format() Image.Format {
+        return Image.Format.pcx;
     }
 
-    pub fn formatDetect(stream: *ImageStream) ImageReadError!bool {
+    pub fn formatDetect(stream: *Image.Stream) ImageReadError!bool {
         var magic_number_bufffer: [2]u8 = undefined;
         _ = try stream.read(magic_number_bufffer[0..]);
 
@@ -132,19 +128,19 @@ pub const PCX = struct {
         return true;
     }
 
-    pub fn readForImage(allocator: Allocator, stream: *ImageStream, pixels: *?color.PixelStorage) ImageReadError!ImageInfo {
+    pub fn readForImage(allocator: Allocator, stream: *Image.Stream, pixels: *?color.PixelStorage) ImageReadError!Image.Info {
         var pcx = PCX{};
 
         try pcx.read(allocator, stream, pixels);
 
-        var image_info = ImageInfo{};
+        var image_info = Image.Info{};
         image_info.width = pcx.width;
         image_info.height = pcx.height;
 
         return image_info;
     }
 
-    pub fn writeForImage(allocator: Allocator, write_stream: *ImageStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) ImageWriteError!void {
+    pub fn writeForImage(allocator: Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage, save_info: Image.SaveInfo) ImageWriteError!void {
         _ = allocator;
         _ = write_stream;
         _ = pixels;
@@ -169,7 +165,7 @@ pub const PCX = struct {
         }
     }
 
-    pub fn read(self: *Self, allocator: Allocator, stream: *ImageStream, pixels_opt: *?color.PixelStorage) ImageReadError!void {
+    pub fn read(self: *Self, allocator: Allocator, stream: *Image.Stream, pixels_opt: *?color.PixelStorage) ImageReadError!void {
         const reader = stream.reader();
         self.header = try utils.readStructLittle(reader, PCXHeader);
         _ = try stream.read(PCXHeader.padding[0..]);

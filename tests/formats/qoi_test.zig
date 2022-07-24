@@ -1,13 +1,11 @@
-const ImageStream = image.ImageStream;
 const PixelFormat = @import("../../src/pixel_format.zig").PixelFormat;
 const assert = std.debug.assert;
 const qoi = @import("../../src/formats/qoi.zig");
 const color = @import("../../src/color.zig");
-const errors = @import("../../src/errors.zig");
-const ImageReadError = errors.ImageReadError;
+const ImageReadError = Image.ReadError;
 const std = @import("std");
 const testing = std.testing;
-const image = @import("../../src/image.zig");
+const Image = @import("../../src/Image.zig");
 const helpers = @import("../helpers.zig");
 
 const zero_raw_file = helpers.fixtures_path ++ "qoi/zero.raw";
@@ -66,7 +64,7 @@ test "Read zero.qoi file" {
 }
 
 test "Write qoi file" {
-    const source_image = try image.Image.create(helpers.zigimg_test_allocator, 512, 512, PixelFormat.rgba32);
+    const source_image = try Image.create(helpers.zigimg_test_allocator, 512, 512, PixelFormat.rgba32);
     defer source_image.deinit();
 
     var buffer: [1025 * 1024]u8 = undefined;
@@ -76,7 +74,7 @@ test "Write qoi file" {
     var image_buffer: [100 * 1024]u8 = undefined;
     var zero_qoi = try helpers.testReadFile(zero_qoi_file, buffer[0..]);
 
-    const result_image = try source_image.writeToMemory(image_buffer[0..], .qoi, image.ImageEncoderOptions.None);
+    const result_image = try source_image.writeToMemory(image_buffer[0..], .qoi, Image.EncoderOptions.None);
 
     try testing.expectEqualSlices(u8, zero_qoi[0..], result_image);
 }
