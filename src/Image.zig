@@ -48,11 +48,6 @@ pub const SaveInfo = struct {
     encoder_options: EncoderOptions,
 };
 
-pub const Info = struct {
-    width: usize = 0,
-    height: usize = 0,
-};
-
 /// Format-independant image
 allocator: Allocator = undefined,
 width: usize = 0,
@@ -110,24 +105,14 @@ pub fn fromFilePath(allocator: Allocator, file_path: []const u8) !Self {
 
 /// Load an image from a standard library std.fs.File
 pub fn fromFile(allocator: Allocator, file: *std.fs.File) !Self {
-    var result = init(allocator);
-
     var stream_source = io.StreamSource{ .file = file.* };
-
-    try result.internalRead(allocator, &stream_source);
-
-    return result;
+    return internalRead(allocator, &stream_source);
 }
 
 /// Load an image from a memory buffer
 pub fn fromMemory(allocator: Allocator, buffer: []const u8) !Self {
-    var result = init(allocator);
-
     var stream_source = io.StreamSource{ .const_buffer = io.fixedBufferStream(buffer) };
-
-    try result.internalRead(allocator, &stream_source);
-
-    return result;
+    return internalRead(allocator, &stream_source);
 }
 
 /// Create a pixel surface from scratch
@@ -232,15 +217,12 @@ pub fn iterator(self: Self) color.PixelStorageIterator {
     return color.PixelStorageIterator.initNull();
 }
 
-fn internalRead(self: *Self, allocator: Allocator, stream: *Stream) !void {
+fn internalRead(allocator: Allocator, stream: *Stream) !Self {
     const format_interface = try findImageInterfaceFromStream(stream);
 
     try stream.seekTo(0);
 
-    const image_info = try format_interface.readForImage(allocator, stream, &self.pixels);
-
-    self.width = image_info.width;
-    self.height = image_info.height;
+    return try format_interface.readImage(allocator, stream);
 }
 
 fn findImageInterfaceFromStream(stream: *Stream) !FormatInterface {

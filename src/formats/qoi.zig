@@ -110,10 +110,10 @@ pub const QOI = struct {
 
     pub fn formatInterface() FormatInterface {
         return FormatInterface{
-            .format = @ptrCast(FormatInterface.FormatFn, format),
-            .formatDetect = @ptrCast(FormatInterface.FormatDetectFn, formatDetect),
-            .readForImage = @ptrCast(FormatInterface.ReadForImageFn, readForImage),
-            .writeForImage = @ptrCast(FormatInterface.WriteForImageFn, writeForImage),
+            .format = format,
+            .formatDetect = formatDetect,
+            .readImage = readImage,
+            .writeForImage = writeForImage,
         };
     }
 
@@ -129,15 +129,16 @@ pub const QOI = struct {
         return std.mem.eql(u8, magic_buffer[0..], Header.correct_magic[0..]);
     }
 
-    pub fn readForImage(allocator: Allocator, stream: *Image.Stream, pixels: *?color.PixelStorage) ImageReadError!Image.Info {
+    pub fn readImage(allocator: Allocator, stream: *Image.Stream) ImageReadError!Image {
+        var result = Image.init(allocator);
+        errdefer result.deinit();
         var qoi = Self{};
 
-        try qoi.read(allocator, stream, pixels);
+        try qoi.read(allocator, stream, &result.pixels);
 
-        var image_info = Image.Info{};
-        image_info.width = qoi.width();
-        image_info.height = qoi.height();
-        return image_info;
+        result.width = qoi.width();
+        result.height = qoi.height();
+        return result;
     }
 
     pub fn writeForImage(allocator: Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage, save_info: Image.SaveInfo) ImageWriteError!void {

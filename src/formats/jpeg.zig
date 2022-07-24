@@ -1021,10 +1021,10 @@ pub const JPEG = struct {
 
     pub fn formatInterface() FormatInterface {
         return FormatInterface{
-            .format = @ptrCast(FormatInterface.FormatFn, format),
-            .formatDetect = @ptrCast(FormatInterface.FormatDetectFn, formatDetect),
-            .readForImage = @ptrCast(FormatInterface.ReadForImageFn, readForImage),
-            .writeForImage = @ptrCast(FormatInterface.WriteForImageFn, writeForImage),
+            .format = format,
+            .formatDetect = formatDetect,
+            .readImage = readImage,
+            .writeForImage = writeForImage,
         };
     }
 
@@ -1046,15 +1046,16 @@ pub const JPEG = struct {
         return std.mem.eql(u8, identifier_buffer[0..], "JFIF");
     }
 
-    fn readForImage(allocator: Allocator, stream: *Image.Stream, pixels_opt: *?color.PixelStorage) ImageReadError!Image.Info {
+    fn readImage(allocator: Allocator, stream: *Image.Stream) ImageReadError!Image {
+        var result = Image.init(allocator);
+        errdefer result.deinit();
         var jpeg = JPEG.init(allocator);
         defer jpeg.deinit();
 
-        const frame = try jpeg.read(stream, pixels_opt);
-        return Image.Info{
-            .width = frame.frame_header.samples_per_row,
-            .height = frame.frame_header.row_count,
-        };
+        const frame = try jpeg.read(stream, &result.pixels);
+        result.width = frame.frame_header.samples_per_row;
+        result.height = frame.frame_header.row_count;
+        return result;
     }
 
     fn writeForImage(allocator: Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage, save_info: Image.SaveInfo) ImageWriteError!void {

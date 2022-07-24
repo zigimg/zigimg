@@ -146,10 +146,10 @@ pub const Bitmap = struct {
 
     pub fn formatInterface() FormatInterface {
         return FormatInterface{
-            .format = @ptrCast(FormatInterface.FormatFn, format),
-            .formatDetect = @ptrCast(FormatInterface.FormatDetectFn, formatDetect),
-            .readForImage = @ptrCast(FormatInterface.ReadForImageFn, readForImage),
-            .writeForImage = @ptrCast(FormatInterface.WriteForImageFn, writeForImage),
+            .format = format,
+            .formatDetect = formatDetect,
+            .readImage = readImage,
+            .writeForImage = writeForImage,
         };
     }
 
@@ -167,15 +167,16 @@ pub const Bitmap = struct {
         return false;
     }
 
-    pub fn readForImage(allocator: Allocator, stream: *Image.Stream, pixels: *?color.PixelStorage) ImageReadError!Image.Info {
+    pub fn readImage(allocator: Allocator, stream: *Image.Stream) ImageReadError!Image {
+        var result = Image.init(allocator);
+        errdefer result.deinit();
         var bmp = Self{};
 
-        try bmp.read(allocator, stream, pixels);
+        try bmp.read(allocator, stream, &result.pixels);
 
-        var image_info = Image.Info{};
-        image_info.width = @intCast(usize, bmp.width());
-        image_info.height = @intCast(usize, bmp.height());
-        return image_info;
+        result.width = @intCast(usize, bmp.width());
+        result.height = @intCast(usize, bmp.height());
+        return result;
     }
 
     pub fn writeForImage(allocator: Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage, save_info: Image.SaveInfo) Image.Stream.WriteError!void {

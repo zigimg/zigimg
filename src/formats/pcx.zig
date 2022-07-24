@@ -102,10 +102,10 @@ pub const PCX = struct {
 
     pub fn formatInterface() FormatInterface {
         return FormatInterface{
-            .format = @ptrCast(FormatInterface.FormatFn, format),
-            .formatDetect = @ptrCast(FormatInterface.FormatDetectFn, formatDetect),
-            .readForImage = @ptrCast(FormatInterface.ReadForImageFn, readForImage),
-            .writeForImage = @ptrCast(FormatInterface.WriteForImageFn, writeForImage),
+            .format = format,
+            .formatDetect = formatDetect,
+            .readImage = readImage,
+            .writeForImage = writeForImage,
         };
     }
 
@@ -128,16 +128,17 @@ pub const PCX = struct {
         return true;
     }
 
-    pub fn readForImage(allocator: Allocator, stream: *Image.Stream, pixels: *?color.PixelStorage) ImageReadError!Image.Info {
+    pub fn readImage(allocator: Allocator, stream: *Image.Stream) ImageReadError!Image {
+        var result = Image.init(allocator);
+        errdefer result.deinit();
         var pcx = PCX{};
 
-        try pcx.read(allocator, stream, pixels);
+        try pcx.read(allocator, stream, &result.pixels);
 
-        var image_info = Image.Info{};
-        image_info.width = pcx.width;
-        image_info.height = pcx.height;
+        result.width = pcx.width;
+        result.height = pcx.height;
 
-        return image_info;
+        return result;
     }
 
     pub fn writeForImage(allocator: Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage, save_info: Image.SaveInfo) ImageWriteError!void {

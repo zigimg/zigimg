@@ -111,6 +111,8 @@ const TargaRLEDecoder = struct {
     repeat_data: []u8 = undefined,
     data_stream: std.io.FixedBufferStream([]u8) = undefined,
 
+    pub const Reader = std.io.Reader(*TargaRLEDecoder, ImageReadError, read);
+
     const Self = @This();
 
     const State = enum {
@@ -197,8 +199,8 @@ const TargaRLEDecoder = struct {
         return read_count;
     }
 
-    pub fn reader(self: *Self) Image.Stream {
-        return .{ .context = @ptrCast(*std.io.StreamSource, self) };
+    pub fn reader(self: *Self) Reader {
+        return .{ .context = self };
     }
 };
 
@@ -228,10 +230,10 @@ pub const TGA = struct {
 
     pub fn formatInterface() FormatInterface {
         return FormatInterface{
-            .format = @ptrCast(FormatInterface.FormatFn, format),
-            .formatDetect = @ptrCast(FormatInterface.FormatDetectFn, formatDetect),
-            .readForImage = @ptrCast(FormatInterface.ReadForImageFn, readForImage),
-            .writeForImage = @ptrCast(FormatInterface.WriteForImageFn, writeForImage),
+            .format = format,
+            .formatDetect = formatDetect,
+            .readImage = readImage,
+            .writeForImage = writeForImage,
         };
     }
 
@@ -264,15 +266,16 @@ pub const TGA = struct {
         return false;
     }
 
-    pub fn readForImage(allocator: Allocator, stream: *Image.Stream, pixels: *?color.PixelStorage) ImageReadError!Image.Info {
+    pub fn readImage(allocator: Allocator, stream: *Image.Stream) ImageReadError!Image {
+        var result = Image.init(allocator);
+        errdefer result.deinit();
         var tga = Self{};
 
-        try tga.read(allocator, stream, pixels);
+        try tga.read(allocator, stream, &result.pixels);
 
-        var image_info = Image.Info{};
-        image_info.width = tga.width();
-        image_info.height = tga.height();
-        return image_info;
+        result.width = tga.width();
+        result.height = tga.height();
+        return result;
     }
 
     pub fn writeForImage(allocator: Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage, save_info: Image.SaveInfo) ImageWriteError!void {
