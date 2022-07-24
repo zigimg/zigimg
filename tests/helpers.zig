@@ -1,6 +1,6 @@
 const std = @import("std");
 const testing = std.testing;
-const Image = @import("../src/image.zig").Image;
+const Image = @import("../src/Image.zig");
 
 pub const zigimg_test_allocator = std.testing.allocator;
 pub const fixtures_path = "../test-suite/fixtures/";

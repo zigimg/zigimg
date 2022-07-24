@@ -706,6 +706,33 @@ pub const PixelStorage = union(PixelFormat) {
             else => false,
         };
     }
+
+    /// Return the pixel data as a const byte slice
+    pub fn asBytes(self: Self) []u8 {
+        return switch (self) {
+            .indexed1 => |data| std.mem.sliceAsBytes(data.indices),
+            .indexed2 => |data| std.mem.sliceAsBytes(data.indices),
+            .indexed4 => |data| std.mem.sliceAsBytes(data.indices),
+            .indexed8 => |data| std.mem.sliceAsBytes(data.indices),
+            .indexed16 => |data| std.mem.sliceAsBytes(data.indices),
+            .grayscale1 => |data| std.mem.sliceAsBytes(data),
+            .grayscale2 => |data| std.mem.sliceAsBytes(data),
+            .grayscale4 => |data| std.mem.sliceAsBytes(data),
+            .grayscale8 => |data| std.mem.sliceAsBytes(data),
+            .grayscale8Alpha => |data| std.mem.sliceAsBytes(data),
+            .grayscale16 => |data| std.mem.sliceAsBytes(data),
+            .grayscale16Alpha => |data| std.mem.sliceAsBytes(data),
+            .rgb24 => |data| std.mem.sliceAsBytes(data),
+            .rgba32 => |data| std.mem.sliceAsBytes(data),
+            .rgb565 => |data| std.mem.sliceAsBytes(data),
+            .rgb555 => |data| std.mem.sliceAsBytes(data),
+            .bgr24 => |data| std.mem.sliceAsBytes(data),
+            .bgra32 => |data| std.mem.sliceAsBytes(data),
+            .rgb48 => |data| std.mem.sliceAsBytes(data),
+            .rgba64 => |data| std.mem.sliceAsBytes(data),
+            .float32 => |data| std.mem.sliceAsBytes(data),
+        };
+    }
 };
 
 pub const PixelStorageIterator = struct {

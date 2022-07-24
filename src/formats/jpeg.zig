@@ -1,17 +1,13 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
-const errors = @import("../errors.zig");
-const ImageError = errors.ImageError;
-const ImageReadError = errors.ImageReadError;
-const ImageWriteError = errors.ImageWriteError;
-const image = @import("../image.zig");
+const ImageError = Image.Error;
+const ImageReadError = Image.ReadError;
+const ImageWriteError = Image.WriteError;
+const Image = @import("../Image.zig");
 const FormatInterface = @import("../format_interface.zig").FormatInterface;
 const color = @import("../color.zig");
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
-const ImageStream = image.ImageStream;
-const ImageFormat = image.ImageFormat;
-const ImageInfo = image.ImageInfo;
 
 // TODO: Chroma subsampling
 // TODO: Progressive scans
@@ -73,7 +69,7 @@ const JFIFHeader = struct {
     x_density: u16,
     y_density: u16,
 
-    fn read(stream: *ImageStream) !JFIFHeader {
+    fn read(stream: *Image.Stream) !JFIFHeader {
         // Read the first APP0 header.
         const reader = stream.reader();
         try stream.seekTo(2);
@@ -127,7 +123,7 @@ const QuantizationTable = union(enum) {
     q8: [64]u8,
     q16: [64]u16,
 
-    pub fn read(precision: u8, reader: ImageStream.Reader) ImageReadError!QuantizationTable {
+    pub fn read(precision: u8, reader: Image.Stream.Reader) ImageReadError!QuantizationTable {
         // 0 = 8 bits, 1 = 16 bits
         switch (precision) {
             0 => {
@@ -179,7 +175,7 @@ const HuffmanTable = struct {
 
     table_class: u8,
 
-    pub fn read(allocator: Allocator, table_class: u8, reader: ImageStream.Reader) ImageReadError!HuffmanTable {
+    pub fn read(allocator: Allocator, table_class: u8, reader: Image.Stream.Reader) ImageReadError!HuffmanTable {
         if (table_class & 1 != table_class)
             return ImageReadError.InvalidData;
 
@@ -241,12 +237,12 @@ const HuffmanTable = struct {
 
 const HuffmanReader = struct {
     table: ?*const HuffmanTable = null,
-    reader: ImageStream.Reader,
+    reader: Image.Stream.Reader,
     byte_buffer: u8 = 0,
     bits_left: u4 = 0,
     last_byte_was_ff: bool = false,
 
-    pub fn init(reader: ImageStream.Reader) HuffmanReader {
+    pub fn init(reader: Image.Stream.Reader) HuffmanReader {
         return .{
             .reader = reader,
         };
@@ -331,7 +327,7 @@ const Component = struct {
     vertical_sampling_factor: u4,
     quantization_table_id: u8,
 
-    pub fn read(reader: ImageStream.Reader) ImageReadError!Component {
+    pub fn read(reader: Image.Stream.Reader) ImageReadError!Component {
         const component_id = try reader.readByte();
         const sampling_factors = try reader.readByte();
         const quantization_table_id = try reader.readByte();
@@ -365,7 +361,7 @@ const FrameHeader = struct {
 
     components: []Component,
 
-    pub fn read(allocator: Allocator, reader: ImageStream.Reader) ImageReadError!FrameHeader {
+    pub fn read(allocator: Allocator, reader: Image.Stream.Reader) ImageReadError!FrameHeader {
         var segment_size = try reader.readIntBig(u16);
         if (JPEG_DEBUG) std.debug.print("StartOfFrame: frame size = 0x{X}\n", .{segment_size});
         segment_size -= 2;
@@ -421,7 +417,7 @@ const ScanComponentSpec = struct {
     dc_table_selector: u4,
     ac_table_selector: u4,
 
-    pub fn read(reader: ImageStream.Reader) ImageReadError!ScanComponentSpec {
+    pub fn read(reader: Image.Stream.Reader) ImageReadError!ScanComponentSpec {
         const component_selector = try reader.readByte();
         const entropy_coding_selectors = try reader.readByte();
 
@@ -447,7 +443,7 @@ const ScanHeader = struct {
     approximation_high: u4,
     approximation_low: u4,
 
-    pub fn read(reader: ImageStream.Reader) ImageReadError!ScanHeader {
+    pub fn read(reader: Image.Stream.Reader) ImageReadError!ScanHeader {
         var segment_size = try reader.readIntBig(u16);
         if (JPEG_DEBUG) std.debug.print("StartOfScan: segment size = 0x{X}\n", .{segment_size});
         segment_size -= 2;
@@ -584,7 +580,7 @@ const IDCTMultipliers = blk: {
 };
 
 const Scan = struct {
-    pub fn performScan(frame: *Frame, reader: ImageStream.Reader) ImageReadError!void {
+    pub fn performScan(frame: *Frame, reader: Image.Stream.Reader) ImageReadError!void {
         const scan_header = try ScanHeader.read(reader);
 
         var prediction_values = [3]i12{ 0, 0, 0 };
@@ -699,7 +695,7 @@ const Frame = struct {
 
     const MAX_COMPONENTS = 3;
 
-    pub fn read(allocator: Allocator, quantization_tables: *[4]?QuantizationTable, stream: *ImageStream) ImageReadError!Frame {
+    pub fn read(allocator: Allocator, quantization_tables: *[4]?QuantizationTable, stream: *Image.Stream) ImageReadError!Frame {
         const reader = stream.reader();
         var frame_header = try FrameHeader.read(allocator, reader);
         const mcu_count = Frame.calculateMCUCountInFrame(&frame_header);
@@ -760,7 +756,7 @@ const Frame = struct {
         self.allocator.free(self.mcu_storage);
     }
 
-    fn parseDefineHuffmanTables(self: *Frame, reader: ImageStream.Reader) ImageReadError!void {
+    fn parseDefineHuffmanTables(self: *Frame, reader: Image.Stream.Reader) ImageReadError!void {
         var segment_size = try reader.readIntBig(u16);
         if (JPEG_DEBUG) std.debug.print("DefineHuffmanTables: segment size = 0x{X}\n", .{segment_size});
         segment_size -= 2;
@@ -797,7 +793,7 @@ const Frame = struct {
         return (sample_count / 64) + (if (sample_count % 64 != 0) @as(u1, 1) else @as(u1, 0));
     }
 
-    fn parseScan(self: *Frame, reader: ImageStream.Reader) ImageReadError!void {
+    fn parseScan(self: *Frame, reader: Image.Stream.Reader) ImageReadError!void {
         try Scan.performScan(self, reader);
     }
 
@@ -915,7 +911,7 @@ pub const JPEG = struct {
         }
     }
 
-    fn parseDefineQuantizationTables(self: *JPEG, reader: ImageStream.Reader) ImageReadError!void {
+    fn parseDefineQuantizationTables(self: *JPEG, reader: Image.Stream.Reader) ImageReadError!void {
         var segment_size = try reader.readIntBig(u16);
         if (JPEG_DEBUG) std.debug.print("DefineQuantizationTables: segment size = 0x{X}\n", .{segment_size});
         segment_size -= 2;
@@ -950,7 +946,7 @@ pub const JPEG = struct {
         } else return ImageReadError.InvalidData;
     }
 
-    pub fn read(self: *JPEG, stream: *ImageStream, pixels_opt: *?color.PixelStorage) ImageReadError!Frame {
+    pub fn read(self: *JPEG, stream: *Image.Stream, pixels_opt: *?color.PixelStorage) ImageReadError!Frame {
         _ = pixels_opt;
         const jfif_header = JFIFHeader.read(stream) catch |err| switch (err) {
             error.App0MarkerDoesNotExist, error.JfifIdentifierNotSet, error.ThumbnailImagesUnsupported, error.ExtraneousApplicationMarker => return ImageReadError.InvalidData,
@@ -1025,18 +1021,18 @@ pub const JPEG = struct {
 
     pub fn formatInterface() FormatInterface {
         return FormatInterface{
-            .format = @ptrCast(FormatInterface.FormatFn, format),
-            .formatDetect = @ptrCast(FormatInterface.FormatDetectFn, formatDetect),
-            .readForImage = @ptrCast(FormatInterface.ReadForImageFn, readForImage),
-            .writeForImage = @ptrCast(FormatInterface.WriteForImageFn, writeForImage),
+            .format = format,
+            .formatDetect = formatDetect,
+            .readImage = readImage,
+            .writeImage = writeImage,
         };
     }
 
-    fn format() ImageFormat {
-        return ImageFormat.jpg;
+    fn format() Image.Format {
+        return Image.Format.jpg;
     }
 
-    fn formatDetect(stream: *ImageStream) ImageReadError!bool {
+    fn formatDetect(stream: *Image.Stream) ImageReadError!bool {
         const reader = stream.reader();
         const maybe_start_of_image = try reader.readIntBig(u16);
         if (maybe_start_of_image != @enumToInt(Markers.start_of_image)) {
@@ -1050,18 +1046,19 @@ pub const JPEG = struct {
         return std.mem.eql(u8, identifier_buffer[0..], "JFIF");
     }
 
-    fn readForImage(allocator: Allocator, stream: *ImageStream, pixels_opt: *?color.PixelStorage) ImageReadError!ImageInfo {
+    fn readImage(allocator: Allocator, stream: *Image.Stream) ImageReadError!Image {
+        var result = Image.init(allocator);
+        errdefer result.deinit();
         var jpeg = JPEG.init(allocator);
         defer jpeg.deinit();
 
-        const frame = try jpeg.read(stream, pixels_opt);
-        return ImageInfo{
-            .width = frame.frame_header.samples_per_row,
-            .height = frame.frame_header.row_count,
-        };
+        const frame = try jpeg.read(stream, &result.pixels);
+        result.width = frame.frame_header.samples_per_row;
+        result.height = frame.frame_header.row_count;
+        return result;
     }
 
-    fn writeForImage(allocator: Allocator, write_stream: *ImageStream, pixels: color.PixelStorage, save_info: image.ImageSaveInfo) ImageWriteError!void {
+    fn writeImage(allocator: Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage, save_info: Image.SaveInfo) ImageWriteError!void {
         _ = allocator;
         _ = write_stream;
         _ = pixels;

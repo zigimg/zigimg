@@ -1,12 +1,11 @@
 const assert = std.debug.assert;
 const std = @import("std");
 const testing = std.testing;
-const Image = @import("../src/image.zig").Image;
+const Image = @import("../src/Image.zig");
 const color = @import("../src/color.zig");
 const PixelFormat = @import("../src/pixel_format.zig").PixelFormat;
 const helpers = @import("helpers.zig");
-const errors = @import("../src/errors.zig");
-const ImageError = errors.ImageError;
+const ImageError = Image.Error;
 
 test "Create Image indexed1" {
     const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed1);
@@ -391,7 +390,7 @@ test "Should return a valid byte slice with rawByte()" {
     var test_image = try helpers.testImageFromFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
     defer test_image.deinit();
 
-    const slice = try test_image.rawBytes();
+    const slice = test_image.rawBytes();
 
     try helpers.expectEq(slice.len, 24);
     try helpers.expectEqSlice(u8, slice, &[_]u8{
@@ -426,7 +425,7 @@ test "Should return a valid row size with rowByteSize()" {
     var test_image = try helpers.testImageFromFile(helpers.fixtures_path ++ "bmp/windows_rgba_v5.bmp");
     defer test_image.deinit();
 
-    const row_size = try test_image.rowByteSize();
+    const row_size = test_image.rowByteSize();
 
     try helpers.expectEq(row_size, 960);
 }
@@ -435,7 +434,7 @@ test "Should return a valid byte size with imageByteSize()" {
     var test_image = try helpers.testImageFromFile(helpers.fixtures_path ++ "bmp/windows_rgba_v5.bmp");
     defer test_image.deinit();
 
-    const image_size = try test_image.imageByteSize();
+    const image_size = test_image.imageByteSize();
 
     try helpers.expectEq(image_size, 153600);
 }
