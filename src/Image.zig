@@ -180,7 +180,7 @@ pub fn writeToFile(self: Self, file: *std.fs.File, image_format: Format, encoder
     var stream_source = io.StreamSource{ .file = file.* };
 
     if (self.pixels) |pixels| {
-        try format_interface.writeForImage(self.allocator, &stream_source, pixels, image_save_info);
+        try format_interface.writeImage(self.allocator, &stream_source, pixels, image_save_info);
     }
 }
 
@@ -202,7 +202,7 @@ pub fn writeToMemory(self: Self, write_buffer: []u8, image_format: Format, encod
     var stream_source = io.StreamSource{ .buffer = std.io.fixedBufferStream(write_buffer) };
 
     if (self.pixels) |pixels| {
-        try format_interface.writeForImage(self.allocator, &stream_source, pixels, image_save_info);
+        try format_interface.writeImage(self.allocator, &stream_source, pixels, image_save_info);
     }
 
     return stream_source.buffer.getWritten();

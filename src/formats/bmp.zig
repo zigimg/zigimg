@@ -149,7 +149,7 @@ pub const Bitmap = struct {
             .format = format,
             .formatDetect = formatDetect,
             .readImage = readImage,
-            .writeForImage = writeForImage,
+            .writeImage = writeImage,
         };
     }
 
@@ -179,7 +179,7 @@ pub const Bitmap = struct {
         return result;
     }
 
-    pub fn writeForImage(allocator: Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage, save_info: Image.SaveInfo) Image.Stream.WriteError!void {
+    pub fn writeImage(allocator: Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage, save_info: Image.SaveInfo) Image.Stream.WriteError!void {
         _ = allocator;
         _ = write_stream;
         _ = pixels;

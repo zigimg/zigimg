@@ -249,7 +249,7 @@ fn Netpbm(comptime image_format: Image.Format, comptime header_numbers: []const 
                 .format = format,
                 .formatDetect = formatDetect,
                 .readImage = readImage,
-                .writeForImage = writeForImage,
+                .writeImage = writeImage,
             };
         }
 
@@ -290,7 +290,7 @@ fn Netpbm(comptime image_format: Image.Format, comptime header_numbers: []const 
             return result;
         }
 
-        pub fn writeForImage(allocator: Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage, save_info: Image.SaveInfo) ImageWriteError!void {
+        pub fn writeImage(allocator: Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage, save_info: Image.SaveInfo) ImageWriteError!void {
             _ = allocator;
             var netpbm_file = Self{};
             netpbm_file.header.binary = switch (save_info.encoder_options) {

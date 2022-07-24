@@ -1024,7 +1024,7 @@ pub const JPEG = struct {
             .format = format,
             .formatDetect = formatDetect,
             .readImage = readImage,
-            .writeForImage = writeForImage,
+            .writeImage = writeImage,
         };
     }
 
@@ -1058,7 +1058,7 @@ pub const JPEG = struct {
         return result;
     }
 
-    fn writeForImage(allocator: Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage, save_info: Image.SaveInfo) ImageWriteError!void {
+    fn writeImage(allocator: Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage, save_info: Image.SaveInfo) ImageWriteError!void {
         _ = allocator;
         _ = write_stream;
         _ = pixels;

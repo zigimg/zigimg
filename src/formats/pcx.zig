@@ -105,7 +105,7 @@ pub const PCX = struct {
             .format = format,
             .formatDetect = formatDetect,
             .readImage = readImage,
-            .writeForImage = writeForImage,
+            .writeImage = writeImage,
         };
     }
 
@@ -141,7 +141,7 @@ pub const PCX = struct {
         return result;
     }
 
-    pub fn writeForImage(allocator: Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage, save_info: Image.SaveInfo) ImageWriteError!void {
+    pub fn writeImage(allocator: Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage, save_info: Image.SaveInfo) ImageWriteError!void {
         _ = allocator;
         _ = write_stream;
         _ = pixels;
