@@ -137,51 +137,18 @@ pub const Image = struct {
     }
 
     /// Return the pixel data as a const byte slice
-    pub fn rawBytes(self: Self) ![]const u8 {
-        if (self.pixels) |pixels| {
-            return switch (pixels) {
-                .rgb24 => |data| return std.mem.sliceAsBytes(data),
-                .bgr24 => |data| return std.mem.sliceAsBytes(data),
-                .rgba32 => |data| return std.mem.sliceAsBytes(data),
-                .bgra32 => |data| return std.mem.sliceAsBytes(data),
-                .float32 => |data| return std.mem.sliceAsBytes(data),
-                else => return ImageError.Unsupported,
-            };
-        }
-
-        return &[_]u8{};
+    pub fn rawBytes(self: Self) []const u8 {
+        return if (self.pixels) |pixels| pixels.asBytes() else &[_]u8{};
     }
 
     /// Return the byte size of a row in the image
-    pub fn rowByteSize(self: Self) !usize {
-        if (self.pixels) |pixels| {
-            return switch (pixels) {
-                .rgb24 => return self.width * 3,
-                .bgr24 => return self.width * 3,
-                .rgba32 => return self.width * 4,
-                .bgra32 => return self.width * 4,
-                .float32 => return self.width * (4 * @sizeOf(f32)),
-                else => return ImageError.Unsupported,
-            };
-        }
-
-        return 0;
+    pub fn rowByteSize(self: Self) usize {
+        return self.imageByteSize() / self.height;
     }
 
     /// Return the byte size of the whole image
-    pub fn imageByteSize(self: Self) !usize {
-        if (self.pixels) |pixels| {
-            return switch (pixels) {
-                .rgb24 => return self.width * self.height * 3,
-                .bgr24 => return self.width * self.height * 3,
-                .rgba32 => return self.width * self.height * 4,
-                .bgra32 => return self.width * self.height * 4,
-                .float32 => return self.width * self.height * (4 * @sizeOf(f32)),
-                else => return ImageError.Unsupported,
-            };
-        }
-
-        return 0;
+    pub fn imageByteSize(self: Self) usize {
+        return if (self.pixels) |pixels| pixels.asBytes().len else 0;
     }
 
     /// Write the image to an image format to the specified path
