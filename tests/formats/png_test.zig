@@ -110,16 +110,16 @@ test "official test suite" {
 
 // Useful to quickly test everything on full dir of images
 pub fn testWithDir(directory: []const u8, testMd5Sig: bool) !void {
-    var testdir = std.fs.cwd().openDir(directory, .{ .access_sub_paths = false, .iterate = true, .no_follow = true }) catch null;
-    if (testdir) |*dir| {
-        defer dir.close();
-        var it = dir.iterate();
+    var testdir = std.fs.cwd().openIterableDir(directory, .{ .access_sub_paths = false, .no_follow = true }) catch null;
+    if (testdir) |*idir| {
+        defer idir.close();
+        var it = idir.iterate();
         if (testMd5Sig) std.debug.print("\n", .{});
         while (try it.next()) |entry| {
             if (entry.kind != .File or !std.mem.eql(u8, std.fs.path.extension(entry.name), ".png")) continue;
 
             if (testMd5Sig) std.debug.print("Testing file {s} ... ", .{entry.name});
-            var tst_file = try dir.openFile(entry.name, .{ .mode = .read_only });
+            var tst_file = try idir.dir.openFile(entry.name, .{ .mode = .read_only });
             defer tst_file.close();
             var stream = Image.Stream{ .file = tst_file };
             if (entry.name[0] == 'x' and entry.name[2] != 't' and entry.name[2] != 's') {
@@ -151,7 +151,7 @@ pub fn testWithDir(directory: []const u8, testMd5Sig: bool) !void {
             std.mem.copy(u8, tst_data_name[len - 3 .. len], "tsd");
 
             // Read test data and check with it
-            if (dir.openFile(tst_data_name[0..len], .{ .mode = .read_only })) |tdata| {
+            if (idir.dir.openFile(tst_data_name[0..len], .{ .mode = .read_only })) |tdata| {
                 defer tdata.close();
                 var treader = tdata.reader();
                 var expected_md5: [16]u8 = undefined;
@@ -164,7 +164,7 @@ pub fn testWithDir(directory: []const u8, testMd5Sig: bool) !void {
                 try std.testing.expectEqualSlices(u8, expected_md5[0..], md5_val[0..]); // catch std.debug.print("MD5 Expected: {s} Got {s}\n", .{std.fmt.fmtSliceHexUpper(expected_md5[0..]), std.fmt.fmtSliceHexUpper(md5_val[0..])});
             } else |_| {
                 // If there is no test data assume test is correct and write it out
-                try writeTestData(dir, tst_data_name[0..len], &result, md5_val[0..]);
+                try writeTestData(idir.dir, tst_data_name[0..len], &result, md5_val[0..]);
             }
 
             if (testMd5Sig) std.debug.print("OK\n", .{});
@@ -178,7 +178,7 @@ pub fn testWithDir(directory: []const u8, testMd5Sig: bool) !void {
     }
 }
 
-fn writeTestData(dir: *std.fs.Dir, tst_data_name: []const u8, result: *color.PixelStorage, md5_val: []const u8) !void {
+fn writeTestData(dir: std.fs.Dir, tst_data_name: []const u8, result: *color.PixelStorage, md5_val: []const u8) !void {
     var toutput = try dir.createFile(tst_data_name, .{});
     defer toutput.close();
     var writer = toutput.writer();
@@ -188,10 +188,10 @@ fn writeTestData(dir: *std.fs.Dir, tst_data_name: []const u8, result: *color.Pix
 test "InfoProcessor on Png Test suite" {
     const directory = helpers.fixtures_path ++ "png/";
 
-    var testdir = std.fs.cwd().openDir(directory, .{ .access_sub_paths = false, .iterate = true, .no_follow = true }) catch null;
-    if (testdir) |*dir| {
-        defer dir.close();
-        var it = dir.iterate();
+    var testdir = std.fs.cwd().openIterableDir(directory, .{ .access_sub_paths = false, .no_follow = true }) catch null;
+    if (testdir) |*idir| {
+        defer idir.close();
+        var it = idir.iterate();
 
         var info_buffer: [16384]u8 = undefined;
         var info_stream = std.io.StreamSource{ .buffer = std.io.fixedBufferStream(info_buffer[0..]) };
@@ -202,7 +202,7 @@ test "InfoProcessor on Png Test suite" {
         while (try it.next()) |entry| {
             if (entry.kind != .File or !std.mem.eql(u8, std.fs.path.extension(entry.name), ".png")) continue;
 
-            var tst_file = try dir.openFile(entry.name, .{ .mode = .read_only });
+            var tst_file = try idir.dir.openFile(entry.name, .{ .mode = .read_only });
             defer tst_file.close();
             var stream = Image.Stream{ .file = tst_file };
             if (entry.name[0] == 'x') {
@@ -220,14 +220,14 @@ test "InfoProcessor on Png Test suite" {
             std.mem.copy(u8, tst_data_name[len - 4 .. len], "info");
 
             // Read test data and check with it
-            if (dir.openFile(tst_data_name[0..len], .{ .mode = .read_only })) |tdata| {
+            if (idir.dir.openFile(tst_data_name[0..len], .{ .mode = .read_only })) |tdata| {
                 defer tdata.close();
                 var expected_data_buffer: [16384]u8 = undefined;
                 const loaded = try tdata.reader().readAll(expected_data_buffer[0..]);
                 try std.testing.expectEqualSlices(u8, expected_data_buffer[0..loaded], info_buffer[0..loaded]);
             } else |_| {
                 // If there is no test data assume test is correct and write it out
-                var toutput = try dir.createFile(tst_data_name[0..len], .{});
+                var toutput = try idir.dir.createFile(tst_data_name[0..len], .{});
                 defer toutput.close();
                 var writer = toutput.writer();
                 try writer.writeAll(info_buffer[0..info_stream.buffer.pos]);
