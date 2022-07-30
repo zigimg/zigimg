@@ -707,6 +707,17 @@ pub const PixelStorage = union(PixelFormat) {
         };
     }
 
+    pub fn getPallete(self: Self) ?[]Rgba32 {
+        return switch (self) {
+            .indexed1 => |data| data.palette,
+            .indexed2 => |data| data.palette,
+            .indexed4 => |data| data.palette,
+            .indexed8 => |data| data.palette,
+            .indexed16 => |data| data.palette,
+            else => null,
+        };
+    }
+
     /// Return the pixel data as a const byte slice
     pub fn asBytes(self: Self) []u8 {
         return switch (self) {
