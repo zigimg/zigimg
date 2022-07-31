@@ -46,8 +46,7 @@ fn callChunkProcessors(processors: []ReaderProcessor, chunk_process_data: *Chunk
 const IDatChunksReader = struct {
     stream: *Image.Stream,
     buffer: [4096]u8 = undefined,
-    pos: usize = 0,
-    end: usize = 0,
+    data: []u8,
     processors: []ReaderProcessor,
     chunk_process_data: *ChunkProcessData,
     remaining_chunk_length: u32,
@@ -64,6 +63,7 @@ const IDatChunksReader = struct {
         crc.update(png.Chunks.IDAT.name);
         return .{
             .stream = stream,
+            .data = &[_]u8{},
             .processors = processors,
             .chunk_process_data = chunk_process_data,
             .remaining_chunk_length = chunk_process_data.chunk_length,
@@ -72,15 +72,15 @@ const IDatChunksReader = struct {
     }
 
     fn fillBuffer(self: *Self, to_read: usize) Image.ReadError!usize {
-        std.mem.copy(u8, self.buffer[0 .. self.end - self.pos], self.buffer[self.pos..self.end]);
-        self.pos = self.end - self.pos;
+        std.mem.copy(u8, self.buffer[0..self.data.len], self.data);
+        var new_start = self.data.len;
         var max = self.buffer.len;
-        if (max - self.pos > self.remaining_chunk_length) {
-            max = self.pos + self.remaining_chunk_length;
+        if (max - new_start > self.remaining_chunk_length) {
+            max = new_start + self.remaining_chunk_length;
         }
-        const len = try self.stream.read(self.buffer[self.pos..max]);
-        self.end = self.pos + len;
-        self.crc.update(self.buffer[self.pos..self.end]);
+        const len = try self.stream.read(self.buffer[new_start..max]);
+        self.data = self.buffer[new_start .. new_start + len];
+        self.crc.update(self.data);
         return if (len < to_read) len else to_read;
     }
 
@@ -93,12 +93,12 @@ const IDatChunksReader = struct {
         if (to_read > self.remaining_chunk_length) {
             to_read = self.remaining_chunk_length;
         }
-        if (to_read > self.end - self.pos) {
+        if (to_read > self.data.len) {
             to_read = try self.fillBuffer(to_read);
         }
-        std.mem.copy(u8, new_dest[0..to_read], self.buffer[self.pos .. self.pos + to_read]);
+        std.mem.copy(u8, new_dest[0..to_read], self.data[0..to_read]);
         self.remaining_chunk_length -= @intCast(u32, to_read);
-        self.pos += to_read;
+        self.data = self.data[to_read..];
 
         if (self.remaining_chunk_length == 0) {
             // First read and check CRC of just finished chunk
@@ -151,7 +151,6 @@ pub fn loadHeader(stream: *Image.Stream) Image.ReadError!png.HeaderData {
     const expected_crc = try reader.readIntBig(u32);
     var crc = Crc32.init();
     crc.update(png.Chunks.IHDR.name);
-    //crc.update(mem.asBytes(&header));
     crc.update(&header_data);
     const actual_crc = crc.final();
     if (expected_crc != actual_crc) return Image.ReadError.InvalidData;
@@ -186,13 +185,13 @@ pub fn loadWithHeader(
     stream: *Image.Stream,
     header: *const png.HeaderData,
     allocator: Allocator,
-    options: ReaderOptions,
+    in_options: ReaderOptions,
 ) Image.ReadError!PixelStorage {
-    var opts = options;
+    var options = in_options;
     var temp_allocator = options.temp_allocator;
     var fb_allocator = std.heap.FixedBufferAllocator.init(try temp_allocator.alloc(u8, required_temp_bytes));
     defer temp_allocator.free(fb_allocator.buffer);
-    opts.temp_allocator = fb_allocator.allocator();
+    options.temp_allocator = fb_allocator.allocator();
 
     var palette: []color.Rgb24 = &[_]color.Rgb24{};
     var data_found = false;
@@ -204,9 +203,9 @@ pub fn loadWithHeader(
         .chunk_length = @sizeOf(png.HeaderData),
         .current_format = header.getPixelFormat(),
         .header = header,
-        .temp_allocator = opts.temp_allocator,
+        .temp_allocator = options.temp_allocator,
     };
-    try callChunkProcessors(opts.processors, &chunk_process_data);
+    try callChunkProcessors(options.processors, &chunk_process_data);
 
     var reader = stream.reader();
 
@@ -222,7 +221,7 @@ pub fn loadWithHeader(
             png.Chunks.IEND.id => {
                 if (!data_found) return Image.ReadError.InvalidData;
                 _ = try reader.readIntNative(u32); // Read and ignore the crc
-                try callChunkProcessors(opts.processors, &chunk_process_data);
+                try callChunkProcessors(options.processors, &chunk_process_data);
                 return result;
             },
             png.Chunks.IDAT.id => {
@@ -230,22 +229,23 @@ pub fn loadWithHeader(
                 if (header.color_type == .indexed and palette.len == 0) {
                     return Image.ReadError.InvalidData;
                 }
-                result = try readAllData(stream, header, palette, allocator, &opts, &chunk_process_data);
+                result = try readAllData(stream, header, palette, allocator, &options, &chunk_process_data);
                 data_found = true;
             },
             png.Chunks.PLTE.id => {
                 if (!header.allowsPalette()) return Image.ReadError.InvalidData;
                 if (palette.len > 0) return Image.ReadError.InvalidData;
                 // We ignore if tRNS is already found
-                const chunk_length = chunk_process_data.chunk_length;
-                if (chunk_length % 3 != 0) return Image.ReadError.InvalidData;
-                const length = chunk_length / 3;
-                if (length > header.maxPaletteSize()) return Image.ReadError.InvalidData;
                 if (data_found) {
                     // If IDAT was already processed we skip and ignore this palette
-                    try stream.seekBy(chunk_length + @sizeOf(u32));
+                    try stream.seekBy(chunk.length + @sizeOf(u32));
                 } else {
-                    palette = try opts.temp_allocator.alloc(color.Rgb24, length);
+                    if (chunk.length % 3 != 0) return Image.ReadError.InvalidData;
+                    const palette_entries = chunk.length / 3;
+                    if (palette_entries > header.maxPaletteSize()) {
+                        return Image.ReadError.InvalidData;
+                    }
+                    palette = try options.temp_allocator.alloc(color.Rgb24, palette_entries);
                     var palette_bytes = mem.sliceAsBytes(palette);
                     try reader.readNoEof(palette_bytes);
 
@@ -255,11 +255,11 @@ pub fn loadWithHeader(
                     crc.update(palette_bytes);
                     const actual_crc = crc.final();
                     if (expected_crc != actual_crc) return Image.ReadError.InvalidData;
-                    try callChunkProcessors(opts.processors, &chunk_process_data);
+                    try callChunkProcessors(options.processors, &chunk_process_data);
                 }
             },
             else => {
-                try callChunkProcessors(opts.processors, &chunk_process_data);
+                try callChunkProcessors(options.processors, &chunk_process_data);
             },
         }
     }
@@ -304,7 +304,7 @@ fn readAllData(
     const virtual_line_bytes = line_bytes + filter_stride;
     const result_line_bytes = @intCast(u32, destination.len / height);
     var tmpbytes = 2 * virtual_line_bytes;
-    // For deinterlacing we also need one temporary row of resulting pixels
+    // For deinterlacing we also need one additional temporary row of resulting pixels
     if (header.interlace_method == .adam7) {
         tmpbytes += result_line_bytes;
     }
@@ -412,9 +412,9 @@ fn readAllData(
                 const result_format = try callRowProcessors(options.processors, &process_row_data);
                 if (result_format != dest_format) return Image.ReadError.InvalidData;
 
-                const line_start_adr = desty * result_line_bytes;
-                const start_byte = line_start_adr + destx;
-                const end_byte = line_start_adr + result_line_bytes;
+                const line_start_index = desty * result_line_bytes;
+                const start_byte = line_start_index + destx;
+                const end_byte = line_start_index + result_line_bytes;
                 // This spread does the actual deinterlacing of the row
                 spreadRowData(
                     destination[start_byte..end_byte],
@@ -833,7 +833,6 @@ pub const PlteProcessor = struct {
             },
             .indexed16 => {
                 while (pixel_pos + 3 < data.dest_row.len) : (pixel_pos += pixel_stride) {
-                    //const index_buf: [2]u8 = .{data.dest_row[pixel_pos], data.dest_row[pixel_pos + 1]};
                     const index = std.mem.bytesToValue(u16, &[2]u8{ data.dest_row[pixel_pos], data.dest_row[pixel_pos + 1] });
                     const entry = self.palette[index];
                     data.dest_row[pixel_pos] = entry.r;
