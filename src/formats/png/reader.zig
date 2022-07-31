@@ -406,7 +406,7 @@ fn readAllData(
                     header.bit_depth,
                     channel_count,
                     pixel_stride,
-                    false,
+                    is_little_endian,
                 );
 
                 const result_format = try callRowProcessors(options.processors, &process_row_data);
@@ -422,7 +422,7 @@ fn readAllData(
                     deinterlace_bit_depth,
                     result_format.channelCount(),
                     deinterlace_stride,
-                    is_little_endian,
+                    false,
                 );
 
                 desty += yinc[pass];
@@ -688,7 +688,7 @@ pub const TrnsProcessor = struct {
             },
             .rgb24, .rgb48 => {
                 if (data.chunk_length == @sizeOf(color.Rgb48)) {
-                    self.trns_data = .{ .rgb = try utils.readStructNative(reader, color.Rgb48) };
+                    self.trns_data = .{ .rgb = try utils.readStructBig(reader, color.Rgb48) };
                     result_format = if (result_format == .rgb48) .rgba64 else .rgba32;
                 } else {
                     try data.stream.seekBy(data.chunk_length); // Skip invalid
