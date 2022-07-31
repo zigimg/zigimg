@@ -159,7 +159,9 @@ fn RgbMethods(comptime Self: type) type {
                 .g = scaleToIntColor(GreenT, @truncate(u8, value >> 16)),
                 .b = scaleToIntColor(BlueT, @truncate(u8, value >> 8)),
             };
-            if (has_alpha_type) res.a = scaleToIntColor(AlphaT, @truncate(u8, value));
+            if (has_alpha_type) {
+                res.a = scaleToIntColor(AlphaT, @truncate(u8, value));
+            }
             return res;
         }
 
@@ -177,7 +179,9 @@ fn RgbMethods(comptime Self: type) type {
                 .g = scaleToIntColor(GreenT, @truncate(u16, value >> 32)),
                 .b = scaleToIntColor(BlueT, @truncate(u16, value >> 16)),
             };
-            if (has_alpha_type) res.a = scaleToIntColor(AlphaT, @truncate(u16, value));
+            if (has_alpha_type) {
+                res.a = scaleToIntColor(AlphaT, @truncate(u16, value));
+            }
             return res;
         }
 
@@ -707,7 +711,7 @@ pub const PixelStorage = union(PixelFormat) {
         };
     }
 
-    pub fn getPallete(self: Self) ?[]Rgba32 {
+    pub fn getPalette(self: Self) ?[]Rgba32 {
         return switch (self) {
             .indexed1 => |data| data.palette,
             .indexed2 => |data| data.palette,

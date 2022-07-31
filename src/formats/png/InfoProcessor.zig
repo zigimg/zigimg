@@ -6,7 +6,6 @@ const PixelFormat = @import("../../pixel_format.zig").PixelFormat;
 const ReaderProcessor = png_reader.ReaderProcessor;
 const ChunkProcessData = png_reader.ChunkProcessData;
 const PaletteProcessData = png_reader.PaletteProcessData;
-const any_chunk_type = png_reader.any_chunk_type;
 const isChunkCritical = png_reader.isChunkCritical;
 
 pub const PngInfoOptions = struct {
@@ -28,17 +27,13 @@ writer: std.io.StreamSource.Writer,
 idat_count: u32 = 0,
 idat_size: u64 = 0,
 
-inline fn asU32(str: *const [4:0]u8) u32 {
-    return std.mem.bigToNative(u32, std.mem.bytesToValue(u32, str));
-}
-
 pub fn init(writer: std.io.StreamSource.Writer) Self {
     return .{ .writer = writer };
 }
 
 pub fn processor(self: *Self) ReaderProcessor {
     return ReaderProcessor.init(
-        any_chunk_type,
+        png.Chunks.Any.id,
         self,
         processChunk,
         processPalette,
@@ -55,11 +50,11 @@ fn processChunk(self: *Self, data: *ChunkProcessData) Image.ReadError!PixelForma
 
     if (!isChunkCritical(data.chunk_id)) {
         switch (data.chunk_id) {
-            asU32("gAMA") => {
+            png.Chunks.gAMA.id => {
                 var gama = try reader.readIntBig(u32);
                 self.writer.print("gAMA: {}\n", .{gama}) catch return result_format;
             },
-            asU32("sBIT") => {
+            png.Chunks.sBIT.id => {
                 var vals = buffer[0..data.chunk_length];
                 try reader.readNoEof(vals);
                 self.writer.print("sBIT (significant bits): ", .{}) catch return result_format;
@@ -71,7 +66,7 @@ fn processChunk(self: *Self, data: *ChunkProcessData) Image.ReadError!PixelForma
                     else => self.writer.print("Invalid length {}\n", .{data.chunk_length}) catch return result_format,
                 }
             },
-            asU32("tEXt") => {
+            png.Chunks.tEXt.id => {
                 var txt = buffer[0..data.chunk_length];
                 try reader.readNoEof(txt);
                 self.writer.print("tEXt Length {s}:\n", .{std.fmt.fmtIntSizeBin(data.chunk_length)}) catch return result_format;
@@ -80,7 +75,7 @@ fn processChunk(self: *Self, data: *ChunkProcessData) Image.ReadError!PixelForma
                 txt = txt[strEnd + 1 ..];
                 self.writer.print("                  Text: {s}\n", .{txt[0..]}) catch return result_format;
             },
-            asU32("zTXt") => {
+            png.Chunks.zTXt.id => {
                 const to_read = if (data.chunk_length > 81) 81 else data.chunk_length;
                 var txt = buffer[0..to_read];
                 try reader.readNoEof(txt);
@@ -103,7 +98,7 @@ fn processChunk(self: *Self, data: *ChunkProcessData) Image.ReadError!PixelForma
                     self.writer.print("           Compression: Unknown\n", .{}) catch return result_format;
                 }
             },
-            asU32("iTXt") => {
+            png.Chunks.iTXt.id => {
                 var txt = buffer[0..data.chunk_length];
                 try reader.readNoEof(txt);
                 self.writer.print("iTXt Length {s}:\n", .{std.fmt.fmtIntSizeBin(data.chunk_length)}) catch return result_format;
@@ -124,7 +119,7 @@ fn processChunk(self: *Self, data: *ChunkProcessData) Image.ReadError!PixelForma
                 txt = txt[strEnd + 1 ..];
                 self.writer.print("                  Text: {s}\n", .{txt[0..]}) catch return result_format;
             },
-            asU32("cHRM") => {
+            png.Chunks.cHRM.id => {
                 self.writer.print("{s} Length {s}\n", .{ std.mem.asBytes(&data.chunk_id), std.fmt.fmtIntSizeBin(data.chunk_length) }) catch return result_format;
                 var x = try reader.readIntBig(u32);
                 var y = try reader.readIntBig(u32);
@@ -139,14 +134,18 @@ fn processChunk(self: *Self, data: *ChunkProcessData) Image.ReadError!PixelForma
                 y = try reader.readIntBig(u32);
                 self.writer.print("     Blue x,y: {}, {}\n", .{ x, y }) catch return result_format;
             },
-            asU32("pHYs") => {
+            png.Chunks.pHYs.id => {
                 self.writer.print("{s} Length {s}: ", .{ std.mem.asBytes(&data.chunk_id), std.fmt.fmtIntSizeBin(data.chunk_length) }) catch return result_format;
                 var x = try reader.readIntBig(u32);
                 var y = try reader.readIntBig(u32);
                 self.writer.print("{} x {}", .{ x, y }) catch return result_format;
-                if ((try reader.readIntBig(u8)) == 1) self.writer.print(" metres\n", .{}) catch return result_format else self.writer.print("\n", .{}) catch return result_format;
+                if ((try reader.readIntBig(u8)) == 1) {
+                    self.writer.print(" metres\n", .{}) catch return result_format;
+                } else {
+                    self.writer.print("\n", .{}) catch return result_format;
+                }
             },
-            asU32("tRNS") => {
+            png.Chunks.tRNS.id => {
                 self.writer.print("{s} Length {s}: ", .{ std.mem.asBytes(&data.chunk_id), std.fmt.fmtIntSizeBin(data.chunk_length) }) catch return result_format;
                 if (data.chunk_length == 2) {
                     var val = try reader.readIntBig(u16);
@@ -167,7 +166,7 @@ fn processChunk(self: *Self, data: *ChunkProcessData) Image.ReadError!PixelForma
                     } else self.writer.print("\n", .{}) catch return result_format;
                 }
             },
-            asU32("bKGD") => {
+            png.Chunks.bKGD.id => {
                 self.writer.print("{s} Length {s}", .{ std.mem.asBytes(&data.chunk_id), std.fmt.fmtIntSizeBin(data.chunk_length) }) catch return result_format;
                 if (data.chunk_length == 1) {
                     var val = try reader.readIntBig(u8);
@@ -185,21 +184,21 @@ fn processChunk(self: *Self, data: *ChunkProcessData) Image.ReadError!PixelForma
                     try data.stream.seekBy(data.chunk_length);
                 }
             },
-            asU32("tIME") => {
+            png.Chunks.tIME.id => {
                 self.writer.print("{s} Length {s}: ", .{ std.mem.asBytes(&data.chunk_id), std.fmt.fmtIntSizeBin(data.chunk_length) }) catch return result_format;
                 var year = try reader.readIntBig(u16);
                 var rest = buffer[0 .. data.chunk_length - 2];
                 try reader.readNoEof(rest);
                 self.writer.print("{}-{}-{} {}:{}:{}\n", .{ year, rest[0], rest[1], rest[2], rest[3], rest[4] }) catch return result_format;
             },
-            asU32("iCCP") => {
+            png.Chunks.iCCP.id => {
                 self.writer.print("{s} Length {s}: ", .{ std.mem.asBytes(&data.chunk_id), std.fmt.fmtIntSizeBin(data.chunk_length) }) catch return result_format;
                 var iccp = buffer[0..data.chunk_length];
                 try reader.readNoEof(iccp);
                 var strEnd = std.mem.indexOfScalar(u8, iccp, 0).?;
                 self.writer.print(" Profile Name: {s}\n", .{iccp[0..strEnd]}) catch return result_format;
             },
-            asU32("sRGB") => {
+            png.Chunks.sRGB.id => {
                 self.writer.print("{s} Length {s}: ", .{ std.mem.asBytes(&data.chunk_id), std.fmt.fmtIntSizeBin(data.chunk_length) }) catch return result_format;
                 var srgb = buffer[0..data.chunk_length];
                 try reader.readNoEof(srgb);
@@ -217,17 +216,17 @@ fn processChunk(self: *Self, data: *ChunkProcessData) Image.ReadError!PixelForma
             },
         }
         try data.stream.seekBy(@sizeOf(u32));
-    } else if (data.chunk_id == png.HeaderData.chunk_type_id) {
+    } else if (data.chunk_id == png.Chunks.IHDR.id) {
         self.writer.print("Dimensions: {}x{}\n", .{ data.header.width, data.header.height }) catch return result_format;
         self.writer.print("Bit Depth: {}\n", .{data.header.bit_depth}) catch return result_format;
         self.writer.print("Color Type: {s}\n", .{@tagName(data.header.color_type)}) catch return result_format;
         self.writer.print("Compression Method: {s}\n", .{@tagName(data.header.compression_method)}) catch return result_format;
         self.writer.print("Filter Method: {s}\n", .{@tagName(data.header.filter_method)}) catch return result_format;
         self.writer.print("Interlace Method: {s}\n\n", .{@tagName(data.header.interlace_method)}) catch return result_format;
-    } else if (data.chunk_id == asU32("IDAT")) {
+    } else if (data.chunk_id == png.Chunks.IDAT.id) {
         self.idat_count += 1;
         self.idat_size += data.chunk_length;
-    } else if (data.chunk_id == asU32("IEND")) {
+    } else if (data.chunk_id == png.Chunks.IEND.id) {
         self.writer.print("IDAT Count: {}, Total Size: {s}\n", .{ self.idat_count, std.fmt.fmtIntSizeBin(self.idat_size) }) catch return result_format;
         self.writer.print("────────────────────────────────────────────────\n", .{}) catch return result_format;
     }

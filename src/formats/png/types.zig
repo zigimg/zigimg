@@ -7,6 +7,35 @@ const Colorf32 = color.Colorf32;
 
 pub const magic_header = "\x89PNG\x0D\x0A\x1A\x0A";
 
+pub const Chunk = struct {
+    id: u32,
+    name: *const [4:0]u8,
+
+    pub fn init(name: *const [4:0]u8) Chunk {
+        return .{ .name = name, .id = std.mem.bigToNative(u32, std.mem.bytesToValue(u32, name)) };
+    }
+};
+
+pub const Chunks = struct {
+    pub const IHDR = Chunk.init("IHDR");
+    pub const PLTE = Chunk.init("PLTE");
+    pub const IDAT = Chunk.init("IDAT");
+    pub const IEND = Chunk.init("IEND");
+    pub const gAMA = Chunk.init("gAMA");
+    pub const sBIT = Chunk.init("sBIT");
+    pub const tEXt = Chunk.init("tEXt");
+    pub const zTXt = Chunk.init("zTXt");
+    pub const iTXt = Chunk.init("iTXt");
+    pub const cHRM = Chunk.init("cHRM");
+    pub const pHYs = Chunk.init("pHYs");
+    pub const tRNS = Chunk.init("tRNS");
+    pub const bKGD = Chunk.init("bKGD");
+    pub const tIME = Chunk.init("tIME");
+    pub const iCCP = Chunk.init("iCCP");
+    pub const sRGB = Chunk.init("sRGB");
+    pub const Any = Chunk.init("_ANY");
+};
+
 pub const ColorType = enum(u8) {
     grayscale = 0,
     rgb_color = 2,
@@ -58,9 +87,6 @@ pub const ChunkHeader = packed struct {
 };
 
 pub const HeaderData = packed struct {
-    pub const chunk_type = "IHDR";
-    pub const chunk_type_id = std.mem.bigToNative(u32, std.mem.bytesToValue(u32, chunk_type));
-
     width: u32,
     height: u32,
     bit_depth: u8,

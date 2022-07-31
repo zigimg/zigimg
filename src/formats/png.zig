@@ -17,8 +17,7 @@ pub const CompressionMethod = types.CompressionMethod;
 pub const FilterMethod = types.FilterMethod;
 pub const FilterType = types.FilterType;
 pub const InterlaceMethod = types.InterlaceMethod;
-pub const any_chunk_type = reader.any_chunk_type;
-pub const any_chunk_type_id = reader.any_chunk_type_id;
+pub const Chunks = types.Chunks;
 pub const isChunkCritical = reader.isChunkCritical;
 pub const load = reader.load;
 pub const loadHeader = reader.loadHeader;
@@ -30,17 +29,12 @@ pub const ReaderProcessor = reader.ReaderProcessor;
 pub const TrnsProcessor = reader.TrnsProcessor;
 pub const PlteProcessor = reader.PlteProcessor;
 pub const ReaderOptions = reader.ReaderOptions;
-pub const DefProcessors = reader.DefProcessors;
-pub const DefOptions = reader.DefOptions;
+pub const DefaultProcessors = reader.DefaultProcessors;
+pub const DefaultOptions = reader.DefaultOptions;
 pub const required_temp_bytes = reader.required_temp_bytes;
 
 pub const PNG = struct {
     const Self = @This();
-
-    pub fn init(allocator: Allocator) Self {
-        _ = allocator;
-        return Self{};
-    }
 
     pub fn formatInterface() FormatInterface {
         return FormatInterface{
@@ -64,8 +58,8 @@ pub const PNG = struct {
     }
 
     pub fn readImage(allocator: Allocator, stream: *Image.Stream) ImageReadError!Image {
-        var def_options = DefOptions{};
-        return load(stream, allocator, def_options.get());
+        var default_options = DefaultOptions{};
+        return load(stream, allocator, default_options.get());
     }
 
     pub fn writeImage(allocator: Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage, save_info: Image.SaveInfo) ImageWriteError!void {

@@ -13,7 +13,7 @@ const ImageReadError = Image.ReadError;
 const expectError = std.testing.expectError;
 const magic_header = types.magic_header;
 
-const valid_header_buf = magic_header ++ "\x00\x00\x00\x0d" ++ png.HeaderData.chunk_type ++
+const valid_header_data = magic_header ++ "\x00\x00\x00\x0d" ++ png.Chunks.IHDR.name ++
     "\x00\x00\x00\xff\x00\x00\x00\x75\x08\x06\x00\x00\x01\xf6\x24\x07\xe2";
 
 test "Should error on non PNG images" {
@@ -29,8 +29,8 @@ test "Should error on non PNG images" {
 
 test "loadHeader_valid" {
     const expectEqual = std.testing.expectEqual;
-    var buf = valid_header_buf.*;
-    var stream = Image.Stream{ .buffer = std.io.fixedBufferStream(&buf) };
+    var buffer = valid_header_data.*;
+    var stream = Image.Stream{ .buffer = std.io.fixedBufferStream(&buffer) };
     var header = try png.loadHeader(&stream);
     try expectEqual(@as(u32, 0xff), header.width);
     try expectEqual(@as(u32, 0x75), header.height);
@@ -41,70 +41,70 @@ test "loadHeader_valid" {
     try expectEqual(png.InterlaceMethod.adam7, header.interlace_method);
 }
 
-test "loadHeader_empty" {
-    var buf: [0]u8 = undefined;
-    var stream = Image.Stream{ .buffer = std.io.fixedBufferStream(&buf) };
+test "PNG loadHeader() should error when data is empty" {
+    var buffer: [0]u8 = undefined;
+    var stream = Image.Stream{ .buffer = std.io.fixedBufferStream(&buffer) };
     try expectError(Image.ReadError.EndOfStream, png.loadHeader(&stream));
 }
 
-test "loadHeader_badSig" {
-    var buf = "asdsdasdasdsads".*;
-    var stream = Image.Stream{ .buffer = std.io.fixedBufferStream(&buf) };
+test "PNG loadHeader() should error when header signature is invalid" {
+    var buffer = "asdsdasdasdsads".*;
+    var stream = Image.Stream{ .buffer = std.io.fixedBufferStream(&buffer) };
     try expectError(Image.ReadError.InvalidData, png.loadHeader(&stream));
 }
 
-test "loadHeader_badChunk" {
-    var buf = (magic_header ++ "\x00\x00\x01\x0d" ++ png.HeaderData.chunk_type ++ "asad").*;
-    var stream = Image.Stream{ .buffer = std.io.fixedBufferStream(&buf) };
+test "PNG loadHeader() should error on bad header chunk" {
+    var buffer = (magic_header ++ "\x00\x00\x01\x0d" ++ png.Chunks.IHDR.name ++ "asad").*;
+    var stream = Image.Stream{ .buffer = std.io.fixedBufferStream(&buffer) };
     try expectError(Image.ReadError.InvalidData, png.loadHeader(&stream));
 }
 
-test "loadHeader_shortHeader" {
-    var buf = (magic_header ++ "\x00\x00\x00\x0d" ++ png.HeaderData.chunk_type ++ "asad").*;
-    var stream = Image.Stream{ .buffer = std.io.fixedBufferStream(&buf) };
+test "PNG loadHeader() should error when header is too short" {
+    var buffer = (magic_header ++ "\x00\x00\x00\x0d" ++ png.Chunks.IHDR.name ++ "asad").*;
+    var stream = Image.Stream{ .buffer = std.io.fixedBufferStream(&buffer) };
     try expectError(Image.ReadError.EndOfStream, png.loadHeader(&stream));
 }
 
-test "loadHeader_invalidHeaderData" {
-    var buf = valid_header_buf.*;
-    var pos = magic_header.len + @sizeOf(types.ChunkHeader);
+test "PNG loadHeader() should error on invalid data in header" {
+    var buffer = valid_header_data.*;
+    var position = magic_header.len + @sizeOf(types.ChunkHeader);
 
-    try testHeaderWithInvalidValue(buf[0..], pos, 0xf0); // width highest bit is 1
-    pos += 3;
-    try testHeaderWithInvalidValue(buf[0..], pos, 0x00); // width is 0
-    pos += 1;
-    try testHeaderWithInvalidValue(buf[0..], pos, 0xf0); // height highest bit is 1
-    pos += 3;
-    try testHeaderWithInvalidValue(buf[0..], pos, 0x00); // height is 0
+    try testHeaderWithInvalidValue(buffer[0..], position, 0xf0); // width highest bit is 1
+    position += 3;
+    try testHeaderWithInvalidValue(buffer[0..], position, 0x00); // width is 0
+    position += 1;
+    try testHeaderWithInvalidValue(buffer[0..], position, 0xf0); // height highest bit is 1
+    position += 3;
+    try testHeaderWithInvalidValue(buffer[0..], position, 0x00); // height is 0
 
-    pos += 1;
-    try testHeaderWithInvalidValue(buf[0..], pos, 0x00); // invalid bit depth
-    try testHeaderWithInvalidValue(buf[0..], pos, 0x07); // invalid bit depth
-    try testHeaderWithInvalidValue(buf[0..], pos, 0x03); // invalid bit depth
-    try testHeaderWithInvalidValue(buf[0..], pos, 0x04); // invalid bit depth for rgba color type
-    try testHeaderWithInvalidValue(buf[0..], pos, 0x02); // invalid bit depth for rgba color type
-    try testHeaderWithInvalidValue(buf[0..], pos, 0x01); // invalid bit depth for rgba color type
-    pos += 1;
-    try testHeaderWithInvalidValue(buf[0..], pos, 0x01); // invalid color type
-    try testHeaderWithInvalidValue(buf[0..], pos, 0x05);
-    try testHeaderWithInvalidValue(buf[0..], pos, 0x07);
-    pos += 1;
-    try testHeaderWithInvalidValue(buf[0..], pos, 0x01); // invalid compression method
-    pos += 1;
-    try testHeaderWithInvalidValue(buf[0..], pos, 0x01); // invalid filter method
-    pos += 1;
-    try testHeaderWithInvalidValue(buf[0..], pos, 0x02); // invalid interlace method
+    position += 1;
+    try testHeaderWithInvalidValue(buffer[0..], position, 0x00); // invalid bit depth
+    try testHeaderWithInvalidValue(buffer[0..], position, 0x07); // invalid bit depth
+    try testHeaderWithInvalidValue(buffer[0..], position, 0x03); // invalid bit depth
+    try testHeaderWithInvalidValue(buffer[0..], position, 0x04); // invalid bit depth for rgba color type
+    try testHeaderWithInvalidValue(buffer[0..], position, 0x02); // invalid bit depth for rgba color type
+    try testHeaderWithInvalidValue(buffer[0..], position, 0x01); // invalid bit depth for rgba color type
+    position += 1;
+    try testHeaderWithInvalidValue(buffer[0..], position, 0x01); // invalid color type
+    try testHeaderWithInvalidValue(buffer[0..], position, 0x05);
+    try testHeaderWithInvalidValue(buffer[0..], position, 0x07);
+    position += 1;
+    try testHeaderWithInvalidValue(buffer[0..], position, 0x01); // invalid compression method
+    position += 1;
+    try testHeaderWithInvalidValue(buffer[0..], position, 0x01); // invalid filter method
+    position += 1;
+    try testHeaderWithInvalidValue(buffer[0..], position, 0x02); // invalid interlace method
 }
 
-fn testHeaderWithInvalidValue(buf: []u8, pos: usize, val: u8) !void {
-    var orig = buf[pos];
-    buf[pos] = val;
+fn testHeaderWithInvalidValue(buf: []u8, position: usize, val: u8) !void {
+    var origin = buf[position];
+    buf[position] = val;
     var stream = Image.Stream{ .buffer = std.io.fixedBufferStream(buf) };
     try expectError(Image.ReadError.InvalidData, png.loadHeader(&stream));
-    buf[pos] = orig;
+    buf[position] = origin;
 }
 
-test "official test suite" {
+test "PNG Official Test Suite" {
     try testWithDir(helpers.fixtures_path ++ "png/", true);
 }
 
@@ -128,15 +128,16 @@ pub fn testWithDir(directory: []const u8, testMd5Sig: bool) !void {
                 continue;
             }
 
-            var def_options = png.DefOptions{};
+            var default_options = png.DefaultOptions{};
             var header = try png.loadHeader(&stream);
             if (entry.name[0] == 'x') {
-                try std.testing.expectError(Image.ReadError.InvalidData, png.loadWithHeader(&stream, &header, std.testing.allocator, def_options.get()));
+                var error_result = png.loadWithHeader(&stream, &header, std.testing.allocator, default_options.get());
+                try std.testing.expectError(Image.ReadError.InvalidData, error_result);
                 if (testMd5Sig) std.debug.print("OK\n", .{});
                 continue;
             }
 
-            var result = try png.loadWithHeader(&stream, &header, std.testing.allocator, def_options.get());
+            var result = try png.loadWithHeader(&stream, &header, std.testing.allocator, default_options.get());
             defer result.deinit(std.testing.allocator);
 
             if (!testMd5Sig) continue;
@@ -200,7 +201,9 @@ test "InfoProcessor on Png Test suite" {
         };
 
         while (try it.next()) |entry| {
-            if (entry.kind != .File or !std.mem.eql(u8, std.fs.path.extension(entry.name), ".png")) continue;
+            if (entry.kind != .File or !std.mem.eql(u8, std.fs.path.extension(entry.name), ".png")) {
+                continue;
+            }
 
             var tst_file = try idir.dir.openFile(entry.name, .{ .mode = .read_only });
             defer tst_file.close();
