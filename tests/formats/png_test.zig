@@ -196,14 +196,15 @@ test "InfoProcessor on Png Test suite" {
 
         var info_buffer: [16384]u8 = undefined;
         var info_stream = std.io.StreamSource{ .buffer = std.io.fixedBufferStream(info_buffer[0..]) };
-        var options = InfoProcessor.PngInfoOptions{
-            .processor = InfoProcessor.init(info_stream.writer()),
-        };
 
         while (try it.next()) |entry| {
             if (entry.kind != .File or !std.mem.eql(u8, std.fs.path.extension(entry.name), ".png")) {
                 continue;
             }
+
+            var options = InfoProcessor.PngInfoOptions{
+                .processor = InfoProcessor.init(info_stream.writer()),
+            };
 
             var tst_file = try idir.dir.openFile(entry.name, .{ .mode = .read_only });
             defer tst_file.close();
