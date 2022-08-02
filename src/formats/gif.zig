@@ -8,19 +8,29 @@ const utils = @import("../utils.zig");
 const ImageReadError = Image.ReadError;
 const ImageWriteError = Image.WriteError;
 
-pub const GIFHeader = packed struct {
+pub const GIFHeaderFlags = packed struct {
+    global_color_table_size: u3,
+    sorted: bool,
+    color_resolution: u3,
+    use_global_color_table: bool,
+};
+
+// TODO: mlarouche: Take this a packed struct once zig supports nested packed struct
+pub const GIFHeader = struct {
     magic: [3]u8,
     version: [3]u8,
     width: u16,
     height: u16,
-    flags: packed struct {
-        global_color_table_size: u3,
-        sorted: bool,
-        color_resolution: u3,
-        use_global_color_table: bool,
-    },
+    flags: GIFHeaderFlags,
     background_color_index: u8,
     pixel_aspect_ratio: u8,
+};
+
+const Magic = "GIF";
+
+const Versions = [_][]const u8{
+    "87a",
+    "89a",
 };
 
 pub const GIF = struct {
@@ -41,16 +51,19 @@ pub const GIF = struct {
     }
 
     pub fn formatDetect(stream: *Image.Stream) !bool {
-        const GIF87Header = "GIF87a";
-        const GIF89Header = "GIF89a";
-
         var header_buffer: [6]u8 = undefined;
         const read_bytes = try stream.read(header_buffer[0..]);
         if (read_bytes < 6) {
             return false;
         }
 
-        return std.mem.eql(u8, header_buffer[0..], GIF87Header) or std.mem.eql(u8, header_buffer[0..], GIF89Header);
+        for (Versions) |version| {
+            if (std.mem.eql(u8, header_buffer[0..Magic.len], Magic) and std.mem.eql(u8, header_buffer[Magic.len..], version)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     pub fn readImage(allocator: std.mem.Allocator, stream: *Image.Stream) ImageReadError!Image {
@@ -79,18 +92,36 @@ pub const GIF = struct {
 
         const reader = stream.reader();
 
-        self.header = try utils.readStructLittle(reader, GIFHeader);
+        // TODO: mlarouche: Try again having GIFHeader being a packed struct when stage3 is released
+        // self.header = try utils.readStructLittle(reader, GIFHeader);
+
+        _ = try reader.read(self.header.magic[0..]);
+        _ = try reader.read(self.header.version[0..]);
+        self.header.width = try reader.readIntLittle(u16);
+        self.header.height = try reader.readIntLittle(u16);
+        self.header.flags = try utils.readStructLittle(reader, GIFHeaderFlags);
+        self.header.background_color_index = try reader.readIntLittle(u8);
+        self.header.pixel_aspect_ratio = try reader.readIntLittle(u8);
 
         const has_global_table = self.header.flags.use_global_color_table;
         const global_table_size: usize = (@as(usize, 1) << self.header.flags.global_color_table_size) + 1;
 
         std.log.debug("has_global_table={}, global_table_size={},", .{ has_global_table, global_table_size });
 
-        if (!std.mem.eql(u8, self.header.magic[0..], "GIF")) {
+        if (!std.mem.eql(u8, self.header.magic[0..], Magic)) {
             return ImageReadError.InvalidData;
         }
 
-        if (!(std.mem.eql(u8, self.header.version[0..], "87a") or std.mem.eql(u8, self.header.version[0..], "89a"))) {
+        var valid_version = false;
+
+        for (Versions) |version| {
+            if (std.mem.eql(u8, self.header.version[0..], version)) {
+                valid_version = true;
+                break;
+            }
+        }
+
+        if (!valid_version) {
             return ImageReadError.InvalidData;
         }
     }

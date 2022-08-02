@@ -18,6 +18,7 @@ test {
     _ = @import("src/formats/png/reader.zig");
     _ = @import("tests/color_test.zig");
     _ = @import("tests/formats/bmp_test.zig");
+    _ = @import("tests/formats/gif_test.zig");
     _ = @import("tests/formats/jpeg_test.zig");
     _ = @import("tests/formats/netpbm_test.zig");
     _ = @import("tests/formats/pcx_test.zig");
