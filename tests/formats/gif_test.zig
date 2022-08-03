@@ -16,10 +16,11 @@ test "Read depth1 GIF image" {
 
     var stream_source = std.io.StreamSource{ .file = file };
 
-    var gif_file = gif.GIF{};
+    var gif_file = gif.GIF.init(helpers.zigimg_test_allocator);
+    defer gif_file.deinit();
 
     var pixels_opt: ?color.PixelStorage = null;
-    try gif_file.read(helpers.zigimg_test_allocator, &stream_source, &pixels_opt);
+    try gif_file.read(&stream_source, &pixels_opt);
 
     defer {
         if (pixels_opt) |pixels| {
@@ -29,7 +30,6 @@ test "Read depth1 GIF image" {
 
     try helpers.expectEq(gif_file.header.width, 1);
     try helpers.expectEq(gif_file.header.height, 1);
-    // try helpers.expectEq(try gif_file.pixelFormat(), .Grayscale8);
 }
 
 test "Should error on non GIF images" {
@@ -38,10 +38,11 @@ test "Should error on non GIF images" {
 
     var stream_source = std.io.StreamSource{ .file = file };
 
-    var gif_file = gif.GIF{};
+    var gif_file = gif.GIF.init(helpers.zigimg_test_allocator);
+    defer gif_file.deinit();
 
     var pixels_opt: ?color.PixelStorage = null;
-    const invalid_file = gif_file.read(helpers.zigimg_test_allocator, &stream_source, &pixels_opt);
+    const invalid_file = gif_file.read(&stream_source, &pixels_opt);
 
     defer {
         if (pixels_opt) |pixels| {
