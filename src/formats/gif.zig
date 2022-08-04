@@ -225,7 +225,7 @@ pub const GIF = struct {
         var global_color_table_fixed_alloc = std.heap.FixedBufferAllocator.init(global_color_table_storage[0..]);
         var global_color_table_allocator = global_color_table_fixed_alloc.allocator();
 
-        const global_color_table_size = @as(usize, 1) << (self.header.flags.global_color_table_size + 1);
+        const global_color_table_size = @as(usize, 1) << (@intCast(u6, self.header.flags.global_color_table_size) + 1);
 
         var global_color_table = try global_color_table_allocator.alloc(color.Rgb24, global_color_table_size);
 
@@ -258,7 +258,7 @@ pub const GIF = struct {
                     var local_color_table_fixed_alloc = std.heap.FixedBufferAllocator.init(local_color_table_storage[0..]);
                     var local_color_table_allocator = local_color_table_fixed_alloc.allocator();
 
-                    const local_color_table_size = @as(usize, 1) << (self.header.flags.global_color_table_size + 1);
+                    const local_color_table_size = @as(usize, 1) << (@intCast(u6, self.header.flags.global_color_table_size) + 1);
 
                     var local_color_table = try local_color_table_allocator.alloc(color.Rgb24, global_color_table_size);
 
@@ -285,6 +285,10 @@ pub const GIF = struct {
                         };
 
                         const lzw_minimum_code_size = try reader.readByte();
+
+                        if (lzw_minimum_code_size == @enumToInt(DataBlockKind.end_of_file)) {
+                            return;
+                        }
 
                         var lzw_decoder = try lzw.Decoder(.Little).init(self.allocator, lzw_minimum_code_size);
                         defer lzw_decoder.deinit();
