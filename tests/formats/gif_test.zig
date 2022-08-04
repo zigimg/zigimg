@@ -30,6 +30,15 @@ test "Read depth1 GIF image" {
 
     try helpers.expectEq(gif_file.header.width, 1);
     try helpers.expectEq(gif_file.header.height, 1);
+
+    if (pixels_opt) |pixels| {
+        try testing.expect(pixels == .indexed8);
+
+        try helpers.expectEq(pixels.indexed8.palette[0], color.Rgba32.initRgb(0, 0, 0));
+        try helpers.expectEq(pixels.indexed8.palette[1], color.Rgba32.initRgb(0xff, 0xff, 0xff));
+
+        try helpers.expectEq(pixels.indexed8.indices[0], 1);
+    }
 }
 
 test "Should error on non GIF images" {

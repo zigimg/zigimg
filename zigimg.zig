@@ -16,6 +16,7 @@ pub const tga = @import("src/formats/tga.zig");
 test {
     @import("std").testing.refAllDecls(@This());
     _ = @import("src/formats/png/reader.zig");
+    _ = @import("src/compressions/lzw.zig");
     _ = @import("tests/color_test.zig");
     _ = @import("tests/formats/bmp_test.zig");
     _ = @import("tests/formats/gif_test.zig");

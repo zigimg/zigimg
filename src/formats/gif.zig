@@ -4,6 +4,7 @@ const color = @import("../color.zig");
 const Image = @import("../Image.zig");
 const std = @import("std");
 const utils = @import("../utils.zig");
+const lzw = @import("../compressions/lzw.zig");
 
 const ImageReadError = Image.ReadError;
 const ImageWriteError = Image.WriteError;
@@ -269,23 +270,45 @@ pub const GIF = struct {
                         }
                     }
 
-                    const lzw_minimum_code_size = try reader.readByte();
+                    const effective_color_table = if (image_descriptor_header.flags.has_local_color_table) local_color_table else global_color_table;
 
-                    var data_block_size = try reader.readByte();
+                    pixels_opt.* = try color.PixelStorage.init(self.allocator, PixelFormat.indexed8, @intCast(usize, self.header.width * self.header.height));
 
-                    while (data_block_size > 0) {
-                        var data_block_storage: [256]u8 = undefined;
-                        var data_block_fixed_alloc = std.heap.FixedBufferAllocator.init(data_block_storage[0..]);
-                        var data_block_allocator = data_block_fixed_alloc.allocator();
+                    if (pixels_opt.*) |pixels| {
+                        // Copy the effective palette
+                        for (effective_color_table) |palette_entry, index| {
+                            pixels.indexed8.palette[index] = color.Rgba32.initRgb(palette_entry.r, palette_entry.g, palette_entry.b);
+                        }
 
-                        const data_block = try data_block_allocator.alloc(u8, data_block_size);
-                        _ = try reader.read(data_block[0..]);
+                        var pixel_buffer = Image.Stream{
+                            .buffer = std.io.fixedBufferStream(std.mem.sliceAsBytes(pixels.indexed8.indices)),
+                        };
 
-                        // TODO: Decode LZW
-                        _ = lzw_minimum_code_size;
-                        _ = data_block;
+                        const lzw_minimum_code_size = try reader.readByte();
 
-                        data_block_size = try reader.readByte();
+                        var lzw_decoder = try lzw.Decoder(.Little).init(self.allocator, lzw_minimum_code_size);
+                        defer lzw_decoder.deinit();
+
+                        var data_block_size = try reader.readByte();
+
+                        while (data_block_size > 0) {
+                            var data_block_storage: [256]u8 = undefined;
+                            var data_block_fixed_alloc = std.heap.FixedBufferAllocator.init(data_block_storage[0..]);
+                            var data_block_allocator = data_block_fixed_alloc.allocator();
+
+                            const data_block = try data_block_allocator.alloc(u8, data_block_size);
+                            _ = try reader.read(data_block[0..]);
+
+                            var data_block_reader = Image.Stream{
+                                .buffer = std.io.fixedBufferStream(data_block),
+                            };
+
+                            lzw_decoder.decode(data_block_reader.reader(), pixel_buffer.writer()) catch {
+                                return ImageReadError.InvalidData;
+                            };
+
+                            data_block_size = try reader.readByte();
+                        }
                     }
                 },
                 .extension => {
