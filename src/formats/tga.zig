@@ -275,9 +275,7 @@ pub const TGA = struct {
 
         result.width = tga.width();
         result.height = tga.height();
-        result.data = .{
-            .image = pixels,
-        };
+        result.pixels = pixels;
 
         return result;
     }

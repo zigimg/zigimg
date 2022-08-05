@@ -224,7 +224,7 @@ test "Write bitmap(grayscale1) ASCII PBM file" {
     var source_image = try Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale1);
     defer source_image.deinit();
 
-    const source = source_image.data.image;
+    const source = source_image.pixels;
     for (grayscales) |value, index| {
         source.grayscale1[index].value = value;
     }
@@ -243,9 +243,7 @@ test "Write bitmap(grayscale1) ASCII PBM file" {
     try helpers.expectEq(read_image.width, width);
     try helpers.expectEq(read_image.height, height);
 
-    try testing.expect(read_image.data == .image);
-
-    const read_pixels = read_image.data.image;
+    const read_pixels = read_image.pixels;
 
     try testing.expect(read_pixels == .grayscale1);
 
@@ -270,7 +268,7 @@ test "Write bitmap(Grayscale1) binary PBM file" {
     var source_image = try Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale1);
     defer source_image.deinit();
 
-    const source = source_image.data.image;
+    const source = source_image.pixels;
 
     for (grayscales) |value, index| {
         source.grayscale1[index].value = value;
@@ -290,9 +288,7 @@ test "Write bitmap(Grayscale1) binary PBM file" {
     try helpers.expectEq(read_image.width, width);
     try helpers.expectEq(read_image.height, height);
 
-    try testing.expect(read_image.data == .image);
-
-    const read_pixels = read_image.data.image;
+    const read_pixels = read_image.pixels;
 
     try testing.expect(read_pixels == .grayscale1);
 
@@ -314,7 +310,7 @@ test "Write grayscale8 ASCII PGM file" {
     var source_image = try Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale8);
     defer source_image.deinit();
 
-    const source = source_image.data.image;
+    const source = source_image.pixels;
     for (grayscales) |value, index| {
         source.grayscale8[index].value = value;
     }
@@ -333,9 +329,8 @@ test "Write grayscale8 ASCII PGM file" {
     try helpers.expectEq(read_image.width, width);
     try helpers.expectEq(read_image.height, height);
 
-    try testing.expect(read_image.data == .image);
+    const read_pixels = read_image.pixels;
 
-    const read_pixels = read_image.data.image;
     try testing.expect(read_pixels == .grayscale8);
 
     for (grayscales) |grayscale_value, index| {
@@ -356,7 +351,7 @@ test "Write grayscale8 binary PGM file" {
     var source_image = try Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale8);
     defer source_image.deinit();
 
-    const source = source_image.data.image;
+    const source = source_image.pixels;
     for (grayscales) |value, index| {
         source.grayscale8[index].value = value;
     }
@@ -375,9 +370,7 @@ test "Write grayscale8 binary PGM file" {
     try helpers.expectEq(read_image.width, width);
     try helpers.expectEq(read_image.height, height);
 
-    try testing.expect(read_image.data == .image);
-
-    const read_pixels = read_image.data.image;
+    const read_pixels = read_image.pixels;
     try testing.expect(read_pixels == .grayscale8);
 
     for (grayscales) |grayscale_value, index| {
@@ -395,9 +388,8 @@ test "Writing Rgb24 ASCII PPM format" {
     var source_image = try Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.rgb24);
     defer source_image.deinit();
 
-    try testing.expect(source_image.data == .image);
+    const pixels = source_image.pixels;
 
-    const pixels = source_image.data.image;
     try testing.expect(pixels == .rgb24);
     try testing.expect(pixels.rgb24.len == width * height);
 
@@ -429,9 +421,7 @@ test "Writing Rgb24 ASCII PPM format" {
     try helpers.expectEq(read_image.width, width);
     try helpers.expectEq(read_image.height, height);
 
-    try testing.expect(read_image.data == .image);
-
-    const read_image_pixels = read_image.data.image;
+    const read_image_pixels = read_image.pixels;
 
     try testing.expect(read_image_pixels == .rgb24);
 
@@ -450,9 +440,7 @@ test "Writing Rgb24 binary PPM format" {
     var source_image = try Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.rgb24);
     defer source_image.deinit();
 
-    try testing.expect(source_image.data == .image);
-
-    const pixels = source_image.data.image;
+    const pixels = source_image.pixels;
 
     try testing.expect(pixels == .rgb24);
     try testing.expect(pixels.rgb24.len == width * height);
@@ -485,9 +473,7 @@ test "Writing Rgb24 binary PPM format" {
     try helpers.expectEq(read_image.width, width);
     try helpers.expectEq(read_image.height, height);
 
-    try testing.expect(read_image.data == .image);
-
-    const read_image_pixels = read_image.data.image;
+    const read_image_pixels = read_image.pixels;
 
     try testing.expect(read_image_pixels == .rgb24);
 

@@ -1059,9 +1059,7 @@ pub const JPEG = struct {
         result.height = frame.frame_header.row_count;
 
         if (pixels_opt) |pixels| {
-            result.data = .{
-                .image = pixels,
-            };
+            result.pixels = pixels;
         } else {
             return ImageReadError.InvalidData;
         }

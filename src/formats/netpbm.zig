@@ -286,46 +286,38 @@ fn Netpbm(comptime image_format: Image.Format, comptime header_numbers: []const 
 
             result.width = netpbm_file.header.width;
             result.height = netpbm_file.header.height;
-            result.data = .{
-                .image = pixels,
-            };
+            result.pixels = pixels;
 
             return result;
         }
 
         pub fn writeImage(allocator: Allocator, write_stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) ImageWriteError!void {
             _ = allocator;
-            switch (image.data) {
-                .image => |pixels| {
-                    var netpbm_file = Self{};
-                    netpbm_file.header.binary = switch (encoder_options) {
-                        .pbm => |options| options.binary,
-                        .pgm => |options| options.binary,
-                        .ppm => |options| options.binary,
-                        else => false,
-                    };
 
-                    netpbm_file.header.width = image.width;
-                    netpbm_file.header.height = image.height;
-                    netpbm_file.header.format = switch (pixels) {
-                        .grayscale1 => Format.bitmap,
-                        .grayscale8, .grayscale16 => Format.grayscale,
-                        .rgb24 => Format.rgb,
-                        else => return ImageError.Unsupported,
-                    };
+            var netpbm_file = Self{};
+            netpbm_file.header.binary = switch (encoder_options) {
+                .pbm => |options| options.binary,
+                .pgm => |options| options.binary,
+                .ppm => |options| options.binary,
+                else => false,
+            };
 
-                    netpbm_file.header.max_value = switch (pixels) {
-                        .grayscale16 => std.math.maxInt(u16),
-                        .grayscale1 => 1,
-                        else => std.math.maxInt(u8),
-                    };
+            netpbm_file.header.width = image.width;
+            netpbm_file.header.height = image.height;
+            netpbm_file.header.format = switch (image.pixels) {
+                .grayscale1 => Format.bitmap,
+                .grayscale8, .grayscale16 => Format.grayscale,
+                .rgb24 => Format.rgb,
+                else => return ImageError.Unsupported,
+            };
 
-                    try netpbm_file.write(write_stream, pixels);
-                },
-                else => {
-                    return ImageWriteError.Unsupported;
-                },
-            }
+            netpbm_file.header.max_value = switch (image.pixels) {
+                .grayscale16 => std.math.maxInt(u16),
+                .grayscale1 => 1,
+                else => std.math.maxInt(u8),
+            };
+
+            try netpbm_file.write(write_stream, image.pixels);
         }
 
         pub fn pixelFormat(self: Self) ImageReadError!PixelFormat {

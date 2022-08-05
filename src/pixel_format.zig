@@ -4,6 +4,7 @@
 /// 3. value & 0xF000 gives a special variant number, 1 for Bgr, 2 for Float and 3 for special Rgb 565
 /// Note that palette index formats have number of channels set to 0.
 pub const PixelFormat = enum(u32) {
+    invalid = 0,
     indexed1 = 1,
     indexed2 = 2,
     indexed4 = 4,
@@ -51,6 +52,7 @@ pub const PixelFormat = enum(u32) {
     pub fn pixelStride(self: Self) u8 {
         // Using bit manipulations of values is not really faster than this switch
         return switch (self) {
+            .invalid => 0,
             .indexed1, .indexed2, .indexed4, .indexed8, .grayscale1, .grayscale2, .grayscale4, .grayscale8 => 1,
             .indexed16, .grayscale16, .grayscale8Alpha, .rgb565, .rgb555 => 2,
             .rgb24, .bgr24 => 3,
@@ -63,6 +65,7 @@ pub const PixelFormat = enum(u32) {
 
     pub fn channelCount(self: Self) u8 {
         return switch (self) {
+            .invalid => 0,
             .grayscale8Alpha, .grayscale16Alpha => 2,
             .rgb565, .rgb555, .rgb24, .bgr24, .rgb48 => 3,
             .rgba32, .bgra32, .rgba64, .float32 => 4,

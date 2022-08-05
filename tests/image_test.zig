@@ -14,9 +14,8 @@ test "Create Image indexed1" {
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.indexed1);
-    try testing.expect(test_image.data == .image);
 
-    const pixels = test_image.data.image;
+    const pixels = test_image.pixels;
 
     try testing.expect(pixels == .indexed1);
     try testing.expect(pixels.indexed1.palette.len == 2);
@@ -30,9 +29,8 @@ test "Create Image indexed2" {
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.indexed2);
-    try testing.expect(test_image.data == .image);
 
-    const pixels = test_image.data.image;
+    const pixels = test_image.pixels;
 
     try testing.expect(pixels == .indexed2);
     try testing.expect(pixels.indexed2.palette.len == 4);
@@ -46,9 +44,8 @@ test "Create Image indexed4" {
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.indexed4);
-    try testing.expect(test_image.data == .image);
 
-    const pixels = test_image.data.image;
+    const pixels = test_image.pixels;
 
     try testing.expect(pixels == .indexed4);
     try testing.expect(pixels.indexed4.palette.len == 16);
@@ -62,9 +59,8 @@ test "Create Image indexed8" {
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.indexed8);
-    try testing.expect(test_image.data == .image);
 
-    const pixels = test_image.data.image;
+    const pixels = test_image.pixels;
 
     try testing.expect(pixels == .indexed8);
     try testing.expect(pixels.indexed8.palette.len == 256);
@@ -78,9 +74,8 @@ test "Create Image indexed16" {
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.indexed16);
-    try testing.expect(test_image.data == .image);
 
-    const pixels = test_image.data.image;
+    const pixels = test_image.pixels;
 
     try testing.expect(pixels == .indexed16);
     try testing.expect(pixels.indexed16.palette.len == 65536);
@@ -94,9 +89,8 @@ test "Create Image Rgb24" {
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.rgb24);
-    try testing.expect(test_image.data == .image);
 
-    const pixels = test_image.data.image;
+    const pixels = test_image.pixels;
 
     try testing.expect(pixels == .rgb24);
     try testing.expect(pixels.rgb24.len == 24 * 32);
@@ -109,9 +103,8 @@ test "Create Image Rgba32" {
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.rgba32);
-    try testing.expect(test_image.data == .image);
 
-    const pixels = test_image.data.image;
+    const pixels = test_image.pixels;
 
     try testing.expect(pixels == .rgba32);
     try testing.expect(pixels.rgba32.len == 24 * 32);
@@ -124,9 +117,8 @@ test "Create Image Rgb565" {
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.rgb565);
-    try testing.expect(test_image.data == .image);
 
-    const pixels = test_image.data.image;
+    const pixels = test_image.pixels;
 
     try testing.expect(pixels == .rgb565);
     try testing.expect(pixels.rgb565.len == 24 * 32);
@@ -139,9 +131,8 @@ test "Create Image Rgb555" {
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.rgb555);
-    try testing.expect(test_image.data == .image);
 
-    const pixels = test_image.data.image;
+    const pixels = test_image.pixels;
 
     try testing.expect(pixels == .rgb555);
     try testing.expect(pixels.rgb555.len == 24 * 32);
@@ -154,9 +145,8 @@ test "Create Image Bgra32" {
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.bgra32);
-    try testing.expect(test_image.data == .image);
 
-    const pixels = test_image.data.image;
+    const pixels = test_image.pixels;
 
     try testing.expect(pixels == .bgra32);
     try testing.expect(pixels.bgra32.len == 24 * 32);
@@ -169,9 +159,8 @@ test "Create Image float32" {
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.float32);
-    try testing.expect(test_image.data == .image);
 
-    const pixels = test_image.data.image;
+    const pixels = test_image.pixels;
 
     try testing.expect(pixels == .float32);
     try testing.expect(pixels.float32.len == 24 * 32);
@@ -312,51 +301,49 @@ test "Should read a 24-bit bitmap" {
     try helpers.expectEq(test_image.width, 8);
     try helpers.expectEq(test_image.height, 1);
 
-    if (test_image.data == .image) {
-        const pixels = test_image.data.image;
+    const pixels = test_image.pixels;
 
-        try testing.expect(pixels == .bgr24);
+    try testing.expect(pixels == .bgr24);
 
-        const red = pixels.bgr24[0];
-        try helpers.expectEq(red.r, 0xFF);
-        try helpers.expectEq(red.g, 0x00);
-        try helpers.expectEq(red.b, 0x00);
+    const red = pixels.bgr24[0];
+    try helpers.expectEq(red.r, 0xFF);
+    try helpers.expectEq(red.g, 0x00);
+    try helpers.expectEq(red.b, 0x00);
 
-        const green = pixels.bgr24[1];
-        try helpers.expectEq(green.r, 0x00);
-        try helpers.expectEq(green.g, 0xFF);
-        try helpers.expectEq(green.b, 0x00);
+    const green = pixels.bgr24[1];
+    try helpers.expectEq(green.r, 0x00);
+    try helpers.expectEq(green.g, 0xFF);
+    try helpers.expectEq(green.b, 0x00);
 
-        const blue = pixels.bgr24[2];
-        try helpers.expectEq(blue.r, 0x00);
-        try helpers.expectEq(blue.g, 0x00);
-        try helpers.expectEq(blue.b, 0xFF);
+    const blue = pixels.bgr24[2];
+    try helpers.expectEq(blue.r, 0x00);
+    try helpers.expectEq(blue.g, 0x00);
+    try helpers.expectEq(blue.b, 0xFF);
 
-        const cyan = pixels.bgr24[3];
-        try helpers.expectEq(cyan.r, 0x00);
-        try helpers.expectEq(cyan.g, 0xFF);
-        try helpers.expectEq(cyan.b, 0xFF);
+    const cyan = pixels.bgr24[3];
+    try helpers.expectEq(cyan.r, 0x00);
+    try helpers.expectEq(cyan.g, 0xFF);
+    try helpers.expectEq(cyan.b, 0xFF);
 
-        const magenta = pixels.bgr24[4];
-        try helpers.expectEq(magenta.r, 0xFF);
-        try helpers.expectEq(magenta.g, 0x00);
-        try helpers.expectEq(magenta.b, 0xFF);
+    const magenta = pixels.bgr24[4];
+    try helpers.expectEq(magenta.r, 0xFF);
+    try helpers.expectEq(magenta.g, 0x00);
+    try helpers.expectEq(magenta.b, 0xFF);
 
-        const yellow = pixels.bgr24[5];
-        try helpers.expectEq(yellow.r, 0xFF);
-        try helpers.expectEq(yellow.g, 0xFF);
-        try helpers.expectEq(yellow.b, 0x00);
+    const yellow = pixels.bgr24[5];
+    try helpers.expectEq(yellow.r, 0xFF);
+    try helpers.expectEq(yellow.g, 0xFF);
+    try helpers.expectEq(yellow.b, 0x00);
 
-        const black = pixels.bgr24[6];
-        try helpers.expectEq(black.r, 0x00);
-        try helpers.expectEq(black.g, 0x00);
-        try helpers.expectEq(black.b, 0x00);
+    const black = pixels.bgr24[6];
+    try helpers.expectEq(black.r, 0x00);
+    try helpers.expectEq(black.g, 0x00);
+    try helpers.expectEq(black.b, 0x00);
 
-        const white = pixels.bgr24[7];
-        try helpers.expectEq(white.r, 0xFF);
-        try helpers.expectEq(white.g, 0xFF);
-        try helpers.expectEq(white.b, 0xFF);
-    }
+    const white = pixels.bgr24[7];
+    try helpers.expectEq(white.r, 0xFF);
+    try helpers.expectEq(white.g, 0xFF);
+    try helpers.expectEq(white.b, 0xFF);
 }
 
 test "Test Colorf32 iterator" {

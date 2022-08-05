@@ -137,9 +137,7 @@ pub const PCX = struct {
 
         result.width = pcx.width;
         result.height = pcx.height;
-        result.data = .{
-            .image = pixels,
-        };
+        result.pixels = pixels;
 
         return result;
     }

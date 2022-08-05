@@ -176,9 +176,7 @@ pub const Bitmap = struct {
 
         result.width = @intCast(usize, bmp.width());
         result.height = @intCast(usize, bmp.height());
-        result.data = .{
-            .image = pixels,
-        };
+        result.pixels = pixels;
 
         return result;
     }

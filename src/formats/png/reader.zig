@@ -174,9 +174,7 @@ pub fn load(stream: *Image.Stream, allocator: Allocator, options: ReaderOptions)
 
     result.width = header.width;
     result.height = header.height;
-    result.data = .{
-        .image = try loadWithHeader(stream, &header, allocator, options),
-    };
+    result.pixels = try loadWithHeader(stream, &header, allocator, options);
 
     return result;
 }

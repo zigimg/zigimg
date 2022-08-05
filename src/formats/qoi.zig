@@ -138,9 +138,7 @@ pub const QOI = struct {
 
         result.width = qoi.width();
         result.height = qoi.height();
-        result.data = .{
-            .image = pixels,
-        };
+        result.pixels = pixels;
 
         return result;
     }
@@ -148,31 +146,24 @@ pub const QOI = struct {
     pub fn writeImage(allocator: Allocator, write_stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) ImageWriteError!void {
         _ = allocator;
 
-        switch (image.data) {
-            .image => |pixels| {
-                var qoi = Self{};
-                qoi.header.width = @truncate(u32, image.width);
-                qoi.header.height = @truncate(u32, image.height);
-                qoi.header.format = switch (pixels) {
-                    .rgb24 => Format.rgb,
-                    .rgba32 => Format.rgba,
-                    else => return ImageError.Unsupported,
-                };
-                switch (encoder_options) {
-                    .qoi => |qoi_encode_options| {
-                        qoi.header.colorspace = qoi_encode_options.colorspace;
-                    },
-                    else => {
-                        qoi.header.colorspace = .srgb;
-                    },
-                }
-
-                try qoi.write(write_stream, pixels);
+        var qoi = Self{};
+        qoi.header.width = @truncate(u32, image.width);
+        qoi.header.height = @truncate(u32, image.height);
+        qoi.header.format = switch (image.pixels) {
+            .rgb24 => Format.rgb,
+            .rgba32 => Format.rgba,
+            else => return ImageError.Unsupported,
+        };
+        switch (encoder_options) {
+            .qoi => |qoi_encode_options| {
+                qoi.header.colorspace = qoi_encode_options.colorspace;
             },
             else => {
-                return ImageWriteError.Unsupported;
+                qoi.header.colorspace = .srgb;
             },
         }
+
+        try qoi.write(write_stream, image.pixels);
     }
 
     pub fn width(self: Self) usize {
