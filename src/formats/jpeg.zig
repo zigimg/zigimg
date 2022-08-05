@@ -1018,7 +1018,6 @@ pub const JPEG = struct {
     }
 
     // Format interface
-
     pub fn formatInterface() FormatInterface {
         return FormatInterface{
             .format = format,
@@ -1052,17 +1051,28 @@ pub const JPEG = struct {
         var jpeg = JPEG.init(allocator);
         defer jpeg.deinit();
 
-        const frame = try jpeg.read(stream, &result.pixels);
+        var pixels_opt: ?color.PixelStorage = null;
+
+        const frame = try jpeg.read(stream, &pixels_opt);
+
         result.width = frame.frame_header.samples_per_row;
         result.height = frame.frame_header.row_count;
+
+        if (pixels_opt) |pixels| {
+            result.data = .{
+                .image = pixels,
+            };
+        } else {
+            return ImageReadError.InvalidData;
+        }
+
         return result;
     }
 
-    fn writeImage(allocator: Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage, save_info: Image.SaveInfo) ImageWriteError!void {
+    fn writeImage(allocator: Allocator, write_stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) ImageWriteError!void {
         _ = allocator;
         _ = write_stream;
-        _ = pixels;
-        _ = save_info;
-        @panic("TODO: Implement JPEG writing! (maybe not...)");
+        _ = image;
+        _ = encoder_options;
     }
 };

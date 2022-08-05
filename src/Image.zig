@@ -24,7 +24,9 @@ pub const WriteError = Error ||
     std.mem.Allocator.Error ||
     std.io.StreamSource.WriteError ||
     std.io.StreamSource.SeekError ||
-    std.io.StreamSource.GetSeekPosError;
+    std.io.StreamSource.GetSeekPosError ||
+    std.fs.File.OpenError ||
+    error{InvalidData};
 
 pub const Format = enum {
     bmp,
@@ -42,17 +44,49 @@ pub const Stream = io.StreamSource;
 
 pub const EncoderOptions = AllImageFormats.ImageEncoderOptions;
 
-pub const SaveInfo = struct {
-    width: usize,
-    height: usize,
-    encoder_options: EncoderOptions,
+pub const AnimationLoopInfinite = -1;
+
+pub const AnimationFrame = struct {
+    pixels: PixelStorage,
+    duration: f32,
+};
+
+pub const Animation = struct {
+    frames: std.ArrayListUnmanaged(AnimationFrame),
+    loop_count: i32 = AnimationLoopInfinite,
+
+    pub fn deinit(self: *Animation, allocator: std.mem.Allocator) void {
+        for (self.frames.items) |frame| {
+            frame.pixels.deinit(allocator);
+        }
+
+        self.frames.deinit(allocator);
+    }
+};
+
+pub const Data = union(enum) {
+    empty: void,
+    image: PixelStorage,
+    animation: Animation,
+
+    pub fn deinit(self: *Data, allocator: std.mem.Allocator) void {
+        switch (self.*) {
+            .empty => {},
+            .image => |image| {
+                image.deinit(allocator);
+            },
+            .animation => |*animation| {
+                animation.deinit(allocator);
+            },
+        }
+    }
 };
 
 /// Format-independant image
 allocator: Allocator = undefined,
 width: usize = 0,
 height: usize = 0,
-pixels: ?PixelStorage = null,
+data: Data = .{ .empty = void{} },
 
 const Self = @This();
 
@@ -89,10 +123,8 @@ pub fn init(allocator: Allocator) Self {
 }
 
 /// Deinit the image
-pub fn deinit(self: Self) void {
-    if (self.pixels) |pixels| {
-        pixels.deinit(self.allocator);
-    }
+pub fn deinit(self: *Self) void {
+    self.data.deinit(self.allocator);
 }
 
 /// Load an image from a file path
@@ -121,7 +153,9 @@ pub fn create(allocator: Allocator, width: usize, height: usize, pixel_format: P
         .allocator = allocator,
         .width = width,
         .height = height,
-        .pixels = try PixelStorage.init(allocator, pixel_format, width * height),
+        .data = .{
+            .image = try PixelStorage.init(allocator, pixel_format, width * height),
+        },
     };
 
     return result;
@@ -129,16 +163,40 @@ pub fn create(allocator: Allocator, width: usize, height: usize, pixel_format: P
 
 /// Return the pixel format of the image
 pub fn pixelFormat(self: Self) ?PixelFormat {
-    if (self.pixels) |pixels| {
-        return std.meta.activeTag(pixels);
-    }
+    return switch (self.data) {
+        .empty => {
+            return null;
+        },
+        .image => |image| {
+            return std.meta.activeTag(image);
+        },
+        .animation => |animation| {
+            if (animation.frames.items.len > 0) {
+                return std.meta.activeTag(animation.frames.items[0].pixels);
+            }
 
-    return null;
+            return null;
+        },
+    };
 }
 
-/// Return the pixel data as a const byte slice
+/// Return the pixel data as a const byte slice. In case of an animation, it return the pixel data of the first frame.
 pub fn rawBytes(self: Self) []const u8 {
-    return if (self.pixels) |pixels| pixels.asBytes() else &[_]u8{};
+    return switch (self.data) {
+        .image => |image| {
+            return image.asBytes();
+        },
+        .animation => |animation| {
+            if (animation.frames.items.len > 0) {
+                return animation.frames.items[0].pixels.asBytes();
+            }
+
+            return &[_]u8{};
+        },
+        else => {
+            return &[_]u8{};
+        },
+    };
 }
 
 /// Return the byte size of a row in the image
@@ -148,13 +206,21 @@ pub fn rowByteSize(self: Self) usize {
 
 /// Return the byte size of the whole image
 pub fn imageByteSize(self: Self) usize {
-    return if (self.pixels) |pixels| pixels.asBytes().len else 0;
+    return self.rawBytes().len;
+}
+
+/// Is this image is an animation?
+pub fn isAnimation(self: Self) bool {
+    return switch (self.data) {
+        .animation => true,
+        else => false,
+    };
 }
 
 /// Write the image to an image format to the specified path
-pub fn writeToFilePath(self: Self, file_path: []const u8, image_format: Format, encoder_options: EncoderOptions) !void {
-    if (self.pixels == null) {
-        return error.NoPixelData;
+pub fn writeToFilePath(self: Self, file_path: []const u8, image_format: Format, encoder_options: EncoderOptions) WriteError!void {
+    if (self.data == .empty) {
+        return WriteError.InvalidData;
     }
 
     var file = try std.fs.cwd().createFile(file_path, .{});
@@ -164,57 +230,39 @@ pub fn writeToFilePath(self: Self, file_path: []const u8, image_format: Format, 
 }
 
 /// Write the image to an image format to the specified std.fs.File
-pub fn writeToFile(self: Self, file: *std.fs.File, image_format: Format, encoder_options: EncoderOptions) !void {
-    if (self.pixels == null) {
-        return error.NoPixelData;
-    }
-
-    var image_save_info = SaveInfo{
-        .width = self.width,
-        .height = self.height,
-        .encoder_options = encoder_options,
-    };
-
-    var format_interface = try findImageInterfaceFromImageFormat(image_format);
-
+pub fn writeToFile(self: Self, file: *std.fs.File, image_format: Format, encoder_options: EncoderOptions) WriteError!void {
     var stream_source = io.StreamSource{ .file = file.* };
 
-    if (self.pixels) |pixels| {
-        try format_interface.writeImage(self.allocator, &stream_source, pixels, image_save_info);
-    }
+    try self.internalWrite(&stream_source, image_format, encoder_options);
 }
 
 /// Write the image to an image format in a memory buffer. The memory buffer is not grown
 /// for you so make sure you pass a large enough buffer.
-pub fn writeToMemory(self: Self, write_buffer: []u8, image_format: Format, encoder_options: EncoderOptions) ![]u8 {
-    if (self.pixels == null) {
-        return error.NoPixelData;
-    }
-
-    var image_save_info = SaveInfo{
-        .width = self.width,
-        .height = self.height,
-        .encoder_options = encoder_options,
-    };
-
-    var format_interface = try findImageInterfaceFromImageFormat(image_format);
-
+pub fn writeToMemory(self: Self, write_buffer: []u8, image_format: Format, encoder_options: EncoderOptions) WriteError![]u8 {
     var stream_source = io.StreamSource{ .buffer = std.io.fixedBufferStream(write_buffer) };
 
-    if (self.pixels) |pixels| {
-        try format_interface.writeImage(self.allocator, &stream_source, pixels, image_save_info);
-    }
+    try self.internalWrite(&stream_source, image_format, encoder_options);
 
     return stream_source.buffer.getWritten();
 }
 
-/// Iterate the pixel in pixel-format agnostic way. The iterator is read-only.
+/// Iterate the pixel in pixel-format agnostic way. In the case of an animation, it returns an iterator for the first frame. The iterator is read-only.
 pub fn iterator(self: Self) color.PixelStorageIterator {
-    if (self.pixels) |*pixels| {
-        return color.PixelStorageIterator.init(pixels);
-    }
+    return switch (self.data) {
+        .image => |*image| {
+            return color.PixelStorageIterator.init(image);
+        },
+        .animation => |animation| {
+            if (animation.frames.items.len > 0) {
+                return color.PixelStorageIterator.init(&animation.frames.items[0].pixels);
+            }
 
-    return color.PixelStorageIterator.initNull();
+            return color.PixelStorageIterator.initNull();
+        },
+        else => {
+            return color.PixelStorageIterator.initNull();
+        },
+    };
 }
 
 fn internalRead(allocator: Allocator, stream: *Stream) !Self {
@@ -223,6 +271,16 @@ fn internalRead(allocator: Allocator, stream: *Stream) !Self {
     try stream.seekTo(0);
 
     return try format_interface.readImage(allocator, stream);
+}
+
+fn internalWrite(self: Self, stream: *Stream, image_format: Format, encoder_options: EncoderOptions) WriteError!void {
+    if (self.data == .empty) {
+        return WriteError.InvalidData;
+    }
+
+    var format_interface = try findImageInterfaceFromImageFormat(image_format);
+
+    try format_interface.writeImage(self.allocator, stream, self, encoder_options);
 }
 
 fn findImageInterfaceFromStream(stream: *Stream) !FormatInterface {

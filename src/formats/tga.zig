@@ -271,18 +271,28 @@ pub const TGA = struct {
         errdefer result.deinit();
         var tga = Self{};
 
-        try tga.read(allocator, stream, &result.pixels);
+        var pixels_opt: ?color.PixelStorage = null;
+        try tga.read(allocator, stream, &pixels_opt);
 
         result.width = tga.width();
         result.height = tga.height();
+
+        if (pixels_opt) |pixels| {
+            result.data = .{
+                .image = pixels,
+            };
+        } else {
+            return ImageReadError.InvalidData;
+        }
+
         return result;
     }
 
-    pub fn writeImage(allocator: Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage, save_info: Image.SaveInfo) ImageWriteError!void {
+    pub fn writeImage(allocator: Allocator, write_stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) ImageWriteError!void {
         _ = allocator;
         _ = write_stream;
-        _ = pixels;
-        _ = save_info;
+        _ = image;
+        _ = encoder_options;
     }
 
     pub fn width(self: Self) usize {

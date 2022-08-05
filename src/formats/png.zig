@@ -62,10 +62,10 @@ pub const PNG = struct {
         return load(stream, allocator, default_options.get());
     }
 
-    pub fn writeImage(allocator: Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage, save_info: Image.SaveInfo) ImageWriteError!void {
+    pub fn writeImage(allocator: Allocator, write_stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) ImageWriteError!void {
         _ = allocator;
         _ = write_stream;
-        _ = pixels;
-        _ = save_info;
+        _ = image;
+        _ = encoder_options;
     }
 };

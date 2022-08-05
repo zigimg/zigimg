@@ -134,34 +134,51 @@ pub const QOI = struct {
         errdefer result.deinit();
         var qoi = Self{};
 
-        try qoi.read(allocator, stream, &result.pixels);
+        var pixels_opt: ?color.PixelStorage = null;
+        try qoi.read(allocator, stream, &pixels_opt);
 
         result.width = qoi.width();
         result.height = qoi.height();
+
+        if (pixels_opt) |pixels| {
+            result.data = .{
+                .image = pixels,
+            };
+        } else {
+            return ImageReadError.InvalidData;
+        }
+
         return result;
     }
 
-    pub fn writeImage(allocator: Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage, save_info: Image.SaveInfo) ImageWriteError!void {
+    pub fn writeImage(allocator: Allocator, write_stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) ImageWriteError!void {
         _ = allocator;
 
-        var qoi = Self{};
-        qoi.header.width = @truncate(u32, save_info.width);
-        qoi.header.height = @truncate(u32, save_info.height);
-        qoi.header.format = switch (pixels) {
-            .rgb24 => Format.rgb,
-            .rgba32 => Format.rgba,
-            else => return ImageError.Unsupported,
-        };
-        switch (save_info.encoder_options) {
-            .qoi => |qoi_encode_options| {
-                qoi.header.colorspace = qoi_encode_options.colorspace;
+        switch (image.data) {
+            .image => |pixels| {
+                var qoi = Self{};
+                qoi.header.width = @truncate(u32, image.width);
+                qoi.header.height = @truncate(u32, image.height);
+                qoi.header.format = switch (pixels) {
+                    .rgb24 => Format.rgb,
+                    .rgba32 => Format.rgba,
+                    else => return ImageError.Unsupported,
+                };
+                switch (encoder_options) {
+                    .qoi => |qoi_encode_options| {
+                        qoi.header.colorspace = qoi_encode_options.colorspace;
+                    },
+                    else => {
+                        qoi.header.colorspace = .srgb;
+                    },
+                }
+
+                try qoi.write(write_stream, pixels);
             },
             else => {
-                qoi.header.colorspace = .srgb;
+                return ImageWriteError.Unsupported;
             },
         }
-
-        try qoi.write(write_stream, pixels);
     }
 
     pub fn width(self: Self) usize {

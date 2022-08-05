@@ -8,173 +8,173 @@ const helpers = @import("helpers.zig");
 const ImageError = Image.Error;
 
 test "Create Image indexed1" {
-    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed1);
+    var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed1);
     defer test_image.deinit();
 
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.indexed1);
-    try testing.expect(test_image.pixels != null);
+    try testing.expect(test_image.data == .image);
 
-    if (test_image.pixels) |pixels| {
-        try testing.expect(pixels == .indexed1);
-        try testing.expect(pixels.indexed1.palette.len == 2);
-        try testing.expect(pixels.indexed1.indices.len == 24 * 32);
-    }
+    const pixels = test_image.data.image;
+
+    try testing.expect(pixels == .indexed1);
+    try testing.expect(pixels.indexed1.palette.len == 2);
+    try testing.expect(pixels.indexed1.indices.len == 24 * 32);
 }
 
 test "Create Image indexed2" {
-    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed2);
+    var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed2);
     defer test_image.deinit();
 
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.indexed2);
-    try testing.expect(test_image.pixels != null);
+    try testing.expect(test_image.data == .image);
 
-    if (test_image.pixels) |pixels| {
-        try testing.expect(pixels == .indexed2);
-        try testing.expect(pixels.indexed2.palette.len == 4);
-        try testing.expect(pixels.indexed2.indices.len == 24 * 32);
-    }
+    const pixels = test_image.data.image;
+
+    try testing.expect(pixels == .indexed2);
+    try testing.expect(pixels.indexed2.palette.len == 4);
+    try testing.expect(pixels.indexed2.indices.len == 24 * 32);
 }
 
 test "Create Image indexed4" {
-    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed4);
+    var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed4);
     defer test_image.deinit();
 
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.indexed4);
-    try testing.expect(test_image.pixels != null);
+    try testing.expect(test_image.data == .image);
 
-    if (test_image.pixels) |pixels| {
-        try testing.expect(pixels == .indexed4);
-        try testing.expect(pixels.indexed4.palette.len == 16);
-        try testing.expect(pixels.indexed4.indices.len == 24 * 32);
-    }
+    const pixels = test_image.data.image;
+
+    try testing.expect(pixels == .indexed4);
+    try testing.expect(pixels.indexed4.palette.len == 16);
+    try testing.expect(pixels.indexed4.indices.len == 24 * 32);
 }
 
 test "Create Image indexed8" {
-    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed8);
+    var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed8);
     defer test_image.deinit();
 
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.indexed8);
-    try testing.expect(test_image.pixels != null);
+    try testing.expect(test_image.data == .image);
 
-    if (test_image.pixels) |pixels| {
-        try testing.expect(pixels == .indexed8);
-        try testing.expect(pixels.indexed8.palette.len == 256);
-        try testing.expect(pixels.indexed8.indices.len == 24 * 32);
-    }
+    const pixels = test_image.data.image;
+
+    try testing.expect(pixels == .indexed8);
+    try testing.expect(pixels.indexed8.palette.len == 256);
+    try testing.expect(pixels.indexed8.indices.len == 24 * 32);
 }
 
 test "Create Image indexed16" {
-    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed16);
+    var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed16);
     defer test_image.deinit();
 
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.indexed16);
-    try testing.expect(test_image.pixels != null);
+    try testing.expect(test_image.data == .image);
 
-    if (test_image.pixels) |pixels| {
-        try testing.expect(pixels == .indexed16);
-        try testing.expect(pixels.indexed16.palette.len == 65536);
-        try testing.expect(pixels.indexed16.indices.len == 24 * 32);
-    }
+    const pixels = test_image.data.image;
+
+    try testing.expect(pixels == .indexed16);
+    try testing.expect(pixels.indexed16.palette.len == 65536);
+    try testing.expect(pixels.indexed16.indices.len == 24 * 32);
 }
 
 test "Create Image Rgb24" {
-    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.rgb24);
+    var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.rgb24);
     defer test_image.deinit();
 
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.rgb24);
-    try testing.expect(test_image.pixels != null);
+    try testing.expect(test_image.data == .image);
 
-    if (test_image.pixels) |pixels| {
-        try testing.expect(pixels == .rgb24);
-        try testing.expect(pixels.rgb24.len == 24 * 32);
-    }
+    const pixels = test_image.data.image;
+
+    try testing.expect(pixels == .rgb24);
+    try testing.expect(pixels.rgb24.len == 24 * 32);
 }
 
 test "Create Image Rgba32" {
-    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.rgba32);
+    var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.rgba32);
     defer test_image.deinit();
 
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.rgba32);
-    try testing.expect(test_image.pixels != null);
+    try testing.expect(test_image.data == .image);
 
-    if (test_image.pixels) |pixels| {
-        try testing.expect(pixels == .rgba32);
-        try testing.expect(pixels.rgba32.len == 24 * 32);
-    }
+    const pixels = test_image.data.image;
+
+    try testing.expect(pixels == .rgba32);
+    try testing.expect(pixels.rgba32.len == 24 * 32);
 }
 
 test "Create Image Rgb565" {
-    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.rgb565);
+    var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.rgb565);
     defer test_image.deinit();
 
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.rgb565);
-    try testing.expect(test_image.pixels != null);
+    try testing.expect(test_image.data == .image);
 
-    if (test_image.pixels) |pixels| {
-        try testing.expect(pixels == .rgb565);
-        try testing.expect(pixels.rgb565.len == 24 * 32);
-    }
+    const pixels = test_image.data.image;
+
+    try testing.expect(pixels == .rgb565);
+    try testing.expect(pixels.rgb565.len == 24 * 32);
 }
 
 test "Create Image Rgb555" {
-    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.rgb555);
+    var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.rgb555);
     defer test_image.deinit();
 
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.rgb555);
-    try testing.expect(test_image.pixels != null);
+    try testing.expect(test_image.data == .image);
 
-    if (test_image.pixels) |pixels| {
-        try testing.expect(pixels == .rgb555);
-        try testing.expect(pixels.rgb555.len == 24 * 32);
-    }
+    const pixels = test_image.data.image;
+
+    try testing.expect(pixels == .rgb555);
+    try testing.expect(pixels.rgb555.len == 24 * 32);
 }
 
 test "Create Image Bgra32" {
-    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.bgra32);
+    var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.bgra32);
     defer test_image.deinit();
 
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.bgra32);
-    try testing.expect(test_image.pixels != null);
+    try testing.expect(test_image.data == .image);
 
-    if (test_image.pixels) |pixels| {
-        try testing.expect(pixels == .bgra32);
-        try testing.expect(pixels.bgra32.len == 24 * 32);
-    }
+    const pixels = test_image.data.image;
+
+    try testing.expect(pixels == .bgra32);
+    try testing.expect(pixels.bgra32.len == 24 * 32);
 }
 
 test "Create Image float32" {
-    const test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.float32);
+    var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.float32);
     defer test_image.deinit();
 
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.float32);
-    try testing.expect(test_image.pixels != null);
+    try testing.expect(test_image.data == .image);
 
-    if (test_image.pixels) |pixels| {
-        try testing.expect(pixels == .float32);
-        try testing.expect(pixels.float32.len == 24 * 32);
-    }
+    const pixels = test_image.data.image;
+
+    try testing.expect(pixels == .float32);
+    try testing.expect(pixels.float32.len == 24 * 32);
 }
 
 test "Should detect BMP properly" {
@@ -184,7 +184,7 @@ test "Should detect BMP properly" {
     };
 
     for (image_tests) |image_path| {
-        const test_image = try helpers.testImageFromFile(image_path);
+        var test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
     }
 }
@@ -193,7 +193,7 @@ test "Should detect Memory BMP properly" {
     var MemoryRGBABitmap: [200 * 1024]u8 = undefined;
     var buffer = try helpers.testReadFile(helpers.fixtures_path ++ "bmp/windows_rgba_v5.bmp", MemoryRGBABitmap[0..]);
 
-    const test_image = try Image.fromMemory(helpers.zigimg_test_allocator, buffer);
+    var test_image = try Image.fromMemory(helpers.zigimg_test_allocator, buffer);
     defer test_image.deinit();
 }
 
@@ -206,7 +206,7 @@ test "Should detect PCX properly" {
     };
 
     for (image_tests) |image_path| {
-        const test_image = try helpers.testImageFromFile(image_path);
+        var test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
     }
 }
@@ -218,7 +218,7 @@ test "Should detect PBM properly" {
     };
 
     for (image_tests) |image_path| {
-        const test_image = try helpers.testImageFromFile(image_path);
+        var test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
     }
 }
@@ -232,7 +232,7 @@ test "Should detect PGM properly" {
     };
 
     for (image_tests) |image_path| {
-        const test_image = try helpers.testImageFromFile(image_path);
+        var test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
     }
 }
@@ -244,7 +244,7 @@ test "Should detect PPM properly" {
     };
 
     for (image_tests) |image_path| {
-        const test_image = try helpers.testImageFromFile(image_path);
+        var test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
     }
 }
@@ -256,7 +256,7 @@ test "Should detect PNG properly" {
     };
 
     for (image_tests) |image_path| {
-        const test_image = try helpers.testImageFromFile(image_path);
+        var test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
     }
 }
@@ -274,7 +274,7 @@ test "Should detect TGA properly" {
     };
 
     for (image_tests) |image_path| {
-        const test_image = try helpers.testImageFromFile(image_path);
+        var test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
     }
 }
@@ -283,7 +283,7 @@ test "Should detect QOI properly" {
     const image_tests = &[_][]const u8{helpers.fixtures_path ++ "qoi/zero.qoi"};
 
     for (image_tests) |image_path| {
-        const test_image = try helpers.testImageFromFile(image_path);
+        var test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
     }
 }
@@ -295,7 +295,7 @@ test "Should detect JPEG properly" {
     };
 
     for (image_tests) |image_path| {
-        const test_image = try helpers.testImageFromFile(image_path);
+        var test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
     }
 }
@@ -312,7 +312,9 @@ test "Should read a 24-bit bitmap" {
     try helpers.expectEq(test_image.width, 8);
     try helpers.expectEq(test_image.height, 1);
 
-    if (test_image.pixels) |pixels| {
+    if (test_image.data == .image) {
+        const pixels = test_image.data.image;
+
         try testing.expect(pixels == .bgr24);
 
         const red = pixels.bgr24[0];
