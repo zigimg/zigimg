@@ -174,23 +174,23 @@ pub const GIF = struct {
         var gif = Self.init(allocator);
         defer gif.deinit();
 
-        try gif.read(stream, &result.pixels);
+        var pixels_opt: ?color.PixelStorage = null;
+        try gif.read(stream, &pixels_opt);
 
         result.width = @intCast(usize, gif.header.width);
         result.height = @intCast(usize, gif.header.height);
+        result.pixels = pixels_opt.?;
         return result;
     }
 
-    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage, save_info: Image.SaveInfo) Image.Stream.WriteError!void {
+    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) Image.Stream.WriteError!void {
         _ = allocator;
         _ = write_stream;
-        _ = pixels;
-        _ = save_info;
+        _ = image;
+        _ = encoder_options;
     }
 
     pub fn read(self: *Self, stream: *Image.Stream, pixels_opt: *?color.PixelStorage) ImageReadError!void {
-        _ = pixels_opt;
-
         const reader = stream.reader();
 
         // TODO: mlarouche: Try again having Header being a packed struct when stage3 is released

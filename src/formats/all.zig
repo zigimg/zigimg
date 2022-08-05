@@ -11,6 +11,7 @@ pub const TGA = @import("tga.zig").TGA;
 
 pub const ImageEncoderOptions = union(@import("../Image.zig").Format) {
     bmp: void,
+    gif: void,
     jpg: void,
     pbm: PBM.EncoderOptions,
     pcx: void,

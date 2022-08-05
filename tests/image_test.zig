@@ -192,7 +192,7 @@ test "Should detect GIF properly" {
     };
 
     for (image_tests) |image_path| {
-        const test_image = try helpers.testImageFromFile(image_path);
+        var test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
     }
 }
