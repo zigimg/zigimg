@@ -346,6 +346,7 @@ fn Netpbm(comptime image_format: Image.Format, comptime header_numbers: []const 
             const pixel_format = try self.pixelFormat();
 
             var pixels = try color.PixelStorage.init(allocator, pixel_format, self.header.width * self.header.height);
+            errdefer pixels.deinit(allocator);
 
             switch (self.header.format) {
                 .bitmap => {

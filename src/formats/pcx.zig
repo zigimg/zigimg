@@ -133,20 +133,13 @@ pub const PCX = struct {
         errdefer result.deinit();
         var pcx = PCX{};
 
-        var pixels_opt: ?color.PixelStorage = null;
-
-        try pcx.read(allocator, stream, &pixels_opt);
+        const pixels = try pcx.read(allocator, stream);
 
         result.width = pcx.width;
         result.height = pcx.height;
-
-        if (pixels_opt) |pixels| {
-            result.data = .{
-                .image = pixels,
-            };
-        } else {
-            return ImageReadError.InvalidData;
-        }
+        result.data = .{
+            .image = pixels,
+        };
 
         return result;
     }
@@ -176,7 +169,7 @@ pub const PCX = struct {
         }
     }
 
-    pub fn read(self: *Self, allocator: Allocator, stream: *Image.Stream, pixels_opt: *?color.PixelStorage) ImageReadError!void {
+    pub fn read(self: *Self, allocator: Allocator, stream: *Image.Stream) ImageReadError!color.PixelStorage {
         const reader = stream.reader();
         self.header = try utils.readStructLittle(reader, PCXHeader);
         _ = try stream.read(PCXHeader.padding[0..]);
@@ -201,111 +194,112 @@ pub const PCX = struct {
         const has_dummy_byte = (@bitCast(i16, self.header.stride) - @bitCast(isize, self.width)) == 1;
         const actual_width = if (has_dummy_byte) self.width + 1 else self.width;
 
-        pixels_opt.* = try color.PixelStorage.init(allocator, pixel_format, self.width * self.height);
+        var pixels = try color.PixelStorage.init(allocator, pixel_format, self.width * self.height);
+        errdefer pixels.deinit(allocator);
 
-        if (pixels_opt.*) |pixels| {
-            var decoder = RLEDecoder.init(reader);
+        var decoder = RLEDecoder.init(reader);
 
-            const scanline_length = (self.header.stride * self.header.planes);
+        const scanline_length = (self.header.stride * self.header.planes);
 
-            var y: usize = 0;
-            while (y < self.height) : (y += 1) {
-                var offset: usize = 0;
-                var x: usize = 0;
+        var y: usize = 0;
+        while (y < self.height) : (y += 1) {
+            var offset: usize = 0;
+            var x: usize = 0;
 
-                const y_stride = y * self.width;
+            const y_stride = y * self.width;
 
-                // read all pixels from the current row
-                while (offset < scanline_length and x < self.width) : (offset += 1) {
-                    const byte = try decoder.readByte();
-                    switch (pixels) {
-                        .indexed1 => |storage| {
-                            var i: usize = 0;
-                            while (i < 8) : (i += 1) {
-                                if (x < self.width) {
-                                    storage.indices[y_stride + x] = @intCast(u1, (byte >> (7 - @intCast(u3, i))) & 0x01);
-                                    x += 1;
-                                }
-                            }
-                        },
-                        .indexed4 => |storage| {
-                            storage.indices[y_stride + x] = @truncate(u4, byte >> 4);
-                            x += 1;
+            // read all pixels from the current row
+            while (offset < scanline_length and x < self.width) : (offset += 1) {
+                const byte = try decoder.readByte();
+                switch (pixels) {
+                    .indexed1 => |storage| {
+                        var i: usize = 0;
+                        while (i < 8) : (i += 1) {
                             if (x < self.width) {
-                                storage.indices[y_stride + x] = @truncate(u4, byte);
+                                storage.indices[y_stride + x] = @intCast(u1, (byte >> (7 - @intCast(u3, i))) & 0x01);
                                 x += 1;
                             }
-                        },
-                        .indexed8 => |storage| {
-                            storage.indices[y_stride + x] = byte;
+                        }
+                    },
+                    .indexed4 => |storage| {
+                        storage.indices[y_stride + x] = @truncate(u4, byte >> 4);
+                        x += 1;
+                        if (x < self.width) {
+                            storage.indices[y_stride + x] = @truncate(u4, byte);
                             x += 1;
-                        },
-                        .rgb24 => |storage| {
-                            if (has_dummy_byte and byte == 0x00) {
-                                continue;
-                            }
-                            const pixel_x = offset % (actual_width);
-                            const current_color = offset / (actual_width);
-                            switch (current_color) {
-                                0 => {
-                                    storage[y_stride + pixel_x].r = byte;
-                                },
-                                1 => {
-                                    storage[y_stride + pixel_x].g = byte;
-                                },
-                                2 => {
-                                    storage[y_stride + pixel_x].b = byte;
-                                },
-                                else => {},
-                            }
+                        }
+                    },
+                    .indexed8 => |storage| {
+                        storage.indices[y_stride + x] = byte;
+                        x += 1;
+                    },
+                    .rgb24 => |storage| {
+                        if (has_dummy_byte and byte == 0x00) {
+                            continue;
+                        }
+                        const pixel_x = offset % (actual_width);
+                        const current_color = offset / (actual_width);
+                        switch (current_color) {
+                            0 => {
+                                storage[y_stride + pixel_x].r = byte;
+                            },
+                            1 => {
+                                storage[y_stride + pixel_x].g = byte;
+                            },
+                            2 => {
+                                storage[y_stride + pixel_x].b = byte;
+                            },
+                            else => {},
+                        }
 
-                            if (pixel_x > 0 and (pixel_x % self.header.planes) == 0) {
-                                x += 1;
-                            }
-                        },
-                        else => return ImageError.Unsupported,
-                    }
-                }
-
-                // discard the rest of the bytes in the current row
-                while (offset < self.header.stride) : (offset += 1) {
-                    _ = try decoder.readByte();
+                        if (pixel_x > 0 and (pixel_x % self.header.planes) == 0) {
+                            x += 1;
+                        }
+                    },
+                    else => return ImageError.Unsupported,
                 }
             }
 
-            try decoder.finish();
+            // discard the rest of the bytes in the current row
+            while (offset < self.header.stride) : (offset += 1) {
+                _ = try decoder.readByte();
+            }
+        }
 
-            if (pixel_format == .indexed1 or pixel_format == .indexed4 or pixel_format == .indexed8) {
-                var pal = switch (pixels) {
-                    .indexed1 => |*storage| storage.palette[0..],
-                    .indexed4 => |*storage| storage.palette[0..],
-                    .indexed8 => |*storage| storage.palette[0..],
-                    else => undefined,
-                };
+        try decoder.finish();
 
-                var i: usize = 0;
-                while (i < std.math.min(pal.len, self.header.builtin_palette.len / 3)) : (i += 1) {
-                    pal[i].r = self.header.builtin_palette[3 * i + 0];
-                    pal[i].g = self.header.builtin_palette[3 * i + 1];
-                    pal[i].b = self.header.builtin_palette[3 * i + 2];
-                    pal[i].a = 1.0;
-                }
+        if (pixel_format == .indexed1 or pixel_format == .indexed4 or pixel_format == .indexed8) {
+            var pal = switch (pixels) {
+                .indexed1 => |*storage| storage.palette[0..],
+                .indexed4 => |*storage| storage.palette[0..],
+                .indexed8 => |*storage| storage.palette[0..],
+                else => undefined,
+            };
 
-                if (pixels == .indexed8) {
-                    const end_pos = try stream.getEndPos();
-                    try stream.seekTo(end_pos - 769);
+            var i: usize = 0;
+            while (i < std.math.min(pal.len, self.header.builtin_palette.len / 3)) : (i += 1) {
+                pal[i].r = self.header.builtin_palette[3 * i + 0];
+                pal[i].g = self.header.builtin_palette[3 * i + 1];
+                pal[i].b = self.header.builtin_palette[3 * i + 2];
+                pal[i].a = 1.0;
+            }
 
-                    if ((try reader.readByte()) != 0x0C)
-                        return ImageReadError.InvalidData;
+            if (pixels == .indexed8) {
+                const end_pos = try stream.getEndPos();
+                try stream.seekTo(end_pos - 769);
 
-                    for (pal) |*c| {
-                        c.r = try reader.readByte();
-                        c.g = try reader.readByte();
-                        c.b = try reader.readByte();
-                        c.a = 1.0;
-                    }
+                if ((try reader.readByte()) != 0x0C)
+                    return ImageReadError.InvalidData;
+
+                for (pal) |*c| {
+                    c.r = try reader.readByte();
+                    c.g = try reader.readByte();
+                    c.b = try reader.readByte();
+                    c.a = 1.0;
                 }
             }
         }
+
+        return pixels;
     }
 };
