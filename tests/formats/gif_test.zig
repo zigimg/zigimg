@@ -93,16 +93,10 @@ test "GIF test suite" {
 
 const IniFile = struct {
     area_allocator: std.heap.ArenaAllocator,
-    sections: std.StringArrayHashMap(SectionEntry) = .{},
+    sections: std.StringArrayHashMapUnmanaged(SectionEntry) = .{},
 
     const SectionEntry = struct {
-        dict: std.StringArrayHashMap(Value) = .{},
-
-        pub fn init(allocator: std.mem.Allocator) SectionEntry {
-            return .{
-                .dict = std.StringArrayHashMap(Value).init(allocator),
-            };
-        }
+        dict: std.StringArrayHashMapUnmanaged(Value) = .{},
 
         pub fn getValue(self: SectionEntry, key: []const u8) ?Value {
             return self.dict.get(key);
@@ -119,15 +113,14 @@ const IniFile = struct {
     pub fn init(allocator: std.mem.Allocator) Self {
         return .{
             .area_allocator = std.heap.ArenaAllocator.init(allocator),
-            .sections = std.StringArrayHashMap(SectionEntry).init(allocator),
         };
     }
 
     pub fn deinit(self: *Self) void {
         for (self.sections.values()) |*entry| {
-            entry.dict.deinit();
+            entry.dict.deinit(self.area_allocator.allocator());
         }
-        self.sections.deinit();
+        self.sections.deinit(self.area_allocator.allocator());
         self.area_allocator.deinit();
     }
 
@@ -149,7 +142,7 @@ const IniFile = struct {
                         if (end_bracket_position_opt) |end_bracket_position| {
                             current_section = read_line[1..end_bracket_position];
 
-                            try self.sections.put(current_section, SectionEntry.init(allocator));
+                            try self.sections.put(allocator, current_section, SectionEntry{});
                         } else {
                             return error.InvalidIniFile;
                         }
@@ -173,7 +166,7 @@ const IniFile = struct {
                                         .string = string_value,
                                     };
                                 };
-                                try section_entry.dict.put(key_name, value);
+                                try section_entry.dict.put(allocator, key_name, value);
                             }
                         }
                     },
