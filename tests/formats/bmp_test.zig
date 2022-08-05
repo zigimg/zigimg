@@ -8,7 +8,7 @@ const testing = std.testing;
 const Image = @import("../../src/Image.zig");
 const helpers = @import("../helpers.zig");
 
-fn verifyBitmapRGBAV5(the_bitmap: bmp.Bitmap, pixels_opt: ?color.PixelStorage) !void {
+fn verifyBitmapRGBAV5(the_bitmap: bmp.Bitmap, pixels: color.PixelStorage) !void {
     try helpers.expectEq(the_bitmap.file_header.size, 153738);
     try helpers.expectEq(the_bitmap.file_header.reserved, 0);
     try helpers.expectEq(the_bitmap.file_header.pixel_offset, 138);
@@ -55,43 +55,39 @@ fn verifyBitmapRGBAV5(the_bitmap: bmp.Bitmap, pixels_opt: ?color.PixelStorage) !
         else => unreachable,
     };
 
-    try testing.expect(pixels_opt != null);
+    try testing.expect(pixels == .bgra32);
 
-    if (pixels_opt) |pixels| {
-        try testing.expect(pixels == .bgra32);
+    try helpers.expectEq(pixels.len(), 240 * 160);
 
-        try helpers.expectEq(pixels.len(), 240 * 160);
+    const first_pixel = pixels.bgra32[0];
+    try helpers.expectEq(first_pixel.r, 0xFF);
+    try helpers.expectEq(first_pixel.g, 0xFF);
+    try helpers.expectEq(first_pixel.b, 0xFF);
+    try helpers.expectEq(first_pixel.a, 0xFF);
 
-        const first_pixel = pixels.bgra32[0];
-        try helpers.expectEq(first_pixel.r, 0xFF);
-        try helpers.expectEq(first_pixel.g, 0xFF);
-        try helpers.expectEq(first_pixel.b, 0xFF);
-        try helpers.expectEq(first_pixel.a, 0xFF);
+    const second_pixel = pixels.bgra32[1];
+    try helpers.expectEq(second_pixel.r, 0xFF);
+    try helpers.expectEq(second_pixel.g, 0x00);
+    try helpers.expectEq(second_pixel.b, 0x00);
+    try helpers.expectEq(second_pixel.a, 0xFF);
 
-        const second_pixel = pixels.bgra32[1];
-        try helpers.expectEq(second_pixel.r, 0xFF);
-        try helpers.expectEq(second_pixel.g, 0x00);
-        try helpers.expectEq(second_pixel.b, 0x00);
-        try helpers.expectEq(second_pixel.a, 0xFF);
+    const third_pixel = pixels.bgra32[2];
+    try helpers.expectEq(third_pixel.r, 0x00);
+    try helpers.expectEq(third_pixel.g, 0xFF);
+    try helpers.expectEq(third_pixel.b, 0x00);
+    try helpers.expectEq(third_pixel.a, 0xFF);
 
-        const third_pixel = pixels.bgra32[2];
-        try helpers.expectEq(third_pixel.r, 0x00);
-        try helpers.expectEq(third_pixel.g, 0xFF);
-        try helpers.expectEq(third_pixel.b, 0x00);
-        try helpers.expectEq(third_pixel.a, 0xFF);
+    const fourth_pixel = pixels.bgra32[3];
+    try helpers.expectEq(fourth_pixel.r, 0x00);
+    try helpers.expectEq(fourth_pixel.g, 0x00);
+    try helpers.expectEq(fourth_pixel.b, 0xFF);
+    try helpers.expectEq(fourth_pixel.a, 0xFF);
 
-        const fourth_pixel = pixels.bgra32[3];
-        try helpers.expectEq(fourth_pixel.r, 0x00);
-        try helpers.expectEq(fourth_pixel.g, 0x00);
-        try helpers.expectEq(fourth_pixel.b, 0xFF);
-        try helpers.expectEq(fourth_pixel.a, 0xFF);
-
-        const colored_pixel = pixels.bgra32[(22 * 240) + 16];
-        try helpers.expectEq(colored_pixel.r, 195);
-        try helpers.expectEq(colored_pixel.g, 195);
-        try helpers.expectEq(colored_pixel.b, 255);
-        try helpers.expectEq(colored_pixel.a, 255);
-    }
+    const colored_pixel = pixels.bgra32[(22 * 240) + 16];
+    try helpers.expectEq(colored_pixel.r, 195);
+    try helpers.expectEq(colored_pixel.g, 195);
+    try helpers.expectEq(colored_pixel.b, 255);
+    try helpers.expectEq(colored_pixel.a, 255);
 }
 
 test "Read simple version 4 24-bit RGB bitmap" {
@@ -102,63 +98,53 @@ test "Read simple version 4 24-bit RGB bitmap" {
 
     var stream_source = std.io.StreamSource{ .file = file };
 
-    var pixels_opt: ?color.PixelStorage = null;
-    try the_bitmap.read(helpers.zigimg_test_allocator, &stream_source, &pixels_opt);
-
-    defer {
-        if (pixels_opt) |pixels| {
-            pixels.deinit(helpers.zigimg_test_allocator);
-        }
-    }
+    const pixels = try the_bitmap.read(helpers.zigimg_test_allocator, &stream_source);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(the_bitmap.width(), 8);
     try helpers.expectEq(the_bitmap.height(), 1);
 
-    try testing.expect(pixels_opt != null);
+    try testing.expect(pixels == .bgr24);
 
-    if (pixels_opt) |pixels| {
-        try testing.expect(pixels == .bgr24);
+    const red = pixels.bgr24[0];
+    try helpers.expectEq(red.r, 0xFF);
+    try helpers.expectEq(red.g, 0x00);
+    try helpers.expectEq(red.b, 0x00);
 
-        const red = pixels.bgr24[0];
-        try helpers.expectEq(red.r, 0xFF);
-        try helpers.expectEq(red.g, 0x00);
-        try helpers.expectEq(red.b, 0x00);
+    const green = pixels.bgr24[1];
+    try helpers.expectEq(green.r, 0x00);
+    try helpers.expectEq(green.g, 0xFF);
+    try helpers.expectEq(green.b, 0x00);
 
-        const green = pixels.bgr24[1];
-        try helpers.expectEq(green.r, 0x00);
-        try helpers.expectEq(green.g, 0xFF);
-        try helpers.expectEq(green.b, 0x00);
+    const blue = pixels.bgr24[2];
+    try helpers.expectEq(blue.r, 0x00);
+    try helpers.expectEq(blue.g, 0x00);
+    try helpers.expectEq(blue.b, 0xFF);
 
-        const blue = pixels.bgr24[2];
-        try helpers.expectEq(blue.r, 0x00);
-        try helpers.expectEq(blue.g, 0x00);
-        try helpers.expectEq(blue.b, 0xFF);
+    const cyan = pixels.bgr24[3];
+    try helpers.expectEq(cyan.r, 0x00);
+    try helpers.expectEq(cyan.g, 0xFF);
+    try helpers.expectEq(cyan.b, 0xFF);
 
-        const cyan = pixels.bgr24[3];
-        try helpers.expectEq(cyan.r, 0x00);
-        try helpers.expectEq(cyan.g, 0xFF);
-        try helpers.expectEq(cyan.b, 0xFF);
+    const magenta = pixels.bgr24[4];
+    try helpers.expectEq(magenta.r, 0xFF);
+    try helpers.expectEq(magenta.g, 0x00);
+    try helpers.expectEq(magenta.b, 0xFF);
 
-        const magenta = pixels.bgr24[4];
-        try helpers.expectEq(magenta.r, 0xFF);
-        try helpers.expectEq(magenta.g, 0x00);
-        try helpers.expectEq(magenta.b, 0xFF);
+    const yellow = pixels.bgr24[5];
+    try helpers.expectEq(yellow.r, 0xFF);
+    try helpers.expectEq(yellow.g, 0xFF);
+    try helpers.expectEq(yellow.b, 0x00);
 
-        const yellow = pixels.bgr24[5];
-        try helpers.expectEq(yellow.r, 0xFF);
-        try helpers.expectEq(yellow.g, 0xFF);
-        try helpers.expectEq(yellow.b, 0x00);
+    const black = pixels.bgr24[6];
+    try helpers.expectEq(black.r, 0x00);
+    try helpers.expectEq(black.g, 0x00);
+    try helpers.expectEq(black.b, 0x00);
 
-        const black = pixels.bgr24[6];
-        try helpers.expectEq(black.r, 0x00);
-        try helpers.expectEq(black.g, 0x00);
-        try helpers.expectEq(black.b, 0x00);
-
-        const white = pixels.bgr24[7];
-        try helpers.expectEq(white.r, 0xFF);
-        try helpers.expectEq(white.g, 0xFF);
-        try helpers.expectEq(white.b, 0xFF);
-    }
+    const white = pixels.bgr24[7];
+    try helpers.expectEq(white.r, 0xFF);
+    try helpers.expectEq(white.g, 0xFF);
+    try helpers.expectEq(white.b, 0xFF);
 }
 
 test "Read a valid version 5 RGBA bitmap from file" {
@@ -169,16 +155,10 @@ test "Read a valid version 5 RGBA bitmap from file" {
 
     var the_bitmap = bmp.Bitmap{};
 
-    var pixels_opt: ?color.PixelStorage = null;
-    try the_bitmap.read(helpers.zigimg_test_allocator, &stream_source, &pixels_opt);
+    const pixels = try the_bitmap.read(helpers.zigimg_test_allocator, &stream_source);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    defer {
-        if (pixels_opt) |pixels| {
-            pixels.deinit(helpers.zigimg_test_allocator);
-        }
-    }
-
-    try verifyBitmapRGBAV5(the_bitmap, pixels_opt);
+    try verifyBitmapRGBAV5(the_bitmap, pixels);
 }
 
 test "Read a valid version 5 RGBA bitmap from memory" {
@@ -188,16 +168,10 @@ test "Read a valid version 5 RGBA bitmap from memory" {
 
     var the_bitmap = bmp.Bitmap{};
 
-    var pixels_opt: ?color.PixelStorage = null;
-    try the_bitmap.read(helpers.zigimg_test_allocator, &stream_source, &pixels_opt);
+    const pixels = try the_bitmap.read(helpers.zigimg_test_allocator, &stream_source);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    defer {
-        if (pixels_opt) |pixels| {
-            pixels.deinit(helpers.zigimg_test_allocator);
-        }
-    }
-
-    try verifyBitmapRGBAV5(the_bitmap, pixels_opt);
+    try verifyBitmapRGBAV5(the_bitmap, pixels);
 }
 
 test "Should error when reading an invalid file" {
@@ -208,7 +182,6 @@ test "Should error when reading an invalid file" {
 
     var the_bitmap = bmp.Bitmap{};
 
-    var pixels: ?color.PixelStorage = null;
-    const invalidFile = the_bitmap.read(helpers.zigimg_test_allocator, &stream_source, &pixels);
+    const invalidFile = the_bitmap.read(helpers.zigimg_test_allocator, &stream_source);
     try helpers.expectError(invalidFile, ImageReadError.InvalidData);
 }

@@ -171,22 +171,14 @@ pub const Bitmap = struct {
         var result = Image.init(allocator);
         errdefer result.deinit();
 
-        var pixels_opt: ?color.PixelStorage = null;
-
         var bmp = Self{};
-
-        try bmp.read(allocator, stream, &pixels_opt);
+        const pixels = try bmp.read(allocator, stream);
 
         result.width = @intCast(usize, bmp.width());
         result.height = @intCast(usize, bmp.height());
-
-        if (pixels_opt) |pixels| {
-            result.data = .{
-                .image = pixels,
-            };
-        } else {
-            return ImageReadError.InvalidData;
-        }
+        result.data = .{
+            .image = pixels,
+        };
 
         return result;
     }
@@ -234,7 +226,7 @@ pub const Bitmap = struct {
         };
     }
 
-    pub fn read(self: *Self, allocator: Allocator, stream: *Image.Stream, pixels_opt: *?color.PixelStorage) ImageReadError!void {
+    pub fn read(self: *Self, allocator: Allocator, stream: *Image.Stream) ImageReadError!color.PixelStorage {
         // Read file header
         const reader = stream.reader();
         self.file_header = try utils.readStructLittle(reader, BitmapFileHeader);
@@ -255,6 +247,8 @@ pub const Bitmap = struct {
             else => return ImageError.Unsupported,
         };
 
+        var pixels: color.PixelStorage = undefined;
+
         // Read pixel data
         _ = switch (self.info_header) {
             .v4 => |v4Header| {
@@ -262,25 +256,21 @@ pub const Bitmap = struct {
                 const pixel_height = v4Header.height;
                 const pixel_format = try findPixelFormat(v4Header.bit_count, v4Header.compression_method);
 
-                pixels_opt.* = try color.PixelStorage.init(allocator, pixel_format, @intCast(usize, pixel_width * pixel_height));
-
-                if (pixels_opt.*) |*pixels| {
-                    try readPixels(reader, pixel_width, pixel_height, pixel_format, pixels);
-                }
+                pixels = try color.PixelStorage.init(allocator, pixel_format, @intCast(usize, pixel_width * pixel_height));
+                try readPixels(reader, pixel_width, pixel_height, pixel_format, &pixels);
             },
             .v5 => |v5Header| {
                 const pixel_width = v5Header.width;
                 const pixel_height = v5Header.height;
                 const pixel_format = try findPixelFormat(v5Header.bit_count, v5Header.compression_method);
 
-                pixels_opt.* = try color.PixelStorage.init(allocator, pixel_format, @intCast(usize, pixel_width * pixel_height));
-
-                if (pixels_opt.*) |*pixels| {
-                    try readPixels(reader, pixel_width, pixel_height, pixel_format, pixels);
-                }
+                pixels = try color.PixelStorage.init(allocator, pixel_format, @intCast(usize, pixel_width * pixel_height));
+                try readPixels(reader, pixel_width, pixel_height, pixel_format, &pixels);
             },
             else => return ImageError.Unsupported,
         };
+
+        return pixels;
     }
 
     fn findPixelFormat(bit_count: u32, compression: CompressionMethod) ImageError!PixelFormat {
