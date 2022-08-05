@@ -282,20 +282,13 @@ fn Netpbm(comptime image_format: Image.Format, comptime header_numbers: []const 
             errdefer result.deinit();
             var netpbm_file = Self{};
 
-            var pixels_opt: ?color.PixelStorage = null;
-
-            try netpbm_file.read(allocator, stream, &pixels_opt);
+            const pixels = try netpbm_file.read(allocator, stream);
 
             result.width = netpbm_file.header.width;
             result.height = netpbm_file.header.height;
-
-            if (pixels_opt) |pixels| {
-                result.data = .{
-                    .image = pixels,
-                };
-            } else {
-                return ImageReadError.InvalidData;
-            }
+            result.data = .{
+                .image = pixels,
+            };
 
             return result;
         }
@@ -346,39 +339,39 @@ fn Netpbm(comptime image_format: Image.Format, comptime header_numbers: []const 
             };
         }
 
-        pub fn read(self: *Self, allocator: Allocator, stream: *Image.Stream, pixels_opt: *?color.PixelStorage) ImageReadError!void {
+        pub fn read(self: *Self, allocator: Allocator, stream: *Image.Stream) ImageReadError!color.PixelStorage {
             const reader = stream.reader();
             self.header = try parseHeader(reader);
 
             const pixel_format = try self.pixelFormat();
 
-            pixels_opt.* = try color.PixelStorage.init(allocator, pixel_format, self.header.width * self.header.height);
+            var pixels = try color.PixelStorage.init(allocator, pixel_format, self.header.width * self.header.height);
 
-            if (pixels_opt.*) |*pixels| {
-                switch (self.header.format) {
-                    .bitmap => {
-                        if (self.header.binary) {
-                            try loadBinaryBitmap(self.header, pixels.grayscale1, reader);
-                        } else {
-                            try loadAsciiBitmap(self.header, pixels.grayscale1, reader);
-                        }
-                    },
-                    .grayscale => {
-                        if (self.header.binary) {
-                            try loadBinaryGraymap(self.header, pixels, reader);
-                        } else {
-                            try loadAsciiGraymap(self.header, pixels, reader);
-                        }
-                    },
-                    .rgb => {
-                        if (self.header.binary) {
-                            try loadBinaryRgbmap(self.header, pixels.rgb24, reader);
-                        } else {
-                            try loadAsciiRgbmap(self.header, pixels.rgb24, reader);
-                        }
-                    },
-                }
+            switch (self.header.format) {
+                .bitmap => {
+                    if (self.header.binary) {
+                        try loadBinaryBitmap(self.header, pixels.grayscale1, reader);
+                    } else {
+                        try loadAsciiBitmap(self.header, pixels.grayscale1, reader);
+                    }
+                },
+                .grayscale => {
+                    if (self.header.binary) {
+                        try loadBinaryGraymap(self.header, &pixels, reader);
+                    } else {
+                        try loadAsciiGraymap(self.header, &pixels, reader);
+                    }
+                },
+                .rgb => {
+                    if (self.header.binary) {
+                        try loadBinaryRgbmap(self.header, pixels.rgb24, reader);
+                    } else {
+                        try loadAsciiRgbmap(self.header, pixels.rgb24, reader);
+                    }
+                },
             }
+
+            return pixels;
         }
 
         pub fn write(self: *Self, write_stream: *Image.Stream, pixels: color.PixelStorage) ImageWriteError!void {
