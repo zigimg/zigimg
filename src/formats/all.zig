@@ -8,14 +8,14 @@ pub const PPM = @import("netpbm.zig").PPM;
 pub const QOI = @import("qoi.zig").QOI;
 pub const TGA = @import("tga.zig").TGA;
 
-pub const ImageEncoderOptions = union(enum) {
-    none: void,
+pub const ImageEncoderOptions = union(@import("../Image.zig").Format) {
+    bmp: void,
+    jpg: void,
     pbm: PBM.EncoderOptions,
+    pcx: void,
     pgm: PGM.EncoderOptions,
+    png: void,
     ppm: PPM.EncoderOptions,
     qoi: QOI.EncoderOptions,
-
-    const Self = @This();
-
-    pub const None = Self{ .none = .{} };
+    tga: void,
 };

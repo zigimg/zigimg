@@ -103,7 +103,7 @@ pub const QOI = struct {
     header: Header = undefined,
 
     pub const EncoderOptions = struct {
-        colorspace: Colorspace,
+        colorspace: Colorspace = .srgb,
     };
 
     const Self = @This();

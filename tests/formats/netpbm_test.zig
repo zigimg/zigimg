@@ -229,7 +229,7 @@ test "Write bitmap(grayscale1) ASCII PBM file" {
         source.grayscale1[index].value = value;
     }
 
-    try source_image.writeToFilePath(image_file_name, Image.Format.pbm, Image.EncoderOptions{
+    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
         .pbm = .{ .binary = false },
     });
 
@@ -276,7 +276,7 @@ test "Write bitmap(Grayscale1) binary PBM file" {
         source.grayscale1[index].value = value;
     }
 
-    try source_image.writeToFilePath(image_file_name, Image.Format.pbm, Image.EncoderOptions{
+    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
         .pbm = .{ .binary = true },
     });
 
@@ -319,7 +319,7 @@ test "Write grayscale8 ASCII PGM file" {
         source.grayscale8[index].value = value;
     }
 
-    try source_image.writeToFilePath(image_file_name, Image.Format.pgm, Image.EncoderOptions{
+    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
         .pgm = .{ .binary = false },
     });
 
@@ -361,7 +361,7 @@ test "Write grayscale8 binary PGM file" {
         source.grayscale8[index].value = value;
     }
 
-    try source_image.writeToFilePath(image_file_name, Image.Format.pgm, Image.EncoderOptions{
+    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
         .pgm = .{ .binary = true },
     });
 
@@ -415,7 +415,7 @@ test "Writing Rgb24 ASCII PPM format" {
     pixels.rgb24[6] = color.Rgb24.initRgb(255, 0, 255);
     pixels.rgb24[7] = color.Rgb24.initRgb(255, 255, 0);
 
-    try source_image.writeToFilePath(image_file_name, Image.Format.ppm, Image.EncoderOptions{
+    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
         .ppm = .{ .binary = false },
     });
 
@@ -471,7 +471,7 @@ test "Writing Rgb24 binary PPM format" {
     pixels.rgb24[6] = color.Rgb24.initRgb(255, 0, 255);
     pixels.rgb24[7] = color.Rgb24.initRgb(255, 255, 0);
 
-    try source_image.writeToFilePath(image_file_name, Image.Format.ppm, Image.EncoderOptions{
+    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
         .ppm = .{ .binary = true },
     });
 

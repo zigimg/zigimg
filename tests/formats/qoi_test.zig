@@ -58,7 +58,7 @@ test "Write qoi file" {
     var image_buffer: [100 * 1024]u8 = undefined;
     var zero_qoi = try helpers.testReadFile(zero_qoi_file, buffer[0..]);
 
-    const result_image = try source_image.writeToMemory(image_buffer[0..], .qoi, Image.EncoderOptions.None);
+    const result_image = try source_image.writeToMemory(image_buffer[0..], Image.EncoderOptions{ .qoi = .{} });
 
     try testing.expectEqualSlices(u8, zero_qoi[0..], result_image);
 }

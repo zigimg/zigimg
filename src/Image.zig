@@ -218,7 +218,7 @@ pub fn isAnimation(self: Self) bool {
 }
 
 /// Write the image to an image format to the specified path
-pub fn writeToFilePath(self: Self, file_path: []const u8, image_format: Format, encoder_options: EncoderOptions) WriteError!void {
+pub fn writeToFilePath(self: Self, file_path: []const u8, encoder_options: EncoderOptions) WriteError!void {
     if (self.data == .empty) {
         return WriteError.InvalidData;
     }
@@ -226,22 +226,22 @@ pub fn writeToFilePath(self: Self, file_path: []const u8, image_format: Format, 
     var file = try std.fs.cwd().createFile(file_path, .{});
     defer file.close();
 
-    try self.writeToFile(&file, image_format, encoder_options);
+    try self.writeToFile(&file, encoder_options);
 }
 
 /// Write the image to an image format to the specified std.fs.File
-pub fn writeToFile(self: Self, file: *std.fs.File, image_format: Format, encoder_options: EncoderOptions) WriteError!void {
+pub fn writeToFile(self: Self, file: *std.fs.File, encoder_options: EncoderOptions) WriteError!void {
     var stream_source = io.StreamSource{ .file = file.* };
 
-    try self.internalWrite(&stream_source, image_format, encoder_options);
+    try self.internalWrite(&stream_source, encoder_options);
 }
 
 /// Write the image to an image format in a memory buffer. The memory buffer is not grown
 /// for you so make sure you pass a large enough buffer.
-pub fn writeToMemory(self: Self, write_buffer: []u8, image_format: Format, encoder_options: EncoderOptions) WriteError![]u8 {
+pub fn writeToMemory(self: Self, write_buffer: []u8, encoder_options: EncoderOptions) WriteError![]u8 {
     var stream_source = io.StreamSource{ .buffer = std.io.fixedBufferStream(write_buffer) };
 
-    try self.internalWrite(&stream_source, image_format, encoder_options);
+    try self.internalWrite(&stream_source, encoder_options);
 
     return stream_source.buffer.getWritten();
 }
@@ -273,10 +273,12 @@ fn internalRead(allocator: Allocator, stream: *Stream) !Self {
     return try format_interface.readImage(allocator, stream);
 }
 
-fn internalWrite(self: Self, stream: *Stream, image_format: Format, encoder_options: EncoderOptions) WriteError!void {
+fn internalWrite(self: Self, stream: *Stream, encoder_options: EncoderOptions) WriteError!void {
     if (self.data == .empty) {
         return WriteError.InvalidData;
     }
+
+    const image_format = std.meta.activeTag(encoder_options);
 
     var format_interface = try findImageInterfaceFromImageFormat(image_format);
 
