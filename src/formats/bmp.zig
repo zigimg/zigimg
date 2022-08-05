@@ -267,7 +267,7 @@ pub const Bitmap = struct {
                 const pixel_format = try findPixelFormat(v5Header.bit_count, v5Header.compression_method);
 
                 pixels = try color.PixelStorage.init(allocator, pixel_format, @intCast(usize, pixel_width * pixel_height));
-                errdefer pixels.deinit();
+                errdefer pixels.deinit(allocator);
 
                 try readPixels(reader, pixel_width, pixel_height, pixel_format, &pixels);
             },
