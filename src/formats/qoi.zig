@@ -134,19 +134,13 @@ pub const QOI = struct {
         errdefer result.deinit();
         var qoi = Self{};
 
-        var pixels_opt: ?color.PixelStorage = null;
-        try qoi.read(allocator, stream, &pixels_opt);
+        const pixels = try qoi.read(allocator, stream);
 
         result.width = qoi.width();
         result.height = qoi.height();
-
-        if (pixels_opt) |pixels| {
-            result.data = .{
-                .image = pixels,
-            };
-        } else {
-            return ImageReadError.InvalidData;
-        }
+        result.data = .{
+            .image = pixels,
+        };
 
         return result;
     }
@@ -196,7 +190,7 @@ pub const QOI = struct {
         };
     }
 
-    pub fn read(self: *Self, allocator: Allocator, stream: *Image.Stream, pixels_opt: *?color.PixelStorage) ImageReadError!void {
+    pub fn read(self: *Self, allocator: Allocator, stream: *Image.Stream) ImageReadError!color.PixelStorage {
         var magic_buffer: [std.mem.len(Header.correct_magic)]u8 = undefined;
 
         const reader = stream.reader();
@@ -211,7 +205,8 @@ pub const QOI = struct {
 
         const pixel_format = try self.pixelFormat();
 
-        pixels_opt.* = try color.PixelStorage.init(allocator, pixel_format, self.width() * self.height());
+        var pixels = try color.PixelStorage.init(allocator, pixel_format, self.width() * self.height());
+        errdefer pixels.deinit(allocator);
 
         var current_color = QoiColor{ .r = 0, .g = 0, .b = 0, .a = 0xFF };
         var color_lut = std.mem.zeroes([64]QoiColor);
@@ -275,7 +270,7 @@ pub const QOI = struct {
 
             while (count > 0) {
                 count -= 1;
-                switch (pixels_opt.*.?) {
+                switch (pixels) {
                     .rgb24 => |data| {
                         data[index] = new_color.toRgb24();
                     },
@@ -290,6 +285,8 @@ pub const QOI = struct {
             color_lut[new_color.hash()] = new_color;
             current_color = new_color;
         }
+
+        return pixels;
     }
 
     pub fn write(self: Self, write_stream: *Image.Stream, pixels: color.PixelStorage) ImageWriteError!void {
