@@ -514,6 +514,7 @@ pub const Grayscale8Alpha = GrayscaleAlpha(u8);
 pub const Grayscale16Alpha = GrayscaleAlpha(u16);
 
 pub const PixelStorage = union(PixelFormat) {
+    invalid: void,
     indexed1: IndexedStorage1,
     indexed2: IndexedStorage2,
     indexed4: IndexedStorage4,
@@ -540,6 +541,11 @@ pub const PixelStorage = union(PixelFormat) {
 
     pub fn init(allocator: Allocator, format: PixelFormat, pixel_count: usize) !Self {
         return switch (format) {
+            .invalid => {
+                return Self{
+                    .invalid = void{},
+                };
+            },
             .indexed1 => {
                 return Self{
                     .indexed1 = try IndexedStorage(u1).init(allocator, pixel_count),
@@ -650,6 +656,7 @@ pub const PixelStorage = union(PixelFormat) {
 
     pub fn deinit(self: Self, allocator: Allocator) void {
         switch (self) {
+            .invalid => {},
             .indexed1 => |data| data.deinit(allocator),
             .indexed2 => |data| data.deinit(allocator),
             .indexed4 => |data| data.deinit(allocator),
@@ -676,6 +683,7 @@ pub const PixelStorage = union(PixelFormat) {
 
     pub fn len(self: Self) usize {
         return switch (self) {
+            .invalid => 0,
             .indexed1 => |data| data.indices.len,
             .indexed2 => |data| data.indices.len,
             .indexed4 => |data| data.indices.len,
@@ -725,6 +733,7 @@ pub const PixelStorage = union(PixelFormat) {
     /// Return the pixel data as a const byte slice
     pub fn asBytes(self: Self) []u8 {
         return switch (self) {
+            .invalid => &[_]u8{},
             .indexed1 => |data| std.mem.sliceAsBytes(data.indices),
             .indexed2 => |data| std.mem.sliceAsBytes(data.indices),
             .indexed4 => |data| std.mem.sliceAsBytes(data.indices),
@@ -764,16 +773,13 @@ pub const PixelStorageIterator = struct {
         };
     }
 
-    pub fn initNull() Self {
-        return Self{};
-    }
-
     pub fn next(self: *Self) ?Colorf32 {
         if (self.current_index >= self.end) {
             return null;
         }
 
         const result: ?Colorf32 = switch (self.pixels.*) {
+            .invalid => Colorf32.initRgb(0.0, 0.0, 0.0),
             .indexed1 => |data| data.palette[data.indices[self.current_index]].toColorf32(),
             .indexed2 => |data| data.palette[data.indices[self.current_index]].toColorf32(),
             .indexed4 => |data| data.palette[data.indices[self.current_index]].toColorf32(),

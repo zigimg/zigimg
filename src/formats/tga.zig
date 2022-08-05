@@ -271,18 +271,20 @@ pub const TGA = struct {
         errdefer result.deinit();
         var tga = Self{};
 
-        try tga.read(allocator, stream, &result.pixels);
+        const pixels = try tga.read(allocator, stream);
 
         result.width = tga.width();
         result.height = tga.height();
+        result.pixels = pixels;
+
         return result;
     }
 
-    pub fn writeImage(allocator: Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage, save_info: Image.SaveInfo) ImageWriteError!void {
+    pub fn writeImage(allocator: Allocator, write_stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) ImageWriteError!void {
         _ = allocator;
         _ = write_stream;
-        _ = pixels;
-        _ = save_info;
+        _ = image;
+        _ = encoder_options;
     }
 
     pub fn width(self: Self) usize {
@@ -312,7 +314,7 @@ pub const TGA = struct {
         return ImageError.Unsupported;
     }
 
-    pub fn read(self: *Self, allocator: Allocator, stream: *Image.Stream, pixels_opt: *?color.PixelStorage) !void {
+    pub fn read(self: *Self, allocator: Allocator, stream: *Image.Stream) !color.PixelStorage {
         // Read footage
         const end_pos = try stream.getEndPos();
 
@@ -356,7 +358,7 @@ pub const TGA = struct {
         const pixel_format = try self.pixelFormat();
 
         var pixels = try color.PixelStorage.init(allocator, pixel_format, self.width() * self.height());
-        pixels_opt.* = pixels;
+        errdefer pixels.deinit(allocator);
 
         const is_compressed = self.header.image_type.run_length;
 
@@ -409,6 +411,8 @@ pub const TGA = struct {
                 return ImageError.Unsupported;
             },
         }
+
+        return pixels;
     }
 
     fn readGrayscale8(self: *Self, data: []color.Grayscale8, stream: TargaStream.Reader) ImageReadError!void {

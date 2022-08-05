@@ -15,28 +15,17 @@ test "Load ASCII PBM image" {
 
     var pbmFile = netpbm.PBM{};
 
-    var pixelsOpt: ?color.PixelStorage = null;
-    try pbmFile.read(helpers.zigimg_test_allocator, &stream_source, &pixelsOpt);
-
-    defer {
-        if (pixelsOpt) |pixels| {
-            pixels.deinit(helpers.zigimg_test_allocator);
-        }
-    }
+    const pixels = try pbmFile.read(helpers.zigimg_test_allocator, &stream_source);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(pbmFile.header.width, 8);
     try helpers.expectEq(pbmFile.header.height, 16);
     try helpers.expectEq(try pbmFile.pixelFormat(), PixelFormat.grayscale1);
 
-    try testing.expect(pixelsOpt != null);
-
-    if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == .grayscale1);
-
-        try helpers.expectEq(pixels.grayscale1[0].value, 0);
-        try helpers.expectEq(pixels.grayscale1[1].value, 1);
-        try helpers.expectEq(pixels.grayscale1[15 * 8 + 7].value, 1);
-    }
+    try testing.expect(pixels == .grayscale1);
+    try helpers.expectEq(pixels.grayscale1[0].value, 0);
+    try helpers.expectEq(pixels.grayscale1[1].value, 1);
+    try helpers.expectEq(pixels.grayscale1[15 * 8 + 7].value, 1);
 }
 
 test "Load binary PBM image" {
@@ -47,28 +36,17 @@ test "Load binary PBM image" {
 
     var pbmFile = netpbm.PBM{};
 
-    var pixelsOpt: ?color.PixelStorage = null;
-    try pbmFile.read(helpers.zigimg_test_allocator, &stream_source, &pixelsOpt);
-
-    defer {
-        if (pixelsOpt) |pixels| {
-            pixels.deinit(helpers.zigimg_test_allocator);
-        }
-    }
+    const pixels = try pbmFile.read(helpers.zigimg_test_allocator, &stream_source);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(pbmFile.header.width, 8);
     try helpers.expectEq(pbmFile.header.height, 16);
     try helpers.expectEq(try pbmFile.pixelFormat(), PixelFormat.grayscale1);
 
-    try testing.expect(pixelsOpt != null);
-
-    if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == .grayscale1);
-
-        try helpers.expectEq(pixels.grayscale1[0].value, 0);
-        try helpers.expectEq(pixels.grayscale1[1].value, 1);
-        try helpers.expectEq(pixels.grayscale1[15 * 8 + 7].value, 1);
-    }
+    try testing.expect(pixels == .grayscale1);
+    try helpers.expectEq(pixels.grayscale1[0].value, 0);
+    try helpers.expectEq(pixels.grayscale1[1].value, 1);
+    try helpers.expectEq(pixels.grayscale1[15 * 8 + 7].value, 1);
 }
 
 test "Load ASCII PGM 8-bit grayscale image" {
@@ -79,28 +57,17 @@ test "Load ASCII PGM 8-bit grayscale image" {
 
     var pgmFile = netpbm.PGM{};
 
-    var pixelsOpt: ?color.PixelStorage = null;
-    try pgmFile.read(helpers.zigimg_test_allocator, &stream_source, &pixelsOpt);
-
-    defer {
-        if (pixelsOpt) |pixels| {
-            pixels.deinit(helpers.zigimg_test_allocator);
-        }
-    }
+    const pixels = try pgmFile.read(helpers.zigimg_test_allocator, &stream_source);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(pgmFile.header.width, 16);
     try helpers.expectEq(pgmFile.header.height, 24);
     try helpers.expectEq(try pgmFile.pixelFormat(), PixelFormat.grayscale8);
 
-    try testing.expect(pixelsOpt != null);
-
-    if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == .grayscale8);
-
-        try helpers.expectEq(pixels.grayscale8[0].value, 2);
-        try helpers.expectEq(pixels.grayscale8[1].value, 5);
-        try helpers.expectEq(pixels.grayscale8[383].value, 196);
-    }
+    try testing.expect(pixels == .grayscale8);
+    try helpers.expectEq(pixels.grayscale8[0].value, 2);
+    try helpers.expectEq(pixels.grayscale8[1].value, 5);
+    try helpers.expectEq(pixels.grayscale8[383].value, 196);
 }
 
 test "Load Binary PGM 8-bit grayscale image" {
@@ -111,28 +78,17 @@ test "Load Binary PGM 8-bit grayscale image" {
 
     var pgmFile = netpbm.PGM{};
 
-    var pixelsOpt: ?color.PixelStorage = null;
-    try pgmFile.read(helpers.zigimg_test_allocator, &stream_source, &pixelsOpt);
-
-    defer {
-        if (pixelsOpt) |pixels| {
-            pixels.deinit(helpers.zigimg_test_allocator);
-        }
-    }
+    const pixels = try pgmFile.read(helpers.zigimg_test_allocator, &stream_source);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(pgmFile.header.width, 16);
     try helpers.expectEq(pgmFile.header.height, 24);
     try helpers.expectEq(try pgmFile.pixelFormat(), PixelFormat.grayscale8);
 
-    try testing.expect(pixelsOpt != null);
-
-    if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == .grayscale8);
-
-        try helpers.expectEq(pixels.grayscale8[0].value, 2);
-        try helpers.expectEq(pixels.grayscale8[1].value, 5);
-        try helpers.expectEq(pixels.grayscale8[383].value, 196);
-    }
+    try testing.expect(pixels == .grayscale8);
+    try helpers.expectEq(pixels.grayscale8[0].value, 2);
+    try helpers.expectEq(pixels.grayscale8[1].value, 5);
+    try helpers.expectEq(pixels.grayscale8[383].value, 196);
 }
 
 test "Load ASCII PGM 16-bit grayscale image" {
@@ -143,28 +99,17 @@ test "Load ASCII PGM 16-bit grayscale image" {
 
     var pgmFile = netpbm.PGM{};
 
-    var pixelsOpt: ?color.PixelStorage = null;
-    try pgmFile.read(helpers.zigimg_test_allocator, &stream_source, &pixelsOpt);
-
-    defer {
-        if (pixelsOpt) |pixels| {
-            pixels.deinit(helpers.zigimg_test_allocator);
-        }
-    }
+    const pixels = try pgmFile.read(helpers.zigimg_test_allocator, &stream_source);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(pgmFile.header.width, 8);
     try helpers.expectEq(pgmFile.header.height, 16);
     try helpers.expectEq(try pgmFile.pixelFormat(), PixelFormat.grayscale16);
 
-    try testing.expect(pixelsOpt != null);
-
-    if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == .grayscale16);
-
-        try helpers.expectEq(pixels.grayscale16[0].value, 3553);
-        try helpers.expectEq(pixels.grayscale16[1].value, 4319);
-        try helpers.expectEq(pixels.grayscale16[127].value, 61139);
-    }
+    try testing.expect(pixels == .grayscale16);
+    try helpers.expectEq(pixels.grayscale16[0].value, 3553);
+    try helpers.expectEq(pixels.grayscale16[1].value, 4319);
+    try helpers.expectEq(pixels.grayscale16[127].value, 61139);
 }
 
 test "Load Binary PGM 16-bit grayscale image" {
@@ -175,28 +120,17 @@ test "Load Binary PGM 16-bit grayscale image" {
 
     var pgmFile = netpbm.PGM{};
 
-    var pixelsOpt: ?color.PixelStorage = null;
-    try pgmFile.read(helpers.zigimg_test_allocator, &stream_source, &pixelsOpt);
-
-    defer {
-        if (pixelsOpt) |pixels| {
-            pixels.deinit(helpers.zigimg_test_allocator);
-        }
-    }
+    const pixels = try pgmFile.read(helpers.zigimg_test_allocator, &stream_source);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(pgmFile.header.width, 8);
     try helpers.expectEq(pgmFile.header.height, 16);
     try helpers.expectEq(try pgmFile.pixelFormat(), PixelFormat.grayscale16);
 
-    try testing.expect(pixelsOpt != null);
-
-    if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == .grayscale16);
-
-        try helpers.expectEq(pixels.grayscale16[0].value, 3553);
-        try helpers.expectEq(pixels.grayscale16[1].value, 4319);
-        try helpers.expectEq(pixels.grayscale16[127].value, 61139);
-    }
+    try testing.expect(pixels == .grayscale16);
+    try helpers.expectEq(pixels.grayscale16[0].value, 3553);
+    try helpers.expectEq(pixels.grayscale16[1].value, 4319);
+    try helpers.expectEq(pixels.grayscale16[127].value, 61139);
 }
 
 test "Load ASCII PPM image" {
@@ -207,44 +141,34 @@ test "Load ASCII PPM image" {
 
     var ppmFile = netpbm.PPM{};
 
-    var pixelsOpt: ?color.PixelStorage = null;
-    try ppmFile.read(helpers.zigimg_test_allocator, &stream_source, &pixelsOpt);
-
-    defer {
-        if (pixelsOpt) |pixels| {
-            pixels.deinit(helpers.zigimg_test_allocator);
-        }
-    }
+    const pixels = try ppmFile.read(helpers.zigimg_test_allocator, &stream_source);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(ppmFile.header.width, 27);
     try helpers.expectEq(ppmFile.header.height, 27);
     try helpers.expectEq(try ppmFile.pixelFormat(), PixelFormat.rgb24);
 
-    try testing.expect(pixelsOpt != null);
+    try testing.expect(pixels == .rgb24);
 
-    if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == .rgb24);
+    try helpers.expectEq(pixels.rgb24[0].r, 0x34);
+    try helpers.expectEq(pixels.rgb24[0].g, 0x53);
+    try helpers.expectEq(pixels.rgb24[0].b, 0x9f);
 
-        try helpers.expectEq(pixels.rgb24[0].r, 0x34);
-        try helpers.expectEq(pixels.rgb24[0].g, 0x53);
-        try helpers.expectEq(pixels.rgb24[0].b, 0x9f);
+    try helpers.expectEq(pixels.rgb24[1].r, 0x32);
+    try helpers.expectEq(pixels.rgb24[1].g, 0x5b);
+    try helpers.expectEq(pixels.rgb24[1].b, 0x96);
 
-        try helpers.expectEq(pixels.rgb24[1].r, 0x32);
-        try helpers.expectEq(pixels.rgb24[1].g, 0x5b);
-        try helpers.expectEq(pixels.rgb24[1].b, 0x96);
+    try helpers.expectEq(pixels.rgb24[26].r, 0xa8);
+    try helpers.expectEq(pixels.rgb24[26].g, 0x5a);
+    try helpers.expectEq(pixels.rgb24[26].b, 0x78);
 
-        try helpers.expectEq(pixels.rgb24[26].r, 0xa8);
-        try helpers.expectEq(pixels.rgb24[26].g, 0x5a);
-        try helpers.expectEq(pixels.rgb24[26].b, 0x78);
+    try helpers.expectEq(pixels.rgb24[27].r, 0x2e);
+    try helpers.expectEq(pixels.rgb24[27].g, 0x54);
+    try helpers.expectEq(pixels.rgb24[27].b, 0x99);
 
-        try helpers.expectEq(pixels.rgb24[27].r, 0x2e);
-        try helpers.expectEq(pixels.rgb24[27].g, 0x54);
-        try helpers.expectEq(pixels.rgb24[27].b, 0x99);
-
-        try helpers.expectEq(pixels.rgb24[26 * 27 + 26].r, 0x88);
-        try helpers.expectEq(pixels.rgb24[26 * 27 + 26].g, 0xb7);
-        try helpers.expectEq(pixels.rgb24[26 * 27 + 26].b, 0x55);
-    }
+    try helpers.expectEq(pixels.rgb24[26 * 27 + 26].r, 0x88);
+    try helpers.expectEq(pixels.rgb24[26 * 27 + 26].g, 0xb7);
+    try helpers.expectEq(pixels.rgb24[26 * 27 + 26].b, 0x55);
 }
 
 test "Load binary PPM image" {
@@ -255,44 +179,34 @@ test "Load binary PPM image" {
 
     var ppmFile = netpbm.PPM{};
 
-    var pixelsOpt: ?color.PixelStorage = null;
-    try ppmFile.read(helpers.zigimg_test_allocator, &stream_source, &pixelsOpt);
-
-    defer {
-        if (pixelsOpt) |pixels| {
-            pixels.deinit(helpers.zigimg_test_allocator);
-        }
-    }
+    const pixels = try ppmFile.read(helpers.zigimg_test_allocator, &stream_source);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(ppmFile.header.width, 27);
     try helpers.expectEq(ppmFile.header.height, 27);
     try helpers.expectEq(try ppmFile.pixelFormat(), PixelFormat.rgb24);
 
-    try testing.expect(pixelsOpt != null);
+    try testing.expect(pixels == .rgb24);
 
-    if (pixelsOpt) |pixels| {
-        try testing.expect(pixels == .rgb24);
+    try helpers.expectEq(pixels.rgb24[0].r, 0x34);
+    try helpers.expectEq(pixels.rgb24[0].g, 0x53);
+    try helpers.expectEq(pixels.rgb24[0].b, 0x9f);
 
-        try helpers.expectEq(pixels.rgb24[0].r, 0x34);
-        try helpers.expectEq(pixels.rgb24[0].g, 0x53);
-        try helpers.expectEq(pixels.rgb24[0].b, 0x9f);
+    try helpers.expectEq(pixels.rgb24[1].r, 0x32);
+    try helpers.expectEq(pixels.rgb24[1].g, 0x5b);
+    try helpers.expectEq(pixels.rgb24[1].b, 0x96);
 
-        try helpers.expectEq(pixels.rgb24[1].r, 0x32);
-        try helpers.expectEq(pixels.rgb24[1].g, 0x5b);
-        try helpers.expectEq(pixels.rgb24[1].b, 0x96);
+    try helpers.expectEq(pixels.rgb24[26].r, 0xa8);
+    try helpers.expectEq(pixels.rgb24[26].g, 0x5a);
+    try helpers.expectEq(pixels.rgb24[26].b, 0x78);
 
-        try helpers.expectEq(pixels.rgb24[26].r, 0xa8);
-        try helpers.expectEq(pixels.rgb24[26].g, 0x5a);
-        try helpers.expectEq(pixels.rgb24[26].b, 0x78);
+    try helpers.expectEq(pixels.rgb24[27].r, 0x2e);
+    try helpers.expectEq(pixels.rgb24[27].g, 0x54);
+    try helpers.expectEq(pixels.rgb24[27].b, 0x99);
 
-        try helpers.expectEq(pixels.rgb24[27].r, 0x2e);
-        try helpers.expectEq(pixels.rgb24[27].g, 0x54);
-        try helpers.expectEq(pixels.rgb24[27].b, 0x99);
-
-        try helpers.expectEq(pixels.rgb24[26 * 27 + 26].r, 0x88);
-        try helpers.expectEq(pixels.rgb24[26 * 27 + 26].g, 0xb7);
-        try helpers.expectEq(pixels.rgb24[26 * 27 + 26].b, 0x55);
-    }
+    try helpers.expectEq(pixels.rgb24[26 * 27 + 26].r, 0x88);
+    try helpers.expectEq(pixels.rgb24[26 * 27 + 26].g, 0xb7);
+    try helpers.expectEq(pixels.rgb24[26 * 27 + 26].b, 0x55);
 }
 
 test "Write bitmap(grayscale1) ASCII PBM file" {
@@ -307,16 +221,15 @@ test "Write bitmap(grayscale1) ASCII PBM file" {
     const width = grayscales.len;
     const height = 1;
 
-    const source_image = try Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale1);
+    var source_image = try Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale1);
     defer source_image.deinit();
 
-    if (source_image.pixels) |source| {
-        for (grayscales) |value, index| {
-            source.grayscale1[index].value = value;
-        }
+    const source = source_image.pixels;
+    for (grayscales) |value, index| {
+        source.grayscale1[index].value = value;
     }
 
-    try source_image.writeToFilePath(image_file_name, Image.Format.pbm, Image.EncoderOptions{
+    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
         .pbm = .{ .binary = false },
     });
 
@@ -324,20 +237,18 @@ test "Write bitmap(grayscale1) ASCII PBM file" {
         std.fs.cwd().deleteFile(image_file_name) catch unreachable;
     }
 
-    const read_image = try Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name);
+    var read_image = try Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name);
     defer read_image.deinit();
 
     try helpers.expectEq(read_image.width, width);
     try helpers.expectEq(read_image.height, height);
 
-    try testing.expect(read_image.pixels != null);
+    const read_pixels = read_image.pixels;
 
-    if (read_image.pixels) |read_pixels| {
-        try testing.expect(read_pixels == .grayscale1);
+    try testing.expect(read_pixels == .grayscale1);
 
-        for (grayscales) |grayscale_value, index| {
-            try helpers.expectEq(read_pixels.grayscale1[index].value, grayscale_value);
-        }
+    for (grayscales) |grayscale_value, index| {
+        try helpers.expectEq(read_pixels.grayscale1[index].value, grayscale_value);
     }
 }
 
@@ -354,16 +265,16 @@ test "Write bitmap(Grayscale1) binary PBM file" {
     const width = grayscales.len;
     const height = 1;
 
-    const source_image = try Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale1);
+    var source_image = try Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale1);
     defer source_image.deinit();
 
-    if (source_image.pixels) |source| {
-        for (grayscales) |value, index| {
-            source.grayscale1[index].value = value;
-        }
+    const source = source_image.pixels;
+
+    for (grayscales) |value, index| {
+        source.grayscale1[index].value = value;
     }
 
-    try source_image.writeToFilePath(image_file_name, Image.Format.pbm, Image.EncoderOptions{
+    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
         .pbm = .{ .binary = true },
     });
 
@@ -371,20 +282,18 @@ test "Write bitmap(Grayscale1) binary PBM file" {
         std.fs.cwd().deleteFile(image_file_name) catch unreachable;
     }
 
-    const read_image = try Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name);
+    var read_image = try Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name);
     defer read_image.deinit();
 
     try helpers.expectEq(read_image.width, width);
     try helpers.expectEq(read_image.height, height);
 
-    try testing.expect(read_image.pixels != null);
+    const read_pixels = read_image.pixels;
 
-    if (read_image.pixels) |read_pixels| {
-        try testing.expect(read_pixels == .grayscale1);
+    try testing.expect(read_pixels == .grayscale1);
 
-        for (grayscales) |grayscale_value, index| {
-            try helpers.expectEq(read_pixels.grayscale1[index].value, grayscale_value);
-        }
+    for (grayscales) |grayscale_value, index| {
+        try helpers.expectEq(read_pixels.grayscale1[index].value, grayscale_value);
     }
 }
 
@@ -398,16 +307,15 @@ test "Write grayscale8 ASCII PGM file" {
     const width = grayscales.len;
     const height = 1;
 
-    const source_image = try Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale8);
+    var source_image = try Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale8);
     defer source_image.deinit();
 
-    if (source_image.pixels) |source| {
-        for (grayscales) |value, index| {
-            source.grayscale8[index].value = value;
-        }
+    const source = source_image.pixels;
+    for (grayscales) |value, index| {
+        source.grayscale8[index].value = value;
     }
 
-    try source_image.writeToFilePath(image_file_name, Image.Format.pgm, Image.EncoderOptions{
+    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
         .pgm = .{ .binary = false },
     });
 
@@ -415,20 +323,18 @@ test "Write grayscale8 ASCII PGM file" {
         std.fs.cwd().deleteFile(image_file_name) catch unreachable;
     }
 
-    const read_image = try Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name);
+    var read_image = try Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name);
     defer read_image.deinit();
 
     try helpers.expectEq(read_image.width, width);
     try helpers.expectEq(read_image.height, height);
 
-    try testing.expect(read_image.pixels != null);
+    const read_pixels = read_image.pixels;
 
-    if (read_image.pixels) |read_pixels| {
-        try testing.expect(read_pixels == .grayscale8);
+    try testing.expect(read_pixels == .grayscale8);
 
-        for (grayscales) |grayscale_value, index| {
-            try helpers.expectEq(read_pixels.grayscale8[index].value, grayscale_value);
-        }
+    for (grayscales) |grayscale_value, index| {
+        try helpers.expectEq(read_pixels.grayscale8[index].value, grayscale_value);
     }
 }
 
@@ -442,16 +348,15 @@ test "Write grayscale8 binary PGM file" {
     const width = grayscales.len;
     const height = 1;
 
-    const source_image = try Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale8);
+    var source_image = try Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale8);
     defer source_image.deinit();
 
-    if (source_image.pixels) |source| {
-        for (grayscales) |value, index| {
-            source.grayscale8[index].value = value;
-        }
+    const source = source_image.pixels;
+    for (grayscales) |value, index| {
+        source.grayscale8[index].value = value;
     }
 
-    try source_image.writeToFilePath(image_file_name, Image.Format.pgm, Image.EncoderOptions{
+    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
         .pgm = .{ .binary = true },
     });
 
@@ -459,20 +364,17 @@ test "Write grayscale8 binary PGM file" {
         std.fs.cwd().deleteFile(image_file_name) catch unreachable;
     }
 
-    const read_image = try Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name);
+    var read_image = try Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name);
     defer read_image.deinit();
 
     try helpers.expectEq(read_image.width, width);
     try helpers.expectEq(read_image.height, height);
 
-    try testing.expect(read_image.pixels != null);
+    const read_pixels = read_image.pixels;
+    try testing.expect(read_pixels == .grayscale8);
 
-    if (read_image.pixels) |read_pixels| {
-        try testing.expect(read_pixels == .grayscale8);
-
-        for (grayscales) |grayscale_value, index| {
-            try helpers.expectEq(read_pixels.grayscale8[index].value, grayscale_value);
-        }
+    for (grayscales) |grayscale_value, index| {
+        try helpers.expectEq(read_pixels.grayscale8[index].value, grayscale_value);
     }
 }
 
@@ -483,31 +385,29 @@ test "Writing Rgb24 ASCII PPM format" {
     const width = expected_colors.len;
     const height = 1;
 
-    const source_image = try Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.rgb24);
+    var source_image = try Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.rgb24);
     defer source_image.deinit();
 
-    try testing.expect(source_image.pixels != null);
+    const pixels = source_image.pixels;
 
-    if (source_image.pixels) |pixels| {
-        try testing.expect(pixels == .rgb24);
-        try testing.expect(pixels.rgb24.len == width * height);
+    try testing.expect(pixels == .rgb24);
+    try testing.expect(pixels.rgb24.len == width * height);
 
-        // R, G, B
-        pixels.rgb24[0] = color.Rgb24.initRgb(255, 0, 0);
-        pixels.rgb24[1] = color.Rgb24.initRgb(0, 255, 0);
-        pixels.rgb24[2] = color.Rgb24.initRgb(0, 0, 255);
+    // R, G, B
+    pixels.rgb24[0] = color.Rgb24.initRgb(255, 0, 0);
+    pixels.rgb24[1] = color.Rgb24.initRgb(0, 255, 0);
+    pixels.rgb24[2] = color.Rgb24.initRgb(0, 0, 255);
 
-        // Black, white
-        pixels.rgb24[3] = color.Rgb24.initRgb(0, 0, 0);
-        pixels.rgb24[4] = color.Rgb24.initRgb(255, 255, 255);
+    // Black, white
+    pixels.rgb24[3] = color.Rgb24.initRgb(0, 0, 0);
+    pixels.rgb24[4] = color.Rgb24.initRgb(255, 255, 255);
 
-        // Cyan, Magenta, Yellow
-        pixels.rgb24[5] = color.Rgb24.initRgb(0, 255, 255);
-        pixels.rgb24[6] = color.Rgb24.initRgb(255, 0, 255);
-        pixels.rgb24[7] = color.Rgb24.initRgb(255, 255, 0);
-    }
+    // Cyan, Magenta, Yellow
+    pixels.rgb24[5] = color.Rgb24.initRgb(0, 255, 255);
+    pixels.rgb24[6] = color.Rgb24.initRgb(255, 0, 255);
+    pixels.rgb24[7] = color.Rgb24.initRgb(255, 255, 0);
 
-    try source_image.writeToFilePath(image_file_name, Image.Format.ppm, Image.EncoderOptions{
+    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
         .ppm = .{ .binary = false },
     });
 
@@ -515,20 +415,18 @@ test "Writing Rgb24 ASCII PPM format" {
         std.fs.cwd().deleteFile(image_file_name) catch unreachable;
     }
 
-    const read_image = try Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name);
+    var read_image = try Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name);
     defer read_image.deinit();
 
     try helpers.expectEq(read_image.width, width);
     try helpers.expectEq(read_image.height, height);
 
-    try testing.expect(read_image.pixels != null);
+    const read_image_pixels = read_image.pixels;
 
-    if (read_image.pixels) |read_image_pixels| {
-        try testing.expect(read_image_pixels == .rgb24);
+    try testing.expect(read_image_pixels == .rgb24);
 
-        for (expected_colors) |hex_color, index| {
-            try helpers.expectEq(read_image_pixels.rgb24[index].toU32Rgb(), hex_color);
-        }
+    for (expected_colors) |hex_color, index| {
+        try helpers.expectEq(read_image_pixels.rgb24[index].toU32Rgb(), hex_color);
     }
 }
 
@@ -539,31 +437,29 @@ test "Writing Rgb24 binary PPM format" {
     const width = expected_colors.len;
     const height = 1;
 
-    const source_image = try Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.rgb24);
+    var source_image = try Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.rgb24);
     defer source_image.deinit();
 
-    try testing.expect(source_image.pixels != null);
+    const pixels = source_image.pixels;
 
-    if (source_image.pixels) |pixels| {
-        try testing.expect(pixels == .rgb24);
-        try testing.expect(pixels.rgb24.len == width * height);
+    try testing.expect(pixels == .rgb24);
+    try testing.expect(pixels.rgb24.len == width * height);
 
-        // R, G, B
-        pixels.rgb24[0] = color.Rgb24.initRgb(255, 0, 0);
-        pixels.rgb24[1] = color.Rgb24.initRgb(0, 255, 0);
-        pixels.rgb24[2] = color.Rgb24.initRgb(0, 0, 255);
+    // R, G, B
+    pixels.rgb24[0] = color.Rgb24.initRgb(255, 0, 0);
+    pixels.rgb24[1] = color.Rgb24.initRgb(0, 255, 0);
+    pixels.rgb24[2] = color.Rgb24.initRgb(0, 0, 255);
 
-        // Black, white
-        pixels.rgb24[3] = color.Rgb24.initRgb(0, 0, 0);
-        pixels.rgb24[4] = color.Rgb24.initRgb(255, 255, 255);
+    // Black, white
+    pixels.rgb24[3] = color.Rgb24.initRgb(0, 0, 0);
+    pixels.rgb24[4] = color.Rgb24.initRgb(255, 255, 255);
 
-        // Cyan, Magenta, Yellow
-        pixels.rgb24[5] = color.Rgb24.initRgb(0, 255, 255);
-        pixels.rgb24[6] = color.Rgb24.initRgb(255, 0, 255);
-        pixels.rgb24[7] = color.Rgb24.initRgb(255, 255, 0);
-    }
+    // Cyan, Magenta, Yellow
+    pixels.rgb24[5] = color.Rgb24.initRgb(0, 255, 255);
+    pixels.rgb24[6] = color.Rgb24.initRgb(255, 0, 255);
+    pixels.rgb24[7] = color.Rgb24.initRgb(255, 255, 0);
 
-    try source_image.writeToFilePath(image_file_name, Image.Format.ppm, Image.EncoderOptions{
+    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
         .ppm = .{ .binary = true },
     });
 
@@ -571,19 +467,17 @@ test "Writing Rgb24 binary PPM format" {
         std.fs.cwd().deleteFile(image_file_name) catch unreachable;
     }
 
-    const read_image = try Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name);
+    var read_image = try Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name);
     defer read_image.deinit();
 
     try helpers.expectEq(read_image.width, width);
     try helpers.expectEq(read_image.height, height);
 
-    try testing.expect(read_image.pixels != null);
+    const read_image_pixels = read_image.pixels;
 
-    if (read_image.pixels) |read_image_pixels| {
-        try testing.expect(read_image_pixels == .rgb24);
+    try testing.expect(read_image_pixels == .rgb24);
 
-        for (expected_colors) |hex_color, index| {
-            try helpers.expectEq(read_image_pixels.rgb24[index].toU32Rgb(), hex_color);
-        }
+    for (expected_colors) |hex_color, index| {
+        try helpers.expectEq(read_image_pixels.rgb24[index].toU32Rgb(), hex_color);
     }
 }

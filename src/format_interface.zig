@@ -14,5 +14,5 @@ pub const FormatInterface = struct {
     pub const FormatFn = fn () Image.Format;
     pub const FormatDetectFn = fn (stream: *Image.Stream) ImageReadError!bool;
     pub const ReadImageFn = fn (allocator: Allocator, stream: *Image.Stream) ImageReadError!Image;
-    pub const WriteImageFn = fn (allocator: Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage, save_info: Image.SaveInfo) ImageWriteError!void;
+    pub const WriteImageFn = fn (allocator: Allocator, write_stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) ImageWriteError!void;
 };

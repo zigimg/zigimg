@@ -103,7 +103,7 @@ pub const QOI = struct {
     header: Header = undefined,
 
     pub const EncoderOptions = struct {
-        colorspace: Colorspace,
+        colorspace: Colorspace = .srgb,
     };
 
     const Self = @This();
@@ -134,25 +134,27 @@ pub const QOI = struct {
         errdefer result.deinit();
         var qoi = Self{};
 
-        try qoi.read(allocator, stream, &result.pixels);
+        const pixels = try qoi.read(allocator, stream);
 
         result.width = qoi.width();
         result.height = qoi.height();
+        result.pixels = pixels;
+
         return result;
     }
 
-    pub fn writeImage(allocator: Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage, save_info: Image.SaveInfo) ImageWriteError!void {
+    pub fn writeImage(allocator: Allocator, write_stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) ImageWriteError!void {
         _ = allocator;
 
         var qoi = Self{};
-        qoi.header.width = @truncate(u32, save_info.width);
-        qoi.header.height = @truncate(u32, save_info.height);
-        qoi.header.format = switch (pixels) {
+        qoi.header.width = @truncate(u32, image.width);
+        qoi.header.height = @truncate(u32, image.height);
+        qoi.header.format = switch (image.pixels) {
             .rgb24 => Format.rgb,
             .rgba32 => Format.rgba,
             else => return ImageError.Unsupported,
         };
-        switch (save_info.encoder_options) {
+        switch (encoder_options) {
             .qoi => |qoi_encode_options| {
                 qoi.header.colorspace = qoi_encode_options.colorspace;
             },
@@ -161,7 +163,7 @@ pub const QOI = struct {
             },
         }
 
-        try qoi.write(write_stream, pixels);
+        try qoi.write(write_stream, image.pixels);
     }
 
     pub fn width(self: Self) usize {
@@ -179,7 +181,7 @@ pub const QOI = struct {
         };
     }
 
-    pub fn read(self: *Self, allocator: Allocator, stream: *Image.Stream, pixels_opt: *?color.PixelStorage) ImageReadError!void {
+    pub fn read(self: *Self, allocator: Allocator, stream: *Image.Stream) ImageReadError!color.PixelStorage {
         var magic_buffer: [std.mem.len(Header.correct_magic)]u8 = undefined;
 
         const reader = stream.reader();
@@ -194,7 +196,8 @@ pub const QOI = struct {
 
         const pixel_format = try self.pixelFormat();
 
-        pixels_opt.* = try color.PixelStorage.init(allocator, pixel_format, self.width() * self.height());
+        var pixels = try color.PixelStorage.init(allocator, pixel_format, self.width() * self.height());
+        errdefer pixels.deinit(allocator);
 
         var current_color = QoiColor{ .r = 0, .g = 0, .b = 0, .a = 0xFF };
         var color_lut = std.mem.zeroes([64]QoiColor);
@@ -258,7 +261,7 @@ pub const QOI = struct {
 
             while (count > 0) {
                 count -= 1;
-                switch (pixels_opt.*.?) {
+                switch (pixels) {
                     .rgb24 => |data| {
                         data[index] = new_color.toRgb24();
                     },
@@ -273,6 +276,8 @@ pub const QOI = struct {
             color_lut[new_color.hash()] = new_color;
             current_color = new_color;
         }
+
+        return pixels;
     }
 
     pub fn write(self: Self, write_stream: *Image.Stream, pixels: color.PixelStorage) ImageWriteError!void {
