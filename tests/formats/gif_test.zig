@@ -17,26 +17,22 @@ test "Read depth1 GIF image" {
     var gif_file = gif.GIF.init(helpers.zigimg_test_allocator);
     defer gif_file.deinit();
 
-    var pixels_opt: ?color.PixelStorage = null;
-    try gif_file.read(&stream_source, &pixels_opt);
-
-    defer {
-        if (pixels_opt) |pixels| {
-            pixels.deinit(helpers.zigimg_test_allocator);
-        }
-    }
+    var frames = try gif_file.read(&stream_source);
+    defer frames.deinit(gif_file.allocator);
 
     try helpers.expectEq(gif_file.header.width, 1);
     try helpers.expectEq(gif_file.header.height, 1);
 
-    if (pixels_opt) |pixels| {
-        try testing.expect(pixels == .indexed8);
+    try helpers.expectEq(frames.items.len, 1);
 
-        try helpers.expectEq(pixels.indexed8.palette[0], color.Rgba32.initRgb(0, 0, 0));
-        try helpers.expectEq(pixels.indexed8.palette[1], color.Rgba32.initRgb(0xff, 0xff, 0xff));
+    const pixels = frames.items[0].pixels;
 
-        try helpers.expectEq(pixels.indexed8.indices[0], 1);
-    }
+    try testing.expect(pixels == .indexed8);
+
+    try helpers.expectEq(pixels.indexed8.palette[0], color.Rgba32.initRgb(0, 0, 0));
+    try helpers.expectEq(pixels.indexed8.palette[1], color.Rgba32.initRgb(0xff, 0xff, 0xff));
+
+    try helpers.expectEq(pixels.indexed8.indices[0], 1);
 }
 
 test "Should error on non GIF images" {
@@ -48,15 +44,7 @@ test "Should error on non GIF images" {
     var gif_file = gif.GIF.init(helpers.zigimg_test_allocator);
     defer gif_file.deinit();
 
-    var pixels_opt: ?color.PixelStorage = null;
-    const invalid_file = gif_file.read(&stream_source, &pixels_opt);
-
-    defer {
-        if (pixels_opt) |pixels| {
-            pixels.deinit(helpers.zigimg_test_allocator);
-        }
-    }
-
+    const invalid_file = gif_file.read(&stream_source);
     try helpers.expectError(invalid_file, Image.ReadError.InvalidData);
 }
 
@@ -233,14 +221,8 @@ fn doGifTest(entry_name: []const u8) !void {
         var gif_file = gif.GIF.init(helpers.zigimg_test_allocator);
         defer gif_file.deinit();
 
-        var pixels_opt: ?color.PixelStorage = null;
-        try gif_file.read(&stream_source, &pixels_opt);
-
-        defer {
-            if (pixels_opt) |pixels| {
-                pixels.deinit(helpers.zigimg_test_allocator);
-            }
-        }
+        var frames = try gif_file.read(&stream_source);
+        defer frames.deinit(gif_file.allocator);
 
         try helpers.expectEqSlice(u8, gif_file.header.magic[0..], expected_version.string[0..3]);
         try helpers.expectEqSlice(u8, gif_file.header.version[0..], expected_version.string[3..]);
@@ -257,13 +239,41 @@ fn doGifTest(entry_name: []const u8) !void {
             while (frame_iterator.next()) |current_frame| {
                 if (config_ini.getSection(current_frame)) |frame_section| {
                     const pixels_filename = frame_section.getValue("pixels") orelse return error.InvalidGifConfigFile;
-                    _ = pixels_filename;
+                    const pixels_filepath = try std.fs.path.resolve(area_allocator, &[_][]const u8{ helpers.fixtures_path, "gif", pixels_filename.string });
+                    const pixels_file = try helpers.testOpenFile(pixels_filepath);
+                    defer pixels_file.close();
+
+                    var pixels_buffred_reader = std.io.bufferedReader(pixels_file.reader());
+                    var pixels_reader = pixels_buffred_reader.reader();
+
+                    var pixel_list = std.ArrayList(color.Rgba32).init(area_allocator);
+                    defer pixel_list.deinit();
+
+                    var read_buffer: [@sizeOf(color.Rgba32)]u8 = undefined;
+
+                    var read_size = try pixels_reader.readAll(read_buffer[0..]);
+                    while (read_size > 0) {
+                        const read_color = std.mem.bytesAsValue(color.Rgba32, read_buffer[0..]);
+                        try pixel_list.append(read_color.*);
+
+                        read_size = try pixels_reader.readAll(read_buffer[0..]);
+                    }
+
+                    var frame_data_iterator = color.PixelStorageIterator.init(&frames.items[frame_index].pixels);
+
+                    for (pixel_list.items) |expected_color| {
+                        if (frame_data_iterator.next()) |actual_color| {
+                            try helpers.expectEq(actual_color.toRgba32(), expected_color);
+                        }
+                    }
                 } else {
                     return error.InvalidGifConfigFile;
                 }
 
                 frame_index += 1;
             }
+
+            try helpers.expectEq(frames.items.len, frame_index);
         }
     } else {
         return error.InvalidGifConfigFile;

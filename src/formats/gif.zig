@@ -108,15 +108,48 @@ const Versions = [_][]const u8{
 
 const ExtensionBlockTerminator = 0x00;
 
+// TODO: Move to utils.zig
+pub fn FixedStorage(comptime T: type, comptime storage_size: usize) type {
+    return struct {
+        data: []T,
+        storage: [storage_size]T,
+
+        const Self = @This();
+
+        pub fn init() Self {
+            var result: Self = undefined;
+            result.data = result.storage[0..0];
+            return result;
+        }
+
+        pub fn resize(self: *Self, size: usize) void {
+            self.data = self.storage[0..size];
+        }
+    };
+}
+
 pub const GIF = struct {
     header: Header = undefined,
-    graphics_control: ?GraphicControlExtension = null,
-    comments: ?std.ArrayListUnmanaged(CommentExtension) = null,
-    plain_texts: ?std.ArrayListUnmanaged(PlainTextExtension) = null,
+    global_color_table: FixedStorage(color.Rgb24, 256) = FixedStorage(color.Rgb24, 256).init(),
+    frames: std.ArrayListUnmanaged(Frame) = .{},
+    comments: std.ArrayListUnmanaged(CommentExtension) = .{},
     application_info: ?ApplicationExtension = null,
     allocator: std.mem.Allocator,
 
+    pub const Frame = struct {
+        local_color_table: FixedStorage(color.Rgb24, 256) = FixedStorage(color.Rgb24, 256).init(),
+        graphics_control: ?GraphicControlExtension = null,
+        image_descriptor: ?ImageDescriptor = null,
+        plain_text: ?PlainTextExtension = null,
+    };
+
     const Self = @This();
+
+    const ReaderContext = struct {
+        reader: Image.Stream.Reader = undefined,
+        frame_list: Image.Animation.FrameList = .{},
+        current_frame: ?*Frame = null,
+    };
 
     pub fn init(allocator: std.mem.Allocator) Self {
         return .{
@@ -125,13 +158,8 @@ pub const GIF = struct {
     }
 
     pub fn deinit(self: *Self) void {
-        if (self.comments) |*comments| {
-            comments.deinit(self.allocator);
-        }
-
-        if (self.plain_texts) |*plain_texts| {
-            plain_texts.deinit(self.allocator);
-        }
+        self.frames.deinit(self.allocator);
+        self.comments.deinit(self.allocator);
 
         if (self.application_info) |application_info| {
             self.allocator.free(application_info.data);
@@ -174,12 +202,16 @@ pub const GIF = struct {
         var gif = Self.init(allocator);
         defer gif.deinit();
 
-        var pixels_opt: ?color.PixelStorage = null;
-        try gif.read(stream, &pixels_opt);
+        var frames = try gif.read(stream);
+        if (frames.items.len == 0) {
+            return ImageReadError.InvalidData;
+        }
 
         result.width = @intCast(usize, gif.header.width);
         result.height = @intCast(usize, gif.header.height);
-        result.pixels = pixels_opt.?;
+        result.pixels = frames.items[0].pixels;
+        result.animation.frames = frames;
+        result.animation.loop_count = gif.loopCount();
         return result;
     }
 
@@ -190,19 +222,35 @@ pub const GIF = struct {
         _ = encoder_options;
     }
 
-    pub fn read(self: *Self, stream: *Image.Stream, pixels_opt: *?color.PixelStorage) ImageReadError!void {
-        const reader = stream.reader();
+    pub fn loopCount(self: Self) i32 {
+        _ = self;
+        // TODO: mlarouche: Read this information from the application extension
+        return Image.AnimationLoopInfinite;
+    }
+
+    pub fn read(self: *Self, stream: *Image.Stream) ImageReadError!Image.Animation.FrameList {
+        var context = ReaderContext{
+            .reader = stream.reader(),
+        };
+
+        errdefer {
+            for (context.frame_list.items) |entry| {
+                entry.pixels.deinit(self.allocator);
+            }
+
+            context.frame_list.deinit(self.allocator);
+        }
 
         // TODO: mlarouche: Try again having Header being a packed struct when stage3 is released
         // self.header = try utils.readStructLittle(reader, Header);
 
-        _ = try reader.read(self.header.magic[0..]);
-        _ = try reader.read(self.header.version[0..]);
-        self.header.width = try reader.readIntLittle(u16);
-        self.header.height = try reader.readIntLittle(u16);
-        self.header.flags = try utils.readStructLittle(reader, HeaderFlags);
-        self.header.background_color_index = try reader.readIntLittle(u8);
-        self.header.pixel_aspect_ratio = try reader.readIntLittle(u8);
+        _ = try context.reader.read(self.header.magic[0..]);
+        _ = try context.reader.read(self.header.version[0..]);
+        self.header.width = try context.reader.readIntLittle(u16);
+        self.header.height = try context.reader.readIntLittle(u16);
+        self.header.flags = try utils.readStructLittle(context.reader, HeaderFlags);
+        self.header.background_color_index = try context.reader.readIntLittle(u8);
+        self.header.pixel_aspect_ratio = try context.reader.readIntLittle(u8);
 
         if (!std.mem.eql(u8, self.header.magic[0..], Magic)) {
             return ImageReadError.InvalidData;
@@ -221,215 +269,299 @@ pub const GIF = struct {
             return ImageReadError.InvalidData;
         }
 
-        var global_color_table_storage: [256 * @sizeOf(color.Rgb24)]u8 = undefined;
-        var global_color_table_fixed_alloc = std.heap.FixedBufferAllocator.init(global_color_table_storage[0..]);
-        var global_color_table_allocator = global_color_table_fixed_alloc.allocator();
-
         const global_color_table_size = @as(usize, 1) << (@intCast(u6, self.header.flags.global_color_table_size) + 1);
 
-        var global_color_table = try global_color_table_allocator.alloc(color.Rgb24, global_color_table_size);
+        self.global_color_table.resize(global_color_table_size);
 
         if (self.header.flags.use_global_color_table) {
             var index: usize = 0;
 
             while (index < global_color_table_size) : (index += 1) {
-                global_color_table[index] = try utils.readStructLittle(reader, color.Rgb24);
+                self.global_color_table.data[index] = try utils.readStructLittle(context.reader, color.Rgb24);
             }
         }
 
-        var current_block = reader.readEnum(DataBlockKind, .Little) catch {
+        try self.readData(&context);
+
+        return context.frame_list;
+    }
+
+    // <Data> ::= <Graphic Block> | <Special-Purpose Block>
+    fn readData(self: *Self, context: *ReaderContext) !void {
+        var current_block = context.reader.readEnum(DataBlockKind, .Little) catch {
             return ImageReadError.InvalidData;
         };
 
         while (current_block != .end_of_file) {
+            var is_graphic_block = false;
+            var extension_kind: ?ExtensionKind = null;
+
             switch (current_block) {
                 .image_descriptor => {
-                    // TODO: mlarouche: Try again having Header being a packed struct when stage3 is released
-                    //const image_descriptor_header = try utils.readStructLittle(reader, ImageDescriptor);
-                    var image_descriptor_header: ImageDescriptor = undefined;
-
-                    image_descriptor_header.left_position = try reader.readIntLittle(u16);
-                    image_descriptor_header.top_position = try reader.readIntLittle(u16);
-                    image_descriptor_header.width = try reader.readIntLittle(u16);
-                    image_descriptor_header.height = try reader.readIntLittle(u16);
-                    image_descriptor_header.flags = try utils.readStructLittle(reader, ImageDescriptorFlags);
-
-                    var local_color_table_storage: [256 * @sizeOf(color.Rgb24)]u8 = undefined;
-                    var local_color_table_fixed_alloc = std.heap.FixedBufferAllocator.init(local_color_table_storage[0..]);
-                    var local_color_table_allocator = local_color_table_fixed_alloc.allocator();
-
-                    const local_color_table_size = @as(usize, 1) << (@intCast(u6, self.header.flags.global_color_table_size) + 1);
-
-                    var local_color_table = try local_color_table_allocator.alloc(color.Rgb24, global_color_table_size);
-
-                    if (image_descriptor_header.flags.has_local_color_table) {
-                        var index: usize = 0;
-
-                        while (index < local_color_table_size) : (index += 1) {
-                            local_color_table[index] = try utils.readStructLittle(reader, color.Rgb24);
-                        }
-                    }
-
-                    const effective_color_table = if (image_descriptor_header.flags.has_local_color_table) local_color_table else global_color_table;
-
-                    pixels_opt.* = try color.PixelStorage.init(self.allocator, PixelFormat.indexed8, @intCast(usize, self.header.width * self.header.height));
-
-                    if (pixels_opt.*) |pixels| {
-                        // Copy the effective palette
-                        for (effective_color_table) |palette_entry, index| {
-                            pixels.indexed8.palette[index] = color.Rgba32.initRgb(palette_entry.r, palette_entry.g, palette_entry.b);
-                        }
-
-                        var pixel_buffer = Image.Stream{
-                            .buffer = std.io.fixedBufferStream(std.mem.sliceAsBytes(pixels.indexed8.indices)),
-                        };
-
-                        const lzw_minimum_code_size = try reader.readByte();
-
-                        if (lzw_minimum_code_size == @enumToInt(DataBlockKind.end_of_file)) {
-                            return;
-                        }
-
-                        var lzw_decoder = try lzw.Decoder(.Little).init(self.allocator, lzw_minimum_code_size);
-                        defer lzw_decoder.deinit();
-
-                        var data_block_size = try reader.readByte();
-
-                        while (data_block_size > 0) {
-                            var data_block_storage: [256]u8 = undefined;
-                            var data_block_fixed_alloc = std.heap.FixedBufferAllocator.init(data_block_storage[0..]);
-                            var data_block_allocator = data_block_fixed_alloc.allocator();
-
-                            const data_block = try data_block_allocator.alloc(u8, data_block_size);
-                            _ = try reader.read(data_block[0..]);
-
-                            var data_block_reader = Image.Stream{
-                                .buffer = std.io.fixedBufferStream(data_block),
-                            };
-
-                            lzw_decoder.decode(data_block_reader.reader(), pixel_buffer.writer()) catch {
-                                return ImageReadError.InvalidData;
-                            };
-
-                            data_block_size = try reader.readByte();
-                        }
-                    }
+                    is_graphic_block = true;
                 },
                 .extension => {
-                    const extension_kind = reader.readEnum(ExtensionKind, .Little) catch {
+                    extension_kind = context.reader.readEnum(ExtensionKind, .Little) catch {
                         return ImageReadError.InvalidData;
                     };
 
-                    switch (extension_kind) {
+                    switch (extension_kind.?) {
                         .graphic_control => {
-                            self.graphics_control = blk: {
-                                var graphics_control: GraphicControlExtension = undefined;
-
-                                // Eat block size
-                                _ = try reader.readByte();
-
-                                graphics_control.flags = try utils.readStructLittle(reader, GraphicControlExtensionFlags);
-                                graphics_control.delay_time = try reader.readIntLittle(u16);
-
-                                if (graphics_control.flags.has_transparent_color) {
-                                    graphics_control.transparent_color_index = try reader.readByte();
-                                }
-
-                                // Eat block terminator
-                                _ = try reader.readByte();
-
-                                break :blk graphics_control;
-                            };
-                        },
-                        .comment => {
-                            if (self.comments == null) {
-                                self.comments = try std.ArrayListUnmanaged(CommentExtension).initCapacity(self.allocator, 2);
-                            }
-
-                            if (self.comments) |*comments| {
-                                var new_comment_entry = try comments.addOne(self.allocator);
-
-                                var fixed_alloc = std.heap.FixedBufferAllocator.init(new_comment_entry.comment_storage[0..]);
-                                var comment_list = std.ArrayList(u8).init(fixed_alloc.allocator());
-
-                                var read_data = try reader.readByte();
-
-                                while (read_data != ExtensionBlockTerminator) {
-                                    try comment_list.append(read_data);
-
-                                    read_data = try reader.readByte();
-                                }
-
-                                new_comment_entry.comment = comment_list.items;
-                            }
+                            is_graphic_block = true;
                         },
                         .plain_text => {
-                            if (self.plain_texts == null) {
-                                self.plain_texts = try std.ArrayListUnmanaged(PlainTextExtension).initCapacity(self.allocator, 2);
-                            }
-
-                            if (self.plain_texts) |*plain_texts| {
-                                var new_plain_text_entry = try plain_texts.addOne(self.allocator);
-
-                                // Eat block size
-                                _ = try reader.readByte();
-
-                                new_plain_text_entry.text_grid_left_position = try reader.readIntLittle(u16);
-                                new_plain_text_entry.text_grid_top_position = try reader.readIntLittle(u16);
-                                new_plain_text_entry.text_grid_width = try reader.readIntLittle(u16);
-                                new_plain_text_entry.character_cell_width = try reader.readByte();
-                                new_plain_text_entry.character_cell_height = try reader.readByte();
-                                new_plain_text_entry.text_foreground_color_index = try reader.readByte();
-                                new_plain_text_entry.text_background_color_index = try reader.readByte();
-
-                                var fixed_alloc = std.heap.FixedBufferAllocator.init(new_plain_text_entry.plain_text_storage[0..]);
-                                var plain_data_list = std.ArrayList(u8).init(fixed_alloc.allocator());
-
-                                var read_data = try reader.readByte();
-
-                                while (read_data != ExtensionBlockTerminator) {
-                                    try plain_data_list.append(read_data);
-
-                                    read_data = try reader.readByte();
-                                }
-
-                                new_plain_text_entry.plain_text = plain_data_list.items;
-                            }
+                            is_graphic_block = true;
                         },
-                        .application_extension => {
-                            self.application_info = blk: {
-                                var application_info: ApplicationExtension = undefined;
-
-                                // Eat block size
-                                _ = try reader.readByte();
-
-                                _ = try reader.read(application_info.application_identifier[0..]);
-                                _ = try reader.read(application_info.authentification_code[0..]);
-
-                                var data_list = try std.ArrayListUnmanaged(u8).initCapacity(self.allocator, 256);
-                                defer data_list.deinit(self.allocator);
-
-                                var read_data = try reader.readByte();
-
-                                while (read_data != ExtensionBlockTerminator) {
-                                    try data_list.append(self.allocator, read_data);
-
-                                    read_data = try reader.readByte();
-                                }
-
-                                application_info.data = try self.allocator.dupe(u8, data_list.items);
-
-                                break :blk application_info;
-                            };
-                        },
+                        else => {},
                     }
                 },
-                .end_of_file => {},
+                .end_of_file => {
+                    return;
+                },
             }
 
-            current_block = reader.readEnum(DataBlockKind, .Little) catch {
+            if (is_graphic_block) {
+                try self.readGraphicBlock(context, current_block, extension_kind);
+            } else {
+                try self.readSpecialPurposeBlock(context, extension_kind.?);
+            }
+
+            current_block = context.reader.readEnum(DataBlockKind, .Little) catch {
                 return ImageReadError.InvalidData;
             };
         }
+    }
+
+    // <Graphic Block> ::= [Graphic Control Extension] <Graphic-Rendering Block>
+    fn readGraphicBlock(self: *Self, context: *ReaderContext, block_kind: DataBlockKind, extension_kind_opt: ?ExtensionKind) !void {
+        context.current_frame = try self.allocNewFrame();
+
+        if (extension_kind_opt) |extension_kind| {
+            if (extension_kind == .graphic_control) {
+                context.current_frame.?.graphics_control = blk: {
+                    var graphics_control: GraphicControlExtension = undefined;
+
+                    // Eat block size
+                    _ = try context.reader.readByte();
+
+                    graphics_control.flags = try utils.readStructLittle(context.reader, GraphicControlExtensionFlags);
+                    graphics_control.delay_time = try context.reader.readIntLittle(u16);
+
+                    if (graphics_control.flags.has_transparent_color) {
+                        graphics_control.transparent_color_index = try context.reader.readByte();
+                    }
+
+                    // Eat block terminator
+                    _ = try context.reader.readByte();
+
+                    break :blk graphics_control;
+                };
+
+                var new_block_kind = context.reader.readEnum(DataBlockKind, .Little) catch {
+                    return ImageReadError.InvalidData;
+                };
+
+                try self.readGraphicRenderingBlock(context, new_block_kind, null);
+            }
+        } else {
+            try self.readGraphicRenderingBlock(context, block_kind, extension_kind_opt);
+        }
+    }
+
+    // <Graphic-Rendering Block> ::= <Table-Based Image> | Plain Text Extension
+    fn readGraphicRenderingBlock(self: *Self, context: *ReaderContext, block_kind: DataBlockKind, extension_kind_opt: ?ExtensionKind) !void {
+        switch (block_kind) {
+            .image_descriptor => {
+                try self.readImageDescriptorAndData(context);
+            },
+            .extension => {
+                var extension_kind: ExtensionKind = undefined;
+                if (extension_kind_opt) |value| {
+                    extension_kind = value;
+                } else {
+                    extension_kind = context.reader.readEnum(ExtensionKind, .Little) catch {
+                        return ImageReadError.InvalidData;
+                    };
+                }
+
+                switch (extension_kind) {
+                    .plain_text => {
+                        context.current_frame.?.plain_text = blk: {
+                            // Eat block size
+                            _ = try context.reader.readByte();
+
+                            var new_plain_text_entry: PlainTextExtension = undefined;
+
+                            new_plain_text_entry.text_grid_left_position = try context.reader.readIntLittle(u16);
+                            new_plain_text_entry.text_grid_top_position = try context.reader.readIntLittle(u16);
+                            new_plain_text_entry.text_grid_width = try context.reader.readIntLittle(u16);
+                            new_plain_text_entry.character_cell_width = try context.reader.readByte();
+                            new_plain_text_entry.character_cell_height = try context.reader.readByte();
+                            new_plain_text_entry.text_foreground_color_index = try context.reader.readByte();
+                            new_plain_text_entry.text_background_color_index = try context.reader.readByte();
+
+                            var fixed_alloc = std.heap.FixedBufferAllocator.init(new_plain_text_entry.plain_text_storage[0..]);
+                            var plain_data_list = std.ArrayList(u8).init(fixed_alloc.allocator());
+
+                            var read_data = try context.reader.readByte();
+
+                            while (read_data != ExtensionBlockTerminator) {
+                                try plain_data_list.append(read_data);
+
+                                read_data = try context.reader.readByte();
+                            }
+
+                            new_plain_text_entry.plain_text = plain_data_list.items;
+
+                            break :blk new_plain_text_entry;
+                        };
+                    },
+                    else => {
+                        return ImageReadError.InvalidData;
+                    },
+                }
+            },
+            .end_of_file => {
+                return;
+            },
+        }
+    }
+
+    // <Special-Purpose Block> ::= Application Extension | Comment Extension
+    fn readSpecialPurposeBlock(self: *Self, context: *ReaderContext, extension_kind: ExtensionKind) !void {
+        switch (extension_kind) {
+            .comment => {
+                var new_comment_entry = try self.comments.addOne(self.allocator);
+
+                var fixed_alloc = std.heap.FixedBufferAllocator.init(new_comment_entry.comment_storage[0..]);
+                var comment_list = std.ArrayList(u8).init(fixed_alloc.allocator());
+
+                var read_data = try context.reader.readByte();
+
+                while (read_data != ExtensionBlockTerminator) {
+                    try comment_list.append(read_data);
+
+                    read_data = try context.reader.readByte();
+                }
+
+                new_comment_entry.comment = comment_list.items;
+            },
+            .application_extension => {
+                self.application_info = blk: {
+                    var application_info: ApplicationExtension = undefined;
+
+                    // Eat block size
+                    _ = try context.reader.readByte();
+
+                    _ = try context.reader.read(application_info.application_identifier[0..]);
+                    _ = try context.reader.read(application_info.authentification_code[0..]);
+
+                    var data_list = try std.ArrayListUnmanaged(u8).initCapacity(self.allocator, 256);
+                    defer data_list.deinit(self.allocator);
+
+                    var read_data = try context.reader.readByte();
+
+                    while (read_data != ExtensionBlockTerminator) {
+                        try data_list.append(self.allocator, read_data);
+
+                        read_data = try context.reader.readByte();
+                    }
+
+                    application_info.data = try self.allocator.dupe(u8, data_list.items);
+
+                    break :blk application_info;
+                };
+            },
+            else => {
+                return ImageReadError.InvalidData;
+            },
+        }
+    }
+
+    // <Table-Based Image> ::= Image Descriptor [Local Color Table] Image Data
+    fn readImageDescriptorAndData(self: *Self, context: *ReaderContext) !void {
+        // TODO: mlarouche: Try again having Header being a packed struct when stage3 is released
+        //const context.current_frame.image_descriptor = try utils.readStructLittle(reader, ImageDescriptor);
+        if (context.current_frame) |current_frame| {
+            current_frame.image_descriptor = blk: {
+                var image_descriptor: ImageDescriptor = undefined;
+
+                image_descriptor.left_position = try context.reader.readIntLittle(u16);
+                image_descriptor.top_position = try context.reader.readIntLittle(u16);
+                image_descriptor.width = try context.reader.readIntLittle(u16);
+                image_descriptor.height = try context.reader.readIntLittle(u16);
+                image_descriptor.flags = try utils.readStructLittle(context.reader, ImageDescriptorFlags);
+
+                break :blk image_descriptor;
+            };
+
+            const local_color_table_size = @as(usize, 1) << (@intCast(u6, current_frame.image_descriptor.?.flags.local_color_table_size) + 1);
+
+            current_frame.local_color_table.resize(local_color_table_size);
+
+            if (current_frame.image_descriptor.?.flags.has_local_color_table) {
+                var index: usize = 0;
+
+                while (index < local_color_table_size) : (index += 1) {
+                    current_frame.local_color_table.data[index] = try utils.readStructLittle(context.reader, color.Rgb24);
+                }
+            }
+
+            const effective_color_table = if (current_frame.image_descriptor.?.flags.has_local_color_table) current_frame.local_color_table.data else self.global_color_table.data;
+
+            var new_frame = Image.AnimationFrame{
+                .pixels = try color.PixelStorage.init(self.allocator, PixelFormat.indexed8, @intCast(usize, self.header.width * self.header.height)),
+                .duration = 0.0,
+            };
+
+            if (current_frame.graphics_control) |graphics_control| {
+                new_frame.duration = @intToFloat(f32, graphics_control.delay_time) * (1.0 / 100.0);
+            }
+
+            try context.frame_list.append(self.allocator, new_frame);
+
+            // Copy the effective palette
+            for (effective_color_table) |palette_entry, index| {
+                new_frame.pixels.indexed8.palette[index] = color.Rgba32.initRgb(palette_entry.r, palette_entry.g, palette_entry.b);
+            }
+
+            var pixel_buffer = Image.Stream{
+                .buffer = std.io.fixedBufferStream(std.mem.sliceAsBytes(new_frame.pixels.indexed8.indices)),
+            };
+
+            const lzw_minimum_code_size = try context.reader.readByte();
+
+            if (lzw_minimum_code_size == @enumToInt(DataBlockKind.end_of_file)) {
+                return Image.ReadError.InvalidData;
+            }
+
+            var lzw_decoder = try lzw.Decoder(.Little).init(self.allocator, lzw_minimum_code_size);
+            defer lzw_decoder.deinit();
+
+            var data_block_size = try context.reader.readByte();
+
+            while (data_block_size > 0) {
+                var data_block = FixedStorage(u8, 256).init();
+                data_block.resize(data_block_size);
+
+                _ = try context.reader.read(data_block.data[0..]);
+
+                var data_block_reader = Image.Stream{
+                    .buffer = std.io.fixedBufferStream(data_block.data),
+                };
+
+                lzw_decoder.decode(data_block_reader.reader(), pixel_buffer.writer()) catch {
+                    return ImageReadError.InvalidData;
+                };
+
+                data_block_size = try context.reader.readByte();
+            }
+        }
+    }
+
+    fn allocNewFrame(self: *Self) !*Frame {
+        var new_frame = try self.frames.addOne(self.allocator);
+        new_frame.* = Frame{};
+        return new_frame;
     }
 };

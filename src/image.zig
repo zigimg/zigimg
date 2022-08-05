@@ -53,8 +53,10 @@ pub const AnimationFrame = struct {
 };
 
 pub const Animation = struct {
-    frames: std.ArrayListUnmanaged(AnimationFrame) = .{},
+    frames: FrameList = .{},
     loop_count: i32 = AnimationLoopInfinite,
+
+    pub const FrameList = std.ArrayListUnmanaged(AnimationFrame);
 
     pub fn deinit(self: *Animation, allocator: std.mem.Allocator) void {
         // Animation share its first frame with the pixels in Image, we don't want to free it twice
