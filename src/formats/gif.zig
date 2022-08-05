@@ -118,7 +118,6 @@ pub fn FixedStorage(comptime T: type, comptime storage_size: usize) type {
 
         pub fn init() Self {
             var result: Self = undefined;
-            result.data = result.storage[0..0];
             return result;
         }
 
@@ -513,6 +512,9 @@ pub const GIF = struct {
                 .pixels = try color.PixelStorage.init(self.allocator, PixelFormat.indexed8, @intCast(usize, self.header.width * self.header.height)),
                 .duration = 0.0,
             };
+            errdefer {
+                new_frame.pixels.deinit(self.allocator);
+            }
 
             if (current_frame.graphics_control) |graphics_control| {
                 new_frame.duration = @intToFloat(f32, graphics_control.delay_time) * (1.0 / 100.0);

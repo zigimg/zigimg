@@ -18,7 +18,12 @@ test "Read depth1 GIF image" {
     defer gif_file.deinit();
 
     var frames = try gif_file.read(&stream_source);
-    defer frames.deinit(gif_file.allocator);
+    defer {
+        for (frames.items) |entry| {
+            entry.pixels.deinit(gif_file.allocator);
+        }
+        frames.deinit(gif_file.allocator);
+    }
 
     try helpers.expectEq(gif_file.header.width, 1);
     try helpers.expectEq(gif_file.header.height, 1);
@@ -222,7 +227,12 @@ fn doGifTest(entry_name: []const u8) !void {
         defer gif_file.deinit();
 
         var frames = try gif_file.read(&stream_source);
-        defer frames.deinit(gif_file.allocator);
+        defer {
+            for (frames.items) |entry| {
+                entry.pixels.deinit(gif_file.allocator);
+            }
+            frames.deinit(gif_file.allocator);
+        }
 
         try helpers.expectEqSlice(u8, gif_file.header.magic[0..], expected_version.string[0..3]);
         try helpers.expectEqSlice(u8, gif_file.header.version[0..], expected_version.string[3..]);
