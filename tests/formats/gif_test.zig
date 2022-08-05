@@ -8,38 +8,6 @@ const std = @import("std");
 const testing = std.testing;
 const helpers = @import("../helpers.zig");
 
-test "Read depth1 GIF image" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "gif/depth1.gif");
-    defer file.close();
-
-    var stream_source = std.io.StreamSource{ .file = file };
-
-    var gif_file = gif.GIF.init(helpers.zigimg_test_allocator);
-    defer gif_file.deinit();
-
-    var frames = try gif_file.read(&stream_source);
-    defer {
-        for (frames.items) |entry| {
-            entry.pixels.deinit(gif_file.allocator);
-        }
-        frames.deinit(gif_file.allocator);
-    }
-
-    try helpers.expectEq(gif_file.header.width, 1);
-    try helpers.expectEq(gif_file.header.height, 1);
-
-    try helpers.expectEq(frames.items.len, 1);
-
-    const pixels = frames.items[0].pixels;
-
-    try testing.expect(pixels == .indexed8);
-
-    try helpers.expectEq(pixels.indexed8.palette[0], color.Rgba32.initRgb(0, 0, 0));
-    try helpers.expectEq(pixels.indexed8.palette[1], color.Rgba32.initRgb(0xff, 0xff, 0xff));
-
-    try helpers.expectEq(pixels.indexed8.indices[0], 1);
-}
-
 test "Should error on non GIF images" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
     defer file.close();
