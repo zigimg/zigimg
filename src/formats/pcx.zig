@@ -11,7 +11,7 @@ const Image = @import("../Image.zig");
 const std = @import("std");
 const utils = @import("../utils.zig");
 
-pub const PCXHeader = packed struct {
+pub const PCXHeader = extern struct {
     id: u8 = 0x0A,
     version: u8,
     compression: u8,

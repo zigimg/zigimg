@@ -15,7 +15,7 @@ const utils = @import("../utils.zig");
 
 const BitmapMagicHeader = [_]u8{ 'B', 'M' };
 
-pub const BitmapFileHeader = packed struct {
+pub const BitmapFileHeader = extern struct {
     magic_header: [2]u8,
     size: u32,
     reserved: u32,

@@ -69,7 +69,7 @@ pub const TGAAttributeType = enum(u8) {
     premultipled_alpha = 4,
 };
 
-pub const TGAExtension = packed struct {
+pub const TGAExtension = extern struct {
     extension_size: u16 = 0,
     author_name: [41]u8 = undefined,
     author_comment: [324]u8 = undefined,
@@ -87,7 +87,7 @@ pub const TGAExtension = packed struct {
     attributes: TGAAttributeType = .no_alpha,
 };
 
-pub const TGAFooter = packed struct {
+pub const TGAFooter = extern struct {
     extension_offset: u32,
     dev_area_offset: u32,
     signature: [16]u8,
