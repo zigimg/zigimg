@@ -11,8 +11,23 @@ pub const FormatInterface = struct {
     readImage: ReadImageFn,
     writeImage: WriteImageFn,
 
-    pub const FormatFn = fn () Image.Format;
-    pub const FormatDetectFn = fn (stream: *Image.Stream) ImageReadError!bool;
-    pub const ReadImageFn = fn (allocator: Allocator, stream: *Image.Stream) ImageReadError!Image;
-    pub const WriteImageFn = fn (allocator: Allocator, write_stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) ImageWriteError!void;
+    pub const FormatFn = if (@import("builtin").zig_backend == .stage1)
+        fn () Image.Format
+    else
+        *const fn () Image.Format;
+
+    pub const FormatDetectFn = if (@import("builtin").zig_backend == .stage1)
+        fn (stream: *Image.Stream) ImageReadError!bool
+    else
+        *const fn (stream: *Image.Stream) ImageReadError!bool;
+
+    pub const ReadImageFn = if (@import("builtin").zig_backend == .stage1)
+        fn (allocator: Allocator, stream: *Image.Stream) ImageReadError!Image
+    else
+        *const fn (allocator: Allocator, stream: *Image.Stream) ImageReadError!Image;
+
+    pub const WriteImageFn = if (@import("builtin").zig_backend == .stage1)
+        fn (allocator: Allocator, write_stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) ImageWriteError!void
+    else
+        *const fn (allocator: Allocator, write_stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) ImageWriteError!void;
 };

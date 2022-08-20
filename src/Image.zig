@@ -76,7 +76,11 @@ animation: Animation = .{},
 
 const Self = @This();
 
-const FormatInteraceFnType = fn () FormatInterface;
+const FormatInteraceFnType = if (@import("builtin").zig_backend == .stage1)
+    fn () FormatInterface
+else
+    *const fn () FormatInterface;
+
 const all_interface_funcs = blk: {
     const allFormatDecls = std.meta.declarations(AllImageFormats);
     var result: [allFormatDecls.len]FormatInteraceFnType = undefined;

@@ -579,11 +579,18 @@ pub const ReaderProcessor = struct {
     context: *anyopaque,
     vtable: *const VTable,
 
-    const VTable = struct {
-        chunk_processor: ?fn (context: *anyopaque, data: *ChunkProcessData) Image.ReadError!PixelFormat,
-        palette_processor: ?fn (context: *anyopaque, data: *PaletteProcessData) Image.ReadError!void,
-        data_row_processor: ?fn (context: *anyopaque, data: *RowProcessData) Image.ReadError!PixelFormat,
-    };
+    const VTable = if (@import("builtin").zig_backend == .stage1)
+        struct {
+            chunk_processor: ?fn (context: *anyopaque, data: *ChunkProcessData) Image.ReadError!PixelFormat,
+            palette_processor: ?fn (context: *anyopaque, data: *PaletteProcessData) Image.ReadError!void,
+            data_row_processor: ?fn (context: *anyopaque, data: *RowProcessData) Image.ReadError!PixelFormat,
+        }
+    else
+        struct {
+            chunk_processor: ?*const fn (context: *anyopaque, data: *ChunkProcessData) Image.ReadError!PixelFormat,
+            palette_processor: ?*const fn (context: *anyopaque, data: *PaletteProcessData) Image.ReadError!void,
+            data_row_processor: ?*const fn (context: *anyopaque, data: *RowProcessData) Image.ReadError!PixelFormat,
+        };
 
     const Self = @This();
 
@@ -602,9 +609,18 @@ pub const ReaderProcessor = struct {
     pub fn init(
         id: u32,
         context: anytype,
-        comptime chunkProcessorFn: ?fn (ptr: @TypeOf(context), data: *ChunkProcessData) Image.ReadError!PixelFormat,
-        comptime paletteProcessorFn: ?fn (ptr: @TypeOf(context), data: *PaletteProcessData) Image.ReadError!void,
-        comptime dataRowProcessorFn: ?fn (ptr: @TypeOf(context), data: *RowProcessData) Image.ReadError!PixelFormat,
+        comptime chunkProcessorFn: if (@import("builtin").zig_backend == .stage1)
+            ?fn (ptr: @TypeOf(context), data: *ChunkProcessData) Image.ReadError!PixelFormat
+        else
+            ?*const fn (ptr: @TypeOf(context), data: *ChunkProcessData) Image.ReadError!PixelFormat,
+        comptime paletteProcessorFn: if (@import("builtin").zig_backend == .stage1)
+            ?fn (ptr: @TypeOf(context), data: *PaletteProcessData) Image.ReadError!void
+        else
+            ?*const fn (ptr: @TypeOf(context), data: *PaletteProcessData) Image.ReadError!void,
+        comptime dataRowProcessorFn: if (@import("builtin").zig_backend == .stage1)
+            ?fn (ptr: @TypeOf(context), data: *RowProcessData) Image.ReadError!PixelFormat
+        else
+            ?*const fn (ptr: @TypeOf(context), data: *RowProcessData) Image.ReadError!PixelFormat,
     ) Self {
         const Ptr = @TypeOf(context);
         const ptr_info = @typeInfo(Ptr);
