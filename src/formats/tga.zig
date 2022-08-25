@@ -21,39 +21,39 @@ pub const TGAImageType = packed struct {
     pad1: u4 = 0,
 };
 
-pub const TGAColorMapSpec = packed struct {
-    first_entry_index: u16 = 0,
-    color_map_length: u16 = 0,
+pub const TGAColorMapSpec = extern struct {
+    first_entry_index: u16 align(1) = 0,
+    color_map_length: u16 align(1) = 0,
     color_map_bit_depth: u8 = 0,
 };
 
-pub const TGAImageSpec = packed struct {
-    origin_x: u16 = 0,
-    origin_y: u16 = 0,
-    width: u16 = 0,
-    height: u16 = 0,
+pub const TGAImageSpec = extern struct {
+    origin_x: u16 align(1) = 0,
+    origin_y: u16 align(1) = 0,
+    width: u16 align(1) = 0,
+    height: u16 align(1) = 0,
     bit_per_pixel: u8 = 0,
     descriptor: u8 = 0,
 };
 
-pub const TGAHeader = packed struct {
+pub const TGAHeader = extern struct {
     id_length: u8 = 0,
     has_color_map: u8 = 0,
     image_type: TGAImageType = .{},
 
     // BEGIN: TGAColorMapSpec
-    first_entry_index: u16 = 0,
-    color_map_length: u16 = 0,
+    first_entry_index: u16 align(1) = 0,
+    color_map_length: u16 align(1) = 0,
     color_map_bit_depth: u8 = 0,
     // END TGAColorMapSpec
     // TODO: Use TGAColorMapSpec once all packed struct bugs are fixed
     // color_map_spec: TGAColorMapSpec,
 
     // BEGIN TGAImageSpec
-    origin_x: u16 = 0,
-    origin_y: u16 = 0,
-    width: u16 = 0,
-    height: u16 = 0,
+    origin_x: u16 align(1) = 0,
+    origin_y: u16 align(1) = 0,
+    width: u16 align(1) = 0,
+    height: u16 align(1) = 0,
     bit_per_pixel: u8 = 0,
     descriptor: u8 = 0,
     // END TGAImageSpec
@@ -69,8 +69,8 @@ pub const TGAAttributeType = enum(u8) {
     premultipled_alpha = 4,
 };
 
-pub const TGAExtension = packed struct {
-    extension_size: u16 = 0,
+pub const TGAExtension = extern struct {
+    extension_size: u16 align(1) = 0,
     author_name: [41]u8 = undefined,
     author_comment: [324]u8 = undefined,
     timestamp: [12]u8 = undefined,
@@ -81,13 +81,13 @@ pub const TGAExtension = packed struct {
     key_color: [4]u8 = undefined,
     pixel_aspect: [4]u8 = undefined,
     gamma_value: [4]u8 = undefined,
-    color_correction_offset: u32 = 0,
-    postage_stamp_offset: u32 = 0,
-    scanline_offset: u32 = 0,
+    color_correction_offset: u32 align(1) = 0,
+    postage_stamp_offset: u32 align(1) = 0,
+    scanline_offset: u32 align(1) = 0,
     attributes: TGAAttributeType = .no_alpha,
 };
 
-pub const TGAFooter = packed struct {
+pub const TGAFooter = extern struct {
     extension_offset: u32,
     dev_area_offset: u32,
     signature: [16]u8,
@@ -241,11 +241,16 @@ pub const TGA = struct {
         return Image.Format.tga;
     }
 
+    noinline fn launder(x: usize) usize {
+        // Hacky workaround for https://github.com/ziglang/zig/issues/12626
+        return x;
+    }
+
     pub fn formatDetect(stream: *Image.Stream) ImageReadError!bool {
         const end_pos = try stream.getEndPos();
 
-        if (@sizeOf(TGAFooter) < end_pos) {
-            const footer_position = end_pos - @sizeOf(TGAFooter);
+        if (launder(@sizeOf(TGAFooter)) < end_pos) {
+            const footer_position = end_pos - launder(@sizeOf(TGAFooter));
 
             try stream.seekTo(footer_position);
             const footer: TGAFooter = try utils.readStructLittle(stream.reader(), TGAFooter);
@@ -318,7 +323,7 @@ pub const TGA = struct {
         // Read footage
         const end_pos = try stream.getEndPos();
 
-        if (@sizeOf(TGAFooter) > end_pos) {
+        if (launder(@sizeOf(TGAFooter)) > end_pos) {
             return ImageReadError.InvalidData;
         }
 

@@ -315,7 +315,7 @@ fn readAllData(
     var prev_row = tmp_buffer[0..virtual_line_bytes];
     var current_row = tmp_buffer[virtual_line_bytes .. 2 * virtual_line_bytes];
     const pixel_stride = @intCast(u8, result_line_bytes / width);
-    std.debug.assert(pixel_stride == dest_format.pixelStride());
+    // std.debug.assert(pixel_stride == dest_format.pixelStride());
 
     var process_row_data = RowProcessData{
         .dest_row = undefined,
@@ -580,9 +580,9 @@ pub const ReaderProcessor = struct {
     vtable: *const VTable,
 
     const VTable = struct {
-        chunk_processor: ?fn (context: *anyopaque, data: *ChunkProcessData) Image.ReadError!PixelFormat,
-        palette_processor: ?fn (context: *anyopaque, data: *PaletteProcessData) Image.ReadError!void,
-        data_row_processor: ?fn (context: *anyopaque, data: *RowProcessData) Image.ReadError!PixelFormat,
+        chunk_processor: ?std.meta.FnPtr(fn (context: *anyopaque, data: *ChunkProcessData) Image.ReadError!PixelFormat),
+        palette_processor: ?std.meta.FnPtr(fn (context: *anyopaque, data: *PaletteProcessData) Image.ReadError!void),
+        data_row_processor: ?std.meta.FnPtr(fn (context: *anyopaque, data: *RowProcessData) Image.ReadError!PixelFormat),
     };
 
     const Self = @This();
