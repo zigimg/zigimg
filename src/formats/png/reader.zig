@@ -315,7 +315,7 @@ fn readAllData(
     var prev_row = tmp_buffer[0..virtual_line_bytes];
     var current_row = tmp_buffer[virtual_line_bytes .. 2 * virtual_line_bytes];
     const pixel_stride = @intCast(u8, result_line_bytes / width);
-    std.debug.assert(pixel_stride == dest_format.pixelStride());
+    // std.debug.assert(pixel_stride == dest_format.pixelStride());
 
     var process_row_data = RowProcessData{
         .dest_row = undefined,
@@ -532,7 +532,7 @@ fn spreadRowData(
                 var c: u32 = 0;
                 while (c < channel_count) : (c += 1) {
                     // This is a comptime if so it is not executed in every loop
-                    dest_row16[dest_index + c] = if (byteswap) @byteSwap(u16, current_row16[source_index + c]) else current_row16[source_index + c];
+                    dest_row16[dest_index + c] = if (byteswap) @byteSwap(current_row16[source_index + c]) else current_row16[source_index + c];
                 }
                 source_index += channel_count;
             }
@@ -580,9 +580,9 @@ pub const ReaderProcessor = struct {
     vtable: *const VTable,
 
     const VTable = struct {
-        chunk_processor: ?fn (context: *anyopaque, data: *ChunkProcessData) Image.ReadError!PixelFormat,
-        palette_processor: ?fn (context: *anyopaque, data: *PaletteProcessData) Image.ReadError!void,
-        data_row_processor: ?fn (context: *anyopaque, data: *RowProcessData) Image.ReadError!PixelFormat,
+        chunk_processor: ?std.meta.FnPtr(fn (context: *anyopaque, data: *ChunkProcessData) Image.ReadError!PixelFormat),
+        palette_processor: ?std.meta.FnPtr(fn (context: *anyopaque, data: *PaletteProcessData) Image.ReadError!void),
+        data_row_processor: ?std.meta.FnPtr(fn (context: *anyopaque, data: *RowProcessData) Image.ReadError!PixelFormat),
     };
 
     const Self = @This();

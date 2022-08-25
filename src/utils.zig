@@ -61,7 +61,7 @@ fn swapFieldBytes(data: anytype) StructReadError!void {
         switch (@typeInfo(entry.field_type)) {
             .Int => |int| {
                 if (int.bits > 8) {
-                    @field(data, entry.name) = @byteSwap(entry.field_type, @field(data, entry.name));
+                    @field(data, entry.name) = @byteSwap(@field(data, entry.name));
                 }
             },
             .Struct => {
@@ -70,7 +70,7 @@ fn swapFieldBytes(data: anytype) StructReadError!void {
             .Enum => {
                 const value = @enumToInt(@field(data, entry.name));
                 if (@bitSizeOf(@TypeOf(value)) > 8) {
-                    @field(data, entry.name) = try std.meta.intToEnum(entry.field_type, @byteSwap(@TypeOf(value), value));
+                    @field(data, entry.name) = try std.meta.intToEnum(entry.field_type, @byteSwap(value));
                 } else {
                     _ = std.meta.intToEnum(entry.field_type, value) catch return StructReadError.InvalidData;
                 }

@@ -70,14 +70,14 @@ pub const InterlaceMethod = enum(u8) {
 };
 
 /// The compression methods supported by PNG
-pub const CompressionMethod = enum(u8) { deflate = 0 };
+pub const CompressionMethod = enum(u8) { deflate = 0, _ };
 
 /// The filter methods supported by PNG
-pub const FilterMethod = enum(u8) { adaptive = 0 };
+pub const FilterMethod = enum(u8) { adaptive = 0, _ };
 
-pub const ChunkHeader = packed struct {
-    length: u32,
-    type: u32,
+pub const ChunkHeader = extern struct {
+    length: u32 align(1),
+    type: u32 align(1),
 
     const Self = @This();
 
@@ -86,9 +86,9 @@ pub const ChunkHeader = packed struct {
     }
 };
 
-pub const HeaderData = packed struct {
-    width: u32,
-    height: u32,
+pub const HeaderData = extern struct {
+    width: u32 align(1),
+    height: u32 align(1),
     bit_depth: u8,
     color_type: ColorType,
     compression_method: CompressionMethod,

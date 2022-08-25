@@ -15,11 +15,11 @@ const utils = @import("../utils.zig");
 
 const BitmapMagicHeader = [_]u8{ 'B', 'M' };
 
-pub const BitmapFileHeader = packed struct {
+pub const BitmapFileHeader = extern struct {
     magic_header: [2]u8,
-    size: u32,
-    reserved: u32,
-    pixel_offset: u32,
+    size: u32 align(1),
+    reserved: u32 align(1),
+    pixel_offset: u32 align(1),
 };
 
 pub const CompressionMethod = enum(u32) {
@@ -50,19 +50,19 @@ pub const BitmapIntent = enum(u32) {
     absolute_colorimetric = 8,
 };
 
-pub const CieXyz = packed struct {
+pub const CieXyz = extern struct {
     x: u32 = 0, // TODO: Use FXPT2DOT30
     y: u32 = 0,
     z: u32 = 0,
 };
 
-pub const CieXyzTriple = packed struct {
+pub const CieXyzTriple = extern struct {
     red: CieXyz = CieXyz{},
     green: CieXyz = CieXyz{},
     blue: CieXyz = CieXyz{},
 };
 
-pub const BitmapInfoHeaderWindows31 = packed struct {
+pub const BitmapInfoHeaderWindows31 = extern struct {
     header_size: u32 = 0,
     width: i32 = 0,
     height: i32 = 0,
@@ -78,7 +78,7 @@ pub const BitmapInfoHeaderWindows31 = packed struct {
     pub const HeaderSize = @sizeOf(@This());
 };
 
-pub const BitmapInfoHeaderV4 = packed struct {
+pub const BitmapInfoHeaderV4 = extern struct {
     header_size: u32 = 0,
     width: i32 = 0,
     height: i32 = 0,
@@ -103,7 +103,7 @@ pub const BitmapInfoHeaderV4 = packed struct {
     pub const HeaderSize = @sizeOf(@This());
 };
 
-pub const BitmapInfoHeaderV5 = packed struct {
+pub const BitmapInfoHeaderV5 = extern struct {
     header_size: u32 = 0,
     width: i32 = 0,
     height: i32 = 0,

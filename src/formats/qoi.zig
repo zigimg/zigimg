@@ -79,7 +79,7 @@ pub const Format = enum(u8) {
     rgba = 4,
 };
 
-pub const Header = packed struct {
+pub const Header = extern struct {
     const size = 14;
     const correct_magic = [4]u8{ 'q', 'o', 'i', 'f' };
 
