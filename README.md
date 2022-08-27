@@ -8,6 +8,10 @@ This is a work in progress library to create, process, read and write different 
 
 This project assume current Zig master (0.10.0+).
 
+### Stage 2 (Self-Hosted compiler support)
+
+Use branch `stage2_compat` if you want stage2 support.
+
 ### Use zigimg in your project
 
 How to add to your project:

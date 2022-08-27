@@ -532,7 +532,7 @@ fn spreadRowData(
                 var c: u32 = 0;
                 while (c < channel_count) : (c += 1) {
                     // This is a comptime if so it is not executed in every loop
-                    dest_row16[dest_index + c] = if (byteswap) @byteSwap(u16, current_row16[source_index + c]) else current_row16[source_index + c];
+                    dest_row16[dest_index + c] = if (byteswap) @byteSwap(current_row16[source_index + c]) else current_row16[source_index + c];
                 }
                 source_index += channel_count;
             }
