@@ -24,7 +24,7 @@ pub const TGAImageType = packed struct {
 pub const TGAColorMapSpec = extern struct {
     first_entry_index: u16 align(1) = 0,
     color_map_length: u16 align(1) = 0,
-    color_map_bit_depth: u8 = 0,
+    color_map_bit_depth: u8 align(1) = 0,
 };
 
 pub const TGAImageSpec = extern struct {
@@ -32,19 +32,19 @@ pub const TGAImageSpec = extern struct {
     origin_y: u16 align(1) = 0,
     width: u16 align(1) = 0,
     height: u16 align(1) = 0,
-    bit_per_pixel: u8 = 0,
-    descriptor: u8 = 0,
+    bit_per_pixel: u8 align(1) = 0,
+    descriptor: u8 align(1) = 0,
 };
 
 pub const TGAHeader = extern struct {
-    id_length: u8 = 0,
-    has_color_map: u8 = 0,
-    image_type: TGAImageType = .{},
+    id_length: u8 align(1) = 0,
+    has_color_map: u8 align(1) = 0,
+    image_type: TGAImageType align(1) = .{},
 
     // BEGIN: TGAColorMapSpec
     first_entry_index: u16 align(1) = 0,
     color_map_length: u16 align(1) = 0,
-    color_map_bit_depth: u8 = 0,
+    color_map_bit_depth: u8 align(1) = 0,
     // END TGAColorMapSpec
     // TODO: Use TGAColorMapSpec once all packed struct bugs are fixed
     // color_map_spec: TGAColorMapSpec,
@@ -54,8 +54,8 @@ pub const TGAHeader = extern struct {
     origin_y: u16 align(1) = 0,
     width: u16 align(1) = 0,
     height: u16 align(1) = 0,
-    bit_per_pixel: u8 = 0,
-    descriptor: u8 = 0,
+    bit_per_pixel: u8 align(1) = 0,
+    descriptor: u8 align(1) = 0,
     // END TGAImageSpec
     //TODO: Use TGAImageSpec once all packed struct bugs are fixed
     //image_spec: TGAImageSpec,
@@ -71,28 +71,28 @@ pub const TGAAttributeType = enum(u8) {
 
 pub const TGAExtension = extern struct {
     extension_size: u16 align(1) = 0,
-    author_name: [41]u8 = undefined,
-    author_comment: [324]u8 = undefined,
-    timestamp: [12]u8 = undefined,
-    job_id: [41]u8 = undefined,
-    job_time: [6]u8 = undefined,
-    software_id: [41]u8 = undefined,
-    software_version: [3]u8 = undefined,
-    key_color: [4]u8 = undefined,
-    pixel_aspect: [4]u8 = undefined,
-    gamma_value: [4]u8 = undefined,
+    author_name: [41]u8 align(1) = undefined,
+    author_comment: [324]u8 align(1) = undefined,
+    timestamp: [12]u8 align(1) = undefined,
+    job_id: [41]u8 align(1) = undefined,
+    job_time: [6]u8 align(1) = undefined,
+    software_id: [41]u8 align(1) = undefined,
+    software_version: [3]u8 align(1) = undefined,
+    key_color: [4]u8 align(1) = undefined,
+    pixel_aspect: [4]u8 align(1) = undefined,
+    gamma_value: [4]u8 align(1) = undefined,
     color_correction_offset: u32 align(1) = 0,
     postage_stamp_offset: u32 align(1) = 0,
     scanline_offset: u32 align(1) = 0,
-    attributes: TGAAttributeType = .no_alpha,
+    attributes: TGAAttributeType align(1) = .no_alpha,
 };
 
 pub const TGAFooter = extern struct {
-    extension_offset: u32,
-    dev_area_offset: u32,
-    signature: [16]u8,
-    dot: u8,
-    null_value: u8,
+    extension_offset: u32 align(1),
+    dev_area_offset: u32 align(1),
+    signature: [16]u8 align(1),
+    dot: u8 align(1),
+    null_value: u8 align(1),
 };
 
 pub const TGASignature = "TRUEVISION-XFILE";
