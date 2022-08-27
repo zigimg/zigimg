@@ -347,6 +347,10 @@ test "Should read a 24-bit bitmap" {
 }
 
 test "Test Colorf32 iterator" {
+    if (@import("builtin").zig_backend != .stage1) {
+        return error.SkipZigTest;
+    }
+
     var test_image = try helpers.testImageFromFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
     defer test_image.deinit();
 
