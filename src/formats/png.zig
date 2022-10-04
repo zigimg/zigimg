@@ -4,7 +4,11 @@
 const std = @import("std");
 const types = @import("png/types.zig");
 const reader = @import("png/reader.zig");
+const crc = @import("png/crc.zig");
+const chunk_writer = @import("png/chunk_writer.zig");
+const filter = @import("png/filtering.zig");
 const color = @import("../color.zig");
+const ZlibCompressor = @import("png/zlib_compressor.zig").ZlibCompressor;
 const Image = @import("../Image.zig");
 const FormatInterface = @import("../format_interface.zig").FormatInterface;
 const ImageReadError = Image.ReadError;
@@ -36,6 +40,13 @@ pub const required_temp_bytes = reader.required_temp_bytes;
 pub const PNG = struct {
     const Self = @This();
 
+    pub const EncoderOptions = struct {
+        // For progressive rendering of big images
+        interlaced: bool = false,
+        // Changing this can affect performance positively or negatively 
+        filter_choice: filter.FilterChoice = .Heuristic,
+    };
+
     pub fn formatInterface() FormatInterface {
         return FormatInterface{
             .format = format,
@@ -63,9 +74,80 @@ pub const PNG = struct {
     }
 
     pub fn writeImage(allocator: Allocator, write_stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) ImageWriteError!void {
-        _ = allocator;
-        _ = write_stream;
-        _ = image;
-        _ = encoder_options;
+        const options = encoder_options.png;
+        
+        var writer = write_stream.writer();
+
+        try writeSignature(writer);
+        try writeHeader(writer, image, options);
+        try writeData(allocator, writer, image, options);
+        try writeTrailer(writer);
+    }
+
+    fn writeSignature(writer: anytype) !void {
+        try writer.writeAll("\x89\x50\x4E\x47\x0D\x0A\x1A\x0A");
+    }
+
+    // IHDR
+    fn writeHeader(writer: anytype, image: Image, encoder_options: EncoderOptions) ImageWriteError!void {
+        // TODO: interlaced png files
+        if (encoder_options.interlaced)
+            return ImageWriteError.Unsupported;
+
+        // Bits per sample byte
+        const bps: u8 = switch (image.pixels) {
+            // TODO: think about other bit depths than 8bps for png
+            .rgb24,
+            .rgba32,
+            .grayscale8,
+            .grayscale8Alpha,
+            .indexed8 => 8,
+            else => return ImageWriteError.Unsupported,
+        };
+        // Color type byte
+        const color_type: u8 = switch (image.pixels) {
+            .rgb24 => 3,
+            .rgba32 => 6,
+            .grayscale8 => 0,
+            .grayscale8Alpha =>  4,
+            .indexed8 => 3,
+            else => return ImageWriteError.Unsupported,
+        };
+
+        var chunk = chunk_writer.chunkWriter(writer, "IHDR");
+        var chunk_wr = chunk.writer();
+
+        try chunk_wr.writeIntBig(u32, @truncate(u32, image.width));
+        try chunk_wr.writeIntBig(u32, @truncate(u32, image.height));
+        try chunk_wr.writeIntBig(u8, bps);
+        try chunk_wr.writeIntBig(u8, color_type);
+        try chunk_wr.writeIntBig(u8, 0); // default compression (only standard)
+        try chunk_wr.writeIntBig(u8, 0); // default filter (only standard)
+        try chunk_wr.writeIntBig(u8, @boolToInt(encoder_options.interlaced));
+
+        try chunk.flush();
+    }
+
+    // IDAT (multiple maybe)
+    fn writeData(allocator: Allocator, writer: anytype, image: Image, encoder_options: EncoderOptions) ImageWriteError!void {
+        // Note: there may be more than 1 chunk
+        // TODO: provide choice of how much it buffers (how much data per idat chunk)
+        var chunks = chunk_writer.chunkWriter(writer, "IDAT");
+        var chunk_wr = chunks.writer();
+
+        var zlib: ZlibCompressor(@TypeOf(chunk_wr)) = undefined;
+        try zlib.init(allocator, chunk_wr);
+
+        try zlib.begin();
+        try filter.filter(zlib.writer(), image, encoder_options.filter_choice);
+        try zlib.end();
+
+        try chunks.flush();
+    }
+
+    // IEND chunk
+    fn writeTrailer(writer: anytype) ImageWriteError!void {
+        var chunk = chunk_writer.chunkWriter(writer, "IEND");
+        try chunk.flush();
     }
 };
