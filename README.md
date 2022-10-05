@@ -45,7 +45,7 @@ zig build test
 | PBM           | ✔️            | ❌            |
 | PCX           | ✔️            | ❌            |
 | PGM           | ✔️ (Partial)  | ✔️ (Partial)  |
-| PNG           | ✔️            | ❌            |
+| PNG           | ✔️            | ✔️ (Partial)  |
 | PPM           | ✔️ (Partial)  | ❌            |
 | QOI           | ✔️            | ✔️            |
 | TGA           | ✔️            | ❌            |
