@@ -21,18 +21,20 @@ pub const FilterChoice = union(FilterChoiceStrategies) {
     Specified: FilterType,
 };
 
-pub fn filter(writer: anytype, image: Image, filter_choice: FilterChoice) !void {
+pub fn filter(allocator: std.mem.Allocator, writer: anytype, image: Image, filter_choice: FilterChoice) Image.WriteError!void {
+    _ = allocator; // May be needed later, eg if cloning pixels if required (for packing samples of < 8 bits)
+
     var scanline: []const u8 = undefined;
     var prev_scanline: ?[]const u8 = null;
 
-    const pixel_len: usize = switch (image.pixels) {
-        .rgb24 => 3,
-        .rgba32 => 4,
-        .grayscale8 => 1,
-        .grayscale8Alpha =>  2,
-        .indexed8 => 1,
-        else => @panic("PNG filtering for this format unimplemented")
-    };
+    const format = image.pixelFormat();
+
+    const bps = format.bitsPerChannel();
+
+    if (bps < 8)
+        return Image.WriteError.Unsupported;
+
+    const pixel_len = format.pixelStride();
 
     const scanline_len = pixel_len * image.width;
     

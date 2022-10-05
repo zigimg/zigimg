@@ -80,6 +80,10 @@ pub const PNG = struct {
 
         try writeSignature(writer);
         try writeHeader(writer, image, options);
+        if (image.pixelFormat().isIndex()) {
+            try writePalette(writer, image);
+            try writeTransparencyInfo(writer, image); // TODO: pixel format where there is no transparency
+        }
         try writeData(allocator, writer, image, options);
         try writeTrailer(writer);
     }
@@ -94,25 +98,33 @@ pub const PNG = struct {
         if (encoder_options.interlaced)
             return ImageWriteError.Unsupported;
 
-        // Bits per sample byte
-        const bps: u8 = switch (image.pixels) {
-            // TODO: think about other bit depths than 8bps for png
-            .rgb24,
-            .rgba32,
-            .grayscale8,
-            .grayscale8Alpha,
-            .indexed8 => 8,
-            else => return ImageWriteError.Unsupported,
-        };
         // Color type byte
         const color_type: u8 = switch (image.pixels) {
-            .rgb24 => 3,
-            .rgba32 => 6,
-            .grayscale8 => 0,
-            .grayscale8Alpha =>  4,
+            .rgb24,
+            .rgb48 => 2,
+
+            .rgba32,
+            .rgba64 => 6,
+
+            .grayscale1,
+            .grayscale2,
+            .grayscale4,
+            .grayscale8,
+            .grayscale16 => 0,
+
+            .grayscale8Alpha,
+            .grayscale16Alpha =>  4,
+
+            .indexed1,
+            .indexed2,
+            .indexed4,
             .indexed8 => 3,
+            // TODO: indexed without alpha
             else => return ImageWriteError.Unsupported,
         };
+
+        // Bits per sample layer
+        const bps: u8 = image.pixelFormat().bitsPerChannel();
 
         var chunk = chunk_writer.chunkWriter(writer, "IHDR");
         var chunk_wr = chunk.writer();
@@ -139,7 +151,7 @@ pub const PNG = struct {
         try zlib.init(allocator, chunk_wr);
 
         try zlib.begin();
-        try filter.filter(zlib.writer(), image, encoder_options.filter_choice);
+        try filter.filter(allocator, zlib.writer(), image, encoder_options.filter_choice);
         try zlib.end();
 
         try chunks.flush();
@@ -148,6 +160,51 @@ pub const PNG = struct {
     // IEND chunk
     fn writeTrailer(writer: anytype) ImageWriteError!void {
         var chunk = chunk_writer.chunkWriter(writer, "IEND");
+        try chunk.flush();
+    }
+
+    // PLTE (if indexed storage)
+    fn writePalette(writer: anytype, image: Image) ImageWriteError!void {
+        var chunk = chunk_writer.chunkWriter(writer, "PLTE");
+        var chunk_wr = chunk.writer();
+
+        const palette = switch (image.pixels) {
+            .indexed1 => |d| d.palette,
+            .indexed2 => |d| d.palette,
+            .indexed4 => |d| d.palette,
+            .indexed8 => |d| d.palette,
+            .indexed16 => return ImageWriteError.Unsupported,
+            else => unreachable,
+        };
+
+        for (palette) |col| {
+            try chunk_wr.writeByte(col.r);
+            try chunk_wr.writeByte(col.g);
+            try chunk_wr.writeByte(col.b);
+        }
+
+        try chunk.flush();
+    }
+
+    // tRNS (if indexed storage with transparency (there may be other uses later))
+    fn writeTransparencyInfo(writer: anytype, image: Image) ImageWriteError!void {
+        var chunk = chunk_writer.chunkWriter(writer, "tRNS");
+        var chunk_wr = chunk.writer();
+
+        const palette = switch (image.pixels) {
+            .indexed1 => |d| d.palette,
+            .indexed2 => |d| d.palette,
+            .indexed4 => |d| d.palette,
+            .indexed8 => |d| d.palette,
+            .indexed16 => return ImageWriteError.Unsupported,
+            // TODO: png support transparency info for other formats?
+            else => unreachable,
+        };
+
+        for (palette) |col| {
+            try chunk_wr.writeByte(col.a);
+        }
+
         try chunk.flush();
     }
 };
