@@ -1,4 +1,6 @@
 const std = @import("std");
+const color = @import("../../color.zig");
+const PixelFormat = @import("../../pixel_format.zig").PixelFormat;
 const Image = @import("../../Image.zig");
 
 pub const FilterType = enum(u8) {
@@ -21,22 +23,22 @@ pub const FilterChoice = union(FilterChoiceStrategies) {
     Specified: FilterType,
 };
 
-pub fn filter(writer: anytype, image: Image, filter_choice: FilterChoice) Image.WriteError!void {
+pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: FilterChoice, width: u32, height: u32) Image.WriteError!void {
     var scanline: []const u8 = undefined;
     var previous_scanline: ?[]const u8 = null;
 
-    const format = image.pixelFormat();
+    const format: PixelFormat = pixels;
 
     if (format.bitsPerChannel() < 8)
         return Image.WriteError.Unsupported;
 
     const pixel_len = format.pixelStride();
 
-    const scanline_len = pixel_len * image.width;
+    const scanline_len = pixel_len * width;
     
     var y: usize = 0;
-    while (y < image.height) : (y += 1) {
-        scanline = image.pixels.asBytes()[(y * scanline_len)..((y + 1) * scanline_len)];
+    while (y < height) : (y += 1) {
+        scanline = pixels.asBytes()[(y * scanline_len)..((y + 1) * scanline_len)];
 
         const filter_type: FilterType = switch (filter_choice) {
             .TryAll => @panic("Unimplemented"),

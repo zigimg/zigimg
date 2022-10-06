@@ -7,6 +7,7 @@ const reader = @import("png/reader.zig");
 const chunk_writer = @import("png/chunk_writer.zig");
 const filter = @import("png/filtering.zig");
 const color = @import("../color.zig");
+const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const ZlibCompressor = @import("png/zlib_compressor.zig").ZlibCompressor;
 const Image = @import("../Image.zig");
 const FormatInterface = @import("../format_interface.zig").FormatInterface;
@@ -36,7 +37,20 @@ pub const DefaultProcessors = reader.DefaultProcessors;
 pub const DefaultOptions = reader.DefaultOptions;
 pub const required_temp_bytes = reader.required_temp_bytes;
 
+pub const Header = struct {
+    width: u32,
+    height: u32,
+    bits_per_sample: u5, // goes up to 16, u5 is enough
+    color_type: types.ColorType,
+    compression_method: types.CompressionMethod,
+    filter_method: types.FilterMethod,
+    interlace_method: types.InterlaceMethod,
+};
+
 pub const PNG = struct {
+    header: Header = undefined,
+    filter_choice: filter.FilterChoice,
+
     const Self = @This();
 
     pub const EncoderOptions = struct {
@@ -74,17 +88,72 @@ pub const PNG = struct {
 
     pub fn writeImage(allocator: Allocator, write_stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) ImageWriteError!void {
         const options = encoder_options.png;
+
+        try ensureWritable(image);
         
+        const header = Header{
+            .width = @truncate(u32, image.width),
+            .height = @truncate(u32, image.height),
+            .bits_per_sample = @truncate(u5, image.pixelFormat().bitsPerChannel()),
+            .color_type = try types.ColorType.fromPixelFormat(image.pixelFormat()),
+            .compression_method = .deflate,
+            .filter_method = .adaptive,
+            .interlace_method = if (options.interlaced) .adam7 else .none,
+        };
+
+        var to_write = PNG{ .header = header, .filter_choice = options.filter_choice };
+
+        try to_write.write(allocator, write_stream, image.pixels);
+    }
+
+    pub fn write(self: Self, allocator: Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage) ImageWriteError!void {
+        if (self.header.interlace_method != .none)
+            return ImageWriteError.Unsupported;
+        if (self.header.compression_method != .deflate)
+            return ImageWriteError.Unsupported;
+        if (self.header.filter_method != .adaptive)
+            return ImageWriteError.Unsupported;
+
         var writer = write_stream.writer();
 
         try writeSignature(writer);
-        try writeHeader(writer, image, options);
-        if (image.pixelFormat().isIndex()) {
-            try writePalette(writer, image);
-            try writeTransparencyInfo(writer, image); // TODO: pixel format where there is no transparency
+        try writeHeader(self, writer);
+        if (PixelFormat.isIndex(pixels)) {
+            try writePalette(writer, pixels);
+            try writeTransparencyInfo(writer, pixels); // TODO: pixel format where there is no transparency
         }
-        try writeData(allocator, writer, image, options);
+        try writeData(self, allocator, writer, pixels);
         try writeTrailer(writer);
+    }
+
+    pub fn ensureWritable(image: Image) !void {
+        if (image.width > std.math.maxInt(u32))
+            return error.Unsupported;
+        if (image.height > std.math.maxInt(u32))
+            return error.Unsupported;
+
+        switch (image.pixels) {
+            .rgb24,
+            .rgb48,
+            .rgba32,
+            .rgba64,
+            .grayscale8,
+            .grayscale16,
+            .grayscale8Alpha,
+            .grayscale16Alpha,
+            .indexed8 => {},
+
+            .grayscale1,
+            .grayscale2,
+            .grayscale4,
+            .indexed1,
+            .indexed2,
+            .indexed4 => return error.Unsupported, // TODO
+
+            // Should bgr be supported with swapping operations during the filtering?
+
+            else => return error.Unsupported,
+        }
     }
 
     fn writeSignature(writer: anytype) !void {
@@ -92,33 +161,25 @@ pub const PNG = struct {
     }
 
     // IHDR
-    fn writeHeader(writer: anytype, image: Image, encoder_options: EncoderOptions) ImageWriteError!void {
-        // TODO: interlaced png files
-        if (encoder_options.interlaced)
-            return ImageWriteError.Unsupported;
-
-        // Color type byte
-        const color_type = try types.ColorType.fromPixelFormat(image.pixelFormat());
-
-        // Bits per sample layer
-        const bits_per_sample: u8 = image.pixelFormat().bitsPerChannel();
+    fn writeHeader(self: Self, writer: anytype) ImageWriteError!void {
+        const header = self.header;
 
         var chunk = chunk_writer.chunkWriter(writer, "IHDR");
         var chunk_wr = chunk.writer();
 
-        try chunk_wr.writeIntBig(u32, @truncate(u32, image.width));
-        try chunk_wr.writeIntBig(u32, @truncate(u32, image.height));
-        try chunk_wr.writeIntBig(u8, bits_per_sample);
-        try chunk_wr.writeIntBig(u8, @enumToInt(color_type));
-        try chunk_wr.writeIntBig(u8, 0); // default compression (only standard)
-        try chunk_wr.writeIntBig(u8, 0); // default filter (only standard)
-        try chunk_wr.writeIntBig(u8, @boolToInt(encoder_options.interlaced));
+        try chunk_wr.writeIntBig(u32, header.width);
+        try chunk_wr.writeIntBig(u32, header.height);
+        try chunk_wr.writeIntBig(u8, header.bits_per_sample);
+        try chunk_wr.writeIntBig(u8, @enumToInt(header.color_type));
+        try chunk_wr.writeIntBig(u8, @enumToInt(header.compression_method));
+        try chunk_wr.writeIntBig(u8, @enumToInt(header.filter_method));
+        try chunk_wr.writeIntBig(u8, @enumToInt(header.interlace_method));
 
         try chunk.flush();
     }
 
     // IDAT (multiple maybe)
-    fn writeData(allocator: Allocator, writer: anytype, image: Image, encoder_options: EncoderOptions) ImageWriteError!void {
+    fn writeData(self: Self, allocator: Allocator, writer: anytype, pixels: color.PixelStorage) ImageWriteError!void {
         // Note: there may be more than 1 chunk
         // TODO: provide choice of how much it buffers (how much data per idat chunk)
         var chunks = chunk_writer.chunkWriter(writer, "IDAT");
@@ -128,7 +189,7 @@ pub const PNG = struct {
         try zlib.init(allocator, chunk_wr);
 
         try zlib.begin();
-        try filter.filter(zlib.writer(), image, encoder_options.filter_choice);
+        try filter.filter(zlib.writer(), pixels, self.filter_choice, self.header.width, self.header.height);
         try zlib.end();
 
         try chunks.flush();
@@ -141,11 +202,11 @@ pub const PNG = struct {
     }
 
     // PLTE (if indexed storage)
-    fn writePalette(writer: anytype, image: Image) ImageWriteError!void {
+    fn writePalette(writer: anytype, pixels: color.PixelStorage) ImageWriteError!void {
         var chunk = chunk_writer.chunkWriter(writer, "PLTE");
         var chunk_wr = chunk.writer();
 
-        const palette = switch (image.pixels) {
+        const palette = switch (pixels) {
             .indexed1 => |d| d.palette,
             .indexed2 => |d| d.palette,
             .indexed4 => |d| d.palette,
@@ -164,11 +225,11 @@ pub const PNG = struct {
     }
 
     // tRNS (if indexed storage with transparency (there may be other uses later))
-    fn writeTransparencyInfo(writer: anytype, image: Image) ImageWriteError!void {
+    fn writeTransparencyInfo(writer: anytype, pixels: color.PixelStorage) ImageWriteError!void {
         var chunk = chunk_writer.chunkWriter(writer, "tRNS");
         var chunk_wr = chunk.writer();
 
-        const palette = switch (image.pixels) {
+        const palette = switch (pixels) {
             .indexed1 => |d| d.palette,
             .indexed2 => |d| d.palette,
             .indexed4 => |d| d.palette,
