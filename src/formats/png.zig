@@ -4,7 +4,6 @@
 const std = @import("std");
 const types = @import("png/types.zig");
 const reader = @import("png/reader.zig");
-const crc = @import("png/crc.zig");
 const chunk_writer = @import("png/chunk_writer.zig");
 const filter = @import("png/filtering.zig");
 const color = @import("../color.zig");

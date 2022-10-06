@@ -1,5 +1,4 @@
 const std = @import("std");
-const adler32 = @import("adler32.zig");
 const io = std.io;
 const defl = std.compress.deflate;
 
@@ -8,7 +7,7 @@ pub fn ZlibCompressor(comptime WriterType: type) type {
     return struct {
         raw_writer: WriterType,
         compressor: defl.Compressor(WriterType),
-        adler32_writer: adler32.Adler32Writer(defl.Compressor(WriterType).Writer),
+        adler: std.hash.Adler32,
         
         const Self = @This();
 
@@ -18,7 +17,7 @@ pub fn ZlibCompressor(comptime WriterType: type) type {
         pub fn init(self: *Self, alloc: std.mem.Allocator, stream: WriterType) !void {
             self.raw_writer = stream;
             self.compressor = try defl.compressor(alloc, self.raw_writer, .{});
-            self.adler32_writer = adler32.writer(self.compressor.writer());
+            self.adler = std.hash.Adler32.init();
         }
 
         /// Begins a zlib block with the header
@@ -39,11 +38,17 @@ pub fn ZlibCompressor(comptime WriterType: type) type {
             try wr.writeByte(compression_flags);
         }
 
-        const Writer = adler32.Adler32Writer(defl.Compressor(WriterType).Writer).Writer;
+        pub const Error = WriterType.Error;
+        pub const Writer = std.io.Writer(*Self, Error, write);
 
-        /// Gets a writer for the compressor
         pub fn writer(self: *Self) Writer {
-            return self.adler32_writer.writer();
+            return .{ .context = self };
+        }
+
+        pub fn write(self: *Self, bytes: []const u8) Error!usize {
+            const amount = try self.compressor.writer().write(bytes);
+            self.adler.update(bytes[0..amount]);
+            return amount;
         }
 
         /// Ends a zlib block with the checksum
@@ -52,44 +57,7 @@ pub fn ZlibCompressor(comptime WriterType: type) type {
             self.compressor.deinit();
             // Write the checksum
             var wr = self.raw_writer;
-            try wr.writeIntBig(u32, self.adler32_writer.adler);
+            try wr.writeIntBig(u32, self.adler.adler);
         }
     };
-}
-
-test "zlib compressor" {
-    var gpa: std.heap.GeneralPurposeAllocator(.{}) = .{};
-    const alloc = gpa.allocator();
-
-    {
-        var fifo = std.fifo.LinearFifo(u8, .Dynamic).init(alloc);
-        defer fifo.deinit();
-
-        var comp: ZlibCompressor(@TypeOf(fifo.writer())) = undefined;
-        try comp.init(alloc, fifo.writer());
-
-        const content = "hey abcdef aaaaaa abcdef";
-
-        try comp.begin();
-
-        var adler32_writer = adler32.writer(comp.writer());
-        var adl_wr = adler32_writer.writer();
-        try adl_wr.writeAll(content);
-        try comp.end();
-
-        var decomp = try std.compress.zlib.zlibStream(alloc, fifo.reader());
-        defer decomp.deinit();
-
-        var out: [512]u8 = undefined;
-
-        const size = try decomp.read(&out);
-
-        const checksum = try fifo.reader().readIntBig(u32);
-
-        try std.testing.expectEqual(adler32_writer.adler, checksum);
-        try std.testing.expectEqualSlices(u8, content, out[0..size]);
-    }
-
-    const leaks = gpa.deinit();
-    try std.testing.expect(!leaks);
 }
