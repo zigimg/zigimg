@@ -98,29 +98,7 @@ pub const PNG = struct {
             return ImageWriteError.Unsupported;
 
         // Color type byte
-        const color_type: u8 = switch (image.pixels) {
-            .rgb24,
-            .rgb48 => 2,
-
-            .rgba32,
-            .rgba64 => 6,
-
-            .grayscale1,
-            .grayscale2,
-            .grayscale4,
-            .grayscale8,
-            .grayscale16 => 0,
-
-            .grayscale8Alpha,
-            .grayscale16Alpha =>  4,
-
-            .indexed1,
-            .indexed2,
-            .indexed4,
-            .indexed8 => 3,
-            // TODO: indexed without alpha
-            else => return ImageWriteError.Unsupported,
-        };
+        const color_type = try types.ColorType.fromPixelFormat(image.pixelFormat());
 
         // Bits per sample layer
         const bits_per_sample: u8 = image.pixelFormat().bitsPerChannel();
@@ -131,7 +109,7 @@ pub const PNG = struct {
         try chunk_wr.writeIntBig(u32, @truncate(u32, image.width));
         try chunk_wr.writeIntBig(u32, @truncate(u32, image.height));
         try chunk_wr.writeIntBig(u8, bits_per_sample);
-        try chunk_wr.writeIntBig(u8, color_type);
+        try chunk_wr.writeIntBig(u8, @enumToInt(color_type));
         try chunk_wr.writeIntBig(u8, 0); // default compression (only standard)
         try chunk_wr.writeIntBig(u8, 0); // default filter (only standard)
         try chunk_wr.writeIntBig(u8, @boolToInt(encoder_options.interlaced));
