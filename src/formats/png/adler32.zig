@@ -18,17 +18,17 @@ pub fn Adler32Writer(comptime WriterType: type) type {
         }
 
         pub fn write(self: *Self, bytes: []const u8) Error!usize {
-            var s1 = self.adler & 0xffff;
-            var s2 = (self.adler >> 16) & 0xffff;
+            var adler_less_significant = self.adler & 0xffff;
+            var adler_most_significant = (self.adler >> 16) & 0xffff;
 
-            const amt = try self.raw_writer.write(bytes);
-            for (bytes[0..amt]) |b| {
-                s1 = (s1 + b) % 65521;
-                s2 = (s2 + s1) % 65521;
+            const count = try self.raw_writer.write(bytes);
+            for (bytes[0..count]) |b| {
+                adler_less_significant = (adler_less_significant + b) % 65521;
+                adler_most_significant = (adler_most_significant + adler_less_significant) % 65521;
             }
-            self.adler = (s2 << 16) + s1; 
+            self.adler = (adler_most_significant << 16) + adler_less_significant; 
 
-            return amt;
+            return count;
         }
     };
 }

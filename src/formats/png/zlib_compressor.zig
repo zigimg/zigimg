@@ -24,10 +24,10 @@ pub fn ZlibCompressor(comptime WriterType: type) type {
         /// Begins a zlib block with the header
         pub fn begin(self: *Self) !void {
             // TODO: customize
-            const cmf = 0x78; // 8 = deflate, 7 = log(window size (see std.compress.deflate)) - 8
-            const flg = blk: {
+            const compression_method = 0x78; // 8 = deflate, 7 = log(window size (see std.compress.deflate)) - 8
+            const compression_flags = blk: {
                 var ret: u8 = 0b10000000; // 11 = max compression
-                const rem: u8 = @truncate(u8, ((@intCast(usize, cmf) << 8) + ret) % 31);
+                const rem: u8 = @truncate(u8, ((@intCast(usize, compression_method) << 8) + ret) % 31);
                 ret += 31 - @truncate(u8, rem);
                 break :blk ret;
             };
@@ -35,8 +35,8 @@ pub fn ZlibCompressor(comptime WriterType: type) type {
             //std.debug.assert(((@intCast(usize, cmf) << 8) + flg) % 31 == 0);
             // write the header
             var wr = self.raw_writer;
-            try wr.writeByte(cmf);
-            try wr.writeByte(flg);
+            try wr.writeByte(compression_method);
+            try wr.writeByte(compression_flags);
         }
 
         const Writer = adler32.Adler32Writer(defl.Compressor(WriterType).Writer).Writer;

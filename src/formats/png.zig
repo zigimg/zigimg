@@ -89,7 +89,7 @@ pub const PNG = struct {
     }
 
     fn writeSignature(writer: anytype) !void {
-        try writer.writeAll("\x89\x50\x4E\x47\x0D\x0A\x1A\x0A");
+        try writer.writeAll(types.magic_header);
     }
 
     // IHDR
@@ -124,14 +124,14 @@ pub const PNG = struct {
         };
 
         // Bits per sample layer
-        const bps: u8 = image.pixelFormat().bitsPerChannel();
+        const bits_per_sample: u8 = image.pixelFormat().bitsPerChannel();
 
         var chunk = chunk_writer.chunkWriter(writer, "IHDR");
         var chunk_wr = chunk.writer();
 
         try chunk_wr.writeIntBig(u32, @truncate(u32, image.width));
         try chunk_wr.writeIntBig(u32, @truncate(u32, image.height));
-        try chunk_wr.writeIntBig(u8, bps);
+        try chunk_wr.writeIntBig(u8, bits_per_sample);
         try chunk_wr.writeIntBig(u8, color_type);
         try chunk_wr.writeIntBig(u8, 0); // default compression (only standard)
         try chunk_wr.writeIntBig(u8, 0); // default filter (only standard)
@@ -151,7 +151,7 @@ pub const PNG = struct {
         try zlib.init(allocator, chunk_wr);
 
         try zlib.begin();
-        try filter.filter(allocator, zlib.writer(), image, encoder_options.filter_choice);
+        try filter.filter(zlib.writer(), image, encoder_options.filter_choice);
         try zlib.end();
 
         try chunks.flush();

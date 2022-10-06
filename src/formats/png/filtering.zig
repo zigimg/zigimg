@@ -21,17 +21,13 @@ pub const FilterChoice = union(FilterChoiceStrategies) {
     Specified: FilterType,
 };
 
-pub fn filter(allocator: std.mem.Allocator, writer: anytype, image: Image, filter_choice: FilterChoice) Image.WriteError!void {
-    _ = allocator; // May be needed later, eg if cloning pixels if required (for packing samples of < 8 bits)
-
+pub fn filter(writer: anytype, image: Image, filter_choice: FilterChoice) Image.WriteError!void {
     var scanline: []const u8 = undefined;
-    var prev_scanline: ?[]const u8 = null;
+    var previous_scanline: ?[]const u8 = null;
 
     const format = image.pixelFormat();
 
-    const bps = format.bitsPerChannel();
-
-    if (bps < 8)
+    if (format.bitsPerChannel() < 8)
         return Image.WriteError.Unsupported;
 
     const pixel_len = format.pixelStride();
@@ -44,7 +40,7 @@ pub fn filter(allocator: std.mem.Allocator, writer: anytype, image: Image, filte
 
         const filter_type: FilterType = switch (filter_choice) {
             .TryAll => @panic("Unimplemented"),
-            .Heuristic => filterChoiceHeuristic(scanline, prev_scanline),
+            .Heuristic => filterChoiceHeuristic(scanline, previous_scanline),
             .Specified => |f| f,
         };
 
@@ -66,7 +62,7 @@ pub fn filter(allocator: std.mem.Allocator, writer: anytype, image: Image, filte
             .Up => {
                 // Substract each pixel from the one above
                 for (scanline) |pix, i| {
-                    const above: u8 = if (prev_scanline) |b| b[i] else 0;
+                    const above: u8 = if (previous_scanline) |b| b[i] else 0;
                     const diff: u8 = pix -% above;
                     try writer.writeByte(diff);
                 }
@@ -74,7 +70,7 @@ pub fn filter(allocator: std.mem.Allocator, writer: anytype, image: Image, filte
             .Average => {
                 for (scanline) |pix, i| {
                     const prev: u8 = if (i >= pixel_len) scanline[i - pixel_len] else 0;
-                    const above: u8 = if (prev_scanline) |b| b[i] else 0;
+                    const above: u8 = if (previous_scanline) |b| b[i] else 0;
                     const avg: u8 = @truncate(u8, (@intCast(u9, prev) + above) / 2);
                     const diff = pix -% avg;
                     try writer.writeByte(diff);
@@ -83,15 +79,15 @@ pub fn filter(allocator: std.mem.Allocator, writer: anytype, image: Image, filte
             .Paeth => {
                 for (scanline) |pix, i| {
                     const prev: u8 = if (i >= pixel_len) scanline[i - pixel_len] else 0;
-                    const above: u8 = if (prev_scanline) |b| b[i] else 0;
-                    const prev_above = if (prev_scanline) |b| (if (i >= pixel_len) b[i - pixel_len] else 0) else 0;
+                    const above: u8 = if (previous_scanline) |b| b[i] else 0;
+                    const prev_above = if (previous_scanline) |b| (if (i >= pixel_len) b[i - pixel_len] else 0) else 0;
                     const diff = pix -% paeth(prev, above, prev_above);
                     try writer.writeByte(diff);
                 }
             }
         }
 
-        prev_scanline = scanline;
+        previous_scanline = scanline;
     }
 }
 
