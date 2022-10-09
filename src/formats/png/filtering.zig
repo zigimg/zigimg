@@ -23,7 +23,7 @@ pub const FilterChoice = union(FilterChoiceStrategies) {
     Specified: FilterType,
 };
 
-pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: FilterChoice, width: u32, height: u32) Image.WriteError!void {
+pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: FilterChoice, width: u31, height: u31) Image.WriteError!void {
     var scanline: []const u8 = undefined;
     var previous_scanline: ?[]const u8 = null;
 

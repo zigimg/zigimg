@@ -38,8 +38,8 @@ pub const DefaultOptions = reader.DefaultOptions;
 pub const required_temp_bytes = reader.required_temp_bytes;
 
 pub const Header = struct {
-    width: u32,
-    height: u32,
+    width: u31,
+    height: u31,
     bits_per_sample: u5, // goes up to 16, u5 is enough
     color_type: types.ColorType,
     compression_method: types.CompressionMethod,
@@ -92,8 +92,8 @@ pub const PNG = struct {
         try ensureWritable(image);
         
         const header = Header{
-            .width = @truncate(u32, image.width),
-            .height = @truncate(u32, image.height),
+            .width = @truncate(u31, image.width),
+            .height = @truncate(u31, image.height),
             .bits_per_sample = @truncate(u5, image.pixelFormat().bitsPerChannel()),
             .color_type = try types.ColorType.fromPixelFormat(image.pixelFormat()),
             .compression_method = .deflate,
@@ -127,9 +127,9 @@ pub const PNG = struct {
     }
 
     pub fn ensureWritable(image: Image) !void {
-        if (image.width > std.math.maxInt(u32))
+        if (image.width > std.math.maxInt(u31))
             return error.Unsupported;
-        if (image.height > std.math.maxInt(u32))
+        if (image.height > std.math.maxInt(u31))
             return error.Unsupported;
 
         switch (image.pixels) {
