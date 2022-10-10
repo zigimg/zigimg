@@ -42,7 +42,7 @@ pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: Filter
 
         const filter_type: FilterType = switch (filter_choice) {
             .TryAll => @panic("Unimplemented"),
-            .Heuristic => filterChoiceHeuristic(scanline, previous_scanline),
+            .Heuristic => filterChoiceHeuristic(scanline, previous_scanline, pixel_len),
             .Specified => |f| f,
         };
 
@@ -68,86 +68,36 @@ pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: Filter
     }
 }
 
-fn filterChoiceHeuristic(scanline: []const u8, scanline_above: ?[]const u8) FilterType {
+fn filterChoiceHeuristic(scanline: []const u8, previous_scanline: ?[]const u8, pixel_len: u8) FilterType {
     var max_score: usize = 0;
     var best: FilterType = .None;
     inline for ([_]FilterType{ .None, .Sub, .Up, .Average, .Paeth }) |filter_type| {
-        var prevb: u8 = 0;
+        var previous_byte: u8 = 0;
         var combo: usize = 0;
         var score: usize = 0;
-        switch (filter_type) {
-            .None => {
-                for (scanline) |b| {
-                    if (b == prevb) {
-                        combo += 1;
-                    } else {
-                        score += combo * combo;
-                        combo = 0;
-                        prevb = b;
-                    }
-                }
-            },
-            .Sub => {
-                for (scanline) |pix, i| {
-                    const prev: u8 = if (i >= 4) scanline[i - 4] else 0;
-                    const diff: u8 = pix -% prev;
 
-                    if (diff == prevb) {
-                        combo += 1;
-                    } else {
-                        score += combo * combo;
-                        combo = 0;
-                        prevb = diff;
-                    }
-                }
-            },
-            .Up => {
-                for (scanline) |pix, i| {
-                    const above: u8 = if (scanline_above) |b| b[i] else 0;
-                    const diff: u8 = pix -% above;
+        for (scanline) |sample, i| {
+            const previous: u8 = if (i >= pixel_len) scanline[i - pixel_len] else 0;
+            const above: u8 = if (previous_scanline) |b| b[i] else 0;
+            const above_previous = if (previous_scanline) |b| (if (i >= pixel_len) b[i - pixel_len] else 0) else 0;
 
-                    if (diff == prevb) {
-                        combo += 1;
-                    } else {
-                        score += combo * combo;
-                        combo = 0;
-                        prevb = diff;
-                    }
-                }
-            },
-            .Average => {
-                for (scanline) |pix, i| {
-                    const prev: u8 = if (i >= 4) scanline[i - 4] else 0;
-                    const above: u8 = if (scanline_above) |b| b[i] else 0;
-                    const avg: u8 = @truncate(u8, (@intCast(u9, prev) + above) / 2);
-                    const diff = pix -% avg;
+            const byte: u8 = switch (filter_type) {
+                .None => sample,
+                .Sub => sample -% previous,
+                .Up => sample -% above,
+                .Average => sample -% average(previous, above),
+                .Paeth => sample -% paeth(previous, above, above_previous),
+            };
 
-                    if (diff == prevb) {
-                        combo += 1;
-                    } else {
-                        score += combo * combo;
-                        combo = 0;
-                        prevb = diff;
-                    }
-                }
-            },
-            .Paeth => {
-                for (scanline) |pix, i| {
-                    const prev: u8 = if (i >= 4) scanline[i - 4] else 0;
-                    const above: u8 = if (scanline_above) |b| b[i] else 0;
-                    const prev_above = if (scanline_above) |b| (if (i >= 4) b[i - 4] else 0) else 0;
-                    const diff = pix -% paeth(prev, above, prev_above);
-
-                    if (diff == prevb) {
-                        combo += 1;
-                    } else {
-                        score += combo * combo;
-                        combo = 0;
-                        prevb = diff;
-                    }
-                }
+            if (byte == previous_byte) {
+                combo += 1;
+            } else {
+                score += combo * combo;
+                combo = 0;
+                previous_byte = byte;
             }
         }
+
         if (score > max_score) {
             max_score = score;
             best = filter_type;
