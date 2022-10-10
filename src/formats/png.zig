@@ -57,7 +57,7 @@ pub const PNG = struct {
         // For progressive rendering of big images
         interlaced: bool = false,
         // Changing this can affect performance positively or negatively 
-        filter_choice: filter.FilterChoice = .Heuristic,
+        filter_choice: filter.FilterChoice = .{ .Specified = .Average },
     };
 
     pub fn formatInterface() FormatInterface {

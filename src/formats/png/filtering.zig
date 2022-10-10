@@ -48,45 +48,20 @@ pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: Filter
 
         try writer.writeByte(@enumToInt(filter_type));
 
-        switch (filter_type) {
-            .None => {
-                // Just copy the line
-                try writer.writeAll(scanline);
-            },
-            .Sub => {
-                // Substract each pixel with the previous one
-                for (scanline) |pix, i| {
-                    const prev: u8 = if (i >= pixel_len) scanline[i - pixel_len] else 0;
-                    const diff: u8 = pix -% prev;
-                    try writer.writeByte(diff);
-                }
-            },
-            .Up => {
-                // Substract each pixel from the one above
-                for (scanline) |pix, i| {
-                    const above: u8 = if (previous_scanline) |b| b[i] else 0;
-                    const diff: u8 = pix -% above;
-                    try writer.writeByte(diff);
-                }
-            },
-            .Average => {
-                for (scanline) |pix, i| {
-                    const prev: u8 = if (i >= pixel_len) scanline[i - pixel_len] else 0;
-                    const above: u8 = if (previous_scanline) |b| b[i] else 0;
-                    const avg: u8 = @truncate(u8, (@intCast(u9, prev) + above) / 2);
-                    const diff = pix -% avg;
-                    try writer.writeByte(diff);
-                }
-            },
-            .Paeth => {
-                for (scanline) |pix, i| {
-                    const prev: u8 = if (i >= pixel_len) scanline[i - pixel_len] else 0;
-                    const above: u8 = if (previous_scanline) |b| b[i] else 0;
-                    const prev_above = if (previous_scanline) |b| (if (i >= pixel_len) b[i - pixel_len] else 0) else 0;
-                    const diff = pix -% paeth(prev, above, prev_above);
-                    try writer.writeByte(diff);
-                }
-            }
+        for (scanline) |sample, i| {
+            const previous: u8 = if (i >= pixel_len) scanline[i - pixel_len] else 0;
+            const above: u8 = if (previous_scanline) |b| b[i] else 0;
+            const above_previous = if (previous_scanline) |b| (if (i >= pixel_len) b[i - pixel_len] else 0) else 0;
+
+            const byte: u8 = switch (filter_type) {
+                .None => sample,
+                .Sub => sample -% previous,
+                .Up => sample -% above,
+                .Average => sample -% average(previous, above),
+                .Paeth => sample -% paeth(previous, above, above_previous),
+            };
+
+            try writer.writeByte(byte);
         }
 
         previous_scanline = scanline;
@@ -179,6 +154,10 @@ fn filterChoiceHeuristic(scanline: []const u8, scanline_above: ?[]const u8) Filt
         }
     }
     return best;
+}
+
+fn average(a: u9, b: u9) u8 {
+    return @truncate(u8, (a + b) / 2);
 }
 
 fn paeth(b4: u8, up: u8, b4_up: u8) u8 {
