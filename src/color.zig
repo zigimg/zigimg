@@ -2,7 +2,7 @@ const std = @import("std");
 const math = std.math;
 const Allocator = std.mem.Allocator;
 const PixelFormat = @import("pixel_format.zig").PixelFormat;
-const TypeInfo = std.builtin.TypeInfo;
+const TypeInfo = std.builtin.Type;
 
 pub inline fn toIntColor(comptime T: type, value: f32) T {
     const float_value = @round(value * @intToFloat(f32, math.maxInt(T)));
