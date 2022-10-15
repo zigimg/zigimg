@@ -5,23 +5,23 @@ const Image = @import("../../Image.zig");
 const HeaderData = @import("types.zig").HeaderData;
 
 pub const FilterType = enum(u8) {
-    None = 0,
-    Sub = 1,
-    Up = 2,
-    Average = 3,
-    Paeth = 4,
+    none = 0,
+    sub = 1,
+    up = 2,
+    average = 3,
+    paeth = 4,
 };
 
 pub const FilterChoiceStrategies = enum {
-    TryAll,
-    Heuristic,
-    Specified,
+    try_all,
+    heuristic,
+    specified,
 };
 
 pub const FilterChoice = union(FilterChoiceStrategies) {
-    TryAll,
-    Heuristic,
-    Specified: FilterType,
+    try_all,
+    heuristic,
+    specified: FilterType,
 };
 
 pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: FilterChoice, header: HeaderData) Image.WriteError!void {
@@ -42,9 +42,9 @@ pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: Filter
         scanline = pixels.asBytes()[(y * scanline_len)..((y + 1) * scanline_len)];
 
         const filter_type: FilterType = switch (filter_choice) {
-            .TryAll => @panic("Unimplemented"),
-            .Heuristic => filterChoiceHeuristic(scanline, previous_scanline, pixel_len),
-            .Specified => |f| f,
+            .try_all => @panic("Unimplemented"),
+            .heuristic => filterChoiceHeuristic(scanline, previous_scanline, pixel_len),
+            .specified => |f| f,
         };
 
         try writer.writeByte(@enumToInt(filter_type));
@@ -55,11 +55,11 @@ pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: Filter
             const above_previous = if (previous_scanline) |b| (if (i >= pixel_len) b[i - pixel_len] else 0) else 0;
 
             const byte: u8 = switch (filter_type) {
-                .None => sample,
-                .Sub => sample -% previous,
-                .Up => sample -% above,
-                .Average => sample -% average(previous, above),
-                .Paeth => sample -% paeth(previous, above, above_previous),
+                .none => sample,
+                .sub => sample -% previous,
+                .up => sample -% above,
+                .average => sample -% average(previous, above),
+                .paeth => sample -% paeth(previous, above, above_previous),
             };
 
             try writer.writeByte(byte);
@@ -71,8 +71,8 @@ pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: Filter
 
 fn filterChoiceHeuristic(scanline: []const u8, previous_scanline: ?[]const u8, pixel_len: u8) FilterType {
     var max_score: usize = 0;
-    var best: FilterType = .None;
-    inline for ([_]FilterType{ .None, .Sub, .Up, .Average, .Paeth }) |filter_type| {
+    var best: FilterType = .none;
+    inline for ([_]FilterType{ .none, .sub, .up, .average, .paeth }) |filter_type| {
         var previous_byte: u8 = 0;
         var combo: usize = 0;
         var score: usize = 0;
@@ -83,11 +83,11 @@ fn filterChoiceHeuristic(scanline: []const u8, previous_scanline: ?[]const u8, p
             const above_previous = if (previous_scanline) |b| (if (i >= pixel_len) b[i - pixel_len] else 0) else 0;
 
             const byte: u8 = switch (filter_type) {
-                .None => sample,
-                .Sub => sample -% previous,
-                .Up => sample -% above,
-                .Average => sample -% average(previous, above),
-                .Paeth => sample -% paeth(previous, above, above_previous),
+                .none => sample,
+                .sub => sample -% previous,
+                .up => sample -% above,
+                .average => sample -% average(previous, above),
+                .paeth => sample -% paeth(previous, above, above_previous),
             };
 
             if (byte == previous_byte) {

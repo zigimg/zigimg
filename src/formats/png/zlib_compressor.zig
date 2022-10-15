@@ -1,12 +1,12 @@
 const std = @import("std");
 const io = std.io;
-const defl = std.compress.deflate;
+const deflate = std.compress.deflate;
 
 /// Zlib Compressor (Deflate) with a writer interface
 pub fn ZlibCompressor(comptime WriterType: type) type {
     return struct {
         raw_writer: WriterType,
-        compressor: defl.Compressor(WriterType),
+        compressor: deflate.Compressor(WriterType),
         adler: std.hash.Adler32,
         
         const Self = @This();
@@ -16,7 +16,7 @@ pub fn ZlibCompressor(comptime WriterType: type) type {
         /// This is made this way because not doing it in place segfaults for a reason
         pub fn init(self: *Self, alloc: std.mem.Allocator, stream: WriterType) !void {
             self.raw_writer = stream;
-            self.compressor = try defl.compressor(alloc, self.raw_writer, .{});
+            self.compressor = try deflate.compressor(alloc, self.raw_writer, .{});
             self.adler = std.hash.Adler32.init();
         }
 
