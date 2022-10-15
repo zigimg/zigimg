@@ -37,27 +37,14 @@ pub const DefaultProcessors = reader.DefaultProcessors;
 pub const DefaultOptions = reader.DefaultOptions;
 pub const required_temp_bytes = reader.required_temp_bytes;
 
-pub const Header = struct {
-    width: u31,
-    height: u31,
-    bits_per_sample: u5, // goes up to 16, u5 is enough
-    color_type: types.ColorType,
-    compression_method: types.CompressionMethod,
-    filter_method: types.FilterMethod,
-    interlace_method: types.InterlaceMethod,
-};
-
 pub const PNG = struct {
-    header: Header = undefined,
-    filter_choice: filter.FilterChoice,
-
     const Self = @This();
 
     pub const EncoderOptions = struct {
         // For progressive rendering of big images
         interlaced: bool = false,
         // Changing this can affect performance positively or negatively 
-        filter_choice: filter.FilterChoice = .{ .Specified = .Average },
+        filter_choice: filter.FilterChoice = .Heuristic,
     };
 
     pub fn formatInterface() FormatInterface {
@@ -91,38 +78,38 @@ pub const PNG = struct {
 
         try ensureWritable(image);
         
-        const header = Header{
-            .width = @truncate(u31, image.width),
-            .height = @truncate(u31, image.height),
-            .bits_per_sample = @truncate(u5, image.pixelFormat().bitsPerChannel()),
+        const header = HeaderData{
+            .width = @truncate(u32, image.width),
+            .height = @truncate(u32, image.height),
+            .bit_depth = image.pixelFormat().bitsPerChannel(),
             .color_type = try types.ColorType.fromPixelFormat(image.pixelFormat()),
             .compression_method = .deflate,
             .filter_method = .adaptive,
             .interlace_method = if (options.interlaced) .adam7 else .none,
         };
 
-        var to_write = PNG{ .header = header, .filter_choice = options.filter_choice };
+        std.debug.assert(header.isValid());
 
-        try to_write.write(allocator, write_stream, image.pixels);
+        try write(allocator, write_stream, image.pixels, header, options.filter_choice);
     }
 
-    pub fn write(self: Self, allocator: Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage) ImageWriteError!void {
-        if (self.header.interlace_method != .none)
+    pub fn write(allocator: Allocator, write_stream: *Image.Stream, pixels: color.PixelStorage, header: HeaderData, filter_choice: filter.FilterChoice) ImageWriteError!void {
+        if (header.interlace_method != .none)
             return ImageWriteError.Unsupported;
-        if (self.header.compression_method != .deflate)
+        if (header.compression_method != .deflate)
             return ImageWriteError.Unsupported;
-        if (self.header.filter_method != .adaptive)
+        if (header.filter_method != .adaptive)
             return ImageWriteError.Unsupported;
 
         var writer = write_stream.writer();
 
         try writeSignature(writer);
-        try writeHeader(self, writer);
+        try writeHeader(writer, header);
         if (PixelFormat.isIndex(pixels)) {
             try writePalette(writer, pixels);
             try writeTransparencyInfo(writer, pixels); // TODO: pixel format where there is no transparency
         }
-        try writeData(self, allocator, writer, pixels);
+        try writeData(allocator, writer, pixels, header, filter_choice);
         try writeTrailer(writer);
     }
 
@@ -161,15 +148,13 @@ pub const PNG = struct {
     }
 
     // IHDR
-    fn writeHeader(self: Self, writer: anytype) ImageWriteError!void {
-        const header = self.header;
-
+    fn writeHeader(writer: anytype, header: HeaderData) ImageWriteError!void {
         var chunk = chunk_writer.chunkWriter(writer, "IHDR");
         var chunk_wr = chunk.writer();
 
         try chunk_wr.writeIntBig(u32, header.width);
         try chunk_wr.writeIntBig(u32, header.height);
-        try chunk_wr.writeIntBig(u8, header.bits_per_sample);
+        try chunk_wr.writeIntBig(u8, header.bit_depth);
         try chunk_wr.writeIntBig(u8, @enumToInt(header.color_type));
         try chunk_wr.writeIntBig(u8, @enumToInt(header.compression_method));
         try chunk_wr.writeIntBig(u8, @enumToInt(header.filter_method));
@@ -179,7 +164,7 @@ pub const PNG = struct {
     }
 
     // IDAT (multiple maybe)
-    fn writeData(self: Self, allocator: Allocator, writer: anytype, pixels: color.PixelStorage) ImageWriteError!void {
+    fn writeData(allocator: Allocator, writer: anytype, pixels: color.PixelStorage, header: HeaderData, filter_choice: filter.FilterChoice) ImageWriteError!void {
         // Note: there may be more than 1 chunk
         // TODO: provide choice of how much it buffers (how much data per idat chunk)
         var chunks = chunk_writer.chunkWriter(writer, "IDAT");
@@ -189,7 +174,7 @@ pub const PNG = struct {
         try zlib.init(allocator, chunk_wr);
 
         try zlib.begin();
-        try filter.filter(zlib.writer(), pixels, self.filter_choice, self.header.width, self.header.height);
+        try filter.filter(zlib.writer(), pixels, filter_choice, header);
         try zlib.end();
 
         try chunks.flush();

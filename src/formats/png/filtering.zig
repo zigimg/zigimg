@@ -2,6 +2,7 @@ const std = @import("std");
 const color = @import("../../color.zig");
 const PixelFormat = @import("../../pixel_format.zig").PixelFormat;
 const Image = @import("../../Image.zig");
+const HeaderData = @import("types.zig").HeaderData;
 
 pub const FilterType = enum(u8) {
     None = 0,
@@ -23,7 +24,7 @@ pub const FilterChoice = union(FilterChoiceStrategies) {
     Specified: FilterType,
 };
 
-pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: FilterChoice, width: u31, height: u31) Image.WriteError!void {
+pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: FilterChoice, header: HeaderData) Image.WriteError!void {
     var scanline: []const u8 = undefined;
     var previous_scanline: ?[]const u8 = null;
 
@@ -34,10 +35,10 @@ pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: Filter
 
     const pixel_len = format.pixelStride();
 
-    const scanline_len = pixel_len * width;
+    const scanline_len = header.lineBytes();
     
     var y: usize = 0;
-    while (y < height) : (y += 1) {
+    while (y < header.height) : (y += 1) {
         scanline = pixels.asBytes()[(y * scanline_len)..((y + 1) * scanline_len)];
 
         const filter_type: FilterType = switch (filter_choice) {
