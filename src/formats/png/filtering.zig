@@ -36,7 +36,7 @@ pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: Filter
     const pixel_len = format.pixelStride();
 
     const scanline_len = header.lineBytes();
-    
+
     var y: usize = 0;
     while (y < header.height) : (y += 1) {
         scanline = pixels.asBytes()[(y * scanline_len)..((y + 1) * scanline_len)];

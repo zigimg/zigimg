@@ -43,7 +43,7 @@ pub const PNG = struct {
     pub const EncoderOptions = struct {
         // For progressive rendering of big images
         interlaced: bool = false,
-        // Changing this can affect performance positively or negatively 
+        // Changing this can affect performance positively or negatively
         filter_choice: filter.FilterChoice = .heuristic,
     };
 
@@ -77,7 +77,7 @@ pub const PNG = struct {
         const options = encoder_options.png;
 
         try ensureWritable(image);
-        
+
         const header = HeaderData{
             .width = @truncate(u32, image.width),
             .height = @truncate(u32, image.height),
@@ -120,22 +120,9 @@ pub const PNG = struct {
             return error.Unsupported;
 
         switch (image.pixels) {
-            .rgb24,
-            .rgb48,
-            .rgba32,
-            .rgba64,
-            .grayscale8,
-            .grayscale16,
-            .grayscale8Alpha,
-            .grayscale16Alpha,
-            .indexed8 => {},
+            .rgb24, .rgb48, .rgba32, .rgba64, .grayscale8, .grayscale16, .grayscale8Alpha, .grayscale16Alpha, .indexed8 => {},
 
-            .grayscale1,
-            .grayscale2,
-            .grayscale4,
-            .indexed1,
-            .indexed2,
-            .indexed4 => return error.Unsupported, // TODO
+            .grayscale1, .grayscale2, .grayscale4, .indexed1, .indexed2, .indexed4 => return error.Unsupported, // TODO
 
             // Should bgr be supported with swapping operations during the filtering?
 

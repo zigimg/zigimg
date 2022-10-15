@@ -57,26 +57,16 @@ pub const ColorType = enum(u8) {
 
     pub fn fromPixelFormat(pixel_format: PixelFormat) !Self {
         return switch (pixel_format) {
-            .rgb24,
-            .rgb48 => .rgb_color,
+            .rgb24, .rgb48 => .rgb_color,
 
-            .rgba32,
-            .rgba64 => .rgba_color,
+            .rgba32, .rgba64 => .rgba_color,
 
-            .grayscale1,
-            .grayscale2,
-            .grayscale4,
-            .grayscale8,
-            .grayscale16 => .grayscale,
+            .grayscale1, .grayscale2, .grayscale4, .grayscale8, .grayscale16 => .grayscale,
 
-            .grayscale8Alpha,
-            .grayscale16Alpha =>  .grayscale_alpha,
+            .grayscale8Alpha, .grayscale16Alpha => .grayscale_alpha,
 
-            .indexed1,
-            .indexed2,
-            .indexed4,
-            .indexed8 => .indexed,
-            
+            .indexed1, .indexed2, .indexed4, .indexed8 => .indexed,
+
             else => return error.Unsupported,
         };
     }
