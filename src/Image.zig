@@ -197,7 +197,7 @@ pub fn writeToMemory(self: Self, write_buffer: []u8, encoder_options: EncoderOpt
 }
 
 /// Iterate the pixel in pixel-format agnostic way. In the case of an animation, it returns an iterator for the first frame. The iterator is read-only.
-pub fn iterator(self: Self) color.PixelStorageIterator {
+pub fn iterator(self: *const Self) color.PixelStorageIterator {
     return color.PixelStorageIterator.init(&self.pixels);
 }
 
