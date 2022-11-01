@@ -76,7 +76,7 @@ animation: Animation = .{},
 
 const Self = @This();
 
-const FormatInteraceFnType = fn () FormatInterface;
+const FormatInteraceFnType = std.meta.FnPtr(fn () FormatInterface);
 const all_interface_funcs = blk: {
     const allFormatDecls = std.meta.declarations(AllImageFormats);
     var result: [allFormatDecls.len]FormatInteraceFnType = undefined;
@@ -197,7 +197,9 @@ pub fn writeToMemory(self: Self, write_buffer: []u8, encoder_options: EncoderOpt
 }
 
 /// Iterate the pixel in pixel-format agnostic way. In the case of an animation, it returns an iterator for the first frame. The iterator is read-only.
-pub fn iterator(self: Self) color.PixelStorageIterator {
+// FIXME: *const Self is a workaround for a stage2 bug because determining the pass a parameter by value or pointer depending of the size is not mature yet
+// and fails. For now we are explictly requesting to access only a const pointer.
+pub fn iterator(self: *const Self) color.PixelStorageIterator {
     return color.PixelStorageIterator.init(&self.pixels);
 }
 

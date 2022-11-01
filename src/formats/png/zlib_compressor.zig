@@ -8,7 +8,7 @@ pub fn ZlibCompressor(comptime WriterType: type) type {
         raw_writer: WriterType,
         compressor: deflate.Compressor(WriterType),
         adler: std.hash.Adler32,
-        
+
         const Self = @This();
 
         // TODO: find why doing it an other way segfaults

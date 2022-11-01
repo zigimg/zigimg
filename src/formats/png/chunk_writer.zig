@@ -16,7 +16,7 @@ pub fn ChunkWriter(comptime buffer_size: usize, comptime WriterType: type) type 
         pub const Error = WriterType.Error;
         pub const Writer = io.Writer(*Self, Error, write);
 
-        const Self = @This(); 
+        const Self = @This();
 
         pub fn flush(self: *Self) !void {
             try self.unbuffered_writer.writeIntBig(u32, @truncate(u32, self.end));
@@ -27,7 +27,7 @@ pub fn ChunkWriter(comptime buffer_size: usize, comptime WriterType: type) type 
             try self.unbuffered_writer.writeAll(&self.section_id);
             crc.update(self.buf[0..self.end]);
             try self.unbuffered_writer.writeAll(self.buf[0..self.end]);
-            
+
             try self.unbuffered_writer.writeIntBig(u32, crc.final());
 
             self.end = 0;
