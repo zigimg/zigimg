@@ -176,12 +176,12 @@ pub fn writeToFilePath(self: Self, file_path: []const u8, encoder_options: Encod
     var file = try std.fs.cwd().createFile(file_path, .{});
     defer file.close();
 
-    try self.writeToFile(&file, encoder_options);
+    try self.writeToFile(file, encoder_options);
 }
 
 /// Write the image to an image format to the specified std.fs.File
-pub fn writeToFile(self: Self, file: *std.fs.File, encoder_options: EncoderOptions) WriteError!void {
-    var stream_source = io.StreamSource{ .file = file.* };
+pub fn writeToFile(self: Self, file: std.fs.File, encoder_options: EncoderOptions) WriteError!void {
+    var stream_source = io.StreamSource{ .file = file };
 
     try self.internalWrite(&stream_source, encoder_options);
 }
