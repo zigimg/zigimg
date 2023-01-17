@@ -127,15 +127,16 @@ fn isAll8BitColor(comptime red_type: type, comptime green_type: type, comptime b
     return red_type == u8 and green_type == u8 and blue_type == u8 and (alpha_type == u8 or alpha_type == void);
 }
 
-fn RgbMethods(comptime Self: type) type {
+fn RgbMethods(
+    comptime Self: type,
+    comptime RedT: type,
+    comptime GreenT: type,
+    comptime BlueT: type,
+    comptime AlphaT: type,
+) type {
     const has_alpha_type = @hasField(Self, "a");
 
     return struct {
-        const RedT = std.meta.fieldInfo(Self, .r).type;
-        const GreenT = std.meta.fieldInfo(Self, .g).type;
-        const BlueT = std.meta.fieldInfo(Self, .b).type;
-        const AlphaT = if (has_alpha_type) std.meta.fieldInfo(Self, .a).type else void;
-
         pub fn initRgb(r: RedT, g: GreenT, b: BlueT) Self {
             return Self{
                 .r = r,
@@ -342,7 +343,7 @@ fn RgbColor(comptime T: type) type {
         g: T align(1),
         b: T align(1),
 
-        pub usingnamespace RgbMethods(@This());
+        pub usingnamespace RgbMethods(@This(), T, T, T, void);
     };
 }
 
@@ -355,7 +356,7 @@ pub const Rgb555 = packed struct {
     g: u5,
     b: u5,
 
-    pub usingnamespace RgbMethods(@This());
+    pub usingnamespace RgbMethods(@This(), u5, u5, u5, void);
 };
 
 // Rgb565
@@ -367,7 +368,7 @@ pub const Rgb565 = packed struct {
     g: u6,
     b: u5,
 
-    pub usingnamespace RgbMethods(@This());
+    pub usingnamespace RgbMethods(@This(), u5, u6, u5, void);
 };
 
 fn RgbaColor(comptime T: type) type {
@@ -377,7 +378,7 @@ fn RgbaColor(comptime T: type) type {
         b: T align(1),
         a: T align(1) = math.maxInt(T),
 
-        pub usingnamespace RgbMethods(@This());
+        pub usingnamespace RgbMethods(@This(), T, T, T, T);
         pub usingnamespace RgbaMethods(@This());
     };
 }
@@ -412,7 +413,7 @@ fn BgrColor(comptime T: type) type {
         g: T align(1),
         r: T align(1),
 
-        pub usingnamespace RgbMethods(@This());
+        pub usingnamespace RgbMethods(@This(), T, T, T, void);
     };
 }
 
@@ -423,7 +424,7 @@ fn BgraColor(comptime T: type) type {
         r: T align(1),
         a: T = math.maxInt(T),
 
-        pub usingnamespace RgbMethods(@This());
+        pub usingnamespace RgbMethods(@This(), T, T, T, T);
         pub usingnamespace RgbaMethods(@This());
     };
 }
