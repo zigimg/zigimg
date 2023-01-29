@@ -127,6 +127,7 @@ fn isAll8BitColor(comptime red_type: type, comptime green_type: type, comptime b
     return red_type == u8 and green_type == u8 and blue_type == u8 and (alpha_type == u8 or alpha_type == void);
 }
 
+// FIXME: Workaround for https://github.com/zigimg/zigimg/issues/101, before it was only passed Self and getting RedT, GreenT, BlueT and AlphaT from Self fields.
 fn RgbMethods(
     comptime Self: type,
     comptime RedT: type,
