@@ -126,7 +126,7 @@ pub const QOI = struct {
     }
 
     pub fn formatDetect(stream: *Image.Stream) ImageReadError!bool {
-        var magic_buffer: [std.mem.len(Header.correct_magic)]u8 = undefined;
+        var magic_buffer: [Header.correct_magic.len]u8 = undefined;
 
         _ = try stream.read(magic_buffer[0..]);
 
@@ -186,7 +186,7 @@ pub const QOI = struct {
     }
 
     pub fn read(self: *Self, allocator: Allocator, stream: *Image.Stream) ImageReadError!color.PixelStorage {
-        var magic_buffer: [std.mem.len(Header.correct_magic)]u8 = undefined;
+        var magic_buffer: [Header.correct_magic.len]u8 = undefined;
 
         const reader = stream.reader();
 
