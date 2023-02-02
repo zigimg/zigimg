@@ -726,19 +726,30 @@ pub const TrnsProcessor = struct {
             else => return data.src_format,
         };
         var pixel_pos: u32 = 0;
+        // work around broken saturating arithmetic on wasm https://github.com/llvm/llvm-project/issues/58557
+        const isWasm = comptime @import("builtin").target.isWasm();
         switch (self.trns_data) {
             .gray => |gray_alpha| {
                 switch (data.src_format) {
                     .grayscale1, .grayscale2, .grayscale4, .grayscale8 => {
                         while (pixel_pos + 1 < data.dest_row.len) : (pixel_pos += pixel_stride) {
-                            data.dest_row[pixel_pos + 1] = (data.dest_row[pixel_pos] ^ @truncate(u8, gray_alpha)) *| 255;
+                            if (!isWasm) {
+                                data.dest_row[pixel_pos + 1] = (data.dest_row[pixel_pos] ^ @truncate(u8, gray_alpha)) *| 255;
+                            } else {
+                                data.dest_row[pixel_pos + 1] = (data.dest_row[pixel_pos] ^ @truncate(u8, gray_alpha)) * 255;
+                            }
                         }
                         return .grayscale8Alpha;
                     },
                     .grayscale16 => {
                         var destination = std.mem.bytesAsSlice(u16, data.dest_row);
                         while (pixel_pos + 1 < destination.len) : (pixel_pos += pixel_stride) {
-                            destination[pixel_pos + 1] = (data.dest_row[pixel_pos] ^ gray_alpha) *| 65535;
+                            // work around broken saturating arithmetic on wasm https://github.com/llvm/llvm-project/issues/58557
+                            if (!isWasm) {
+                                destination[pixel_pos + 1] = (data.dest_row[pixel_pos] ^ gray_alpha) *| 65535;
+                            } else {
+                                destination[pixel_pos + 1] = (data.dest_row[pixel_pos] ^ gray_alpha) * 65535;
+                            }
                         }
                         return .grayscale16Alpha;
                     },
