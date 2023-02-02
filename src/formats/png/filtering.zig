@@ -26,8 +26,8 @@ pub const FilterChoice = union(FilterChoiceStrategies) {
 };
 
 pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: FilterChoice, header: HeaderData) Image.WriteError!void {
-    var scanline: []const u8 = undefined;
-    var previous_scanline: ?[]const u8 = null;
+    var scanline: color.PixelStorage = undefined;
+    var previous_scanline: ?color.PixelStorage = null;
 
     const format: PixelFormat = pixels;
 
@@ -38,24 +38,25 @@ pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: Filter
 
     const scanline_len = header.lineBytes();
 
-    if (builtin.target.cpu.arch.endian() == .Little) pixels.swapEndian();
-
     var y: usize = 0;
     while (y < header.height) : (y += 1) {
-        scanline = pixels.asBytes()[(y * scanline_len)..((y + 1) * scanline_len)];
+        scanline = pixels.slice(y * scanline_len, (y + 1) * scanline_len);
 
         const filter_type: FilterType = switch (filter_choice) {
             .try_all => @panic("Unimplemented"),
-            .heuristic => filterChoiceHeuristic(scanline, previous_scanline, pixel_len),
+            .heuristic => filterChoiceHeuristic(scanline, previous_scanline),
             .specified => |f| f,
         };
 
         try writer.writeByte(@enumToInt(filter_type));
 
-        for (scanline, 0..) |sample, i| {
-            const previous: u8 = if (i >= pixel_len) scanline[i - pixel_len] else 0;
-            const above: u8 = if (previous_scanline) |b| b[i] else 0;
-            const above_previous = if (previous_scanline) |b| (if (i >= pixel_len) b[i - pixel_len] else 0) else 0;
+        for (0..scanline.asBytes().len) |byte_index| {
+            const i = if (builtin.target.cpu.arch.endian() == .Little) pixelByteSwappedIndex(scanline, byte_index) else byte_index;
+
+            const sample = scanline.asBytes()[i];
+            const previous: u8 = if (byte_index >= pixel_len) scanline.asBytes()[i - pixel_len] else 0;
+            const above: u8 = if (previous_scanline) |b| b.asBytes()[i] else 0;
+            const above_previous = if (previous_scanline) |b| (if (byte_index >= pixel_len) b.asBytes()[i - pixel_len] else 0) else 0;
 
             const byte: u8 = switch (filter_type) {
                 .none => sample,
@@ -67,14 +68,43 @@ pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: Filter
 
             try writer.writeByte(byte);
         }
-
         previous_scanline = scanline;
     }
-
-    if (builtin.target.cpu.arch.endian() == .Little) pixels.swapEndian();
 }
 
-fn filterChoiceHeuristic(scanline: []const u8, previous_scanline: ?[]const u8, pixel_len: u8) FilterType {
+// Map the index of a byte to what it would be if each struct element was byte swapped
+fn pixelByteSwappedIndex(storage: color.PixelStorage, index: usize) usize {
+    return switch (storage) {
+        .invalid => index,
+        inline .indexed1, .indexed2, .indexed4, .indexed8, .indexed16 => |data| byteSwappedIndex(@typeInfo(@TypeOf(data.indices)).Pointer.child, index),
+        inline else => |data| byteSwappedIndex(@typeInfo(@TypeOf(data)).Pointer.child, index),
+    };
+}
+
+// Map the index of a byte to what it would be if each struct element was byte swapped
+fn byteSwappedIndex(comptime T: type, byte_index: usize) usize {
+    const element_index = byte_index / @sizeOf(T);
+    const element_offset = element_index * @sizeOf(T);
+    const index = byte_index % @sizeOf(T);
+    switch (@typeInfo(T)) {
+        .Int => {
+            if (@sizeOf(T) == 1) return byte_index;
+            return element_offset + @sizeOf(T) - 1 - index;
+        },
+        .Struct => |info| {
+            inline for (info.fields) |field| {
+                if (index >= @offsetOf(T, field.name) or index <= @offsetOf(T, field.name) + @sizeOf(field.type)) {
+                    if (@sizeOf(field.type) == 1) return byte_index;
+                    return element_offset + @sizeOf(field.type) - 1 - index;
+                }
+            }
+        },
+        else => @compileError("type " ++ @typeName(T) ++ " not supported"),
+    }
+}
+
+fn filterChoiceHeuristic(scanline: color.PixelStorage, previous_scanline: ?color.PixelStorage) FilterType {
+    const pixel_len = @as(PixelFormat, scanline).pixelStride();
     var max_score: usize = 0;
     var best: FilterType = .none;
     inline for ([_]FilterType{ .none, .sub, .up, .average, .paeth }) |filter_type| {
@@ -82,10 +112,13 @@ fn filterChoiceHeuristic(scanline: []const u8, previous_scanline: ?[]const u8, p
         var combo: usize = 0;
         var score: usize = 0;
 
-        for (scanline, 0..) |sample, i| {
-            const previous: u8 = if (i >= pixel_len) scanline[i - pixel_len] else 0;
-            const above: u8 = if (previous_scanline) |b| b[i] else 0;
-            const above_previous = if (previous_scanline) |b| (if (i >= pixel_len) b[i - pixel_len] else 0) else 0;
+        for (0..scanline.asBytes().len) |byte_index| {
+            const i = if (builtin.target.cpu.arch.endian() == .Little) pixelByteSwappedIndex(scanline, byte_index) else byte_index;
+
+            const sample = scanline.asBytes()[i];
+            const previous: u8 = if (byte_index >= pixel_len) scanline.asBytes()[i - pixel_len] else 0;
+            const above: u8 = if (previous_scanline) |b| b.asBytes()[i] else 0;
+            const above_previous = if (previous_scanline) |b| (if (byte_index >= pixel_len) b.asBytes()[i - pixel_len] else 0) else 0;
 
             const byte: u8 = switch (filter_type) {
                 .none => sample,

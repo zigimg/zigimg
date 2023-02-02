@@ -766,15 +766,31 @@ pub const PixelStorage = union(PixelFormat) {
         };
     }
 
-    /// Swap the byte order of each integer
-    pub fn swapEndian(self: Self) void {
+    /// Return the pixel data as a const byte slice
+    pub fn slice(self: Self, begin: usize, end: usize) Self {
         return switch (self) {
-            inline .grayscale16, .grayscale16Alpha => |data| {
-                for (data) |*p| {
-                    std.mem.byteSwapAllFields(@TypeOf(p.*), p);
-                }
-            },
-            else => {},
+            .invalid => .invalid,
+            .indexed1 => |data| .{ .indexed1 = .{ .palette = data.palette, .indices = data.indices[begin..end] } },
+            .indexed2 => |data| .{ .indexed2 = .{ .palette = data.palette, .indices = data.indices[begin..end] } },
+            .indexed4 => |data| .{ .indexed4 = .{ .palette = data.palette, .indices = data.indices[begin..end] } },
+            .indexed8 => |data| .{ .indexed8 = .{ .palette = data.palette, .indices = data.indices[begin..end] } },
+            .indexed16 => |data| .{ .indexed16 = .{ .palette = data.palette, .indices = data.indices[begin..end] } },
+            .grayscale1 => |data| .{ .grayscale1 = data },
+            .grayscale2 => |data| .{ .grayscale2 = data },
+            .grayscale4 => |data| .{ .grayscale4 = data },
+            .grayscale8 => |data| .{ .grayscale8 = data },
+            .grayscale8Alpha => |data| .{ .grayscale8Alpha = data },
+            .grayscale16 => |data| .{ .grayscale16 = data },
+            .grayscale16Alpha => |data| .{ .grayscale16Alpha = data },
+            .rgb24 => |data| .{ .rgb24 = data },
+            .rgba32 => |data| .{ .rgba32 = data },
+            .rgb565 => |data| .{ .rgb565 = data },
+            .rgb555 => |data| .{ .rgb555 = data },
+            .bgr24 => |data| .{ .bgr24 = data },
+            .bgra32 => |data| .{ .bgra32 = data },
+            .rgb48 => |data| .{ .rgb48 = data },
+            .rgba64 => |data| .{ .rgba64 = data },
+            .float32 => |data| .{ .float32 = data },
         };
     }
 };
