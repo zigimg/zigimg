@@ -3,6 +3,7 @@ const color = @import("../../color.zig");
 const PixelFormat = @import("../../pixel_format.zig").PixelFormat;
 const Image = @import("../../Image.zig");
 const HeaderData = @import("types.zig").HeaderData;
+const builtin = @import("builtin");
 
 pub const FilterType = enum(u8) {
     none = 0,
@@ -37,6 +38,8 @@ pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: Filter
 
     const scanline_len = header.lineBytes();
 
+    if (builtin.target.cpu.arch.endian() == .Little) pixels.swapEndian();
+
     var y: usize = 0;
     while (y < header.height) : (y += 1) {
         scanline = pixels.asBytes()[(y * scanline_len)..((y + 1) * scanline_len)];
@@ -67,6 +70,8 @@ pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: Filter
 
         previous_scanline = scanline;
     }
+
+    if (builtin.target.cpu.arch.endian() == .Little) pixels.swapEndian();
 }
 
 fn filterChoiceHeuristic(scanline: []const u8, previous_scanline: ?[]const u8, pixel_len: u8) FilterType {

@@ -765,6 +765,18 @@ pub const PixelStorage = union(PixelFormat) {
             .float32 => |data| std.mem.sliceAsBytes(data),
         };
     }
+
+    /// Swap the byte order of each integer
+    pub fn swapEndian(self: Self) void {
+        return switch (self) {
+            inline .grayscale16, .grayscale16Alpha => |data| {
+                for (data) |*p| {
+                    std.mem.byteSwapAllFields(@TypeOf(p.*), p);
+                }
+            },
+            else => {},
+        };
+    }
 };
 
 pub const PixelStorageIterator = struct {
