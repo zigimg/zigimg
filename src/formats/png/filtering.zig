@@ -130,3 +130,28 @@ fn paeth(b4: u8, up: u8, b4_up: u8) u8 {
         return b4_up;
     }
 }
+
+test "filtering 16-bit grayscale pixels uses correct endianess" {
+    var output_bytes = std.ArrayList(u8).init(std.testing.allocator);
+    defer output_bytes.deinit();
+
+    const pixels = try std.testing.allocator.dupe(color.Grayscale16, &.{
+        .{ .value = 0xF },
+        .{ .value = 0xFF },
+        .{ .value = 0xFFF },
+        .{ .value = 0xFFFF },
+    });
+    defer std.testing.allocator.free(pixels);
+
+    try filter(output_bytes.writer(), .{ .grayscale16 = pixels }, .heuristic, .{
+        .width = 4,
+        .height = 1,
+        .bit_depth = 16,
+        .color_type = .grayscale,
+        .compression_method = .deflate,
+        .filter_method = .adaptive,
+        .interlace_method = .none,
+    });
+
+    try std.testing.expectEqualSlices(u8, &.{ 0x00, 0x00, 0x0F, 0x00, 0xFF, 0x0F, 0xFF, 0xFF, 0xFF }, output_bytes.items);
+}
