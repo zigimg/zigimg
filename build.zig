@@ -1,10 +1,16 @@
-const Builder = @import("std").build.Builder;
+const Build = @import("std").Build;
 
-pub fn build(b: *Builder) void {
-    const buildMode = b.standardReleaseOptions();
+pub fn build(b: *Build) void {
+    const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
 
-    const zigimg_build_test = b.addTestExe("zigimgtest", "zigimg.zig");
-    zigimg_build_test.setBuildMode(buildMode);
+    const zigimg_build_test = b.addTest(.{
+        .name = "zigimgtest",
+        .root_source_file = .{ .path = "zigimg.zig" },
+        .kind = .test_exe,
+        .target = target,
+        .optimize = optimize,
+    });
     zigimg_build_test.install();
 
     const run_test_cmd = zigimg_build_test.run();
