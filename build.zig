@@ -4,6 +4,11 @@ pub fn build(b: *Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    b.addModule(.{
+        .name = "zigimg",
+        .source_file = .{ .path = "zigimg.zig" },
+    });
+
     const zigimg_build_test = b.addTest(.{
         .name = "zigimgtest",
         .root_source_file = .{ .path = "zigimg.zig" },
