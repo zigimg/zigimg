@@ -36,11 +36,9 @@ pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: Filter
 
     const pixel_len = format.pixelStride();
 
-    const scanline_len = header.lineBytes();
-
     var y: usize = 0;
     while (y < header.height) : (y += 1) {
-        scanline = pixels.slice(y * scanline_len, (y + 1) * scanline_len);
+        scanline = pixels.slice(y * header.width, (y + 1) * header.width);
 
         const filter_type: FilterType = switch (filter_choice) {
             .try_all => @panic("Unimplemented"),
@@ -173,12 +171,16 @@ test "filtering 16-bit grayscale pixels uses correct endianess" {
         .{ .value = 0xFF },
         .{ .value = 0xFFF },
         .{ .value = 0xFFFF },
+        .{ .value = 0xF },
+        .{ .value = 0xFF },
+        .{ .value = 0xFFF },
+        .{ .value = 0xFFFF },
     });
     defer std.testing.allocator.free(pixels);
 
     try filter(output_bytes.writer(), .{ .grayscale16 = pixels }, .heuristic, .{
         .width = 4,
-        .height = 1,
+        .height = 2,
         .bit_depth = 16,
         .color_type = .grayscale,
         .compression_method = .deflate,
@@ -186,5 +188,8 @@ test "filtering 16-bit grayscale pixels uses correct endianess" {
         .interlace_method = .none,
     });
 
-    try std.testing.expectEqualSlices(u8, &.{ 0x00, 0x00, 0x0F, 0x00, 0xFF, 0x0F, 0xFF, 0xFF, 0xFF }, output_bytes.items);
+    try std.testing.expectEqualSlices(u8, &.{
+        0x00, 0x00, 0x0F, 0x00, 0xFF, 0x0F, 0xFF, 0xFF, 0xFF, //
+        0x00, 0x00, 0x0F, 0x00, 0xFF, 0x0F, 0xFF, 0xFF, 0xFF, //
+    }, output_bytes.items);
 }
