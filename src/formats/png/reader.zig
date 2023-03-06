@@ -75,12 +75,12 @@ const IDatChunksReader = struct {
         std.mem.copy(u8, self.buffer[0..self.data.len], self.data);
         var new_start = self.data.len;
         var max = self.buffer.len;
-        if (max - new_start > self.remaining_chunk_length) {
-            max = new_start + self.remaining_chunk_length;
+        if (max > self.remaining_chunk_length) {
+            max = self.remaining_chunk_length;
         }
         const len = try self.stream.read(self.buffer[new_start..max]);
-        self.data = self.buffer[new_start .. new_start + len];
-        self.crc.update(self.data);
+        self.data = self.buffer[0 .. new_start + len];
+        self.crc.update(self.data[new_start..]);
         return if (len < to_read) len else to_read;
     }
 
@@ -103,7 +103,8 @@ const IDatChunksReader = struct {
         if (self.remaining_chunk_length == 0) {
             // First read and check CRC of just finished chunk
             const expected_crc = try reader.readIntBig(u32);
-            if (self.crc.final() != expected_crc) {
+            const actual_crc = self.crc.final();
+            if (actual_crc != expected_crc) {
                 return Image.ReadError.InvalidData;
             }
 
