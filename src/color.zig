@@ -765,6 +765,34 @@ pub const PixelStorage = union(PixelFormat) {
             .float32 => |data| std.mem.sliceAsBytes(data),
         };
     }
+
+    /// Return the pixel data as a const byte slice
+    pub fn slice(self: Self, begin: usize, end: usize) Self {
+        return switch (self) {
+            .invalid => .invalid,
+            .indexed1 => |data| .{ .indexed1 = .{ .palette = data.palette, .indices = data.indices[begin..end] } },
+            .indexed2 => |data| .{ .indexed2 = .{ .palette = data.palette, .indices = data.indices[begin..end] } },
+            .indexed4 => |data| .{ .indexed4 = .{ .palette = data.palette, .indices = data.indices[begin..end] } },
+            .indexed8 => |data| .{ .indexed8 = .{ .palette = data.palette, .indices = data.indices[begin..end] } },
+            .indexed16 => |data| .{ .indexed16 = .{ .palette = data.palette, .indices = data.indices[begin..end] } },
+            .grayscale1 => |data| .{ .grayscale1 = data[begin..end] },
+            .grayscale2 => |data| .{ .grayscale2 = data[begin..end] },
+            .grayscale4 => |data| .{ .grayscale4 = data[begin..end] },
+            .grayscale8 => |data| .{ .grayscale8 = data[begin..end] },
+            .grayscale8Alpha => |data| .{ .grayscale8Alpha = data[begin..end] },
+            .grayscale16 => |data| .{ .grayscale16 = data[begin..end] },
+            .grayscale16Alpha => |data| .{ .grayscale16Alpha = data[begin..end] },
+            .rgb24 => |data| .{ .rgb24 = data[begin..end] },
+            .rgba32 => |data| .{ .rgba32 = data[begin..end] },
+            .rgb565 => |data| .{ .rgb565 = data[begin..end] },
+            .rgb555 => |data| .{ .rgb555 = data[begin..end] },
+            .bgr24 => |data| .{ .bgr24 = data[begin..end] },
+            .bgra32 => |data| .{ .bgra32 = data[begin..end] },
+            .rgb48 => |data| .{ .rgb48 = data[begin..end] },
+            .rgba64 => |data| .{ .rgba64 = data[begin..end] },
+            .float32 => |data| .{ .float32 = data[begin..end] },
+        };
+    }
 };
 
 pub const PixelStorageIterator = struct {
