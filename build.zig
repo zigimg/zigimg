@@ -11,7 +11,6 @@ pub fn build(b: *Build) void {
     const zigimg_build_test = b.addTest(.{
         .name = "zigimgtest",
         .root_source_file = .{ .path = "zigimg.zig" },
-        .kind = .test_exe,
         .target = target,
         .optimize = optimize,
     });
