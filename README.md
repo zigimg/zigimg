@@ -6,7 +6,7 @@ This is a work in progress library to create, process, read and write different 
 
 ## Install & Build
 
-This project assume current Zig master (0.10.0+) with stage2 self-hosted compiler.
+This project assume current Zig master (0.11.0+) with stage2 self-hosted compiler.
 
 ### Use zigimg in your project
 
@@ -89,3 +89,4 @@ zig build test
 ### TGA - Truevision TGA format
 
 * Supports uncompressed and compressed 8-bit grayscale, indexed with 16-bit colormap, truecolor with 24-bit or 32-bit bit depth.
+* Supports version 1 and version 2
