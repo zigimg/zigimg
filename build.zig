@@ -14,9 +14,10 @@ pub fn build(b: *Build) void {
         .target = target,
         .optimize = optimize,
     });
-    zigimg_build_test.install();
 
-    const run_test_cmd = zigimg_build_test.run();
+    b.installArtifact(zigimg_build_test);
+
+    const run_test_cmd = b.addRunArtifact(zigimg_build_test);
     // Force running of the test command even if you don't have changes
     run_test_cmd.has_side_effects = true;
     run_test_cmd.step.dependOn(b.getInstallStep());
