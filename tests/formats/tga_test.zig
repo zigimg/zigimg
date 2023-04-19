@@ -371,7 +371,7 @@ test "Read matte-01 TGA file" {
     };
 
     for (test_inputs) |input| {
-        const index = tga_file.header.width * input.y + input.x;
+        const index = tga_file.header.image_spec.width * input.y + input.x;
 
         try helpers.expectEq(pixels.rgba32[index].toU32Rgba(), input.hex);
     }
@@ -401,4 +401,52 @@ test "Read font TGA file" {
     try helpers.expectEq(pixels.rgba32[64 * width + 16].toColorf32().toRgba32(), color.Rgba32.initRgba(0, 0, 0, 0));
     try helpers.expectEq(pixels.rgba32[64 * width + 17].toColorf32().toRgba32(), color.Rgba32.initRgba(209, 209, 209, 255));
     try helpers.expectEq(pixels.rgba32[65 * width + 17].toColorf32().toRgba32(), color.Rgba32.initRgba(255, 255, 255, 255));
+}
+
+test "Read stopsignsmall TGA v1 file" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/stopsignsmall.tga");
+    defer file.close();
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    var tga_file = tga.TGA{};
+
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(tga_file.width(), 216);
+    try helpers.expectEq(tga_file.height(), 480);
+    try helpers.expectEq(try tga_file.pixelFormat(), .rgb24);
+
+    try testing.expect(pixels == .rgb24);
+    try helpers.expectEq(pixels.rgb24.len, 216 * 480);
+
+    const width = tga_file.width();
+
+    try helpers.expectEq(pixels.rgb24[143 * width + 93], color.Rgb24.initRgb(188, 34, 24));
+    try helpers.expectEq(pixels.rgb24[479 * width + 215], color.Rgb24.initRgb(33, 29, 17));
+}
+
+test "Read stopsignsmallcompressed TGA v1 file" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/stopsignsmallcompressed.tga");
+    defer file.close();
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    var tga_file = tga.TGA{};
+
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(tga_file.width(), 216);
+    try helpers.expectEq(tga_file.height(), 480);
+    try helpers.expectEq(try tga_file.pixelFormat(), .rgb24);
+
+    try testing.expect(pixels == .rgb24);
+    try helpers.expectEq(pixels.rgb24.len, 216 * 480);
+
+    const width = tga_file.width();
+
+    try helpers.expectEq(pixels.rgb24[143 * width + 93], color.Rgb24.initRgb(188, 34, 24));
+    try helpers.expectEq(pixels.rgb24[479 * width + 215], color.Rgb24.initRgb(33, 29, 17));
 }

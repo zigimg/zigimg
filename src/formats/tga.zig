@@ -13,7 +13,7 @@ const path = std.fs.path;
 const std = @import("std");
 const utils = @import("../utils.zig");
 
-pub const TGAImageType = packed struct {
+pub const TGAImageType = packed struct(u8) {
     indexed: bool = false,
     truecolor: bool = false,
     pad0: bool = false,
@@ -23,8 +23,15 @@ pub const TGAImageType = packed struct {
 
 pub const TGAColorMapSpec = extern struct {
     first_entry_index: u16 align(1) = 0,
-    color_map_length: u16 align(1) = 0,
-    color_map_bit_depth: u8 align(1) = 0,
+    length: u16 align(1) = 0,
+    bit_depth: u8 align(1) = 0,
+};
+
+pub const TGADescriptor = packed struct(u8) {
+    num_attributes_bit: u4 = 0,
+    right_to_left: bool = false,
+    top_to_bottom: bool = false,
+    pad: u2 = 0,
 };
 
 pub const TGAImageSpec = extern struct {
@@ -33,32 +40,38 @@ pub const TGAImageSpec = extern struct {
     width: u16 align(1) = 0,
     height: u16 align(1) = 0,
     bit_per_pixel: u8 align(1) = 0,
-    descriptor: u8 align(1) = 0,
+    descriptor: TGADescriptor align(1) = .{},
 };
 
 pub const TGAHeader = extern struct {
     id_length: u8 align(1) = 0,
     has_color_map: u8 align(1) = 0,
     image_type: TGAImageType align(1) = .{},
+    color_map_spec: TGAColorMapSpec align(1) = .{},
+    image_spec: TGAImageSpec align(1) = .{},
 
-    // BEGIN: TGAColorMapSpec
-    first_entry_index: u16 align(1) = 0,
-    color_map_length: u16 align(1) = 0,
-    color_map_bit_depth: u8 align(1) = 0,
-    // END TGAColorMapSpec
-    // TODO: Use TGAColorMapSpec once all packed struct bugs are fixed
-    // color_map_spec: TGAColorMapSpec,
+    pub fn isValid(self: TGAHeader) bool {
+        if (self.has_color_map != 0 and self.has_color_map != 1) {
+            return false;
+        }
 
-    // BEGIN TGAImageSpec
-    origin_x: u16 align(1) = 0,
-    origin_y: u16 align(1) = 0,
-    width: u16 align(1) = 0,
-    height: u16 align(1) = 0,
-    bit_per_pixel: u8 align(1) = 0,
-    descriptor: u8 align(1) = 0,
-    // END TGAImageSpec
-    //TODO: Use TGAImageSpec once all packed struct bugs are fixed
-    //image_spec: TGAImageSpec,
+        if (self.image_type.pad0) {
+            return false;
+        }
+
+        if (self.image_type.pad1 != 0) {
+            return false;
+        }
+
+        switch (self.color_map_spec.bit_depth) {
+            0, 15, 16, 24, 32 => {},
+            else => {
+                return false;
+            },
+        }
+
+        return true;
+    }
 };
 
 pub const TGAAttributeType = enum(u8) {
@@ -98,6 +111,7 @@ pub const TGAFooter = extern struct {
 pub const TGASignature = "TRUEVISION-XFILE";
 
 comptime {
+    std.debug.assert(@sizeOf(TGAHeader) == 18);
     std.debug.assert(@sizeOf(TGAExtension) == 495);
 }
 
@@ -241,34 +255,45 @@ pub const TGA = struct {
         return Image.Format.tga;
     }
 
-    noinline fn launder(x: usize) usize {
-        // Hacky workaround for https://github.com/ziglang/zig/issues/12626
-        return x;
-    }
-
     pub fn formatDetect(stream: *Image.Stream) ImageReadError!bool {
         const end_pos = try stream.getEndPos();
 
-        if (launder(@sizeOf(TGAFooter)) < end_pos) {
-            const footer_position = end_pos - launder(@sizeOf(TGAFooter));
+        const is_valid_tga_v2: bool = blk: {
+            if (@sizeOf(TGAFooter) < end_pos) {
+                const footer_position = end_pos - @sizeOf(TGAFooter);
 
-            try stream.seekTo(footer_position);
-            const footer: TGAFooter = try utils.readStructLittle(stream.reader(), TGAFooter);
+                try stream.seekTo(footer_position);
+                const footer = try utils.readStructLittle(stream.reader(), TGAFooter);
 
-            if (footer.dot != '.') {
-                return false;
+                if (footer.dot != '.') {
+                    break :blk false;
+                }
+
+                if (footer.null_value != 0) {
+                    break :blk false;
+                }
+
+                if (std.mem.eql(u8, footer.signature[0..], TGASignature[0..])) {
+                    break :blk true;
+                }
             }
 
-            if (footer.null_value != 0) {
-                return false;
+            break :blk false;
+        };
+
+        // Not a TGA 2.0 file, try to detect an TGA 1.0 image
+        const is_valid_tga_v1: bool = blk: {
+            if (!is_valid_tga_v2 and @sizeOf(TGAHeader) < end_pos) {
+                try stream.seekTo(0);
+
+                const header = try utils.readStructLittle(stream.reader(), TGAHeader);
+                break :blk header.isValid();
             }
 
-            if (std.mem.eql(u8, footer.signature[0..], TGASignature[0..])) {
-                return true;
-            }
-        }
+            break :blk false;
+        };
 
-        return false;
+        return is_valid_tga_v2 or is_valid_tga_v1;
     }
 
     pub fn readImage(allocator: Allocator, stream: *Image.Stream) ImageReadError!Image {
@@ -293,11 +318,11 @@ pub const TGA = struct {
     }
 
     pub fn width(self: Self) usize {
-        return self.header.width;
+        return self.header.image_spec.width;
     }
 
     pub fn height(self: Self) usize {
-        return self.header.height;
+        return self.header.image_spec.height;
     }
 
     pub fn pixelFormat(self: Self) ImageReadError!PixelFormat {
@@ -308,7 +333,7 @@ pub const TGA = struct {
 
             return PixelFormat.indexed8;
         } else if (self.header.image_type.truecolor) {
-            switch (self.header.bit_per_pixel) {
+            switch (self.header.image_spec.bit_per_pixel) {
                 16 => return PixelFormat.rgb555,
                 24 => return PixelFormat.rgb24,
                 32 => return PixelFormat.rgba32,
@@ -323,22 +348,22 @@ pub const TGA = struct {
         // Read footage
         const end_pos = try stream.getEndPos();
 
-        if (launder(@sizeOf(TGAFooter)) > end_pos) {
+        if (@sizeOf(TGAFooter) > end_pos) {
             return ImageReadError.InvalidData;
         }
 
         const reader = stream.reader();
-
-        _ = end_pos - @sizeOf(TGAFooter);
         try stream.seekTo(end_pos - @sizeOf(TGAFooter));
-        const footer: TGAFooter = try utils.readStructLittle(reader, TGAFooter);
+        const footer = try utils.readStructLittle(reader, TGAFooter);
+
+        var is_tga_version2 = true;
 
         if (!std.mem.eql(u8, footer.signature[0..], TGASignature[0..])) {
-            return ImageReadError.InvalidData;
+            is_tga_version2 = false;
         }
 
         // Read extension
-        if (footer.extension_offset > 0) {
+        if (is_tga_version2 and footer.extension_offset > 0) {
             const extension_pos = @intCast(u64, footer.extension_offset);
             try stream.seekTo(extension_pos);
             self.extension = try utils.readStructLittle(reader, TGAExtension);
@@ -347,6 +372,10 @@ pub const TGA = struct {
         // Read header
         try stream.seekTo(0);
         self.header = try utils.readStructLittle(reader, TGAHeader);
+
+        if (!self.header.isValid()) {
+            return ImageReadError.InvalidData;
+        }
 
         // Read ID
         if (self.header.id_length > 0) {
@@ -377,7 +406,7 @@ pub const TGA = struct {
         }
 
         if (is_compressed) {
-            const bytes_per_pixel = (self.header.bit_per_pixel + 7) / 8;
+            const bytes_per_pixel = (self.header.image_spec.bit_per_pixel + 7) / 8;
 
             rle_decoder = try TargaRLEDecoder.init(allocator, reader, bytes_per_pixel);
             if (rle_decoder) |rle| {
@@ -385,13 +414,19 @@ pub const TGA = struct {
             }
         }
 
+        const top_to_bottom_image = self.header.image_spec.descriptor.top_to_bottom;
+
         switch (pixel_format) {
             .grayscale8 => {
-                try self.readGrayscale8(pixels.grayscale8, targa_stream.reader());
+                if (top_to_bottom_image) {
+                    try self.readGrayscale8TopToBottom(pixels.grayscale8, targa_stream.reader());
+                } else {
+                    try self.readGrayscale8BottomToTop(pixels.grayscale8, targa_stream.reader());
+                }
             },
             .indexed8 => {
                 // Read color map
-                switch (self.header.color_map_bit_depth) {
+                switch (self.header.color_map_spec.bit_depth) {
                     15, 16 => {
                         try self.readColorMap16(pixels.indexed8, (TargaStream{ .image = reader }).reader());
                     },
@@ -401,16 +436,32 @@ pub const TGA = struct {
                 }
 
                 // Read indices
-                try self.readIndexed8(pixels.indexed8, targa_stream.reader());
+                if (top_to_bottom_image) {
+                    try self.readIndexed8TopToBottom(pixels.indexed8, targa_stream.reader());
+                } else {
+                    try self.readIndexed8BottomToTop(pixels.indexed8, targa_stream.reader());
+                }
             },
             .rgb555 => {
-                try self.readTruecolor16(pixels.rgb555, targa_stream.reader());
+                if (top_to_bottom_image) {
+                    try self.readTruecolor16TopToBottom(pixels.rgb555, targa_stream.reader());
+                } else {
+                    try self.readTruecolor16BottomToTop(pixels.rgb555, targa_stream.reader());
+                }
             },
             .rgb24 => {
-                try self.readTruecolor24(pixels.rgb24, targa_stream.reader());
+                if (top_to_bottom_image) {
+                    try self.readTruecolor24TopToBottom(pixels.rgb24, targa_stream.reader());
+                } else {
+                    try self.readTruecolor24BottomTopTop(pixels.rgb24, targa_stream.reader());
+                }
             },
             .rgba32 => {
-                try self.readTruecolor32(pixels.rgba32, targa_stream.reader());
+                if (top_to_bottom_image) {
+                    try self.readTruecolor32TopToBottom(pixels.rgba32, targa_stream.reader());
+                } else {
+                    try self.readTruecolor32BottomToTop(pixels.rgba32, targa_stream.reader());
+                }
             },
             else => {
                 return ImageError.Unsupported;
@@ -420,7 +471,7 @@ pub const TGA = struct {
         return pixels;
     }
 
-    fn readGrayscale8(self: *Self, data: []color.Grayscale8, stream: TargaStream.Reader) ImageReadError!void {
+    fn readGrayscale8TopToBottom(self: *Self, data: []color.Grayscale8, stream: TargaStream.Reader) ImageReadError!void {
         var data_index: usize = 0;
         const data_end: usize = self.width() * self.height();
 
@@ -429,7 +480,20 @@ pub const TGA = struct {
         }
     }
 
-    fn readIndexed8(self: *Self, data: color.IndexedStorage8, stream: TargaStream.Reader) ImageReadError!void {
+    fn readGrayscale8BottomToTop(self: *Self, data: []color.Grayscale8, stream: TargaStream.Reader) ImageReadError!void {
+        for (0..self.height()) |y| {
+            const inverted_y = self.height() - y - 1;
+
+            const stride = inverted_y * self.width();
+
+            for (0..self.width()) |x| {
+                const data_index = stride + x;
+                data[data_index] = color.Grayscale8{ .value = try stream.readByte() };
+            }
+        }
+    }
+
+    fn readIndexed8TopToBottom(self: *Self, data: color.IndexedStorage8, stream: TargaStream.Reader) ImageReadError!void {
         var data_index: usize = 0;
         const data_end: usize = self.width() * self.height();
 
@@ -438,9 +502,22 @@ pub const TGA = struct {
         }
     }
 
+    fn readIndexed8BottomToTop(self: *Self, data: color.IndexedStorage8, stream: TargaStream.Reader) ImageReadError!void {
+        for (0..self.height()) |y| {
+            const inverted_y = self.height() - y - 1;
+
+            const stride = inverted_y * self.width();
+
+            for (0..self.width()) |x| {
+                const data_index = stride + x;
+                data.indices[data_index] = try stream.readByte();
+            }
+        }
+    }
+
     fn readColorMap16(self: *Self, data: color.IndexedStorage8, stream: TargaStream.Reader) ImageReadError!void {
-        var data_index: usize = self.header.first_entry_index;
-        const data_end: usize = self.header.first_entry_index + self.header.color_map_length;
+        var data_index: usize = self.header.color_map_spec.first_entry_index;
+        const data_end: usize = self.header.color_map_spec.first_entry_index + self.header.color_map_spec.length;
 
         while (data_index < data_end) : (data_index += 1) {
             const raw_color = try stream.readIntLittle(u16);
@@ -452,7 +529,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readTruecolor16(self: *Self, data: []color.Rgb555, stream: TargaStream.Reader) ImageReadError!void {
+    fn readTruecolor16TopToBottom(self: *Self, data: []color.Rgb555, stream: TargaStream.Reader) ImageReadError!void {
         var data_index: usize = 0;
         const data_end: usize = self.width() * self.height();
 
@@ -465,7 +542,25 @@ pub const TGA = struct {
         }
     }
 
-    fn readTruecolor24(self: *Self, data: []color.Rgb24, stream: TargaStream.Reader) ImageReadError!void {
+    fn readTruecolor16BottomToTop(self: *Self, data: []color.Rgb555, stream: TargaStream.Reader) ImageReadError!void {
+        for (0..self.height()) |y| {
+            const inverted_y = self.height() - y - 1;
+
+            const stride = inverted_y * self.width();
+
+            for (0..self.width()) |x| {
+                const data_index = stride + x;
+
+                const raw_color = try stream.readIntLittle(u16);
+
+                data[data_index].r = @truncate(u5, raw_color >> (5 * 2));
+                data[data_index].g = @truncate(u5, raw_color >> 5);
+                data[data_index].b = @truncate(u5, raw_color);
+            }
+        }
+    }
+
+    fn readTruecolor24TopToBottom(self: *Self, data: []color.Rgb24, stream: TargaStream.Reader) ImageReadError!void {
         var data_index: usize = 0;
         const data_end: usize = self.width() * self.height();
 
@@ -476,7 +571,22 @@ pub const TGA = struct {
         }
     }
 
-    fn readTruecolor32(self: *Self, data: []color.Rgba32, stream: TargaStream.Reader) ImageReadError!void {
+    fn readTruecolor24BottomTopTop(self: *Self, data: []color.Rgb24, stream: TargaStream.Reader) ImageReadError!void {
+        for (0..self.height()) |y| {
+            const inverted_y = self.height() - y - 1;
+
+            const stride = inverted_y * self.width();
+
+            for (0..self.width()) |x| {
+                const data_index = stride + x;
+                data[data_index].b = try stream.readByte();
+                data[data_index].g = try stream.readByte();
+                data[data_index].r = try stream.readByte();
+            }
+        }
+    }
+
+    fn readTruecolor32TopToBottom(self: *Self, data: []color.Rgba32, stream: TargaStream.Reader) ImageReadError!void {
         var data_index: usize = 0;
         const data_end: usize = self.width() * self.height();
 
@@ -489,6 +599,29 @@ pub const TGA = struct {
             if (self.extension) |extended_info| {
                 if (extended_info.attributes != TGAAttributeType.useful_alpha_channel) {
                     data[data_index].a = 0xFF;
+                }
+            }
+        }
+    }
+
+    fn readTruecolor32BottomToTop(self: *Self, data: []color.Rgba32, stream: TargaStream.Reader) ImageReadError!void {
+        for (0..self.height()) |y| {
+            const inverted_y = self.height() - y - 1;
+
+            const stride = inverted_y * self.width();
+
+            for (0..self.width()) |x| {
+                const data_index = stride + x;
+
+                data[data_index].b = try stream.readByte();
+                data[data_index].g = try stream.readByte();
+                data[data_index].r = try stream.readByte();
+                data[data_index].a = try stream.readByte();
+
+                if (self.extension) |extended_info| {
+                    if (extended_info.attributes != TGAAttributeType.useful_alpha_channel) {
+                        data[data_index].a = 0xFF;
+                    }
                 }
             }
         }
