@@ -312,7 +312,7 @@ fn readAllData(
     var temp_allocator = if (tmpbytes < 128 * 1024) options.temp_allocator else allocator;
     var tmp_buffer = try temp_allocator.alloc(u8, tmpbytes);
     defer temp_allocator.free(tmp_buffer);
-    mem.set(u8, tmp_buffer, 0);
+    @memset(tmp_buffer, 0);
     var prev_row = tmp_buffer[0..virtual_line_bytes];
     var current_row = tmp_buffer[virtual_line_bytes .. 2 * virtual_line_bytes];
     const pixel_stride = @intCast(u8, result_line_bytes / width);
@@ -390,7 +390,7 @@ fn readAllData(
             const pass_length = pass_bytes + filter_stride;
             const result_pass_line_bytes = pixel_stride * pass_width[pass];
             const deinterlace_stride = xinc[pass] * pixel_stride;
-            mem.set(u8, prev_row, 0);
+            @memset(prev_row, 0);
             const destx = start_x[pass] * pixel_stride;
             var desty = start_y[pass];
             var y: u32 = 0;
@@ -983,7 +983,7 @@ test "spreadRowData" {
     try expectEqualSlices(u8, &[_]u8{ 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0 }, dest_row);
     dest_row = dest_buffer[0..32];
     pixel_stride = 2;
-    std.mem.set(u8, dest_row, 0);
+    @memset(dest_row, 0);
     spreadRowData(dest_row, current_row[filter_stride..], bit_depth, channel_count, pixel_stride, false);
     try expectEqualSlices(u8, &[_]u8{ 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0 }, dest_row);
 
@@ -994,7 +994,7 @@ test "spreadRowData" {
     try expectEqualSlices(u8, &[_]u8{ 2, 2, 1, 1, 1, 3, 3, 0 }, dest_row);
     dest_row = dest_buffer[0..16];
     pixel_stride = 2;
-    std.mem.set(u8, dest_row, 0);
+    @memset(dest_row, 0);
     spreadRowData(dest_row, current_row[filter_stride..], bit_depth, channel_count, pixel_stride, false);
     try expectEqualSlices(u8, &[_]u8{ 2, 0, 2, 0, 1, 0, 1, 0, 1, 0, 3, 0, 3, 0, 0, 0 }, dest_row);
 
@@ -1005,7 +1005,7 @@ test "spreadRowData" {
     try expectEqualSlices(u8, &[_]u8{ 0xa, 0x5, 0x7, 0xc }, dest_row);
     dest_row = dest_buffer[0..8];
     pixel_stride = 2;
-    std.mem.set(u8, dest_row, 0);
+    @memset(dest_row, 0);
     spreadRowData(dest_row, current_row[filter_stride..], bit_depth, channel_count, pixel_stride, false);
     try expectEqualSlices(u8, &[_]u8{ 0xa, 0, 0x5, 0, 0x7, 0, 0xc, 0 }, dest_row);
 
@@ -1016,7 +1016,7 @@ test "spreadRowData" {
     try expectEqualSlices(u8, &[_]u8{ 0xa5, 0x7c }, dest_row);
     dest_row = dest_buffer[0..4];
     pixel_stride = 2;
-    std.mem.set(u8, dest_row, 0);
+    @memset(dest_row, 0);
     spreadRowData(dest_row, current_row[filter_stride..], bit_depth, channel_count, pixel_stride, false);
     try expectEqualSlices(u8, &[_]u8{ 0xa5, 0, 0x7c, 0 }, dest_row);
 
@@ -1029,7 +1029,7 @@ test "spreadRowData" {
     spreadRowData(dest_row, current_row[filter_stride..], bit_depth, channel_count, pixel_stride, false);
     try expectEqualSlices(u8, &[_]u8{ 0xa5, 0x7c, 0x39, 0xf2 }, dest_row);
     dest_row = dest_buffer[0..8];
-    std.mem.set(u8, dest_row, 0);
+    @memset(dest_row, 0);
     pixel_stride = 4;
     spreadRowData(dest_row, current_row[filter_stride..], bit_depth, channel_count, pixel_stride, false);
     try expectEqualSlices(u8, &[_]u8{ 0xa5, 0x7c, 0, 0, 0x39, 0xf2, 0, 0 }, dest_row);
@@ -1046,7 +1046,7 @@ test "spreadRowData" {
     bit_depth = 8;
     current_row = cur_buffer[1..10];
     dest_row = dest_buffer[0..8];
-    std.mem.set(u8, dest_row, 0);
+    @memset(dest_row, 0);
     filter_stride = 3;
     pixel_stride = 4;
     spreadRowData(dest_row, current_row[filter_stride..], bit_depth, channel_count, pixel_stride, false);
@@ -1057,7 +1057,7 @@ test "spreadRowData" {
     var cbuffer16 = [_]u8{ 0, 0, 0, 0, 0, 0, 0, 0, 0xa5, 0x7c, 0x39, 0xf2, 0x5b, 0x15, 0x78, 0xd1 };
     current_row = cbuffer16[0..];
     dest_row = dest_buffer[0..8];
-    std.mem.set(u8, dest_row, 0);
+    @memset(dest_row, 0);
     filter_stride = 8;
     pixel_stride = 8;
     spreadRowData(dest_row, current_row[filter_stride..], bit_depth, channel_count, pixel_stride, true);
