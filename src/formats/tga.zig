@@ -380,7 +380,7 @@ pub const TGA = struct {
         // Read ID
         if (self.header.id_length > 0) {
             var id_buffer: [256]u8 = undefined;
-            std.mem.set(u8, id_buffer[0..], 0);
+            @memset(id_buffer[0..], 0);
 
             const read_id_size = try stream.read(id_buffer[0..self.header.id_length]);
 
