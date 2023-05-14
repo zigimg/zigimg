@@ -428,7 +428,8 @@ pub const TGA = struct {
                 // Read color map
                 switch (self.header.color_map_spec.bit_depth) {
                     15, 16 => {
-                        try self.readColorMap16(pixels.indexed8, (TargaStream{ .image = reader }).reader());
+                        var temp_targa_stream = TargaStream{ .image = reader };
+                        try self.readColorMap16(pixels.indexed8, temp_targa_stream.reader());
                     },
                     else => {
                         return ImageError.Unsupported;
