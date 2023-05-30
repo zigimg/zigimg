@@ -148,8 +148,8 @@ pub fn testWithDir(directory: []const u8, testMd5Sig: bool) !void {
 
             const len = entry.name.len;
             var tst_data_name: [50]u8 = undefined;
-            std.mem.copy(u8, tst_data_name[0 .. len - 3], entry.name[0 .. len - 3]);
-            std.mem.copy(u8, tst_data_name[len - 3 .. len], "tsd");
+            @memcpy(tst_data_name[0 .. len - 3], entry.name[0 .. len - 3]);
+            @memcpy(tst_data_name[len - 3 .. len], "tsd");
 
             // Read test data and check with it
             if (idir.dir.openFile(tst_data_name[0..len], .{ .mode = .read_only })) |tdata| {
@@ -220,8 +220,8 @@ test "InfoProcessor on Png Test suite" {
 
             const len = entry.name.len + 1;
             var tst_data_name: [50]u8 = undefined;
-            std.mem.copy(u8, tst_data_name[0 .. len - 4], entry.name[0 .. len - 4]);
-            std.mem.copy(u8, tst_data_name[len - 4 .. len], "info");
+            @memcpy(tst_data_name[0 .. len - 4], entry.name[0 .. len - 4]);
+            @memcpy(tst_data_name[len - 4 .. len], "info");
 
             // Read test data and check with it
             if (idir.dir.openFile(tst_data_name[0..len], .{ .mode = .read_only })) |tdata| {

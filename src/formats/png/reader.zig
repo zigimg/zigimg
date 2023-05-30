@@ -72,7 +72,7 @@ const IDatChunksReader = struct {
     }
 
     fn fillBuffer(self: *Self, to_read: usize) Image.ReadError!usize {
-        std.mem.copy(u8, self.buffer[0..self.data.len], self.data);
+        @memcpy(self.buffer[0..self.data.len], self.data);
         var new_start = self.data.len;
         var max = self.buffer.len;
         if (max > self.remaining_chunk_length) {
@@ -96,7 +96,7 @@ const IDatChunksReader = struct {
         if (to_read > self.data.len) {
             to_read = try self.fillBuffer(to_read);
         }
-        std.mem.copy(u8, new_dest[0..to_read], self.data[0..to_read]);
+        @memcpy(new_dest[0..to_read], self.data[0..to_read]);
         self.remaining_chunk_length -= @intCast(u32, to_read);
         self.data = self.data[to_read..];
 
