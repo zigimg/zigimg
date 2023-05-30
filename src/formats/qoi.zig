@@ -90,7 +90,7 @@ pub const Header = extern struct {
 
     fn encode(header: Header) [size]u8 {
         var result: [size]u8 = undefined;
-        std.mem.copy(u8, result[0..4], &correct_magic);
+        @memcpy(result[0..4], &correct_magic);
         std.mem.writeIntBig(u32, result[4..8], header.width);
         std.mem.writeIntBig(u32, result[8..12], header.height);
         result[12] = @enumToInt(header.format);
