@@ -11,6 +11,7 @@ pub const jpeg = @import("src/formats/jpeg.zig");
 pub const png = @import("src/formats/png.zig");
 pub const qoi = @import("src/formats/qoi.zig");
 pub const tga = @import("src/formats/tga.zig");
+pub const pam = @import("src/formats/pam.zig");
 
 test {
     const std = @import("std");
@@ -25,6 +26,7 @@ test {
         @import("tests/formats/png_test.zig"),
         @import("tests/formats/qoi_test.zig"),
         @import("tests/formats/tga_test.zig"),
+        @import("tests/formats/pam_test.zig"),
         @import("tests/image_test.zig"),
         @import("tests/octree_quantizer_test.zig"),
     }) |source_file| std.testing.refAllDeclsRecursive(source_file);

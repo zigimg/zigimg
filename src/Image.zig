@@ -38,6 +38,7 @@ pub const Format = enum {
     ppm,
     qoi,
     tga,
+    pam,
 };
 
 pub const Stream = io.StreamSource;

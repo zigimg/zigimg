@@ -7,6 +7,7 @@ pub const PNG = @import("png.zig").PNG;
 pub const PPM = @import("netpbm.zig").PPM;
 pub const QOI = @import("qoi.zig").QOI;
 pub const TGA = @import("tga.zig").TGA;
+pub const PAM = @import("pam.zig").PAM;
 
 pub const ImageEncoderOptions = union(@import("../Image.zig").Format) {
     bmp: void,
@@ -18,4 +19,5 @@ pub const ImageEncoderOptions = union(@import("../Image.zig").Format) {
     ppm: PPM.EncoderOptions,
     qoi: QOI.EncoderOptions,
     tga: void,
+    pam: PAM.EncoderOptions,
 };
