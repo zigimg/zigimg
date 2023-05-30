@@ -116,7 +116,7 @@ pub fn testWithDir(directory: []const u8, testMd5Sig: bool) !void {
         var it = idir.iterate();
         if (testMd5Sig) std.debug.print("\n", .{});
         while (try it.next()) |entry| {
-            if (entry.kind != .File or !std.mem.eql(u8, std.fs.path.extension(entry.name), ".png")) continue;
+            if (entry.kind != .file or !std.mem.eql(u8, std.fs.path.extension(entry.name), ".png")) continue;
 
             if (testMd5Sig) std.debug.print("Testing file {s} ... ", .{entry.name});
             var tst_file = try idir.dir.openFile(entry.name, .{ .mode = .read_only });
@@ -198,7 +198,7 @@ test "InfoProcessor on Png Test suite" {
         var info_stream = std.io.StreamSource{ .buffer = std.io.fixedBufferStream(info_buffer[0..]) };
 
         while (try it.next()) |entry| {
-            if (entry.kind != .File or !std.mem.eql(u8, std.fs.path.extension(entry.name), ".png")) {
+            if (entry.kind != .file or !std.mem.eql(u8, std.fs.path.extension(entry.name), ".png")) {
                 continue;
             }
 
