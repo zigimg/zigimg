@@ -13,16 +13,19 @@ pub const qoi = @import("src/formats/qoi.zig");
 pub const tga = @import("src/formats/tga.zig");
 
 test {
-    @import("std").testing.refAllDecls(@This());
-    _ = @import("src/formats/png/reader.zig");
-    _ = @import("tests/color_test.zig");
-    _ = @import("tests/formats/bmp_test.zig");
-    _ = @import("tests/formats/jpeg_test.zig");
-    _ = @import("tests/formats/netpbm_test.zig");
-    _ = @import("tests/formats/pcx_test.zig");
-    _ = @import("tests/formats/png_test.zig");
-    _ = @import("tests/formats/qoi_test.zig");
-    _ = @import("tests/formats/tga_test.zig");
-    _ = @import("tests/image_test.zig");
-    _ = @import("tests/octree_quantizer_test.zig");
+    const std = @import("std");
+    std.testing.refAllDeclsRecursive(@This());
+    inline for (.{
+        @import("src/formats/png/reader.zig"),
+        @import("tests/color_test.zig"),
+        @import("tests/formats/bmp_test.zig"),
+        @import("tests/formats/jpeg_test.zig"),
+        @import("tests/formats/netpbm_test.zig"),
+        @import("tests/formats/pcx_test.zig"),
+        @import("tests/formats/png_test.zig"),
+        @import("tests/formats/qoi_test.zig"),
+        @import("tests/formats/tga_test.zig"),
+        @import("tests/image_test.zig"),
+        @import("tests/octree_quantizer_test.zig"),
+    }) |source_file| std.testing.refAllDeclsRecursive(source_file);
 }
