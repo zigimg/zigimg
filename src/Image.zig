@@ -168,7 +168,7 @@ pub fn imageByteSize(self: Self) usize {
 
 /// Is this image is an animation?
 pub fn isAnimation(self: Self) bool {
-    return self.animation.frames.len > 0;
+    return self.animation.frames.items.len > 0;
 }
 
 /// Write the image to an image format to the specified path
