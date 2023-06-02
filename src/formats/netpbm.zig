@@ -241,7 +241,7 @@ fn Netpbm(comptime image_format: Image.Format, comptime header_numbers: []const 
         const Self = @This();
 
         pub const EncoderOptions = struct {
-            binary: bool,
+            binary: bool = true,
         };
 
         pub fn formatInterface() FormatInterface {
