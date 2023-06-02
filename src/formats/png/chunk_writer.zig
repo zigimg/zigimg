@@ -44,7 +44,7 @@ pub fn ChunkWriter(comptime buffer_size: usize, comptime WriterType: type) type 
                     return self.unbuffered_writer.write(bytes);
             }
 
-            @memcpy(self.buf[self.end..], bytes);
+            @memcpy(self.buf[self.end..][0..bytes.len], bytes);
             self.end += bytes.len;
             return bytes.len;
         }
