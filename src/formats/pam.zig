@@ -337,7 +337,7 @@ pub const PAM = struct {
         // supported.
         var buffered_reader = io.bufferedReader(stream.reader());
         const reader = buffered_reader.reader();
-        var image: Image = try readFrame(allocator, reader) orelse return error.InvalidData; // empty stream
+        var image: Image = try readFrame(allocator, reader) orelse return ImageReadError.InvalidData; // empty stream
         errdefer image.deinit();
 
         while (try readFrame(allocator, reader)) |frame| {
@@ -368,7 +368,7 @@ pub const PAM = struct {
         // compile error because of an unreachable else prong)
         const magic = reader.readBytesNoEof(3) catch |e| return if (e == error.EndOfStream) null else e;
         const is_pam = mem.eql(u8, &magic, "P7\n");
-        if (!is_pam) return error.InvalidData; // invalid magic number or extraneous data at eof
+        if (!is_pam) return ImageReadError.InvalidData; // invalid magic number or extraneous data at eof
 
         var header = try Header.read(allocator, reader);
         defer header.deinit(allocator);
