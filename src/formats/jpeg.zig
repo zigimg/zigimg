@@ -214,9 +214,9 @@ const HuffmanTable = struct {
 
                 const byte = try reader.readByte();
                 try huffman_code_map.put(.{ .length_minus_one = @intCast(u4, i), .code = code }, byte);
-                code += 1;
 
                 if (JPEG_VERY_DEBUG) std.debug.print("      {b} => 0x{X}\n", .{ code, byte });
+                code += 1;
             }
 
             code <<= 1;
