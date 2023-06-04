@@ -91,3 +91,56 @@ test "Read the tuba properly" {
         try helpers.expectEq(pixels.rgb24[(431 * 512 + 300)], color.Rgb24.initRgb(0xFE, 0xE7, 0xC9));
     }
 }
+
+test "Read subsampling images" {
+    var testdir = std.fs.cwd().openIterableDir(helpers.fixtures_path ++ "jpeg/", .{ .access_sub_paths = false, .no_follow = true }) catch null;
+    if (testdir) |*idir| {
+        defer idir.close();
+
+        var it = idir.iterate();
+        std.debug.print("\n", .{});
+        while (try it.next()) |entry| {
+            if (entry.kind != .file or !std.mem.endsWith(u8, entry.name, ".jpg") or !std.mem.startsWith(u8, entry.name, "subsampling_")) continue;
+
+            std.debug.print("Testing file {s} ... ", .{entry.name});
+            var tst_file = try idir.dir.openFile(entry.name, .{ .mode = .read_only });
+            defer tst_file.close();
+
+            var stream = Image.Stream{ .file = tst_file };
+
+            var jpeg_file = jpeg.JPEG.init(helpers.zigimg_test_allocator);
+            defer jpeg_file.deinit();
+
+            var pixelsOpt: ?color.PixelStorage = null;
+            _ = try jpeg_file.read(&stream, &pixelsOpt);
+
+            defer {
+                if (pixelsOpt) |pixels| {
+                    pixels.deinit(helpers.zigimg_test_allocator);
+                }
+            }
+
+            try testing.expect(pixelsOpt != null);
+            if (pixelsOpt) |pixels| {
+                try testing.expect(pixels == .rgb24);
+
+                // Just for fun, let's sample a few pixels. :^)
+                const actual: color.Colorf32 = pixels.rgb24[(0 * 32 + 0)].toColorf32();
+                try testing.expectApproxEqAbs(@as(f32, 1.0), actual.r, 0.05);
+                try testing.expectApproxEqAbs(@as(f32, 1.0), actual.g, 0.05);
+                try testing.expectApproxEqAbs(@as(f32, 0.0), actual.b, 0.05);
+
+                const actual1: color.Colorf32 = pixels.rgb24[(13 * 32 + 9)].toColorf32();
+                try testing.expectApproxEqAbs(@as(f32, 0.71), actual1.r, 0.05);
+                try testing.expectApproxEqAbs(@as(f32, 0.55), actual1.g, 0.05);
+                try testing.expectApproxEqAbs(@as(f32, 0.0), actual1.b, 0.05);
+
+                const actual2: color.Colorf32 = pixels.rgb24[(25 * 32 + 18)].toColorf32();
+                try testing.expectApproxEqAbs(@as(f32, 0.42), actual2.r, 0.05);
+                try testing.expectApproxEqAbs(@as(f32, 0.19), actual2.g, 0.05);
+                try testing.expectApproxEqAbs(@as(f32, 0.39), actual2.b, 0.05);
+            }
+            std.debug.print("OK\n", .{});
+        }
+    }
+}
