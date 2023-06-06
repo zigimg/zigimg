@@ -92,6 +92,41 @@ test "Read the tuba properly" {
     }
 }
 
+test "Read grayscale images" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "jpeg/grayscale_sample0.jpg");
+    defer file.close();
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    var jpeg_file = jpeg.JPEG.init(helpers.zigimg_test_allocator);
+    defer jpeg_file.deinit();
+
+    var pixelsOpt: ?color.PixelStorage = null;
+    const frame = try jpeg_file.read(&stream_source, &pixelsOpt);
+
+    defer {
+        if (pixelsOpt) |pixels| {
+            pixels.deinit(helpers.zigimg_test_allocator);
+        }
+    }
+
+    try helpers.expectEq(frame.frame_header.row_count, 32);
+    try helpers.expectEq(frame.frame_header.samples_per_row, 32);
+    try helpers.expectEq(frame.frame_header.sample_precision, 8);
+    try helpers.expectEq(frame.frame_header.components.len, 1);
+
+    try testing.expect(pixelsOpt != null);
+
+    if (pixelsOpt) |pixels| {
+        try testing.expect(pixels == .grayscale8);
+
+        // Just for fun, let's sample a few pixels. :^)
+        try helpers.expectEq(pixels.grayscale8[(0 * 32 + 0)], color.Grayscale8{ .value = 0x00 });
+        try helpers.expectEq(pixels.grayscale8[(15 * 32 + 15)], color.Grayscale8{ .value = 0xaa });
+        try helpers.expectEq(pixels.grayscale8[(28 * 32 + 28)], color.Grayscale8{ .value = 0xf7 });
+    }
+}
+
 test "Read subsampling images" {
     var testdir = std.fs.cwd().openIterableDir(helpers.fixtures_path ++ "jpeg/", .{ .access_sub_paths = false, .no_follow = true }) catch null;
     if (testdir) |*idir| {
