@@ -372,7 +372,6 @@ fn Netpbm(comptime image_format: Image.Format, comptime header_numbers: []const 
 
             try writer.print("{} {}\n", .{ self.header.width, self.header.height });
 
-            std.log.debug("{}", .{self.header});
             if (self.header.format != .bitmap) {
                 try writer.print("{}\n", .{self.header.max_value});
             }
