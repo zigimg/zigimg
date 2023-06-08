@@ -16,10 +16,10 @@ test "Should error on non JPEG images" {
     var jpeg_file = jpeg.JPEG.init(helpers.zigimg_test_allocator);
     defer jpeg_file.deinit();
 
-    var pixelsOpt: ?color.PixelStorage = null;
-    const invalidFile = jpeg_file.read(&stream_source, &pixelsOpt);
+    var pixels_opt: ?color.PixelStorage = null;
+    const invalidFile = jpeg_file.read(&stream_source, &pixels_opt);
     defer {
-        if (pixelsOpt) |pixels| {
+        if (pixels_opt) |pixels| {
             pixels.deinit(helpers.zigimg_test_allocator);
         }
     }
@@ -36,11 +36,11 @@ test "Read JFIF header properly and decode simple Huffman stream" {
     var jpeg_file = jpeg.JPEG.init(helpers.zigimg_test_allocator);
     defer jpeg_file.deinit();
 
-    var pixelsOpt: ?color.PixelStorage = null;
-    const frame = try jpeg_file.read(&stream_source, &pixelsOpt);
+    var pixels_opt: ?color.PixelStorage = null;
+    const frame = try jpeg_file.read(&stream_source, &pixels_opt);
 
     defer {
-        if (pixelsOpt) |pixels| {
+        if (pixels_opt) |pixels| {
             pixels.deinit(helpers.zigimg_test_allocator);
         }
     }
@@ -50,9 +50,9 @@ test "Read JFIF header properly and decode simple Huffman stream" {
     try helpers.expectEq(frame.frame_header.sample_precision, 8);
     try helpers.expectEq(frame.frame_header.components.len, 3);
 
-    try testing.expect(pixelsOpt != null);
+    try testing.expect(pixels_opt != null);
 
-    if (pixelsOpt) |pixels| {
+    if (pixels_opt) |pixels| {
         try testing.expect(pixels == .rgb24);
     }
 }
@@ -66,11 +66,11 @@ test "Read the tuba properly" {
     var jpeg_file = jpeg.JPEG.init(helpers.zigimg_test_allocator);
     defer jpeg_file.deinit();
 
-    var pixelsOpt: ?color.PixelStorage = null;
-    const frame = try jpeg_file.read(&stream_source, &pixelsOpt);
+    var pixels_opt: ?color.PixelStorage = null;
+    const frame = try jpeg_file.read(&stream_source, &pixels_opt);
 
     defer {
-        if (pixelsOpt) |pixels| {
+        if (pixels_opt) |pixels| {
             pixels.deinit(helpers.zigimg_test_allocator);
         }
     }
@@ -80,15 +80,50 @@ test "Read the tuba properly" {
     try helpers.expectEq(frame.frame_header.sample_precision, 8);
     try helpers.expectEq(frame.frame_header.components.len, 3);
 
-    try testing.expect(pixelsOpt != null);
+    try testing.expect(pixels_opt != null);
 
-    if (pixelsOpt) |pixels| {
+    if (pixels_opt) |pixels| {
         try testing.expect(pixels == .rgb24);
 
         // Just for fun, let's sample a few pixels. :^)
         try helpers.expectEq(pixels.rgb24[(126 * 512 + 163)], color.Rgb24.initRgb(0xAC, 0x78, 0x54));
         try helpers.expectEq(pixels.rgb24[(265 * 512 + 284)], color.Rgb24.initRgb(0x37, 0x30, 0x33));
         try helpers.expectEq(pixels.rgb24[(431 * 512 + 300)], color.Rgb24.initRgb(0xFE, 0xE7, 0xC9));
+    }
+}
+
+test "Read grayscale images" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "jpeg/grayscale_sample0.jpg");
+    defer file.close();
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    var jpeg_file = jpeg.JPEG.init(helpers.zigimg_test_allocator);
+    defer jpeg_file.deinit();
+
+    var pixels_opt: ?color.PixelStorage = null;
+    const frame = try jpeg_file.read(&stream_source, &pixels_opt);
+
+    defer {
+        if (pixels_opt) |pixels| {
+            pixels.deinit(helpers.zigimg_test_allocator);
+        }
+    }
+
+    try helpers.expectEq(frame.frame_header.row_count, 32);
+    try helpers.expectEq(frame.frame_header.samples_per_row, 32);
+    try helpers.expectEq(frame.frame_header.sample_precision, 8);
+    try helpers.expectEq(frame.frame_header.components.len, 1);
+
+    try testing.expect(pixels_opt != null);
+
+    if (pixels_opt) |pixels| {
+        try testing.expect(pixels == .grayscale8);
+
+        // Just for fun, let's sample a few pixels. :^)
+        try helpers.expectEq(pixels.grayscale8[(0 * 32 + 0)], color.Grayscale8{ .value = 0x00 });
+        try helpers.expectEq(pixels.grayscale8[(15 * 32 + 15)], color.Grayscale8{ .value = 0xaa });
+        try helpers.expectEq(pixels.grayscale8[(28 * 32 + 28)], color.Grayscale8{ .value = 0xf7 });
     }
 }
 
@@ -111,17 +146,17 @@ test "Read subsampling images" {
             var jpeg_file = jpeg.JPEG.init(helpers.zigimg_test_allocator);
             defer jpeg_file.deinit();
 
-            var pixelsOpt: ?color.PixelStorage = null;
-            _ = try jpeg_file.read(&stream, &pixelsOpt);
+            var pixels_opt: ?color.PixelStorage = null;
+            _ = try jpeg_file.read(&stream, &pixels_opt);
 
             defer {
-                if (pixelsOpt) |pixels| {
+                if (pixels_opt) |pixels| {
                     pixels.deinit(helpers.zigimg_test_allocator);
                 }
             }
 
-            try testing.expect(pixelsOpt != null);
-            if (pixelsOpt) |pixels| {
+            try testing.expect(pixels_opt != null);
+            if (pixels_opt) |pixels| {
                 try testing.expect(pixels == .rgb24);
 
                 // Just for fun, let's sample a few pixels. :^)

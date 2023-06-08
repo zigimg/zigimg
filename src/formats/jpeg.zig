@@ -438,6 +438,11 @@ const FrameHeader = struct {
     }
 
     pub fn getBlockCount(self: FrameHeader, component_id: usize) usize {
+        // MCU of non-interleaved is just one block.
+        if (self.components.len == 1) {
+            return 1;
+        }
+
         const horizontal_block_count = self.components[component_id].horizontal_sampling_factor;
         const vertical_block_count = self.components[component_id].vertical_sampling_factor;
         return horizontal_block_count * vertical_block_count;
@@ -629,8 +634,11 @@ const Scan = struct {
 
     fn calculateMCUCountInFrame(frame_header: *const FrameHeader) usize {
         // FIXME: This is very naive and probably only works for Baseline DCT.
-        const mcu_width = 8 * frame_header.getMaxHorizontalSamplingFactor();
-        const mcu_height = 8 * frame_header.getMaxVerticalSamplingFactor();
+        // MCU of non-interleaved is just one block.
+        const horizontal_block_count = if (1 < frame_header.components.len) frame_header.getMaxHorizontalSamplingFactor() else 1;
+        const vertical_block_count = if (1 < frame_header.components.len) frame_header.getMaxVerticalSamplingFactor() else 1;
+        const mcu_width = 8 * horizontal_block_count;
+        const mcu_height = 8 * vertical_block_count;
         const mcu_count_per_row = (frame_header.samples_per_row + mcu_width - 1) / mcu_width;
         const mcu_count_per_column = (frame_header.row_count + mcu_height - 1) / mcu_height;
         return mcu_count_per_row * mcu_count_per_column;
@@ -835,16 +843,44 @@ const Frame = struct {
 
     pub fn renderToPixels(self: *const Frame, mcu_storage: *[MAX_COMPONENTS][MAX_BLOCKS]MCU, mcu_id: usize, pixels: *color.PixelStorage) ImageReadError!void {
         switch (self.frame_header.components.len) {
-            1 => try self.renderToPixelsGrayscale(pixels.grayscale8),
+            1 => try self.renderToPixelsGrayscale(&mcu_storage[0][0], mcu_id, pixels.grayscale8), // Grayscale images is non-interleaved
             3 => try self.renderToPixelsRgb(mcu_storage, mcu_id, pixels.rgb24),
             else => unreachable,
         }
     }
 
-    fn renderToPixelsGrayscale(self: *const Frame, pixels: []color.Grayscale8) ImageReadError!void {
-        _ = self;
-        _ = pixels;
-        return ImageError.Unsupported;
+    fn renderToPixelsGrayscale(self: *const Frame, mcu_storage: *MCU, mcu_id: usize, pixels: []color.Grayscale8) ImageReadError!void {
+        const mcu_width = 8;
+        const mcu_height = 8;
+        const width = self.frame_header.samples_per_row;
+        const height = pixels.len / width;
+        const mcus_per_row = (width + mcu_width - 1) / mcu_width;
+        const mcu_origin_x = (mcu_id % mcus_per_row) * mcu_width;
+        const mcu_origin_y = (mcu_id / mcus_per_row) * mcu_height;
+
+        for (0..mcu_height) |mcu_y| {
+            const y = mcu_origin_y + mcu_y;
+            if (y >= height) continue;
+
+            // y coordinates in the block
+            const block_y = mcu_y % 8;
+
+            const stride = y * width;
+
+            for (0..mcu_width) |mcu_x| {
+                const x = mcu_origin_x + mcu_x;
+                if (x >= width) continue;
+
+                // x coordinates in the block
+                const block_x = mcu_x % 8;
+
+                const reconstructed_Y = idct(mcu_storage, @intCast(u3, block_x), @intCast(u3, block_y), mcu_id, 0);
+                const Y = @intToFloat(f32, reconstructed_Y);
+                pixels[stride + x] = .{
+                    .value = @floatToInt(u8, std.math.clamp(Y + 128.0, 0.0, 255.0)),
+                };
+            }
+        }
     }
 
     fn renderToPixelsRgb(self: *const Frame, mcu_storage: *[MAX_COMPONENTS][MAX_BLOCKS]MCU, mcu_id: usize, pixels: []color.Rgb24) ImageReadError!void {
@@ -853,6 +889,7 @@ const Frame = struct {
         const mcu_width = 8 * max_horizontal_sampling_factor;
         const mcu_height = 8 * max_vertical_sampling_factor;
         const width = self.frame_header.samples_per_row;
+        const height = pixels.len / width;
         const mcus_per_row = (width + mcu_width - 1) / mcu_width;
 
         const mcu_origin_x = (mcu_id % mcus_per_row) * mcu_width;
@@ -860,7 +897,7 @@ const Frame = struct {
 
         for (0..mcu_height) |mcu_y| {
             const y = mcu_origin_y + mcu_y;
-            if (y >= pixels.len / width) continue;
+            if (y >= height) continue;
 
             // y coordinates of each component applied to the sampling factor
             const y_sampled_y = (mcu_y * self.frame_header.components[0].vertical_sampling_factor) / max_vertical_sampling_factor;
@@ -871,6 +908,8 @@ const Frame = struct {
             const y_block_y = y_sampled_y % 8;
             const cb_block_y = cb_sampled_y % 8;
             const cr_block_y = cr_sampled_y % 8;
+
+            const stride = y * width;
 
             for (0..mcu_width) |mcu_x| {
                 const x = mcu_origin_x + mcu_x;
@@ -910,7 +949,7 @@ const Frame = struct {
                 const b = Cb * (2 - 2 * Co_blue) + Y;
                 const g = (Y - Co_blue * b - Co_red * r) / Co_green;
 
-                pixels[y * width + x] = .{
+                pixels[stride + x] = .{
                     .r = @floatToInt(u8, std.math.clamp(r + 128.0, 0.0, 255.0)),
                     .g = @floatToInt(u8, std.math.clamp(g + 128.0, 0.0, 255.0)),
                     .b = @floatToInt(u8, std.math.clamp(b + 128.0, 0.0, 255.0)),
