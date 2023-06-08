@@ -132,16 +132,13 @@ fn parseNumber(reader: Image.Stream.Reader, buffer: []u8) ImageReadError!usize {
 }
 
 fn loadBinaryBitmap(header: Header, data: []color.Grayscale1, reader: Image.Stream.Reader) ImageReadError!void {
-    var data_index: usize = 0;
-    const data_end = header.width * header.height;
-
     var bit_reader = std.io.bitReader(.Big, reader);
 
-    while (data_index < data_end) : (data_index += 1) {
-        // set bit is black, cleared bit is white
-        // bits are "left to right" (so msb to lsb)
-        const read_bit = try bit_reader.readBitsNoEof(u1, 1);
-        data[data_index] = color.Grayscale1{ .value = ~read_bit };
+    for(0..header.height) |row_index| {
+        for(data[row_index * header.width..][0..header.width]) |*sample| {
+            sample.value = ~(try bit_reader.readBitsNoEof(u1, 1));
+        }
+        bit_reader.alignToByte();
     }
 }
 
@@ -294,6 +291,7 @@ fn Netpbm(comptime image_format: Image.Format, comptime header_numbers: []const 
         pub fn writeImage(allocator: Allocator, write_stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) ImageWriteError!void {
             _ = allocator;
 
+
             var netpbm_file = Self{};
             netpbm_file.header.binary = switch (encoder_options) {
                 .pbm => |options| options.binary,
@@ -375,6 +373,7 @@ fn Netpbm(comptime image_format: Image.Format, comptime header_numbers: []const 
 
             try writer.print("{} {}\n", .{ self.header.width, self.header.height });
 
+            std.log.debug("{}", .{self.header});
             if (self.header.format != .bitmap) {
                 try writer.print("{}\n", .{self.header.max_value});
             }
@@ -383,14 +382,16 @@ fn Netpbm(comptime image_format: Image.Format, comptime header_numbers: []const 
                 switch (self.header.format) {
                     .bitmap => {
                         switch (pixels) {
-                            .grayscale1 => {
+                            .grayscale1 => |samples| {
                                 var bit_writer = std.io.bitWriter(.Big, writer);
 
-                                for (pixels.grayscale1) |entry| {
-                                    try bit_writer.writeBits(~entry.value, 1);
+                                for(0..self.header.height) |row_index| {
+                                    for(samples[row_index * self.header.width..][0..self.header.width]) |sample| {
+                                        try bit_writer.writeBits(~sample.value, 1);
+                                    }
+                                    try bit_writer.flushBits();
                                 }
 
-                                try bit_writer.flushBits();
                             },
                             else => {
                                 return ImageError.Unsupported;
