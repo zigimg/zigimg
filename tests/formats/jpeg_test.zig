@@ -16,10 +16,10 @@ test "Should error on non JPEG images" {
     var jpeg_file = jpeg.JPEG.init(helpers.zigimg_test_allocator);
     defer jpeg_file.deinit();
 
-    var pixelsOpt: ?color.PixelStorage = null;
-    const invalidFile = jpeg_file.read(&stream_source, &pixelsOpt);
+    var pixels_opt: ?color.PixelStorage = null;
+    const invalidFile = jpeg_file.read(&stream_source, &pixels_opt);
     defer {
-        if (pixelsOpt) |pixels| {
+        if (pixels_opt) |pixels| {
             pixels.deinit(helpers.zigimg_test_allocator);
         }
     }
@@ -36,11 +36,11 @@ test "Read JFIF header properly and decode simple Huffman stream" {
     var jpeg_file = jpeg.JPEG.init(helpers.zigimg_test_allocator);
     defer jpeg_file.deinit();
 
-    var pixelsOpt: ?color.PixelStorage = null;
-    const frame = try jpeg_file.read(&stream_source, &pixelsOpt);
+    var pixels_opt: ?color.PixelStorage = null;
+    const frame = try jpeg_file.read(&stream_source, &pixels_opt);
 
     defer {
-        if (pixelsOpt) |pixels| {
+        if (pixels_opt) |pixels| {
             pixels.deinit(helpers.zigimg_test_allocator);
         }
     }
@@ -50,9 +50,9 @@ test "Read JFIF header properly and decode simple Huffman stream" {
     try helpers.expectEq(frame.frame_header.sample_precision, 8);
     try helpers.expectEq(frame.frame_header.components.len, 3);
 
-    try testing.expect(pixelsOpt != null);
+    try testing.expect(pixels_opt != null);
 
-    if (pixelsOpt) |pixels| {
+    if (pixels_opt) |pixels| {
         try testing.expect(pixels == .rgb24);
     }
 }
@@ -66,11 +66,11 @@ test "Read the tuba properly" {
     var jpeg_file = jpeg.JPEG.init(helpers.zigimg_test_allocator);
     defer jpeg_file.deinit();
 
-    var pixelsOpt: ?color.PixelStorage = null;
-    const frame = try jpeg_file.read(&stream_source, &pixelsOpt);
+    var pixels_opt: ?color.PixelStorage = null;
+    const frame = try jpeg_file.read(&stream_source, &pixels_opt);
 
     defer {
-        if (pixelsOpt) |pixels| {
+        if (pixels_opt) |pixels| {
             pixels.deinit(helpers.zigimg_test_allocator);
         }
     }
@@ -80,9 +80,9 @@ test "Read the tuba properly" {
     try helpers.expectEq(frame.frame_header.sample_precision, 8);
     try helpers.expectEq(frame.frame_header.components.len, 3);
 
-    try testing.expect(pixelsOpt != null);
+    try testing.expect(pixels_opt != null);
 
-    if (pixelsOpt) |pixels| {
+    if (pixels_opt) |pixels| {
         try testing.expect(pixels == .rgb24);
 
         // Just for fun, let's sample a few pixels. :^)
@@ -101,11 +101,11 @@ test "Read grayscale images" {
     var jpeg_file = jpeg.JPEG.init(helpers.zigimg_test_allocator);
     defer jpeg_file.deinit();
 
-    var pixelsOpt: ?color.PixelStorage = null;
-    const frame = try jpeg_file.read(&stream_source, &pixelsOpt);
+    var pixels_opt: ?color.PixelStorage = null;
+    const frame = try jpeg_file.read(&stream_source, &pixels_opt);
 
     defer {
-        if (pixelsOpt) |pixels| {
+        if (pixels_opt) |pixels| {
             pixels.deinit(helpers.zigimg_test_allocator);
         }
     }
@@ -115,9 +115,9 @@ test "Read grayscale images" {
     try helpers.expectEq(frame.frame_header.sample_precision, 8);
     try helpers.expectEq(frame.frame_header.components.len, 1);
 
-    try testing.expect(pixelsOpt != null);
+    try testing.expect(pixels_opt != null);
 
-    if (pixelsOpt) |pixels| {
+    if (pixels_opt) |pixels| {
         try testing.expect(pixels == .grayscale8);
 
         // Just for fun, let's sample a few pixels. :^)
@@ -146,17 +146,17 @@ test "Read subsampling images" {
             var jpeg_file = jpeg.JPEG.init(helpers.zigimg_test_allocator);
             defer jpeg_file.deinit();
 
-            var pixelsOpt: ?color.PixelStorage = null;
-            _ = try jpeg_file.read(&stream, &pixelsOpt);
+            var pixels_opt: ?color.PixelStorage = null;
+            _ = try jpeg_file.read(&stream, &pixels_opt);
 
             defer {
-                if (pixelsOpt) |pixels| {
+                if (pixels_opt) |pixels| {
                     pixels.deinit(helpers.zigimg_test_allocator);
                 }
             }
 
-            try testing.expect(pixelsOpt != null);
-            if (pixelsOpt) |pixels| {
+            try testing.expect(pixels_opt != null);
+            if (pixels_opt) |pixels| {
                 try testing.expect(pixels == .rgb24);
 
                 // Just for fun, let's sample a few pixels. :^)
