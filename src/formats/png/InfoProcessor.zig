@@ -98,7 +98,7 @@ fn processChunk(self: *Self, data: *ChunkProcessData) Image.ReadError!PixelForma
                     self.writer.print("           Compression: Zlib Deflate\n", .{}) catch return result_format;
                     self.writer.print("                  Text: ", .{}) catch return result_format;
                     try data.stream.seekBy(@intCast(i64, strEnd) + 2 - to_read);
-                    var decompressStream = std.compress.zlib.zlibStream(data.temp_allocator, reader) catch return error.InvalidData;
+                    var decompressStream = std.compress.zlib.decompressStream(data.temp_allocator, reader) catch return error.InvalidData;
                     var print_buf: [1024]u8 = undefined;
                     var got = decompressStream.read(print_buf[0..]) catch return error.InvalidData;
                     while (got > 0) {
