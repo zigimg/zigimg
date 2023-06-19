@@ -275,7 +275,7 @@ pub const PCX = struct {
             };
 
             var i: usize = 0;
-            while (i < std.math.min(pal.len, self.header.builtin_palette.len / 3)) : (i += 1) {
+            while (i < @min(pal.len, self.header.builtin_palette.len / 3)) : (i += 1) {
                 pal[i].r = self.header.builtin_palette[3 * i + 0];
                 pal[i].g = self.header.builtin_palette[3 * i + 1];
                 pal[i].b = self.header.builtin_palette[3 * i + 2];
