@@ -46,7 +46,7 @@ pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: Filter
             .specified => |f| f,
         };
 
-        try writer.writeByte(@enumToInt(filter_type));
+        try writer.writeByte(@intFromEnum(filter_type));
 
         for (0..scanline.asBytes().len) |byte_index| {
             const i = if (builtin.target.cpu.arch.endian() == .Little) pixelByteSwappedIndex(scanline, byte_index) else byte_index;

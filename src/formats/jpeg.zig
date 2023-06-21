@@ -77,7 +77,7 @@ const JFIFHeader = struct {
         const reader = stream.reader();
         try stream.seekTo(2);
         const maybe_app0_marker = try reader.readIntBig(u16);
-        if (maybe_app0_marker != @enumToInt(Markers.application0)) {
+        if (maybe_app0_marker != @intFromEnum(Markers.application0)) {
             return error.App0MarkerDoesNotExist;
         }
 
@@ -95,7 +95,7 @@ const JFIFHeader = struct {
         _ = try reader.readByte();
 
         const jfif_revision = try reader.readIntBig(u16);
-        const density_unit = @intToEnum(DensityUnit, try reader.readByte());
+        const density_unit = @enumFromInt(DensityUnit, try reader.readByte());
         const x_density = try reader.readIntBig(u16);
         const y_density = try reader.readIntBig(u16);
 
@@ -107,7 +107,7 @@ const JFIFHeader = struct {
         }
 
         // Make sure there are no application markers after us.
-        if (((try reader.readIntBig(u16)) & 0xFFF0) == @enumToInt(Markers.application0)) {
+        if (((try reader.readIntBig(u16)) & 0xFFF0) == @intFromEnum(Markers.application0)) {
             return error.ExtraneousApplicationMarker;
         }
 
@@ -604,8 +604,8 @@ const IDCTMultipliers = blk: {
                     const C_u: f32 = if (u == 0) 1.0 / @sqrt(2.0) else 1.0;
                     const C_v: f32 = if (v == 0) 1.0 / @sqrt(2.0) else 1.0;
 
-                    const x_cosine = @cos(((2 * @intToFloat(f32, x) + 1) * @intToFloat(f32, u) * std.math.pi) / 16.0);
-                    const y_cosine = @cos(((2 * @intToFloat(f32, y) + 1) * @intToFloat(f32, v) * std.math.pi) / 16.0);
+                    const x_cosine = @cos(((2 * @floatFromInt(f32, x) + 1) * @floatFromInt(f32, u) * std.math.pi) / 16.0);
+                    const y_cosine = @cos(((2 * @floatFromInt(f32, y) + 1) * @floatFromInt(f32, v) * std.math.pi) / 16.0);
                     const uv_value = C_u * C_v * x_cosine * y_cosine;
                     multipliers[y][x][u][v] = uv_value;
                 }
@@ -775,10 +775,10 @@ const Frame = struct {
         errdefer self.deinit();
 
         var marker = try reader.readIntBig(u16);
-        while (marker != @enumToInt(Markers.start_of_scan)) : (marker = try reader.readIntBig(u16)) {
+        while (marker != @intFromEnum(Markers.start_of_scan)) : (marker = try reader.readIntBig(u16)) {
             if (JPEG_DEBUG) std.debug.print("Frame: Parsing marker value: 0x{X}\n", .{marker});
 
-            switch (@intToEnum(Markers, marker)) {
+            switch (@enumFromInt(Markers, marker)) {
                 .define_huffman_tables => {
                     try self.parseDefineHuffmanTables(reader);
                 },
@@ -875,9 +875,9 @@ const Frame = struct {
                 const block_x = mcu_x % 8;
 
                 const reconstructed_Y = idct(mcu_storage, @intCast(u3, block_x), @intCast(u3, block_y), mcu_id, 0);
-                const Y = @intToFloat(f32, reconstructed_Y);
+                const Y = @floatFromInt(f32, reconstructed_Y);
                 pixels[stride + x] = .{
-                    .value = @floatToInt(u8, std.math.clamp(Y + 128.0, 0.0, 255.0)),
+                    .value = @intFromFloat(u8, std.math.clamp(Y + 128.0, 0.0, 255.0)),
                 };
             }
         }
@@ -937,9 +937,9 @@ const Frame = struct {
                 const reconstructed_Cb = idct(mcu_Cb, @intCast(u3, cb_block_x), @intCast(u3, cb_block_y), mcu_id, 1);
                 const reconstructed_Cr = idct(mcu_Cr, @intCast(u3, cr_block_x), @intCast(u3, cr_block_y), mcu_id, 2);
 
-                const Y = @intToFloat(f32, reconstructed_Y);
-                const Cb = @intToFloat(f32, reconstructed_Cb);
-                const Cr = @intToFloat(f32, reconstructed_Cr);
+                const Y = @floatFromInt(f32, reconstructed_Y);
+                const Cb = @floatFromInt(f32, reconstructed_Cb);
+                const Cr = @floatFromInt(f32, reconstructed_Cr);
 
                 const Co_red = 0.299;
                 const Co_green = 0.587;
@@ -950,9 +950,9 @@ const Frame = struct {
                 const g = (Y - Co_blue * b - Co_red * r) / Co_green;
 
                 pixels[stride + x] = .{
-                    .r = @floatToInt(u8, std.math.clamp(r + 128.0, 0.0, 255.0)),
-                    .g = @floatToInt(u8, std.math.clamp(g + 128.0, 0.0, 255.0)),
-                    .b = @floatToInt(u8, std.math.clamp(b + 128.0, 0.0, 255.0)),
+                    .r = @intFromFloat(u8, std.math.clamp(r + 128.0, 0.0, 255.0)),
+                    .g = @intFromFloat(u8, std.math.clamp(g + 128.0, 0.0, 255.0)),
+                    .b = @intFromFloat(u8, std.math.clamp(b + 128.0, 0.0, 255.0)),
                 };
             }
         }
@@ -966,7 +966,7 @@ const Frame = struct {
             var v: usize = 0;
             while (v < 8) : (v += 1) {
                 const mcu_value = mcu[v * 8 + u];
-                reconstructed_pixel += IDCTMultipliers[y][x][u][v] * @intToFloat(f32, mcu_value);
+                reconstructed_pixel += IDCTMultipliers[y][x][u][v] * @floatFromInt(f32, mcu_value);
             }
         }
 
@@ -977,7 +977,7 @@ const Frame = struct {
             }
         }
 
-        return @floatToInt(i8, std.math.clamp(scaled_pixel, -128.0, 127.0));
+        return @intFromFloat(i8, std.math.clamp(scaled_pixel, -128.0, 127.0));
     }
 };
 
@@ -1056,17 +1056,17 @@ pub const JPEG = struct {
 
         const reader = stream.reader();
         var marker = try reader.readIntBig(u16);
-        while (marker != @enumToInt(Markers.end_of_image)) : (marker = try reader.readIntBig(u16)) {
+        while (marker != @intFromEnum(Markers.end_of_image)) : (marker = try reader.readIntBig(u16)) {
             if (JPEG_DEBUG) std.debug.print("Parsing marker value: 0x{X}\n", .{marker});
 
-            if (marker >= @enumToInt(Markers.application0) and marker < @enumToInt(Markers.application0) + 16) {
+            if (marker >= @intFromEnum(Markers.application0) and marker < @intFromEnum(Markers.application0) + 16) {
                 if (JPEG_DEBUG) std.debug.print("Skipping application data segment\n", .{});
                 const application_data_length = try reader.readIntBig(u16);
                 try stream.seekBy(application_data_length - 2);
                 continue;
             }
 
-            switch (@intToEnum(Markers, marker)) {
+            switch (@enumFromInt(Markers, marker)) {
                 .sof0 => {
                     if (self.frame != null) {
                         return ImageError.Unsupported;
@@ -1130,7 +1130,7 @@ pub const JPEG = struct {
     fn formatDetect(stream: *Image.Stream) ImageReadError!bool {
         const reader = stream.reader();
         const maybe_start_of_image = try reader.readIntBig(u16);
-        if (maybe_start_of_image != @enumToInt(Markers.start_of_image)) {
+        if (maybe_start_of_image != @intFromEnum(Markers.start_of_image)) {
             return false;
         }
 
