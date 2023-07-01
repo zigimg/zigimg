@@ -22,7 +22,7 @@ pub const QoiColor = extern struct {
     a: u8 align(1) = 0xFF,
 
     fn hash(c: QoiColor) u6 {
-        return @as(u6, @truncate(c.r *% 3 +% c.g *% 5 +% c.b *% 7 +% c.a *% 11));
+        return @truncate(c.r *% 3 +% c.g *% 5 +% c.b *% 7 +% c.a *% 11);
     }
 
     pub fn eql(a: QoiColor, b: QoiColor) bool {
@@ -151,8 +151,8 @@ pub const QOI = struct {
         _ = allocator;
 
         var qoi = Self{};
-        qoi.header.width = @as(u32, @truncate(image.width));
-        qoi.header.height = @as(u32, @truncate(image.height));
+        qoi.header.width = @truncate(image.width);
+        qoi.header.height = @truncate(image.height);
         qoi.header.format = switch (image.pixels) {
             .rgb24 => Format.rgb,
             .rgba32 => Format.rgba,
@@ -225,7 +225,7 @@ pub const QOI = struct {
                 new_color.b = try reader.readByte();
                 new_color.a = try reader.readByte();
             } else if (hasPrefix(byte, u2, 0b00)) { // QOI_OP_INDEX
-                const color_index = @as(u6, @truncate(byte));
+                const color_index: u6 = @truncate(byte);
                 new_color = color_lut[color_index];
             } else if (hasPrefix(byte, u2, 0b01)) { // QOI_OP_DIFF
                 const diff_r = unmapRange2(byte >> 4);
@@ -419,7 +419,7 @@ pub const QOI = struct {
     }
 
     fn add8(dst: *u8, diff: i8) void {
-        dst.* +%= @as(u8, @bitCast(diff));
+        dst.* +%= @bitCast(diff);
     }
 
     fn hasPrefix(value: u8, comptime T: type, prefix: T) bool {

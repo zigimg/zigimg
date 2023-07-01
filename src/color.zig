@@ -115,11 +115,11 @@ pub const Colorf32 = extern struct {
     }
 
     pub fn toArray(self: Self) [4]f32 {
-        return @as([4]f32, @bitCast(self));
+        return @bitCast(self);
     }
 
     pub fn fromArray(value: [4]f32) Self {
-        return @as(Self, @bitCast(value));
+        return @bitCast(value);
     }
 };
 

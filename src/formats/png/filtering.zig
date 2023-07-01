@@ -144,7 +144,7 @@ fn filterChoiceHeuristic(scanline: color.PixelStorage, previous_scanline: ?color
 }
 
 fn average(a: u9, b: u9) u8 {
-    return @as(u8, @truncate((a + b) / 2));
+    return @truncate((a + b) / 2);
 }
 
 fn paeth(b4: u8, up: u8, b4_up: u8) u8 {

@@ -95,7 +95,7 @@ const JFIFHeader = struct {
         _ = try reader.readByte();
 
         const jfif_revision = try reader.readIntBig(u16);
-        const density_unit = @as(DensityUnit, @enumFromInt(try reader.readByte()));
+        const density_unit: DensityUnit = @enumFromInt(try reader.readByte());
         const x_density = try reader.readIntBig(u16);
         const y_density = try reader.readIntBig(u16);
 
@@ -267,7 +267,7 @@ const HuffmanReader = struct {
             self.bits_left = 8;
         }
 
-        const bit: u1 = @as(u1, @intCast(self.byte_buffer >> 7));
+        const bit: u1 = @intCast(self.byte_buffer >> 7);
         self.byte_buffer <<= 1;
         self.bits_left -= 1;
 
@@ -280,7 +280,7 @@ const HuffmanReader = struct {
         var i: u5 = 0;
         while (i < 16) : (i += 1) {
             code = (code << 1) | (try self.readBit());
-            if (self.table.?.code_map.get(.{ .length_minus_one = @as(u4, @intCast(i)), .code = code })) |value| {
+            if (self.table.?.code_map.get(.{ .length_minus_one = @intCast(i), .code = code })) |value| {
                 return value;
             }
         }
@@ -336,8 +336,8 @@ const Component = struct {
         const sampling_factors = try reader.readByte();
         const quantization_table_id = try reader.readByte();
 
-        const horizontal_sampling_factor = @as(u4, @intCast(sampling_factors >> 4));
-        const vertical_sampling_factor = @as(u4, @intCast(sampling_factors & 0xF));
+        const horizontal_sampling_factor: u4 = @intCast(sampling_factors >> 4);
+        const vertical_sampling_factor: u4 = @intCast(sampling_factors & 0xF);
 
         if (horizontal_sampling_factor < 1 or horizontal_sampling_factor > 4) {
             return ImageReadError.InvalidData;
@@ -458,8 +458,8 @@ const ScanComponentSpec = struct {
         const component_selector = try reader.readByte();
         const entropy_coding_selectors = try reader.readByte();
 
-        const dc_table_selector = @as(u4, @intCast(entropy_coding_selectors >> 4));
-        const ac_table_selector = @as(u4, @intCast(entropy_coding_selectors & 0b11));
+        const dc_table_selector: u4 = @intCast(entropy_coding_selectors >> 4);
+        const ac_table_selector: u4 = @intCast(entropy_coding_selectors & 0b11);
 
         if (JPEG_VERY_DEBUG) {
             std.debug.print("    Component spec: selector={}, DC table ID={}, AC table ID={}\n", .{ component_selector, dc_table_selector, ac_table_selector });
@@ -521,8 +521,8 @@ const ScanHeader = struct {
         if (JPEG_VERY_DEBUG) std.debug.print("  Spectral selection: {}-{}\n", .{ start_of_spectral_selection, end_of_spectral_selection });
 
         const approximation_bits = try reader.readByte();
-        const approximation_high = @as(u4, @intCast(approximation_bits >> 4));
-        const approximation_low = @as(u4, @intCast(approximation_bits & 0b1111));
+        const approximation_high: u4 = @intCast(approximation_bits >> 4);
+        const approximation_low: u4 = @intCast(approximation_bits & 0b1111);
 
         segment_size -= 1;
         if (JPEG_VERY_DEBUG) std.debug.print("  Approximation bit position: high={} low={}\n", .{ approximation_high, approximation_low });
@@ -709,9 +709,9 @@ const Scan = struct {
     fn decodeDCCoefficient(reader: *HuffmanReader, prediction: *i12) ImageReadError!i12 {
         const maybe_magnitude = try reader.readCode();
         if (maybe_magnitude > 11) return ImageReadError.InvalidData;
-        const magnitude = @as(u4, @intCast(maybe_magnitude));
+        const magnitude: u4 = @intCast(maybe_magnitude);
 
-        const diff = @as(i12, @intCast(try reader.readMagnitudeCoded(magnitude)));
+        const diff: i12 = @intCast(try reader.readMagnitudeCoded(magnitude));
         const dc_coefficient = diff + prediction.*;
         prediction.* = dc_coefficient;
 
@@ -739,9 +739,9 @@ const Scan = struct {
 
             const maybe_magnitude = zero_run_length_and_magnitude & 0xF;
             if (maybe_magnitude > 10) return ImageReadError.InvalidData;
-            const magnitude = @as(u4, @intCast(maybe_magnitude));
+            const magnitude: u4 = @intCast(maybe_magnitude);
 
-            const ac_coefficient = @as(i11, @intCast(try reader.readMagnitudeCoded(magnitude)));
+            const ac_coefficient: i11 = @intCast(try reader.readMagnitudeCoded(magnitude));
 
             var i: usize = 0;
             while (i < zero_run_length) : (i += 1) {
@@ -875,7 +875,7 @@ const Frame = struct {
                 const block_x = mcu_x % 8;
 
                 const reconstructed_Y = idct(mcu_storage, @as(u3, @intCast(block_x)), @as(u3, @intCast(block_y)), mcu_id, 0);
-                const Y = @as(f32, @floatFromInt(reconstructed_Y));
+                const Y: f32 = @floatFromInt(reconstructed_Y);
                 pixels[stride + x] = .{
                     .value = @as(u8, @intFromFloat(std.math.clamp(Y + 128.0, 0.0, 255.0))),
                 };
@@ -937,9 +937,9 @@ const Frame = struct {
                 const reconstructed_Cb = idct(mcu_Cb, @as(u3, @intCast(cb_block_x)), @as(u3, @intCast(cb_block_y)), mcu_id, 1);
                 const reconstructed_Cr = idct(mcu_Cr, @as(u3, @intCast(cr_block_x)), @as(u3, @intCast(cr_block_y)), mcu_id, 2);
 
-                const Y = @as(f32, @floatFromInt(reconstructed_Y));
-                const Cb = @as(f32, @floatFromInt(reconstructed_Cb));
-                const Cr = @as(f32, @floatFromInt(reconstructed_Cr));
+                const Y: f32 = @floatFromInt(reconstructed_Y);
+                const Cb: f32 = @floatFromInt(reconstructed_Cb);
+                const Cr: f32 = @floatFromInt(reconstructed_Cr);
 
                 const Co_red = 0.299;
                 const Co_green = 0.587;
@@ -950,9 +950,9 @@ const Frame = struct {
                 const g = (Y - Co_blue * b - Co_red * r) / Co_green;
 
                 pixels[stride + x] = .{
-                    .r = @as(u8, @intFromFloat(std.math.clamp(r + 128.0, 0.0, 255.0))),
-                    .g = @as(u8, @intFromFloat(std.math.clamp(g + 128.0, 0.0, 255.0))),
-                    .b = @as(u8, @intFromFloat(std.math.clamp(b + 128.0, 0.0, 255.0))),
+                    .r = @intFromFloat(std.math.clamp(r + 128.0, 0.0, 255.0)),
+                    .g = @intFromFloat(std.math.clamp(g + 128.0, 0.0, 255.0)),
+                    .b = @intFromFloat(std.math.clamp(b + 128.0, 0.0, 255.0)),
                 };
             }
         }
@@ -977,7 +977,7 @@ const Frame = struct {
             }
         }
 
-        return @as(i8, @intFromFloat(std.math.clamp(scaled_pixel, -128.0, 127.0)));
+        return @intFromFloat(std.math.clamp(scaled_pixel, -128.0, 127.0));
     }
 };
 

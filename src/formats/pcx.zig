@@ -214,16 +214,16 @@ pub const PCX = struct {
                         var i: usize = 0;
                         while (i < 8) : (i += 1) {
                             if (x < self.width) {
-                                storage.indices[y_stride + x] = @as(u1, @intCast((byte >> (7 - @as(u3, @intCast(i)))) & 0x01));
+                                storage.indices[y_stride + x] = @intCast((byte >> (7 - @as(u3, @intCast(i)))) & 0x01);
                                 x += 1;
                             }
                         }
                     },
                     .indexed4 => |storage| {
-                        storage.indices[y_stride + x] = @as(u4, @truncate(byte >> 4));
+                        storage.indices[y_stride + x] = @truncate(byte >> 4);
                         x += 1;
                         if (x < self.width) {
-                            storage.indices[y_stride + x] = @as(u4, @truncate(byte));
+                            storage.indices[y_stride + x] = @truncate(byte);
                             x += 1;
                         }
                     },

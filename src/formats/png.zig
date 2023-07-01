@@ -79,8 +79,8 @@ pub const PNG = struct {
         try ensureWritable(image);
 
         const header = HeaderData{
-            .width = @as(u32, @truncate(image.width)),
-            .height = @as(u32, @truncate(image.height)),
+            .width = @truncate(image.width),
+            .height = @truncate(image.height),
             .bit_depth = image.pixelFormat().bitsPerChannel(),
             .color_type = try types.ColorType.fromPixelFormat(image.pixelFormat()),
             .compression_method = .deflate,

@@ -359,7 +359,7 @@ pub const PAM = struct {
         if (src_maxval == dst_maxval) return val;
 
         const W = meta.Int(.unsigned, @bitSizeOf(T) * 2);
-        return @as(T, @intCast(@min(math.maxInt(T), @as(W, dst_maxval) * @as(W, val) / @as(W, src_maxval))));
+        return @intCast(@min(math.maxInt(T), @as(W, dst_maxval) * @as(W, val) / @as(W, src_maxval)));
     }
 
     fn readFrame(allocator: Allocator, reader: anytype) ImageReadError!?Image {
@@ -380,7 +380,7 @@ pub const PAM = struct {
             const offset = row * image.width;
             for (0..image.width) |column| {
                 switch (image.pixels) {
-                    .grayscale1 => |g| g[offset + column].value = @as(u1, @intCast(if (header.tuple_type == .mono) try mapValue(u8, try reader.readByte(), 1, 1) else try mapValue(u8, try reader.readByte(), 1, 1) & try mapValue(u8, try reader.readByte(), 1, 1))),
+                    .grayscale1 => |g| g[offset + column].value = @intCast(if (header.tuple_type == .mono) try mapValue(u8, try reader.readByte(), 1, 1) else try mapValue(u8, try reader.readByte(), 1, 1) & try mapValue(u8, try reader.readByte(), 1, 1)),
                     .grayscale8 => |g| g[offset + column].value = try mapValue(u8, try reader.readByte(), @as(u8, @intCast(header.maxval)), math.maxInt(u8)),
                     .grayscale8Alpha => |g| g[offset + column] = .{
                         .value = try mapValue(u8, try reader.readByte(), @as(u8, @intCast(header.maxval)), math.maxInt(u8)),
