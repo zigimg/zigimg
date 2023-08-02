@@ -40,8 +40,7 @@ pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: Filter
 
     const pixel_len = format.pixelStride();
 
-    var y: usize = 0;
-    while (y < header.height) : (y += 1) {
+    for (0..header.height) |y| {
         scanline = pixels.slice(y * header.width, (y + 1) * header.width);
 
         const filter_type: FilterType = switch (filter_choice) {
@@ -52,23 +51,80 @@ pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: Filter
 
         try writer.writeByte(@intFromEnum(filter_type));
 
-        for (0..scanline.asBytes().len) |byte_index| {
-            const i = if (builtin.target.cpu.arch.endian() == .Little) pixelByteSwappedIndex(scanline, byte_index) else byte_index;
+        const write_byte_trace = tracy.trace(@src(), "write row");
+        defer write_byte_trace.end();
 
-            const sample = scanline.asBytes()[i];
-            const previous: u8 = if (byte_index >= pixel_len) scanline.asBytes()[i - pixel_len] else 0;
-            const above: u8 = if (previous_scanline) |b| b.asBytes()[i] else 0;
-            const above_previous = if (previous_scanline) |b| (if (byte_index >= pixel_len) b.asBytes()[i - pixel_len] else 0) else 0;
+        switch (scanline) {
+            .rgba32 => {
+                {
+                    // start off the scanline
+                    const sample = scanline.asBytes()[0];
+                    const above: u8 = if (previous_scanline) |b| b.asBytes()[0] else 0;
 
-            const byte: u8 = switch (filter_type) {
-                .none => sample,
-                .sub => sample -% previous,
-                .up => sample -% above,
-                .average => sample -% average(previous, above),
-                .paeth => sample -% paeth(previous, above, above_previous),
-            };
+                    const byte: u8 = switch (filter_type) {
+                        .none, .sub => sample,
+                        .up => sample -% above,
+                        .average => sample -% average(0, above),
+                        .paeth => sample -% paeth(0, above, 0),
+                    };
 
-            try writer.writeByte(byte);
+                    try writer.writeByte(byte);
+                }
+
+                // Write out the rest of the bytes
+                const bytes = scanline.asBytes()[1..];
+                const previous_bytes = scanline.asBytes()[0 .. scanline.asBytes().len - 1];
+                if (previous_scanline) |prev_line| {
+                    const above_bytes = prev_line.asBytes()[1..];
+                    const above_previous_bytes = prev_line.asBytes()[0 .. scanline.asBytes().len - 1];
+                    switch (filter_type) {
+                        .none => try writer.writeAll(bytes),
+                        .sub => for (bytes, previous_bytes) |sample, previous| {
+                            try writer.writeByte(sample -% previous);
+                        },
+                        .up => for (bytes, above_bytes) |sample, above| {
+                            try writer.writeByte(sample -% above);
+                        },
+                        .average => for (bytes, previous_bytes, above_bytes) |sample, previous, above| {
+                            try writer.writeByte(sample -% average(previous, above));
+                        },
+                        .paeth => for (bytes, previous_bytes, above_bytes, above_previous_bytes) |sample, previous, above, above_previous| {
+                            try writer.writeByte(sample -% paeth(previous, above, above_previous));
+                        },
+                    }
+                } else {
+                    switch (filter_type) {
+                        .none, .up => try writer.writeAll(bytes),
+                        .sub => for (bytes, previous_bytes) |sample, previous| {
+                            try writer.writeByte(sample -% previous);
+                        },
+                        .average => for (bytes, previous_bytes) |sample, previous| {
+                            try writer.writeByte(sample -% average(previous, 0));
+                        },
+                        .paeth => for (bytes, previous_bytes) |sample, previous| {
+                            try writer.writeByte(sample -% paeth(previous, 0, 0));
+                        },
+                    }
+                }
+            },
+            else => for (0..scanline.asBytes().len) |byte_index| {
+                const i = if (builtin.target.cpu.arch.endian() == .Little) pixelByteSwappedIndex(scanline, byte_index) else byte_index;
+
+                const sample = scanline.asBytes()[i];
+                const previous: u8 = if (byte_index >= pixel_len) scanline.asBytes()[i - pixel_len] else 0;
+                const above: u8 = if (previous_scanline) |b| b.asBytes()[i] else 0;
+                const above_previous = if (previous_scanline) |b| (if (byte_index >= pixel_len) b.asBytes()[i - pixel_len] else 0) else 0;
+
+                const byte: u8 = switch (filter_type) {
+                    .none => sample,
+                    .sub => sample -% previous,
+                    .up => sample -% above,
+                    .average => sample -% average(previous, above),
+                    .paeth => sample -% paeth(previous, above, above_previous),
+                };
+
+                try writer.writeByte(byte);
+            },
         }
         previous_scanline = scanline;
     }
