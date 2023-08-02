@@ -11,19 +11,24 @@ pub fn main() !void {
     defer std.process.argsFree(gpa, args);
 
     if (args.len < 3) {
-        std.debug.print("Correct usage:\n\tto_png <input file> <output file>", .{});
+        std.debug.print("Correct usage:\n\tto_png  <output file> <input files...>", .{});
         std.process.exit(1);
     }
 
-    const input_filepath = args[1];
-    const output_filepath = args[2];
+    const output_filepath = args[1];
+    const input_filepaths = args[2..];
 
-    const read_trace = tracy.trace(@src(), "read image");
-    var image = try zigimg.Image.fromFilePath(gpa, input_filepath);
-    defer image.deinit();
-    read_trace.end();
+    for (input_filepaths) |input_filepath| {
+        const f = tracy.frame(null);
+        defer f.end();
 
-    const write_trace = tracy.trace(@src(), "write image");
-    try image.writeToFilePath(output_filepath, .{ .png = .{} });
-    write_trace.end();
+        const read_trace = tracy.trace(@src(), "read image");
+        var image = try zigimg.Image.fromFilePath(gpa, input_filepath);
+        defer image.deinit();
+        read_trace.end();
+
+        const write_trace = tracy.trace(@src(), "write image");
+        try image.writeToFilePath(output_filepath, .{ .png = .{} });
+        write_trace.end();
+    }
 }
