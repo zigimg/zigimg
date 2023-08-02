@@ -8,6 +8,7 @@ const color = @import("color.zig");
 const io = std.io;
 const std = @import("std");
 const utils = @import("utils.zig");
+const tracy = @import("tracy");
 
 pub const Error = error{
     Unsupported,
@@ -213,6 +214,9 @@ fn internalRead(allocator: Allocator, stream: *Stream) !Self {
 }
 
 fn internalWrite(self: Self, stream: *Stream, encoder_options: EncoderOptions) WriteError!void {
+    const t = tracy.trace(@src(), null);
+    defer t.end();
+
     const image_format = std.meta.activeTag(encoder_options);
 
     var format_interface = try findImageInterfaceFromImageFormat(image_format);

@@ -4,6 +4,7 @@ const PixelFormat = @import("../../pixel_format.zig").PixelFormat;
 const Image = @import("../../Image.zig");
 const HeaderData = @import("types.zig").HeaderData;
 const builtin = @import("builtin");
+const tracy = @import("tracy");
 
 pub const FilterType = enum(u8) {
     none = 0,
@@ -26,6 +27,9 @@ pub const FilterChoice = union(FilterChoiceStrategies) {
 };
 
 pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: FilterChoice, header: HeaderData) Image.WriteError!void {
+    const t = tracy.trace(@src(), null);
+    defer t.end();
+
     var scanline: color.PixelStorage = undefined;
     var previous_scanline: ?color.PixelStorage = null;
 
@@ -102,6 +106,9 @@ fn byteSwappedIndex(comptime T: type, byte_index: usize) usize {
 }
 
 fn filterChoiceHeuristic(scanline: color.PixelStorage, previous_scanline: ?color.PixelStorage) FilterType {
+    const t = tracy.trace(@src(), null);
+    defer t.end();
+
     const pixel_len = @as(PixelFormat, scanline).pixelStride();
     var max_score: usize = 0;
     var best: FilterType = .none;

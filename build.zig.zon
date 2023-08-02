@@ -1,0 +1,12 @@
+.{
+	.name = "zigimg",
+	.version = "0.1.0",
+	.dependencies = .{
+		.tracy = .{
+			.url = "https://github.com/leroycep/tracy/archive/b8738156fc1a57605d4fbd07c814c4dd040d6204.tar.gz",
+			.hash = "1220d1ba194989118dc26ba2a912fe7bf8246843788407cc5a51aea620c109dbcb9b",
+		},
+	}
+}
+
+
