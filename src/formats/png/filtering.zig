@@ -56,10 +56,9 @@ pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: Filter
 
         switch (scanline) {
             .rgba32 => {
-                {
+                for (scanline.asBytes()[0..pixel_len], 0..) |sample, i| {
                     // start off the scanline
-                    const sample = scanline.asBytes()[0];
-                    const above: u8 = if (previous_scanline) |b| b.asBytes()[0] else 0;
+                    const above: u8 = if (previous_scanline) |b| b.asBytes()[i] else 0;
 
                     const byte: u8 = switch (filter_type) {
                         .none, .sub => sample,
@@ -72,11 +71,11 @@ pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: Filter
                 }
 
                 // Write out the rest of the bytes
-                const bytes = scanline.asBytes()[1..];
-                const previous_bytes = scanline.asBytes()[0 .. scanline.asBytes().len - 1];
+                const bytes = scanline.asBytes()[pixel_len..];
+                const previous_bytes = scanline.asBytes()[0 .. scanline.asBytes().len - pixel_len];
                 if (previous_scanline) |prev_line| {
-                    const above_bytes = prev_line.asBytes()[1..];
-                    const above_previous_bytes = prev_line.asBytes()[0 .. scanline.asBytes().len - 1];
+                    const above_bytes = prev_line.asBytes()[pixel_len..];
+                    const above_previous_bytes = prev_line.asBytes()[0 .. scanline.asBytes().len - pixel_len];
                     switch (filter_type) {
                         .none => try writer.writeAll(bytes),
                         .sub => for (bytes, previous_bytes) |sample, previous| {
