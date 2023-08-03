@@ -172,13 +172,10 @@ fn filterChoiceHeuristic(scanline: color.PixelStorage, previous_scanline: ?color
     var combos: [filter_types.len]usize = [_]usize{0} ** filter_types.len;
     var scores: [filter_types.len]usize = [_]usize{0} ** filter_types.len;
 
-    for (0..scanline.asBytes().len) |byte_index| {
-        const i = if (builtin.target.cpu.arch.endian() == .Little) pixelByteSwappedIndex(scanline, byte_index) else byte_index;
-
-        const sample = scanline.asBytes()[i];
-        const previous: u8 = if (byte_index >= pixel_len) scanline.asBytes()[i - pixel_len] else 0;
+    for (scanline.asBytes(), 0..) |sample, i| {
+        const previous: u8 = if (i >= pixel_len) scanline.asBytes()[i - pixel_len] else 0;
         const above: u8 = if (previous_scanline) |b| b.asBytes()[i] else 0;
-        const above_previous = if (previous_scanline) |b| (if (byte_index >= pixel_len) b.asBytes()[i - pixel_len] else 0) else 0;
+        const above_previous = if (previous_scanline) |b| (if (i >= pixel_len) b.asBytes()[i - pixel_len] else 0) else 0;
 
         inline for (filter_types, &previous_bytes, &combos, &scores) |filter_type, *previous_byte, *combo, *score| {
             const byte: u8 = switch (filter_type) {
@@ -245,7 +242,7 @@ test "filtering 16-bit grayscale pixels uses correct endianess" {
     });
     defer std.testing.allocator.free(pixels);
 
-    try filter(output_bytes.writer(), .{ .grayscale16 = pixels }, .heuristic, .{
+    try filter(output_bytes.writer(), .{ .grayscale16 = pixels }, .{ .specified = .none }, .{
         .width = 4,
         .height = 2,
         .bit_depth = 16,
