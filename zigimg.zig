@@ -16,7 +16,8 @@ pub const pam = @import("src/formats/pam.zig");
 
 test {
     const std = @import("std");
-    std.testing.refAllDeclsRecursive(@This());
+    std.testing.refAllDecls(@This());
+    
     inline for (.{
         @import("src/formats/png/reader.zig"),
         @import("src/compressions/lzw.zig"),
