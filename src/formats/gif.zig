@@ -10,21 +10,20 @@ const ImageReadError = Image.ReadError;
 const ImageWriteError = Image.WriteError;
 
 pub const HeaderFlags = packed struct {
-    global_color_table_size: u3,
-    sorted: bool,
-    color_resolution: u3,
-    use_global_color_table: bool,
+    global_color_table_size: u3 = 0,
+    sorted: bool = false,
+    color_resolution: u3 = 0,
+    use_global_color_table: bool = false,
 };
 
-// TODO: mlarouche: Replace this with a packed struct once zig supports nested packed struct
-pub const Header = struct {
-    magic: [3]u8,
-    version: [3]u8,
-    width: u16,
-    height: u16,
-    flags: HeaderFlags,
-    background_color_index: u8,
-    pixel_aspect_ratio: u8,
+pub const Header = extern struct {
+    magic: [3]u8 align(1) = undefined,
+    version: [3]u8 align(1) = undefined,
+    width: u16 align(1) = 0,
+    height: u16 align(1) = 0,
+    flags: HeaderFlags align(1) = .{},
+    background_color_index: u8 align(1) = 0,
+    pixel_aspect_ratio: u8 align(1) = 0,
 };
 
 pub const ImageDescriptorFlags = packed struct {
@@ -35,13 +34,12 @@ pub const ImageDescriptorFlags = packed struct {
     has_local_color_table: bool,
 };
 
-// TODO: mlarouche: Replace this with a packed struct once zig supports nested packed struct
-pub const ImageDescriptor = struct {
-    left_position: u16,
-    top_position: u16,
-    width: u16,
-    height: u16,
-    flags: ImageDescriptorFlags,
+pub const ImageDescriptor = extern struct {
+    left_position: u16 align(1),
+    top_position: u16 align(1),
+    width: u16 align(1),
+    height: u16 align(1),
+    flags: ImageDescriptorFlags align(1),
 };
 
 pub const GraphicControlExtensionFlags = packed struct {
@@ -57,10 +55,10 @@ pub const GraphicControlExtensionFlags = packed struct {
     reserved: u3,
 };
 
-pub const GraphicControlExtension = struct {
-    flags: GraphicControlExtensionFlags,
-    delay_time: u16,
-    transparent_color_index: u8,
+pub const GraphicControlExtension = extern struct {
+    flags: GraphicControlExtensionFlags align(1),
+    delay_time: u16 align(1),
+    transparent_color_index: u8 align(1),
 };
 
 pub const CommentExtension = struct {
@@ -128,12 +126,12 @@ pub fn FixedStorage(comptime T: type, comptime storage_size: usize) type {
 }
 
 pub const GIF = struct {
-    header: Header = undefined,
+    header: Header = .{},
     global_color_table: FixedStorage(color.Rgb24, 256) = FixedStorage(color.Rgb24, 256).init(),
     frames: std.ArrayListUnmanaged(Frame) = .{},
     comments: std.ArrayListUnmanaged(CommentExtension) = .{},
     application_info: ?ApplicationExtension = null,
-    allocator: std.mem.Allocator,
+    allocator: std.mem.Allocator = undefined,
 
     pub const Frame = struct {
         local_color_table: FixedStorage(color.Rgb24, 256) = FixedStorage(color.Rgb24, 256).init(),
@@ -206,8 +204,8 @@ pub const GIF = struct {
             return ImageReadError.InvalidData;
         }
 
-        result.width = @intCast(gif.header.width);
-        result.height = @intCast(gif.header.height);
+        result.width = gif.header.width;
+        result.height = gif.header.height;
         result.pixels = frames.items[0].pixels;
         result.animation.frames = frames;
         result.animation.loop_count = gif.loopCount();
@@ -240,16 +238,7 @@ pub const GIF = struct {
             context.frame_list.deinit(self.allocator);
         }
 
-        // TODO: mlarouche: Try again having Header being a packed struct when stage3 is released
-        // self.header = try utils.readStructLittle(reader, Header);
-
-        _ = try context.reader.read(self.header.magic[0..]);
-        _ = try context.reader.read(self.header.version[0..]);
-        self.header.width = try context.reader.readIntLittle(u16);
-        self.header.height = try context.reader.readIntLittle(u16);
-        self.header.flags = try utils.readStructLittle(context.reader, HeaderFlags);
-        self.header.background_color_index = try context.reader.readIntLittle(u8);
-        self.header.pixel_aspect_ratio = try context.reader.readIntLittle(u8);
+        self.header = try utils.readStructLittle(context.reader, Header);
 
         if (!std.mem.eql(u8, self.header.magic[0..], Magic)) {
             return ImageReadError.InvalidData;
@@ -281,6 +270,8 @@ pub const GIF = struct {
         }
 
         try self.readData(&context);
+
+        if (context.frame_list.items.len == 0) {}
 
         return context.frame_list;
     }
@@ -479,20 +470,8 @@ pub const GIF = struct {
 
     // <Table-Based Image> ::= Image Descriptor [Local Color Table] Image Data
     fn readImageDescriptorAndData(self: *Self, context: *ReaderContext) !void {
-        // TODO: mlarouche: Try again having Header being a packed struct when stage3 is released
-        //const context.current_frame.image_descriptor = try utils.readStructLittle(reader, ImageDescriptor);
         if (context.current_frame) |current_frame| {
-            current_frame.image_descriptor = blk: {
-                var image_descriptor: ImageDescriptor = undefined;
-
-                image_descriptor.left_position = try context.reader.readIntLittle(u16);
-                image_descriptor.top_position = try context.reader.readIntLittle(u16);
-                image_descriptor.width = try context.reader.readIntLittle(u16);
-                image_descriptor.height = try context.reader.readIntLittle(u16);
-                image_descriptor.flags = try utils.readStructLittle(context.reader, ImageDescriptorFlags);
-
-                break :blk image_descriptor;
-            };
+            current_frame.image_descriptor = try utils.readStructLittle(context.reader, ImageDescriptor);
 
             const local_color_table_size = @as(usize, 1) << (@as(u6, @intCast(current_frame.image_descriptor.?.flags.local_color_table_size)) + 1);
 
