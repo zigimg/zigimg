@@ -55,7 +55,7 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
 
                             self.next_code += 1;
 
-                            const max_code = (@as(u12, 1) << @intCast(u4, self.code_size)) + 1;
+                            const max_code = (@as(u12, 1) << @intCast(self.code_size)) + 1;
                             if (self.next_code == max_code) {
                                 self.code_size += 1;
                                 bits_to_read += 1;
@@ -79,7 +79,7 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
 
                                 self.next_code += 1;
 
-                                const max_code = (@as(u12, 1) << @intCast(u4, self.code_size)) + 1;
+                                const max_code = (@as(u12, 1) << @as(u4, @intCast(self.code_size))) + 1;
                                 if (self.next_code == max_code) {
                                     self.code_size += 1;
                                     bits_to_read += 1;
@@ -102,13 +102,13 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
             self.area_allocator = std.heap.ArenaAllocator.init(self.area_allocator.child_allocator);
             var allocator = self.area_allocator.allocator();
 
-            const roots_size = @as(usize, 1) << @intCast(u6, self.code_size);
+            const roots_size = @as(usize, 1) << @intCast(self.code_size);
 
             var index: u12 = 0;
 
             while (index < roots_size) : (index += 1) {
                 var data = try allocator.alloc(u8, 1);
-                data[0] = @truncate(u8, index);
+                data[0] = @as(u8, @truncate(index));
 
                 try self.dictionary.put(index, data);
             }

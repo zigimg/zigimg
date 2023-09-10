@@ -206,8 +206,8 @@ pub const GIF = struct {
             return ImageReadError.InvalidData;
         }
 
-        result.width = @intCast(usize, gif.header.width);
-        result.height = @intCast(usize, gif.header.height);
+        result.width = @intCast(gif.header.width);
+        result.height = @intCast(gif.header.height);
         result.pixels = frames.items[0].pixels;
         result.animation.frames = frames;
         result.animation.loop_count = gif.loopCount();
@@ -268,7 +268,7 @@ pub const GIF = struct {
             return ImageReadError.InvalidData;
         }
 
-        const global_color_table_size = @as(usize, 1) << (@intCast(u6, self.header.flags.global_color_table_size) + 1);
+        const global_color_table_size = @as(usize, 1) << (@as(u6, @intCast(self.header.flags.global_color_table_size)) + 1);
 
         self.global_color_table.resize(global_color_table_size);
 
@@ -494,7 +494,7 @@ pub const GIF = struct {
                 break :blk image_descriptor;
             };
 
-            const local_color_table_size = @as(usize, 1) << (@intCast(u6, current_frame.image_descriptor.?.flags.local_color_table_size) + 1);
+            const local_color_table_size = @as(usize, 1) << (@as(u6, @intCast(current_frame.image_descriptor.?.flags.local_color_table_size)) + 1);
 
             current_frame.local_color_table.resize(local_color_table_size);
 
@@ -509,7 +509,7 @@ pub const GIF = struct {
             const effective_color_table = if (current_frame.image_descriptor.?.flags.has_local_color_table) current_frame.local_color_table.data else self.global_color_table.data;
 
             var new_frame = Image.AnimationFrame{
-                .pixels = try color.PixelStorage.init(self.allocator, PixelFormat.indexed8, @intCast(usize, self.header.width * self.header.height)),
+                .pixels = try color.PixelStorage.init(self.allocator, PixelFormat.indexed8, @as(usize, @intCast(self.header.width * self.header.height))),
                 .duration = 0.0,
             };
             errdefer {
@@ -517,13 +517,13 @@ pub const GIF = struct {
             }
 
             if (current_frame.graphics_control) |graphics_control| {
-                new_frame.duration = @intToFloat(f32, graphics_control.delay_time) * (1.0 / 100.0);
+                new_frame.duration = @as(f32, @floatFromInt(graphics_control.delay_time)) * (1.0 / 100.0);
             }
 
             try context.frame_list.append(self.allocator, new_frame);
 
             // Copy the effective palette
-            for (effective_color_table) |palette_entry, index| {
+            for (effective_color_table, 0..) |palette_entry, index| {
                 new_frame.pixels.indexed8.palette[index] = color.Rgba32.initRgb(palette_entry.r, palette_entry.g, palette_entry.b);
             }
 
@@ -533,7 +533,7 @@ pub const GIF = struct {
 
             const lzw_minimum_code_size = try context.reader.readByte();
 
-            if (lzw_minimum_code_size == @enumToInt(DataBlockKind.end_of_file)) {
+            if (lzw_minimum_code_size == @intFromEnum(DataBlockKind.end_of_file)) {
                 return Image.ReadError.InvalidData;
             }
 

@@ -179,8 +179,8 @@ fn doGifTest(entry_name: []const u8) !void {
 
         const expected_loop_count = if (config_section.getValue("loop-count")) |loop_value|
             switch (loop_value) {
-                .number => |number| @intCast(i32, number),
-                .string => |string| if (std.mem.eql(u8, string, "infinite")) -1 else return error.InvalidGifConfigFile,
+                .number => |number| @as(i32, @intCast(number)),
+                .string => |string| if (std.mem.eql(u8, string, "infinite")) @as(i32,-1) else return error.InvalidGifConfigFile,
             }
         else
             return error.InvalidGifConfigFile;
@@ -204,8 +204,8 @@ fn doGifTest(entry_name: []const u8) !void {
 
         try helpers.expectEqSlice(u8, gif_file.header.magic[0..], expected_version.string[0..3]);
         try helpers.expectEqSlice(u8, gif_file.header.version[0..], expected_version.string[3..]);
-        try helpers.expectEq(gif_file.header.width, @intCast(u16, expected_width.number));
-        try helpers.expectEq(gif_file.header.height, @intCast(u16, expected_height.number));
+        try helpers.expectEq(gif_file.header.width, @as(u16, @intCast(expected_width.number)));
+        try helpers.expectEq(gif_file.header.height, @as(u16, @intCast(expected_height.number)));
         _ = expected_background_color;
         _ = expected_loop_count;
 
