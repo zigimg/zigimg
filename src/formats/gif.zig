@@ -26,7 +26,7 @@ pub const Header = extern struct {
     pixel_aspect_ratio: u8 align(1) = 0,
 };
 
-pub const ImageDescriptorFlags = packed struct {
+pub const ImageDescriptorFlags = packed struct(u8) {
     local_color_table_size: u3,
     reserved: u2,
     sort: bool,
@@ -42,7 +42,7 @@ pub const ImageDescriptor = extern struct {
     flags: ImageDescriptorFlags align(1),
 };
 
-pub const GraphicControlExtensionFlags = packed struct {
+pub const GraphicControlExtensionFlags = packed struct(u8) {
     has_transparent_color: bool,
     user_input: bool,
     disposal_method: enum(u3) {
@@ -478,6 +478,11 @@ pub const GIF = struct {
         if (context.current_frame) |current_frame| {
             current_frame.image_descriptor = try utils.readStructLittle(context.reader, ImageDescriptor);
 
+            // Don't read any futher if the local width or height is zero
+            if (current_frame.image_descriptor.?.width == 0 or current_frame.image_descriptor.?.height == 0) {
+                return;
+            }
+
             const local_color_table_size = @as(usize, 1) << (@as(u6, @intCast(current_frame.image_descriptor.?.flags.local_color_table_size)) + 1);
 
             current_frame.local_color_table.resize(local_color_table_size);
@@ -488,11 +493,6 @@ pub const GIF = struct {
                 while (index < local_color_table_size) : (index += 1) {
                     current_frame.local_color_table.data[index] = try utils.readStructLittle(context.reader, color.Rgb24);
                 }
-            }
-
-            // Don't read any futher if the local width or height is zero
-            if (current_frame.image_descriptor.?.width == 0 or current_frame.image_descriptor.?.height == 0) {
-                return;
             }
 
             const effective_color_table = if (current_frame.image_descriptor.?.flags.has_local_color_table) current_frame.local_color_table.data else self.global_color_table.data;
