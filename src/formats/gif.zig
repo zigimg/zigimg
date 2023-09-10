@@ -271,7 +271,12 @@ pub const GIF = struct {
 
         try self.readData(&context);
 
-        if (context.frame_list.items.len == 0) {}
+        if (context.frame_list.items.len == 0) {
+            const empty_frame = try self.createNewAnimationFrame();
+            @memset(empty_frame.pixels.indexed8.palette, color.Rgba32.initRgba(0, 0, 0, 0));
+
+            try context.frame_list.append(self.allocator, empty_frame);
+        }
 
         return context.frame_list;
     }
@@ -487,10 +492,7 @@ pub const GIF = struct {
 
             const effective_color_table = if (current_frame.image_descriptor.?.flags.has_local_color_table) current_frame.local_color_table.data else self.global_color_table.data;
 
-            var new_frame = Image.AnimationFrame{
-                .pixels = try color.PixelStorage.init(self.allocator, PixelFormat.indexed8, @as(usize, @intCast(self.header.width * self.header.height))),
-                .duration = 0.0,
-            };
+            var new_frame = try self.createNewAnimationFrame();
             errdefer {
                 new_frame.pixels.deinit(self.allocator);
             }
@@ -499,12 +501,11 @@ pub const GIF = struct {
                 new_frame.duration = @as(f32, @floatFromInt(graphics_control.delay_time)) * (1.0 / 100.0);
             }
 
-            try context.frame_list.append(self.allocator, new_frame);
-
-            // Copy the effective palette
             for (effective_color_table, 0..) |palette_entry, index| {
                 new_frame.pixels.indexed8.palette[index] = color.Rgba32.initRgb(palette_entry.r, palette_entry.g, palette_entry.b);
             }
+
+            try context.frame_list.append(self.allocator, new_frame);
 
             var pixel_buffer = Image.Stream{
                 .buffer = std.io.fixedBufferStream(std.mem.sliceAsBytes(new_frame.pixels.indexed8.indices)),
@@ -543,6 +544,17 @@ pub const GIF = struct {
     fn allocNewFrame(self: *Self) !*Frame {
         var new_frame = try self.frames.addOne(self.allocator);
         new_frame.* = Frame{};
+        return new_frame;
+    }
+
+    fn createNewAnimationFrame(self: *const Self) !Image.AnimationFrame {
+        var new_frame = Image.AnimationFrame{
+            .pixels = try color.PixelStorage.init(self.allocator, PixelFormat.indexed8, @as(usize, @intCast(self.header.width * self.header.height))),
+            .duration = 0.0,
+        };
+
+        @memset(new_frame.pixels.indexed8.indices, 0);
+
         return new_frame;
     }
 };

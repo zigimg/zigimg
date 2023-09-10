@@ -21,7 +21,13 @@ test "Should error on non GIF images" {
     try helpers.expectError(invalid_file, Image.ReadError.InvalidData);
 }
 
+const SingleGifFileTest = false;
+
 test "GIF test suite" {
+    if (SingleGifFileTest) {
+        return error.SkipZigTest;
+    }
+
     var test_list = std.ArrayList([]const u8).init(helpers.zigimg_test_allocator);
     defer test_list.deinit();
 
@@ -50,6 +56,14 @@ test "GIF test suite" {
 
         std.debug.print("OK\n", .{});
     }
+}
+
+test "Iterate on a single GIF file" {
+    if (!SingleGifFileTest) {
+        return error.SkipZigTest;
+    }
+
+    try doGifTest("no-data");
 }
 
 const IniFile = struct {
@@ -180,7 +194,7 @@ fn doGifTest(entry_name: []const u8) !void {
         const expected_loop_count = if (config_section.getValue("loop-count")) |loop_value|
             switch (loop_value) {
                 .number => |number| @as(i32, @intCast(number)),
-                .string => |string| if (std.mem.eql(u8, string, "infinite")) @as(i32,-1) else return error.InvalidGifConfigFile,
+                .string => |string| if (std.mem.eql(u8, string, "infinite")) @as(i32, -1) else return error.InvalidGifConfigFile,
             }
         else
             return error.InvalidGifConfigFile;
