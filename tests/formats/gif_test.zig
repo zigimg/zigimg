@@ -63,7 +63,7 @@ test "Iterate on a single GIF file" {
         return error.SkipZigTest;
     }
 
-    try doGifTest("no-data");
+    try doGifTest("image-zero-width");
 }
 
 const IniFile = struct {

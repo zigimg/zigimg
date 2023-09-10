@@ -490,12 +490,14 @@ pub const GIF = struct {
                 }
             }
 
+            // Don't read any futher if the local width or height is zero
+            if (current_frame.image_descriptor.?.width == 0 or current_frame.image_descriptor.?.height == 0) {
+                return;
+            }
+
             const effective_color_table = if (current_frame.image_descriptor.?.flags.has_local_color_table) current_frame.local_color_table.data else self.global_color_table.data;
 
             var new_frame = try self.createNewAnimationFrame();
-            errdefer {
-                new_frame.pixels.deinit(self.allocator);
-            }
 
             if (current_frame.graphics_control) |graphics_control| {
                 new_frame.duration = @as(f32, @floatFromInt(graphics_control.delay_time)) * (1.0 / 100.0);
@@ -504,8 +506,6 @@ pub const GIF = struct {
             for (effective_color_table, 0..) |palette_entry, index| {
                 new_frame.pixels.indexed8.palette[index] = color.Rgba32.initRgb(palette_entry.r, palette_entry.g, palette_entry.b);
             }
-
-            try context.frame_list.append(self.allocator, new_frame);
 
             var pixel_buffer = Image.Stream{
                 .buffer = std.io.fixedBufferStream(std.mem.sliceAsBytes(new_frame.pixels.indexed8.indices)),
@@ -538,6 +538,8 @@ pub const GIF = struct {
 
                 data_block_size = try context.reader.readByte();
             }
+
+            try context.frame_list.append(self.allocator, new_frame);
         }
     }
 
