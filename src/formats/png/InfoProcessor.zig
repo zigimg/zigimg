@@ -9,7 +9,7 @@ const PaletteProcessData = png_reader.PaletteProcessData;
 const isChunkCritical = png_reader.isChunkCritical;
 
 pub const PngInfoOptions = struct {
-    processor: Self = init(std.io.getStdOut().writer()),
+    processor: Self,
     processors: [1]png_reader.ReaderProcessor = undefined,
     tmp_buffer: [png_reader.required_temp_bytes]u8 = undefined,
     fb_allocator: std.heap.FixedBufferAllocator = undefined,
@@ -97,8 +97,8 @@ fn processChunk(self: *Self, data: *ChunkProcessData) Image.ReadError!PixelForma
                 if (txt[strEnd + 1] == 0) {
                     self.writer.print("           Compression: Zlib Deflate\n", .{}) catch return result_format;
                     self.writer.print("                  Text: ", .{}) catch return result_format;
-                    try data.stream.seekBy(@intCast(i64, strEnd) + 2 - to_read);
-                    var decompressStream = std.compress.zlib.zlibStream(data.temp_allocator, reader) catch return error.InvalidData;
+                    try data.stream.seekBy(@as(i64, @intCast(strEnd)) + 2 - to_read);
+                    var decompressStream = std.compress.zlib.decompressStream(data.temp_allocator, reader) catch return error.InvalidData;
                     var print_buf: [1024]u8 = undefined;
                     var got = decompressStream.read(print_buf[0..]) catch return error.InvalidData;
                     while (got > 0) {

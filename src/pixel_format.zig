@@ -30,11 +30,11 @@ pub const PixelFormat = enum(u32) {
     const Self = @This();
 
     pub fn isJustGrayscale(self: Self) bool {
-        return @enumToInt(self) & 0xf00 == 0x100;
+        return @intFromEnum(self) & 0xf00 == 0x100;
     }
 
     pub fn isIndex(self: Self) bool {
-        return @enumToInt(self) <= @enumToInt(PixelFormat.indexed16);
+        return @intFromEnum(self) <= @intFromEnum(PixelFormat.indexed16);
     }
 
     pub fn isStandardRgb(self: Self) bool {
@@ -46,7 +46,7 @@ pub const PixelFormat = enum(u32) {
     }
 
     pub fn is16Bit(self: Self) bool {
-        return @enumToInt(self) & 0xff == 0x10;
+        return @intFromEnum(self) & 0xff == 0x10;
     }
 
     pub fn pixelStride(self: Self) u8 {
@@ -60,6 +60,20 @@ pub const PixelFormat = enum(u32) {
             .rgb48 => 6,
             .rgba64 => 8,
             .float32 => 16,
+        };
+    }
+
+    pub fn bitsPerChannel(self: Self) u8 {
+        return switch (self) {
+            .invalid => 0,
+            .rgb565 => unreachable, // TODO: what to do in that case?
+            .indexed1, .grayscale1 => 1,
+            .indexed2, .grayscale2 => 2,
+            .indexed4, .grayscale4 => 4,
+            .rgb555 => 5,
+            .indexed8, .grayscale8, .grayscale8Alpha, .rgb24, .rgba32, .bgr24, .bgra32 => 8,
+            .indexed16, .grayscale16, .grayscale16Alpha, .rgb48, .rgba64 => 16,
+            .float32 => 32,
         };
     }
 

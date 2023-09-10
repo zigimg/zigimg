@@ -116,7 +116,7 @@ pub fn testWithDir(directory: []const u8, testMd5Sig: bool) !void {
         var it = idir.iterate();
         if (testMd5Sig) std.debug.print("\n", .{});
         while (try it.next()) |entry| {
-            if (entry.kind != .File or !std.mem.eql(u8, std.fs.path.extension(entry.name), ".png")) continue;
+            if (entry.kind != .file or !std.mem.eql(u8, std.fs.path.extension(entry.name), ".png")) continue;
 
             if (testMd5Sig) std.debug.print("Testing file {s} ... ", .{entry.name});
             var tst_file = try idir.dir.openFile(entry.name, .{ .mode = .read_only });
@@ -148,8 +148,8 @@ pub fn testWithDir(directory: []const u8, testMd5Sig: bool) !void {
 
             const len = entry.name.len;
             var tst_data_name: [50]u8 = undefined;
-            std.mem.copy(u8, tst_data_name[0 .. len - 3], entry.name[0 .. len - 3]);
-            std.mem.copy(u8, tst_data_name[len - 3 .. len], "tsd");
+            @memcpy(tst_data_name[0 .. len - 3], entry.name[0 .. len - 3]);
+            @memcpy(tst_data_name[len - 3 .. len], "tsd");
 
             // Read test data and check with it
             if (idir.dir.openFile(tst_data_name[0..len], .{ .mode = .read_only })) |tdata| {
@@ -198,7 +198,7 @@ test "InfoProcessor on Png Test suite" {
         var info_stream = std.io.StreamSource{ .buffer = std.io.fixedBufferStream(info_buffer[0..]) };
 
         while (try it.next()) |entry| {
-            if (entry.kind != .File or !std.mem.eql(u8, std.fs.path.extension(entry.name), ".png")) {
+            if (entry.kind != .file or !std.mem.eql(u8, std.fs.path.extension(entry.name), ".png")) {
                 continue;
             }
 
@@ -220,8 +220,8 @@ test "InfoProcessor on Png Test suite" {
 
             const len = entry.name.len + 1;
             var tst_data_name: [50]u8 = undefined;
-            std.mem.copy(u8, tst_data_name[0 .. len - 4], entry.name[0 .. len - 4]);
-            std.mem.copy(u8, tst_data_name[len - 4 .. len], "info");
+            @memcpy(tst_data_name[0 .. len - 4], entry.name[0 .. len - 4]);
+            @memcpy(tst_data_name[len - 4 .. len], "info");
 
             // Read test data and check with it
             if (idir.dir.openFile(tst_data_name[0..len], .{ .mode = .read_only })) |tdata| {

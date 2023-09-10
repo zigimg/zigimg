@@ -15,11 +15,11 @@ const utils = @import("../utils.zig");
 
 const BitmapMagicHeader = [_]u8{ 'B', 'M' };
 
-pub const BitmapFileHeader = packed struct {
+pub const BitmapFileHeader = extern struct {
     magic_header: [2]u8,
-    size: u32,
-    reserved: u32,
-    pixel_offset: u32,
+    size: u32 align(1),
+    reserved: u32 align(1),
+    pixel_offset: u32 align(1),
 };
 
 pub const CompressionMethod = enum(u32) {
@@ -50,19 +50,19 @@ pub const BitmapIntent = enum(u32) {
     absolute_colorimetric = 8,
 };
 
-pub const CieXyz = packed struct {
+pub const CieXyz = extern struct {
     x: u32 = 0, // TODO: Use FXPT2DOT30
     y: u32 = 0,
     z: u32 = 0,
 };
 
-pub const CieXyzTriple = packed struct {
+pub const CieXyzTriple = extern struct {
     red: CieXyz = CieXyz{},
     green: CieXyz = CieXyz{},
     blue: CieXyz = CieXyz{},
 };
 
-pub const BitmapInfoHeaderWindows31 = packed struct {
+pub const BitmapInfoHeaderWindows31 = extern struct {
     header_size: u32 = 0,
     width: i32 = 0,
     height: i32 = 0,
@@ -78,12 +78,12 @@ pub const BitmapInfoHeaderWindows31 = packed struct {
     pub const HeaderSize = @sizeOf(@This());
 };
 
-pub const BitmapInfoHeaderV4 = packed struct {
+pub const BitmapInfoHeaderV4 = extern struct {
     header_size: u32 = 0,
     width: i32 = 0,
     height: i32 = 0,
-    color_plane: u16 = 0,
-    bit_count: u16 = 0,
+    color_plane: u16 align(1) = 0,
+    bit_count: u16 align(1) = 0,
     compression_method: CompressionMethod = CompressionMethod.none,
     image_raw_size: u32 = 0,
     horizontal_resolution: u32 = 0,
@@ -103,12 +103,12 @@ pub const BitmapInfoHeaderV4 = packed struct {
     pub const HeaderSize = @sizeOf(@This());
 };
 
-pub const BitmapInfoHeaderV5 = packed struct {
+pub const BitmapInfoHeaderV5 = extern struct {
     header_size: u32 = 0,
     width: i32 = 0,
     height: i32 = 0,
-    color_plane: u16 = 0,
-    bit_count: u16 = 0,
+    color_plane: u16 align(1) = 0,
+    bit_count: u16 align(1) = 0,
     compression_method: CompressionMethod = CompressionMethod.none,
     image_raw_size: u32 = 0,
     horizontal_resolution: u32 = 0,
@@ -174,8 +174,8 @@ pub const Bitmap = struct {
         var bmp = Self{};
         const pixels = try bmp.read(allocator, stream);
 
-        result.width = @intCast(usize, bmp.width());
-        result.height = @intCast(usize, bmp.height());
+        result.width = @intCast(bmp.width());
+        result.height = @intCast(bmp.height());
         result.pixels = pixels;
 
         return result;
@@ -254,7 +254,7 @@ pub const Bitmap = struct {
                 const pixel_height = v4Header.height;
                 const pixel_format = try findPixelFormat(v4Header.bit_count, v4Header.compression_method);
 
-                pixels = try color.PixelStorage.init(allocator, pixel_format, @intCast(usize, pixel_width * pixel_height));
+                pixels = try color.PixelStorage.init(allocator, pixel_format, @intCast(pixel_width * pixel_height));
                 errdefer pixels.deinit(allocator);
 
                 try readPixels(reader, pixel_width, pixel_height, pixel_format, &pixels);
@@ -264,7 +264,7 @@ pub const Bitmap = struct {
                 const pixel_height = v5Header.height;
                 const pixel_format = try findPixelFormat(v5Header.bit_count, v5Header.compression_method);
 
-                pixels = try color.PixelStorage.init(allocator, pixel_format, @intCast(usize, pixel_width * pixel_height));
+                pixels = try color.PixelStorage.init(allocator, pixel_format, @intCast(pixel_width * pixel_height));
                 errdefer pixels.deinit(allocator);
 
                 try readPixels(reader, pixel_width, pixel_height, pixel_format, &pixels);
@@ -309,7 +309,7 @@ pub const Bitmap = struct {
 
             x = 0;
             while (x < pixel_width) : (x += 1) {
-                pixels[@intCast(usize, scanline + x)] = try utils.readStructLittle(reader, ColorBufferType);
+                pixels[@intCast(scanline + x)] = try utils.readStructLittle(reader, ColorBufferType);
             }
         }
     }

@@ -6,15 +6,43 @@ This is a work in progress library to create, process, read and write different 
 
 ## Install & Build
 
-This project assume current Zig master (0.10.0+).
+This project assume current Zig master (0.11.0-dev.3879+5804f3f75 or higher) with stage2 self-hosted compiler.
 
 ### Use zigimg in your project
 
 How to add to your project:
+
+#### As a submodule
+
 1. Clone this repository or add as a submodule
 1. Add to your `build.zig`
 ```
-exe.addPackagePath("zigimg", "zigimg/zigimg.zig");
+exe.addAnonymousModule("zigimg", .{.source_file = .{ .path = "zigimg.zig" }});
+```
+
+#### Through the package manager
+
+1. Example build.zig.zon file
+
+```
+.{
+    .name = "app",
+    .version = "0.0.0",
+    .dependencies = .{
+        .zigimg = .{
+            .url = "https://github.com/zigimg/zigimg/archive/$REPLACE_WITH_WANTED_COMMIT$.tar.gz",
+        },
+    },
+}
+```
+
+2. When it fails to build due to a mismatched hash, add the `hash` line to the dependency
+
+```
+.zigimg = .{
+    .url = "https://github.com/zigimg/zigimg/archive/$REPLACE_WITH_WANTED_COMMIT$.tar.gz",
+    .hash = "$REPLACE_WITH_HASH_FROM_BUILD_ERROR$",
+},
 ```
 
 ### Test suite
@@ -41,7 +69,7 @@ zig build test
 | PBM           | ✔️            | ❌            |
 | PCX           | ✔️            | ❌            |
 | PGM           | ✔️ (Partial)  | ✔️ (Partial)  |
-| PNG           | ✔️            | ❌            |
+| PNG           | ✔️            | ✔️ (Partial)  |
 | PPM           | ✔️ (Partial)  | ❌            |
 | QOI           | ✔️            | ✔️            |
 | TGA           | ✔️            | ❌            |
@@ -95,3 +123,4 @@ zig build test
 ### TGA - Truevision TGA format
 
 * Supports uncompressed and compressed 8-bit grayscale, indexed with 16-bit colormap, truecolor with 24-bit or 32-bit bit depth.
+* Supports version 1 and version 2

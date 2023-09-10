@@ -16,6 +16,9 @@ const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 
 const JPEG_DEBUG = false;
 const JPEG_VERY_DEBUG = false;
+const MAX_COMPONENTS = 3;
+const MAX_BLOCKS = 8;
+const MCU = [64]i32;
 
 // Marker codes
 
@@ -74,7 +77,7 @@ const JFIFHeader = struct {
         const reader = stream.reader();
         try stream.seekTo(2);
         const maybe_app0_marker = try reader.readIntBig(u16);
-        if (maybe_app0_marker != @enumToInt(Markers.application0)) {
+        if (maybe_app0_marker != @intFromEnum(Markers.application0)) {
             return error.App0MarkerDoesNotExist;
         }
 
@@ -92,7 +95,7 @@ const JFIFHeader = struct {
         _ = try reader.readByte();
 
         const jfif_revision = try reader.readIntBig(u16);
-        const density_unit = @intToEnum(DensityUnit, try reader.readByte());
+        const density_unit: DensityUnit = @enumFromInt(try reader.readByte());
         const x_density = try reader.readIntBig(u16);
         const y_density = try reader.readIntBig(u16);
 
@@ -104,7 +107,7 @@ const JFIFHeader = struct {
         }
 
         // Make sure there are no application markers after us.
-        if (((try reader.readIntBig(u16)) & 0xFFF0) == @enumToInt(Markers.application0)) {
+        if (((try reader.readIntBig(u16)) & 0xFFF0) == @intFromEnum(Markers.application0)) {
             return error.ExtraneousApplicationMarker;
         }
 
@@ -195,7 +198,7 @@ const HuffmanTable = struct {
         if (JPEG_VERY_DEBUG) std.debug.print("  Decoded huffman codes map:\n", .{});
 
         var code: u16 = 0;
-        for (code_counts) |count, i| {
+        for (code_counts, 0..) |count, i| {
             if (JPEG_VERY_DEBUG) {
                 std.debug.print("    Length {}: ", .{i + 1});
                 if (count == 0) {
@@ -208,15 +211,15 @@ const HuffmanTable = struct {
             var j: usize = 0;
             while (j < count) : (j += 1) {
                 // Check if we hit all 1s, i.e. 111111 for i == 6, which is an invalid value
-                if (code == (@intCast(u17, 1) << (@intCast(u5, i) + 1)) - 1) {
+                if (code == (@as(u17, @intCast(1)) << (@as(u5, @intCast(i)) + 1)) - 1) {
                     return ImageReadError.InvalidData;
                 }
 
                 const byte = try reader.readByte();
-                try huffman_code_map.put(.{ .length_minus_one = @intCast(u4, i), .code = code }, byte);
-                code += 1;
+                try huffman_code_map.put(.{ .length_minus_one = @as(u4, @intCast(i)), .code = code }, byte);
 
                 if (JPEG_VERY_DEBUG) std.debug.print("      {b} => 0x{X}\n", .{ code, byte });
+                code += 1;
             }
 
             code <<= 1;
@@ -264,7 +267,7 @@ const HuffmanReader = struct {
             self.bits_left = 8;
         }
 
-        const bit: u1 = @intCast(u1, self.byte_buffer >> 7);
+        const bit: u1 = @intCast(self.byte_buffer >> 7);
         self.byte_buffer <<= 1;
         self.bits_left -= 1;
 
@@ -277,11 +280,12 @@ const HuffmanReader = struct {
         var i: u5 = 0;
         while (i < 16) : (i += 1) {
             code = (code << 1) | (try self.readBit());
-            if (self.table.?.code_map.get(.{ .length_minus_one = @intCast(u4, i), .code = code })) |value| {
+            if (self.table.?.code_map.get(.{ .length_minus_one = @intCast(i), .code = code })) |value| {
                 return value;
             }
         }
 
+        if (JPEG_DEBUG) std.debug.print("found unknown code: {x}\n", .{code});
         return ImageReadError.InvalidData;
     }
 
@@ -317,7 +321,7 @@ const HuffmanReader = struct {
         else
             (@as(i32, 1) << (magnitude - 1));
 
-        return base + @bitCast(i32, unsigned_bits);
+        return base + @as(i32, @bitCast(unsigned_bits));
     }
 };
 
@@ -332,8 +336,8 @@ const Component = struct {
         const sampling_factors = try reader.readByte();
         const quantization_table_id = try reader.readByte();
 
-        const horizontal_sampling_factor = @intCast(u4, sampling_factors >> 4);
-        const vertical_sampling_factor = @intCast(u4, sampling_factors & 0xF);
+        const horizontal_sampling_factor: u4 = @intCast(sampling_factors >> 4);
+        const vertical_sampling_factor: u4 = @intCast(sampling_factors & 0xF);
 
         if (horizontal_sampling_factor < 1 or horizontal_sampling_factor > 4) {
             return ImageReadError.InvalidData;
@@ -410,6 +414,39 @@ const FrameHeader = struct {
     pub fn deinit(self: *FrameHeader) void {
         self.allocator.free(self.components);
     }
+
+    pub fn getMaxHorizontalSamplingFactor(self: FrameHeader) usize {
+        var ret: u4 = 0;
+        for (self.components) |component| {
+            if (ret < component.horizontal_sampling_factor) {
+                ret = component.horizontal_sampling_factor;
+            }
+        }
+
+        return ret;
+    }
+
+    pub fn getMaxVerticalSamplingFactor(self: FrameHeader) usize {
+        var ret: u4 = 0;
+        for (self.components) |component| {
+            if (ret < component.vertical_sampling_factor) {
+                ret = component.vertical_sampling_factor;
+            }
+        }
+
+        return ret;
+    }
+
+    pub fn getBlockCount(self: FrameHeader, component_id: usize) usize {
+        // MCU of non-interleaved is just one block.
+        if (self.components.len == 1) {
+            return 1;
+        }
+
+        const horizontal_block_count = self.components[component_id].horizontal_sampling_factor;
+        const vertical_block_count = self.components[component_id].vertical_sampling_factor;
+        return horizontal_block_count * vertical_block_count;
+    }
 };
 
 const ScanComponentSpec = struct {
@@ -421,8 +458,8 @@ const ScanComponentSpec = struct {
         const component_selector = try reader.readByte();
         const entropy_coding_selectors = try reader.readByte();
 
-        const dc_table_selector = @intCast(u4, entropy_coding_selectors >> 4);
-        const ac_table_selector = @intCast(u4, entropy_coding_selectors & 0b11);
+        const dc_table_selector: u4 = @intCast(entropy_coding_selectors >> 4);
+        const ac_table_selector: u4 = @intCast(entropy_coding_selectors & 0b11);
 
         if (JPEG_VERY_DEBUG) {
             std.debug.print("    Component spec: selector={}, DC table ID={}, AC table ID={}\n", .{ component_selector, dc_table_selector, ac_table_selector });
@@ -484,8 +521,8 @@ const ScanHeader = struct {
         if (JPEG_VERY_DEBUG) std.debug.print("  Spectral selection: {}-{}\n", .{ start_of_spectral_selection, end_of_spectral_selection });
 
         const approximation_bits = try reader.readByte();
-        const approximation_high = @intCast(u4, approximation_bits >> 4);
-        const approximation_low = @intCast(u4, approximation_bits & 0b1111);
+        const approximation_high: u4 = @intCast(approximation_bits >> 4);
+        const approximation_low: u4 = @intCast(approximation_bits & 0b1111);
 
         segment_size -= 1;
         if (JPEG_VERY_DEBUG) std.debug.print("  Approximation bit position: high={} low={}\n", .{ approximation_high, approximation_low });
@@ -567,8 +604,8 @@ const IDCTMultipliers = blk: {
                     const C_u: f32 = if (u == 0) 1.0 / @sqrt(2.0) else 1.0;
                     const C_v: f32 = if (v == 0) 1.0 / @sqrt(2.0) else 1.0;
 
-                    const x_cosine = @cos(((2 * @intToFloat(f32, x) + 1) * @intToFloat(f32, u) * std.math.pi) / 16.0);
-                    const y_cosine = @cos(((2 * @intToFloat(f32, y) + 1) * @intToFloat(f32, v) * std.math.pi) / 16.0);
+                    const x_cosine = @cos(((2 * @as(f32, @floatFromInt(x)) + 1) * @as(f32, @floatFromInt(u)) * std.math.pi) / 16.0);
+                    const y_cosine = @cos(((2 * @as(f32, @floatFromInt(y)) + 1) * @as(f32, @floatFromInt(v)) * std.math.pi) / 16.0);
                     const uv_value = C_u * C_v * x_cosine * y_cosine;
                     multipliers[y][x][u][v] = uv_value;
                 }
@@ -580,33 +617,65 @@ const IDCTMultipliers = blk: {
 };
 
 const Scan = struct {
-    pub fn performScan(frame: *Frame, reader: Image.Stream.Reader) ImageReadError!void {
+    pub fn performScan(frame: *const Frame, reader: Image.Stream.Reader, pixels_opt: *?color.PixelStorage) ImageReadError!void {
         const scan_header = try ScanHeader.read(reader);
 
         var prediction_values = [3]i12{ 0, 0, 0 };
         var huffman_reader = HuffmanReader.init(reader);
-        var mcu_id: usize = 0;
-        while (mcu_id < frame.mcu_storage.len) : (mcu_id += 1) {
-            try Scan.decodeMCU(frame, scan_header, mcu_id, &huffman_reader, &prediction_values);
+        var mcu_storage: [MAX_COMPONENTS][MAX_BLOCKS]MCU = undefined;
+
+        const mcu_count = Scan.calculateMCUCountInFrame(&frame.frame_header);
+        for (0..mcu_count) |mcu_id| {
+            try Scan.decodeMCU(frame, scan_header, &mcu_storage, &huffman_reader, &prediction_values);
+            try Scan.dequantize(frame, &mcu_storage);
+            try frame.renderToPixels(&mcu_storage, mcu_id, &pixels_opt.*.?);
         }
     }
 
-    fn decodeMCU(frame: *Frame, scan_header: ScanHeader, mcu_id: usize, reader: *HuffmanReader, prediction_values: *[3]i12) ImageReadError!void {
-        for (scan_header.components) |maybe_component, component_id| {
+    fn calculateMCUCountInFrame(frame_header: *const FrameHeader) usize {
+        // FIXME: This is very naive and probably only works for Baseline DCT.
+        // MCU of non-interleaved is just one block.
+        const horizontal_block_count = if (1 < frame_header.components.len) frame_header.getMaxHorizontalSamplingFactor() else 1;
+        const vertical_block_count = if (1 < frame_header.components.len) frame_header.getMaxVerticalSamplingFactor() else 1;
+        const mcu_width = 8 * horizontal_block_count;
+        const mcu_height = 8 * vertical_block_count;
+        const mcu_count_per_row = (frame_header.samples_per_row + mcu_width - 1) / mcu_width;
+        const mcu_count_per_column = (frame_header.row_count + mcu_height - 1) / mcu_height;
+        return mcu_count_per_row * mcu_count_per_column;
+    }
+
+    fn dequantize(self: *const Frame, mcu_storage: *[MAX_COMPONENTS][MAX_BLOCKS]MCU) !void {
+        for (self.frame_header.components, 0..) |component, component_id| {
+            const block_count = self.frame_header.getBlockCount(component_id);
+            for (0..block_count) |i| {
+                const block = &mcu_storage[component_id][i];
+
+                if (self.quantization_tables[component.quantization_table_id]) |quantization_table| {
+                    var sample_id: usize = 0;
+                    while (sample_id < 64) : (sample_id += 1) {
+                        block[sample_id] = block[sample_id] * quantization_table.q8[sample_id];
+                    }
+                } else return ImageReadError.InvalidData;
+            }
+        }
+    }
+
+    fn decodeMCU(frame: *const Frame, scan_header: ScanHeader, mcu_storage: *[MAX_COMPONENTS][MAX_BLOCKS]MCU, reader: *HuffmanReader, prediction_values: *[3]i12) ImageReadError!void {
+        for (scan_header.components, 0..) |maybe_component, component_id| {
             _ = component_id;
             if (maybe_component == null)
                 break;
 
-            try Scan.decodeMCUComponent(frame, maybe_component.?, mcu_id, reader, prediction_values);
+            try Scan.decodeMCUComponent(frame, maybe_component.?, mcu_storage, reader, prediction_values);
         }
     }
 
-    fn decodeMCUComponent(frame: *Frame, component: ScanComponentSpec, mcu_id: usize, reader: *HuffmanReader, prediction_values: *[3]i12) ImageReadError!void {
+    fn decodeMCUComponent(frame: *const Frame, component: ScanComponentSpec, mcu_storage: *[MAX_COMPONENTS][MAX_BLOCKS]MCU, reader: *HuffmanReader, prediction_values: *[3]i12) ImageReadError!void {
         // The encoder might reorder components or omit one if it decides that the
         // file size can be reduced that way. Therefore we need to select the correct
         // destination for this component.
         const component_destination = blk: {
-            for (frame.frame_header.components) |frame_component, i| {
+            for (frame.frame_header.components, 0..) |frame_component, i| {
                 if (frame_component.id == component.component_selector) {
                     break :blk i;
                 }
@@ -615,39 +684,41 @@ const Scan = struct {
             return ImageReadError.InvalidData;
         };
 
-        const mcu = &frame.mcu_storage[mcu_id][component_destination];
+        const block_count = frame.frame_header.getBlockCount(component_destination);
+        for (0..block_count) |i| {
+            const mcu = &mcu_storage[component_destination][i];
 
-        // Decode the DC coefficient
-        if (frame.dc_huffman_tables[component.dc_table_selector] == null)
-            return ImageReadError.InvalidData;
+            // Decode the DC coefficient
+            if (frame.dc_huffman_tables[component.dc_table_selector] == null) return ImageReadError.InvalidData;
 
-        reader.setHuffmanTable(&frame.dc_huffman_tables[component.dc_table_selector].?);
+            reader.setHuffmanTable(&frame.dc_huffman_tables[component.dc_table_selector].?);
 
-        const dc_coefficient = try Scan.decodeDCCoefficient(reader, &prediction_values[component_destination]);
-        mcu[0] = dc_coefficient;
+            const dc_coefficient = try Scan.decodeDCCoefficient(reader, &prediction_values[component_destination]);
+            mcu[0] = dc_coefficient;
 
-        // Decode the AC coefficients
-        if (frame.ac_huffman_tables[component.ac_table_selector] == null)
-            return ImageReadError.InvalidData;
+            // Decode the AC coefficients
+            if (frame.ac_huffman_tables[component.ac_table_selector] == null)
+                return ImageReadError.InvalidData;
 
-        reader.setHuffmanTable(&frame.ac_huffman_tables[component.ac_table_selector].?);
+            reader.setHuffmanTable(&frame.ac_huffman_tables[component.ac_table_selector].?);
 
-        try Scan.decodeACCoefficients(reader, mcu);
+            try Scan.decodeACCoefficients(reader, mcu);
+        }
     }
 
     fn decodeDCCoefficient(reader: *HuffmanReader, prediction: *i12) ImageReadError!i12 {
         const maybe_magnitude = try reader.readCode();
         if (maybe_magnitude > 11) return ImageReadError.InvalidData;
-        const magnitude = @intCast(u4, maybe_magnitude);
+        const magnitude: u4 = @intCast(maybe_magnitude);
 
-        const diff = @intCast(i12, try reader.readMagnitudeCoded(magnitude));
+        const diff: i12 = @intCast(try reader.readMagnitudeCoded(magnitude));
         const dc_coefficient = diff + prediction.*;
         prediction.* = dc_coefficient;
 
         return dc_coefficient;
     }
 
-    fn decodeACCoefficients(reader: *HuffmanReader, mcu: *Frame.MCU) ImageReadError!void {
+    fn decodeACCoefficients(reader: *HuffmanReader, mcu: *MCU) ImageReadError!void {
         var ac: usize = 1;
         var did_see_eob = false;
         while (ac < 64) : (ac += 1) {
@@ -668,9 +739,9 @@ const Scan = struct {
 
             const maybe_magnitude = zero_run_length_and_magnitude & 0xF;
             if (maybe_magnitude > 10) return ImageReadError.InvalidData;
-            const magnitude = @intCast(u4, maybe_magnitude);
+            const magnitude: u4 = @intCast(maybe_magnitude);
 
-            const ac_coefficient = @intCast(i11, try reader.readMagnitudeCoded(magnitude));
+            const ac_coefficient: i11 = @intCast(try reader.readMagnitudeCoded(magnitude));
 
             var i: usize = 0;
             while (i < zero_run_length) : (i += 1) {
@@ -689,18 +760,10 @@ const Frame = struct {
     quantization_tables: *[4]?QuantizationTable,
     dc_huffman_tables: [2]?HuffmanTable,
     ac_huffman_tables: [2]?HuffmanTable,
-    mcu_storage: [][MAX_COMPONENTS]MCU,
-
-    const MCU = [64]i32;
-
-    const MAX_COMPONENTS = 3;
 
     pub fn read(allocator: Allocator, quantization_tables: *[4]?QuantizationTable, stream: *Image.Stream) ImageReadError!Frame {
         const reader = stream.reader();
         var frame_header = try FrameHeader.read(allocator, reader);
-        const mcu_count = Frame.calculateMCUCountInFrame(&frame_header);
-
-        const mcu_storage = try allocator.alloc([MAX_COMPONENTS]MCU, mcu_count);
 
         var self = Frame{
             .allocator = allocator,
@@ -708,15 +771,14 @@ const Frame = struct {
             .quantization_tables = quantization_tables,
             .dc_huffman_tables = [_]?HuffmanTable{null} ** 2,
             .ac_huffman_tables = [_]?HuffmanTable{null} ** 2,
-            .mcu_storage = mcu_storage,
         };
         errdefer self.deinit();
 
         var marker = try reader.readIntBig(u16);
-        while (marker != @enumToInt(Markers.start_of_scan)) : (marker = try reader.readIntBig(u16)) {
+        while (marker != @intFromEnum(Markers.start_of_scan)) : (marker = try reader.readIntBig(u16)) {
             if (JPEG_DEBUG) std.debug.print("Frame: Parsing marker value: 0x{X}\n", .{marker});
 
-            switch (@intToEnum(Markers, marker)) {
+            switch (@as(Markers, @enumFromInt(marker))) {
                 .define_huffman_tables => {
                     try self.parseDefineHuffmanTables(reader);
                 },
@@ -726,34 +788,26 @@ const Frame = struct {
             }
         }
 
-        while (marker == @enumToInt(Markers.start_of_scan)) : (marker = try reader.readIntBig(u16)) {
-            try self.parseScan(reader);
-        }
-
         // Undo the last marker read
         try stream.seekBy(-2);
-
-        // Dequantize
-        try self.dequantize();
 
         return self;
     }
 
     pub fn deinit(self: *Frame) void {
-        for (self.dc_huffman_tables) |*maybe_huffman_table| {
+        for (&self.dc_huffman_tables) |*maybe_huffman_table| {
             if (maybe_huffman_table.*) |*huffman_table| {
                 huffman_table.deinit();
             }
         }
 
-        for (self.ac_huffman_tables) |*maybe_huffman_table| {
+        for (&self.ac_huffman_tables) |*maybe_huffman_table| {
             if (maybe_huffman_table.*) |*huffman_table| {
                 huffman_table.deinit();
             }
         }
 
         self.frame_header.deinit();
-        self.allocator.free(self.mcu_storage);
     }
 
     fn parseDefineHuffmanTables(self: *Frame, reader: Image.Stream.Reader) ImageReadError!void {
@@ -783,89 +837,123 @@ const Frame = struct {
             if (JPEG_DEBUG) std.debug.print("  Table with class {} installed at {}\n", .{ table_class, table_destination });
 
             // Class+Destination + code counts + code table
-            segment_size -= 1 + 16 + @intCast(u16, huffman_table.code_map.count());
+            segment_size -= 1 + 16 + @as(u16, @intCast(huffman_table.code_map.count()));
         }
     }
 
-    fn calculateMCUCountInFrame(frame_header: *FrameHeader) usize {
-        // FIXME: This is very naive and probably only works for Baseline DCT.
-        const sample_count = @as(usize, frame_header.row_count) * @as(usize, frame_header.samples_per_row);
-        return (sample_count / 64) + (if (sample_count % 64 != 0) @as(u1, 1) else @as(u1, 0));
-    }
-
-    fn parseScan(self: *Frame, reader: Image.Stream.Reader) ImageReadError!void {
-        try Scan.performScan(self, reader);
-    }
-
-    fn dequantize(self: *Frame) !void {
-        var mcu_id: usize = 0;
-        while (mcu_id < self.mcu_storage.len) : (mcu_id += 1) {
-            for (self.frame_header.components) |component, component_id| {
-                const mcu = &self.mcu_storage[mcu_id][component_id];
-
-                if (self.quantization_tables[component.quantization_table_id]) |quantization_table| {
-                    var sample_id: usize = 0;
-                    while (sample_id < 64) : (sample_id += 1) {
-                        mcu[sample_id] = mcu[sample_id] * quantization_table.q8[sample_id];
-                    }
-                } else return ImageReadError.InvalidData;
-            }
-        }
-    }
-
-    pub fn renderToPixels(self: *Frame, pixels: *color.PixelStorage) ImageReadError!void {
+    pub fn renderToPixels(self: *const Frame, mcu_storage: *[MAX_COMPONENTS][MAX_BLOCKS]MCU, mcu_id: usize, pixels: *color.PixelStorage) ImageReadError!void {
         switch (self.frame_header.components.len) {
-            1 => try self.renderToPixelsGrayscale(pixels.grayscale8),
-            3 => try self.renderToPixelsRgb(pixels.rgb24),
+            1 => try self.renderToPixelsGrayscale(&mcu_storage[0][0], mcu_id, pixels.grayscale8), // Grayscale images is non-interleaved
+            3 => try self.renderToPixelsRgb(mcu_storage, mcu_id, pixels.rgb24),
             else => unreachable,
         }
     }
 
-    fn renderToPixelsGrayscale(self: *Frame, pixels: []color.Grayscale8) ImageReadError!void {
-        _ = self;
-        _ = pixels;
-        return ImageError.Unsupported;
+    fn renderToPixelsGrayscale(self: *const Frame, mcu_storage: *MCU, mcu_id: usize, pixels: []color.Grayscale8) ImageReadError!void {
+        const mcu_width = 8;
+        const mcu_height = 8;
+        const width = self.frame_header.samples_per_row;
+        const height = pixels.len / width;
+        const mcus_per_row = (width + mcu_width - 1) / mcu_width;
+        const mcu_origin_x = (mcu_id % mcus_per_row) * mcu_width;
+        const mcu_origin_y = (mcu_id / mcus_per_row) * mcu_height;
+
+        for (0..mcu_height) |mcu_y| {
+            const y = mcu_origin_y + mcu_y;
+            if (y >= height) continue;
+
+            // y coordinates in the block
+            const block_y = mcu_y % 8;
+
+            const stride = y * width;
+
+            for (0..mcu_width) |mcu_x| {
+                const x = mcu_origin_x + mcu_x;
+                if (x >= width) continue;
+
+                // x coordinates in the block
+                const block_x = mcu_x % 8;
+
+                const reconstructed_Y = idct(mcu_storage, @as(u3, @intCast(block_x)), @as(u3, @intCast(block_y)), mcu_id, 0);
+                const Y: f32 = @floatFromInt(reconstructed_Y);
+                pixels[stride + x] = .{
+                    .value = @as(u8, @intFromFloat(std.math.clamp(Y + 128.0, 0.0, 255.0))),
+                };
+            }
+        }
     }
 
-    fn renderToPixelsRgb(self: *Frame, pixels: []color.Rgb24) ImageReadError!void {
-        var width = self.frame_header.samples_per_row;
-        var mcu_id: usize = 0;
-        while (mcu_id < self.mcu_storage.len) : (mcu_id += 1) {
-            const mcus_per_row = width / 8;
-            // The 8x8 block offsets, from left and top.
-            const block_x = (mcu_id % mcus_per_row);
-            const block_y = (mcu_id / mcus_per_row);
+    fn renderToPixelsRgb(self: *const Frame, mcu_storage: *[MAX_COMPONENTS][MAX_BLOCKS]MCU, mcu_id: usize, pixels: []color.Rgb24) ImageReadError!void {
+        const max_horizontal_sampling_factor = self.frame_header.getMaxHorizontalSamplingFactor();
+        const max_vertical_sampling_factor = self.frame_header.getMaxVerticalSamplingFactor();
+        const mcu_width = 8 * max_horizontal_sampling_factor;
+        const mcu_height = 8 * max_vertical_sampling_factor;
+        const width = self.frame_header.samples_per_row;
+        const height = pixels.len / width;
+        const mcus_per_row = (width + mcu_width - 1) / mcu_width;
 
-            const mcu_Y = &self.mcu_storage[mcu_id][0];
-            const mcu_Cb = &self.mcu_storage[mcu_id][1];
-            const mcu_Cr = &self.mcu_storage[mcu_id][2];
+        const mcu_origin_x = (mcu_id % mcus_per_row) * mcu_width;
+        const mcu_origin_y = (mcu_id / mcus_per_row) * mcu_height;
 
-            var y: u4 = 0;
-            while (y < 8) : (y += 1) {
-                var x: u4 = 0;
-                while (x < 8) : (x += 1) {
-                    const reconstructed_Y = idct(mcu_Y, @intCast(u3, x), @intCast(u3, y), mcu_id, 0);
-                    const reconstructed_Cb = idct(mcu_Cb, @intCast(u3, x), @intCast(u3, y), mcu_id, 1);
-                    const reconstructed_Cr = idct(mcu_Cr, @intCast(u3, x), @intCast(u3, y), mcu_id, 2);
+        for (0..mcu_height) |mcu_y| {
+            const y = mcu_origin_y + mcu_y;
+            if (y >= height) continue;
 
-                    const Y = @intToFloat(f32, reconstructed_Y);
-                    const Cb = @intToFloat(f32, reconstructed_Cb);
-                    const Cr = @intToFloat(f32, reconstructed_Cr);
+            // y coordinates of each component applied to the sampling factor
+            const y_sampled_y = (mcu_y * self.frame_header.components[0].vertical_sampling_factor) / max_vertical_sampling_factor;
+            const cb_sampled_y = (mcu_y * self.frame_header.components[1].vertical_sampling_factor) / max_vertical_sampling_factor;
+            const cr_sampled_y = (mcu_y * self.frame_header.components[2].vertical_sampling_factor) / max_vertical_sampling_factor;
 
-                    const Co_red = 0.299;
-                    const Co_green = 0.587;
-                    const Co_blue = 0.114;
+            // y coordinates of each component in the block
+            const y_block_y = y_sampled_y % 8;
+            const cb_block_y = cb_sampled_y % 8;
+            const cr_block_y = cr_sampled_y % 8;
 
-                    const r = Cr * (2 - 2 * Co_red) + Y;
-                    const b = Cb * (2 - 2 * Co_blue) + Y;
-                    const g = (Y - Co_blue * b - Co_red * r) / Co_green;
+            const stride = y * width;
 
-                    pixels[(((block_y * 8) + y) * width) + (block_x * 8) + x] = .{
-                        .r = @floatToInt(u8, std.math.clamp(r + 128.0, 0.0, 255.0)),
-                        .g = @floatToInt(u8, std.math.clamp(g + 128.0, 0.0, 255.0)),
-                        .b = @floatToInt(u8, std.math.clamp(b + 128.0, 0.0, 255.0)),
-                    };
-                }
+            for (0..mcu_width) |mcu_x| {
+                const x = mcu_origin_x + mcu_x;
+                if (x >= width) continue;
+
+                // x coordinates of each component applied to the sampling factor
+                const y_sampled_x = (mcu_x * self.frame_header.components[0].horizontal_sampling_factor) / max_horizontal_sampling_factor;
+                const cb_sampled_x = (mcu_x * self.frame_header.components[1].horizontal_sampling_factor) / max_horizontal_sampling_factor;
+                const cr_sampled_x = (mcu_x * self.frame_header.components[2].horizontal_sampling_factor) / max_horizontal_sampling_factor;
+
+                // x coordinates of each component in the block
+                const y_block_x = y_sampled_x % 8;
+                const cb_block_x = cb_sampled_x % 8;
+                const cr_block_x = cr_sampled_x % 8;
+
+                const y_block_ind = (y_sampled_y / 8) * self.frame_header.components[0].horizontal_sampling_factor + (y_sampled_x / 8);
+                const cb_block_ind = (cb_sampled_y / 8) * self.frame_header.components[1].horizontal_sampling_factor + (cb_sampled_x / 8);
+                const cr_block_ind = (cr_sampled_y / 8) * self.frame_header.components[2].horizontal_sampling_factor + (cr_sampled_x / 8);
+
+                const mcu_Y = &mcu_storage[0][y_block_ind];
+                const mcu_Cb = &mcu_storage[1][cb_block_ind];
+                const mcu_Cr = &mcu_storage[2][cr_block_ind];
+
+                const reconstructed_Y = idct(mcu_Y, @as(u3, @intCast(y_block_x)), @as(u3, @intCast(y_block_y)), mcu_id, 0);
+                const reconstructed_Cb = idct(mcu_Cb, @as(u3, @intCast(cb_block_x)), @as(u3, @intCast(cb_block_y)), mcu_id, 1);
+                const reconstructed_Cr = idct(mcu_Cr, @as(u3, @intCast(cr_block_x)), @as(u3, @intCast(cr_block_y)), mcu_id, 2);
+
+                const Y: f32 = @floatFromInt(reconstructed_Y);
+                const Cb: f32 = @floatFromInt(reconstructed_Cb);
+                const Cr: f32 = @floatFromInt(reconstructed_Cr);
+
+                const Co_red = 0.299;
+                const Co_green = 0.587;
+                const Co_blue = 0.114;
+
+                const r = Cr * (2 - 2 * Co_red) + Y;
+                const b = Cb * (2 - 2 * Co_blue) + Y;
+                const g = (Y - Co_blue * b - Co_red * r) / Co_green;
+
+                pixels[stride + x] = .{
+                    .r = @intFromFloat(std.math.clamp(r + 128.0, 0.0, 255.0)),
+                    .g = @intFromFloat(std.math.clamp(g + 128.0, 0.0, 255.0)),
+                    .b = @intFromFloat(std.math.clamp(b + 128.0, 0.0, 255.0)),
+                };
             }
         }
     }
@@ -878,7 +966,7 @@ const Frame = struct {
             var v: usize = 0;
             while (v < 8) : (v += 1) {
                 const mcu_value = mcu[v * 8 + u];
-                reconstructed_pixel += IDCTMultipliers[y][x][u][v] * @intToFloat(f32, mcu_value);
+                reconstructed_pixel += IDCTMultipliers[y][x][u][v] * @as(f32, @floatFromInt(mcu_value));
             }
         }
 
@@ -889,7 +977,7 @@ const Frame = struct {
             }
         }
 
-        return @floatToInt(i8, std.math.clamp(scaled_pixel, -128.0, 127.0));
+        return @intFromFloat(std.math.clamp(scaled_pixel, -128.0, 127.0));
     }
 };
 
@@ -932,6 +1020,12 @@ pub const JPEG = struct {
         }
     }
 
+    fn parseScan(self: *JPEG, reader: Image.Stream.Reader, pixels_opt: *?color.PixelStorage) ImageReadError!void {
+        if (self.frame) |frame| {
+            try Scan.performScan(&frame, reader, pixels_opt);
+        } else return ImageReadError.InvalidData;
+    }
+
     fn initializePixels(self: *JPEG, pixels_opt: *?color.PixelStorage) ImageReadError!void {
         if (self.frame) |frame| {
             var pixel_format: PixelFormat = undefined;
@@ -941,13 +1035,12 @@ pub const JPEG = struct {
                 else => unreachable,
             }
 
-            const pixel_count = @intCast(usize, frame.frame_header.samples_per_row) * @intCast(usize, frame.frame_header.row_count);
+            const pixel_count = @as(usize, @intCast(frame.frame_header.samples_per_row)) * @as(usize, @intCast(frame.frame_header.row_count));
             pixels_opt.* = try color.PixelStorage.init(self.allocator, pixel_format, pixel_count);
         } else return ImageReadError.InvalidData;
     }
 
     pub fn read(self: *JPEG, stream: *Image.Stream, pixels_opt: *?color.PixelStorage) ImageReadError!Frame {
-        _ = pixels_opt;
         const jfif_header = JFIFHeader.read(stream) catch |err| switch (err) {
             error.App0MarkerDoesNotExist, error.JfifIdentifierNotSet, error.ThumbnailImagesUnsupported, error.ExtraneousApplicationMarker => return ImageReadError.InvalidData,
             else => |e| return e,
@@ -963,25 +1056,23 @@ pub const JPEG = struct {
 
         const reader = stream.reader();
         var marker = try reader.readIntBig(u16);
-        while (marker != @enumToInt(Markers.end_of_image)) : (marker = try reader.readIntBig(u16)) {
+        while (marker != @intFromEnum(Markers.end_of_image)) : (marker = try reader.readIntBig(u16)) {
             if (JPEG_DEBUG) std.debug.print("Parsing marker value: 0x{X}\n", .{marker});
 
-            if (marker >= @enumToInt(Markers.application0) and marker < @enumToInt(Markers.application0) + 16) {
+            if (marker >= @intFromEnum(Markers.application0) and marker < @intFromEnum(Markers.application0) + 16) {
                 if (JPEG_DEBUG) std.debug.print("Skipping application data segment\n", .{});
                 const application_data_length = try reader.readIntBig(u16);
                 try stream.seekBy(application_data_length - 2);
                 continue;
             }
 
-            switch (@intToEnum(Markers, marker)) {
+            switch (@as(Markers, @enumFromInt(marker))) {
                 .sof0 => {
                     if (self.frame != null) {
                         return ImageError.Unsupported;
                     }
 
                     self.frame = try Frame.read(self.allocator, &self.quantization_tables, stream);
-                    try self.initializePixels(pixels_opt);
-                    try self.frame.?.renderToPixels(&pixels_opt.*.?);
                 },
 
                 .sof1 => return ImageError.Unsupported,
@@ -996,6 +1087,11 @@ pub const JPEG = struct {
                 .sof13 => return ImageError.Unsupported,
                 .sof14 => return ImageError.Unsupported,
                 .sof15 => return ImageError.Unsupported,
+
+                .start_of_scan => {
+                    try self.initializePixels(pixels_opt);
+                    try self.parseScan(reader, pixels_opt);
+                },
 
                 .define_quantization_tables => {
                     try self.parseDefineQuantizationTables(reader);
@@ -1034,7 +1130,7 @@ pub const JPEG = struct {
     fn formatDetect(stream: *Image.Stream) ImageReadError!bool {
         const reader = stream.reader();
         const maybe_start_of_image = try reader.readIntBig(u16);
-        if (maybe_start_of_image != @enumToInt(Markers.start_of_image)) {
+        if (maybe_start_of_image != @intFromEnum(Markers.start_of_image)) {
             return false;
         }
 

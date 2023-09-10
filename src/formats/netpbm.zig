@@ -132,16 +132,13 @@ fn parseNumber(reader: Image.Stream.Reader, buffer: []u8) ImageReadError!usize {
 }
 
 fn loadBinaryBitmap(header: Header, data: []color.Grayscale1, reader: Image.Stream.Reader) ImageReadError!void {
-    var data_index: usize = 0;
-    const data_end = header.width * header.height;
-
     var bit_reader = std.io.bitReader(.Big, reader);
 
-    while (data_index < data_end) : (data_index += 1) {
-        // set bit is black, cleared bit is white
-        // bits are "left to right" (so msb to lsb)
-        const read_bit = try bit_reader.readBitsNoEof(u1, 1);
-        data[data_index] = color.Grayscale1{ .value = ~read_bit };
+    for (0..header.height) |row_index| {
+        for (data[row_index * header.width ..][0..header.width]) |*sample| {
+            sample.value = ~(try bit_reader.readBitsNoEof(u1, 1));
+        }
+        bit_reader.alignToByte();
     }
 }
 
@@ -166,9 +163,9 @@ fn loadAsciiBitmap(header: Header, data: []color.Grayscale1, reader: Image.Strea
 
 fn readLinearizedValue(reader: Image.Stream.Reader, max_value: usize) ImageReadError!u8 {
     return if (max_value > 255)
-        @truncate(u8, 255 * @as(usize, try reader.readIntBig(u16)) / max_value)
+        @truncate(255 * @as(usize, try reader.readIntBig(u16)) / max_value)
     else
-        @truncate(u8, 255 * @as(usize, try reader.readByte()) / max_value);
+        @truncate(255 * @as(usize, try reader.readByte()) / max_value);
 }
 
 fn loadBinaryGraymap(header: Header, pixels: *color.PixelStorage, reader: Image.Stream.Reader) ImageReadError!void {
@@ -193,11 +190,11 @@ fn loadAsciiGraymap(header: Header, pixels: *color.PixelStorage, reader: Image.S
 
     if (header.max_value <= 255) {
         while (data_index < data_end) : (data_index += 1) {
-            pixels.grayscale8[data_index] = color.Grayscale8{ .value = @truncate(u8, try parseNumber(reader, read_buffer[0..])) };
+            pixels.grayscale8[data_index] = color.Grayscale8{ .value = @truncate(try parseNumber(reader, read_buffer[0..])) };
         }
     } else {
         while (data_index < data_end) : (data_index += 1) {
-            pixels.grayscale16[data_index] = color.Grayscale16{ .value = @truncate(u16, try parseNumber(reader, read_buffer[0..])) };
+            pixels.grayscale16[data_index] = color.Grayscale16{ .value = @truncate(try parseNumber(reader, read_buffer[0..])) };
         }
     }
 }
@@ -227,9 +224,9 @@ fn loadAsciiRgbmap(header: Header, data: []color.Rgb24, reader: Image.Stream.Rea
         var b = try parseNumber(reader, read_buffer[0..]);
 
         data[data_index] = color.Rgb24{
-            .r = @truncate(u8, 255 * r / header.max_value),
-            .g = @truncate(u8, 255 * g / header.max_value),
-            .b = @truncate(u8, 255 * b / header.max_value),
+            .r = @truncate(255 * r / header.max_value),
+            .g = @truncate(255 * g / header.max_value),
+            .b = @truncate(255 * b / header.max_value),
         };
     }
 }
@@ -241,7 +238,7 @@ fn Netpbm(comptime image_format: Image.Format, comptime header_numbers: []const 
         const Self = @This();
 
         pub const EncoderOptions = struct {
-            binary: bool,
+            binary: bool = true,
         };
 
         pub fn formatInterface() FormatInterface {
@@ -383,14 +380,15 @@ fn Netpbm(comptime image_format: Image.Format, comptime header_numbers: []const 
                 switch (self.header.format) {
                     .bitmap => {
                         switch (pixels) {
-                            .grayscale1 => {
+                            .grayscale1 => |samples| {
                                 var bit_writer = std.io.bitWriter(.Big, writer);
 
-                                for (pixels.grayscale1) |entry| {
-                                    try bit_writer.writeBits(~entry.value, 1);
+                                for (0..self.header.height) |row_index| {
+                                    for (samples[row_index * self.header.width ..][0..self.header.width]) |sample| {
+                                        try bit_writer.writeBits(~sample.value, 1);
+                                    }
+                                    try bit_writer.flushBits();
                                 }
-
-                                try bit_writer.flushBits();
                             },
                             else => {
                                 return ImageError.Unsupported;
@@ -449,7 +447,7 @@ fn Netpbm(comptime image_format: Image.Format, comptime header_numbers: []const 
                         switch (pixels) {
                             .grayscale16 => {
                                 const pixels_len = pixels.len();
-                                for (pixels.grayscale16) |entry, index| {
+                                for (pixels.grayscale16, 0..) |entry, index| {
                                     try writer.print("{}", .{entry.value});
 
                                     if (index != (pixels_len - 1)) {
@@ -460,7 +458,7 @@ fn Netpbm(comptime image_format: Image.Format, comptime header_numbers: []const 
                             },
                             .grayscale8 => {
                                 const pixels_len = pixels.len();
-                                for (pixels.grayscale8) |entry, index| {
+                                for (pixels.grayscale8, 0..) |entry, index| {
                                     try writer.print("{}", .{entry.value});
 
                                     if (index != (pixels_len - 1)) {

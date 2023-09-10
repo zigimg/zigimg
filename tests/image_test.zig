@@ -271,6 +271,8 @@ test "Should detect TGA properly" {
         helpers.fixtures_path ++ "tga/utc16.tga",
         helpers.fixtures_path ++ "tga/utc24.tga",
         helpers.fixtures_path ++ "tga/utc32.tga",
+        helpers.fixtures_path ++ "tga/stopsignsmall.tga",
+        helpers.fixtures_path ++ "tga/stopsignsmallcompressed.tga",
     };
 
     for (image_tests) |image_path| {

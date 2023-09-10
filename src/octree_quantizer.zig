@@ -40,7 +40,7 @@ pub const OctTreeQuantizer = struct {
     }
 
     pub fn addLevelNode(self: *Self, level: i32, node: *OctTreeQuantizerNode) !void {
-        try self.levels[@intCast(usize, level)].append(node);
+        try self.levels[@intCast(level)].append(node);
     }
 
     pub fn addColor(self: *Self, color: Rgba32) !void {
@@ -61,7 +61,7 @@ pub const OctTreeQuantizer = struct {
         var level: usize = MaxDepth - 1;
         while (level >= 0) : (level -= 1) {
             for (self.levels[level].items) |node| {
-                leafCount -= @intCast(usize, node.removeLeaves());
+                leafCount -= @intCast(node.removeLeaves());
                 if (leafCount <= colorCount) {
                     break;
                 }
@@ -123,7 +123,7 @@ const OctTreeQuantizerNode = struct {
     }
 
     pub fn getColor(self: Self) Rgba32 {
-        return Rgba32.initRgb(@intCast(u8, self.red / self.referenceCount), @intCast(u8, self.green / self.referenceCount), @intCast(u8, self.blue / self.referenceCount));
+        return Rgba32.initRgb(@intCast(self.red / self.referenceCount), @intCast(self.green / self.referenceCount), @intCast(self.blue / self.referenceCount));
     }
 
     pub fn addColor(self: *Self, color: Rgba32, level: i32, parent: *OctTreeQuantizer) anyerror!void {
@@ -188,7 +188,7 @@ const OctTreeQuantizerNode = struct {
 
     pub fn removeLeaves(self: *Self) i32 {
         var result: i32 = 0;
-        for (self.children) |childOptional, i| {
+        for (self.children, 0..) |childOptional, i| {
             if (childOptional) |child| {
                 self.red += child.red;
                 self.green += child.green;
@@ -203,7 +203,7 @@ const OctTreeQuantizerNode = struct {
 
     inline fn getColorIndex(color: Rgba32, level: i32) usize {
         var index: usize = 0;
-        var mask = @as(u8, 0b10000000) >> @intCast(u3, level);
+        var mask = @as(u8, 0b10000000) >> @intCast(level);
         if (color.r & mask != 0) {
             index |= 0b100;
         }

@@ -16,13 +16,13 @@ const std = @import("std");
 const utils = @import("../utils.zig");
 
 pub const QoiColor = extern struct {
-    r: u8,
-    g: u8,
-    b: u8,
-    a: u8 = 0xFF,
+    r: u8 align(1),
+    g: u8 align(1),
+    b: u8 align(1),
+    a: u8 align(1) = 0xFF,
 
     fn hash(c: QoiColor) u6 {
-        return @truncate(u6, c.r *% 3 +% c.g *% 5 +% c.b *% 7 +% c.a *% 11);
+        return @truncate(c.r *% 3 +% c.g *% 5 +% c.b *% 7 +% c.a *% 11);
     }
 
     pub fn eql(a: QoiColor, b: QoiColor) bool {
@@ -79,23 +79,27 @@ pub const Format = enum(u8) {
     rgba = 4,
 };
 
-pub const Header = packed struct {
+pub const Header = extern struct {
     const size = 14;
     const correct_magic = [4]u8{ 'q', 'o', 'i', 'f' };
 
-    width: u32,
-    height: u32,
-    format: Format,
-    colorspace: Colorspace,
+    width: u32 align(1),
+    height: u32 align(1),
+    format: Format align(1),
+    colorspace: Colorspace align(1),
 
     fn encode(header: Header) [size]u8 {
         var result: [size]u8 = undefined;
-        std.mem.copy(u8, result[0..4], &correct_magic);
+        @memcpy(result[0..4], &correct_magic);
         std.mem.writeIntBig(u32, result[4..8], header.width);
         std.mem.writeIntBig(u32, result[8..12], header.height);
-        result[12] = @enumToInt(header.format);
-        result[13] = @enumToInt(header.colorspace);
+        result[12] = @intFromEnum(header.format);
+        result[13] = @intFromEnum(header.colorspace);
         return result;
+    }
+
+    comptime {
+        std.debug.assert((@sizeOf(Header) + Header.correct_magic.len) == Header.size);
     }
 };
 
@@ -122,7 +126,7 @@ pub const QOI = struct {
     }
 
     pub fn formatDetect(stream: *Image.Stream) ImageReadError!bool {
-        var magic_buffer: [std.mem.len(Header.correct_magic)]u8 = undefined;
+        var magic_buffer: [Header.correct_magic.len]u8 = undefined;
 
         _ = try stream.read(magic_buffer[0..]);
 
@@ -147,8 +151,8 @@ pub const QOI = struct {
         _ = allocator;
 
         var qoi = Self{};
-        qoi.header.width = @truncate(u32, image.width);
-        qoi.header.height = @truncate(u32, image.height);
+        qoi.header.width = @truncate(image.width);
+        qoi.header.height = @truncate(image.height);
         qoi.header.format = switch (image.pixels) {
             .rgb24 => Format.rgb,
             .rgba32 => Format.rgba,
@@ -182,7 +186,7 @@ pub const QOI = struct {
     }
 
     pub fn read(self: *Self, allocator: Allocator, stream: *Image.Stream) ImageReadError!color.PixelStorage {
-        var magic_buffer: [std.mem.len(Header.correct_magic)]u8 = undefined;
+        var magic_buffer: [Header.correct_magic.len]u8 = undefined;
 
         const reader = stream.reader();
 
@@ -221,7 +225,7 @@ pub const QOI = struct {
                 new_color.b = try reader.readByte();
                 new_color.a = try reader.readByte();
             } else if (hasPrefix(byte, u2, 0b00)) { // QOI_OP_INDEX
-                const color_index = @truncate(u6, byte);
+                const color_index: u6 = @truncate(byte);
                 new_color = color_lut[color_index];
             } else if (hasPrefix(byte, u2, 0b01)) { // QOI_OP_DIFF
                 const diff_r = unmapRange2(byte >> 4);
@@ -246,7 +250,7 @@ pub const QOI = struct {
                 add8(&new_color.g, diff_g);
                 add8(&new_color.b, diff_b);
             } else if (hasPrefix(byte, u2, 0b11)) { // QOI_OP_RUN
-                count = @as(usize, @truncate(u6, byte)) + 1;
+                count = @as(usize, @as(u6, @truncate(byte))) + 1;
                 std.debug.assert(count >= 1 and count <= 62);
             } else {
                 // we have covered all possibilities.
@@ -314,7 +318,7 @@ pub const QOI = struct {
         var previous_pixel = QoiColor{ .r = 0, .g = 0, .b = 0, .a = 0xFF };
         var run_length: usize = 0;
 
-        for (pixels_data) |current_color, i| {
+        for (pixels_data, 0..) |current_color, i| {
             const pixel = QoiColor.from(current_color);
 
             defer previous_pixel = pixel;
@@ -328,7 +332,7 @@ pub const QOI = struct {
             if (run_length > 0 and (run_length == 62 or !same_pixel or (i == (pixels_data.len - 1)))) {
                 // QOI_OP_RUN
                 std.debug.assert(run_length >= 1 and run_length <= 62);
-                try write_stream.writeByte(0b1100_0000 | @truncate(u8, run_length - 1));
+                try write_stream.writeByte(0b1100_0000 | @as(u8, @truncate(run_length - 1)));
                 run_length = 0;
             }
 
@@ -385,23 +389,23 @@ pub const QOI = struct {
     }
 
     fn mapRange2(val: i16) u8 {
-        return @intCast(u2, val + 2);
+        return @as(u2, @intCast(val + 2));
     }
     fn mapRange4(val: i16) u8 {
-        return @intCast(u4, val + 8);
+        return @as(u4, @intCast(val + 8));
     }
     fn mapRange6(val: i16) u8 {
-        return @intCast(u6, val + 32);
+        return @as(u6, @intCast(val + 32));
     }
 
     fn unmapRange2(val: u32) i2 {
-        return @intCast(i2, @as(i8, @truncate(u2, val)) - 2);
+        return @as(i2, @intCast(@as(i8, @as(u2, @truncate(val))) - 2));
     }
     fn unmapRange4(val: u32) i4 {
-        return @intCast(i4, @as(i8, @truncate(u4, val)) - 8);
+        return @as(i4, @intCast(@as(i8, @as(u4, @truncate(val))) - 8));
     }
     fn unmapRange6(val: u32) i6 {
-        return @intCast(i6, @as(i8, @truncate(u6, val)) - 32);
+        return @as(i6, @intCast(@as(i8, @as(u6, @truncate(val))) - 32));
     }
 
     fn inRange2(val: i16) bool {
@@ -415,10 +419,10 @@ pub const QOI = struct {
     }
 
     fn add8(dst: *u8, diff: i8) void {
-        dst.* +%= @bitCast(u8, diff);
+        dst.* +%= @bitCast(diff);
     }
 
     fn hasPrefix(value: u8, comptime T: type, prefix: T) bool {
-        return (@truncate(T, value >> (8 - @bitSizeOf(T))) == prefix);
+        return (@as(T, @truncate(value >> (8 - @bitSizeOf(T)))) == prefix);
     }
 };
