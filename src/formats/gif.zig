@@ -545,6 +545,9 @@ pub const GIF = struct {
                 data_block_size = try context.reader.readByte();
             }
 
+            // Fill frame with background color
+            @memset(new_frame.pixels.indexed8.indices, self.header.background_color_index);
+
             if (current_frame.image_descriptor.?.flags.is_interlaced) {
                 var source_y: usize = 0;
 

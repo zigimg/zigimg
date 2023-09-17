@@ -63,7 +63,7 @@ test "Iterate on a single GIF file" {
         return error.SkipZigTest;
     }
 
-    try doGifTest("interlace");
+    try doGifTest("image-inside-bg");
 }
 
 const IniFile = struct {
@@ -183,7 +183,7 @@ fn doGifTest(entry_name: []const u8) !void {
         const expected_width = config_section.getValue("width") orelse return error.InvalidGifConfigFile;
         const expected_height = config_section.getValue("height") orelse return error.InvalidGifConfigFile;
 
-        const expected_background_color = blk: {
+        const expected_background_color_opt = blk: {
             if (config_section.getValue("background")) |string_background_color| {
                 break :blk @as(?color.Rgba32, try color.Rgba32.fromHtmlHex(string_background_color.string));
             }
@@ -220,7 +220,11 @@ fn doGifTest(entry_name: []const u8) !void {
         try helpers.expectEqSlice(u8, gif_file.header.version[0..], expected_version.string[3..]);
         try helpers.expectEq(gif_file.header.width, @as(u16, @intCast(expected_width.number)));
         try helpers.expectEq(gif_file.header.height, @as(u16, @intCast(expected_height.number)));
-        _ = expected_background_color;
+
+        if (expected_background_color_opt) |expected_background_color| {
+            try helpers.expectEq(gif_file.global_color_table.data[gif_file.header.background_color_index].toU32Rgba(), expected_background_color.toU32Rgba());
+        }
+
         _ = expected_loop_count;
 
         const string_frames = config_section.getValue("frames") orelse return error.InvalidGifConfigFile;
@@ -253,9 +257,15 @@ fn doGifTest(entry_name: []const u8) !void {
 
                     var frame_data_iterator = color.PixelStorageIterator.init(&frames.items[frame_index].pixels);
 
+                    const gif_background_color = frames.items[frame_index].pixels.indexed8.palette[gif_file.header.background_color_index];
+
                     for (pixel_list.items) |expected_color| {
                         if (frame_data_iterator.next()) |actual_color| {
-                            try helpers.expectEq(actual_color.toRgba32(), expected_color);
+                            if (expected_color.toU32Rgba() == 0) {
+                                try helpers.expectEq(actual_color.toRgba32(), gif_background_color);
+                            } else {
+                                try helpers.expectEq(actual_color.toRgba32(), expected_color);
+                            }
                         }
                     }
                 } else {
