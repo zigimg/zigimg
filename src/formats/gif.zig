@@ -507,9 +507,8 @@ pub const GIF = struct {
                 new_frame.pixels.indexed8.palette[index] = color.Rgba32.initRgb(palette_entry.r, palette_entry.g, palette_entry.b);
             }
 
-            var pixel_buffer = Image.Stream{
-                .buffer = std.io.fixedBufferStream(std.mem.sliceAsBytes(new_frame.pixels.indexed8.indices)),
-            };
+            var array_pixel_buffer = try std.ArrayList(u8).initCapacity(self.allocator, current_frame.image_descriptor.?.width * current_frame.image_descriptor.?.height);
+            defer array_pixel_buffer.deinit();
 
             const lzw_minimum_code_size = try context.reader.readByte();
 
@@ -532,11 +531,27 @@ pub const GIF = struct {
                     .buffer = std.io.fixedBufferStream(data_block.data),
                 };
 
-                lzw_decoder.decode(data_block_reader.reader(), pixel_buffer.writer()) catch {
+                lzw_decoder.decode(data_block_reader.reader(), array_pixel_buffer.writer()) catch {
                     return ImageReadError.InvalidData;
                 };
 
                 data_block_size = try context.reader.readByte();
+            }
+
+            for (0..current_frame.image_descriptor.?.height) |source_y| {
+                const target_y = source_y + current_frame.image_descriptor.?.top_position;
+
+                const source_stride = source_y * self.header.width;
+                const target_stride = target_y * self.header.width;
+
+                for (0..current_frame.image_descriptor.?.width) |source_x| {
+                    const target_x = source_x + current_frame.image_descriptor.?.left_position;
+                    const target_index = target_stride + target_x;
+
+                    const source_index = source_stride + source_x;
+
+                    new_frame.pixels.indexed8.indices[target_index] = array_pixel_buffer.items[source_index];
+                }
             }
 
             try context.frame_list.append(self.allocator, new_frame);

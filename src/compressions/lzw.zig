@@ -12,6 +12,9 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
         previous_code: ?u12 = null,
         dictionary: std.AutoArrayHashMap(u12, []const u8),
 
+        remaining_data: ?u12 = null,
+        remaining_bits: u4 = 0,
+
         const Self = @This();
 
         pub fn init(allocator: std.mem.Allocator, initial_code_size: u8) !Self {
@@ -32,13 +35,30 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
             self.dictionary.deinit();
         }
 
-        pub fn decode(self: *Self, reader: Image.Stream.Reader, writer: Image.Stream.Writer) !void {
+        pub fn decode(self: *Self, reader: Image.Stream.Reader, writer: anytype) !void {
             var bit_reader = std.io.bitReader(endian, reader);
 
             var bits_to_read = self.code_size + 1;
 
             var read_size: usize = 0;
-            var read_code = try bit_reader.readBits(u12, bits_to_read, &read_size);
+            var read_code: u12 = 0;
+
+            if (self.remaining_data) |remaining_data| {
+                const rest_of_data = try bit_reader.readBits(u12, self.remaining_bits, &read_size);
+                if (read_size > 0) {
+                    switch (endian) {
+                        .Little => {
+                            read_code = remaining_data | (rest_of_data << @as(u4, @intCast(bits_to_read - self.remaining_bits)));
+                        },
+                        .Big => {
+                            read_code = (remaining_data << self.remaining_bits) | rest_of_data;
+                        },
+                    }
+                }
+                self.remaining_data = null;
+            } else {
+                read_code = try bit_reader.readBits(u12, bits_to_read, &read_size);
+            }
 
             var allocator = self.area_allocator.allocator();
 
@@ -55,7 +75,7 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
 
                             self.next_code += 1;
 
-                            const max_code = (@as(u12, 1) << @intCast(self.code_size)) + 1;
+                            const max_code = @as(u12, 1) << @intCast(self.code_size + 1);
                             if (self.next_code == max_code) {
                                 self.code_size += 1;
                                 bits_to_read += 1;
@@ -79,7 +99,7 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
 
                                 self.next_code += 1;
 
-                                const max_code = (@as(u12, 1) << @as(u4, @intCast(self.code_size))) + 1;
+                                const max_code = @as(u12, 1) << @intCast(self.code_size + 1);
                                 if (self.next_code == max_code) {
                                     self.code_size += 1;
                                     bits_to_read += 1;
@@ -92,6 +112,11 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
                 self.previous_code = read_code;
 
                 read_code = try bit_reader.readBits(u12, bits_to_read, &read_size);
+                if (read_size != bits_to_read) {
+                    self.remaining_data = read_code;
+                    self.remaining_bits = @intCast(bits_to_read - read_size);
+                    return;
+                }
             }
         }
 
