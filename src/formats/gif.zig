@@ -135,12 +135,12 @@ pub fn FixedStorage(comptime T: type, comptime storage_size: usize) type {
 pub const GIF = struct {
     header: Header = .{},
     global_color_table: FixedStorage(color.Rgb24, 256) = FixedStorage(color.Rgb24, 256).init(),
-    frames: std.ArrayListUnmanaged(Frame) = .{},
+    frames: std.ArrayListUnmanaged(FrameData) = .{},
     comments: std.ArrayListUnmanaged(CommentExtension) = .{},
     application_info: ?ApplicationExtension = null,
     allocator: std.mem.Allocator = undefined,
 
-    pub const Frame = struct {
+    pub const FrameData = struct {
         local_color_table: FixedStorage(color.Rgb24, 256) = FixedStorage(color.Rgb24, 256).init(),
         graphics_control: ?GraphicControlExtension = null,
         image_descriptor: ?ImageDescriptor = null,
@@ -152,7 +152,7 @@ pub const GIF = struct {
     const ReaderContext = struct {
         reader: Image.Stream.Reader = undefined,
         frame_list: Image.Animation.FrameList = .{},
-        current_frame: ?*Frame = null,
+        current_frame_data: ?*FrameData = null,
     };
 
     pub fn init(allocator: std.mem.Allocator) Self {
@@ -336,11 +336,11 @@ pub const GIF = struct {
 
     // <Graphic Block> ::= [Graphic Control Extension] <Graphic-Rendering Block>
     fn readGraphicBlock(self: *Self, context: *ReaderContext, block_kind: DataBlockKind, extension_kind_opt: ?ExtensionKind) !void {
-        context.current_frame = try self.allocNewFrame();
+        context.current_frame_data = try self.allocNewFrame();
 
         if (extension_kind_opt) |extension_kind| {
             if (extension_kind == .graphic_control) {
-                context.current_frame.?.graphics_control = blk: {
+                context.current_frame_data.?.graphics_control = blk: {
                     var graphics_control: GraphicControlExtension = undefined;
 
                     // Eat block size
@@ -388,7 +388,7 @@ pub const GIF = struct {
 
                 switch (extension_kind) {
                     .plain_text => {
-                        context.current_frame.?.plain_text = blk: {
+                        context.current_frame_data.?.plain_text = blk: {
                             // Eat block size
                             _ = try context.reader.readByte();
 
@@ -482,39 +482,39 @@ pub const GIF = struct {
 
     // <Table-Based Image> ::= Image Descriptor [Local Color Table] Image Data
     fn readImageDescriptorAndData(self: *Self, context: *ReaderContext) !void {
-        if (context.current_frame) |current_frame| {
-            current_frame.image_descriptor = try utils.readStructLittle(context.reader, ImageDescriptor);
+        if (context.current_frame_data) |current_frame_data| {
+            current_frame_data.image_descriptor = try utils.readStructLittle(context.reader, ImageDescriptor);
 
             // Don't read any futher if the local width or height is zero
-            if (current_frame.image_descriptor.?.width == 0 or current_frame.image_descriptor.?.height == 0) {
+            if (current_frame_data.image_descriptor.?.width == 0 or current_frame_data.image_descriptor.?.height == 0) {
                 return;
             }
 
-            const local_color_table_size = @as(usize, 1) << (@as(u6, @intCast(current_frame.image_descriptor.?.flags.local_color_table_size)) + 1);
+            const local_color_table_size = @as(usize, 1) << (@as(u6, @intCast(current_frame_data.image_descriptor.?.flags.local_color_table_size)) + 1);
 
-            current_frame.local_color_table.resize(local_color_table_size);
+            current_frame_data.local_color_table.resize(local_color_table_size);
 
-            if (current_frame.image_descriptor.?.flags.has_local_color_table) {
+            if (current_frame_data.image_descriptor.?.flags.has_local_color_table) {
                 var index: usize = 0;
 
                 while (index < local_color_table_size) : (index += 1) {
-                    current_frame.local_color_table.data[index] = try utils.readStructLittle(context.reader, color.Rgb24);
+                    current_frame_data.local_color_table.data[index] = try utils.readStructLittle(context.reader, color.Rgb24);
                 }
             }
 
-            const effective_color_table = if (current_frame.image_descriptor.?.flags.has_local_color_table) current_frame.local_color_table.data else self.global_color_table.data;
+            const effective_color_table = if (current_frame_data.image_descriptor.?.flags.has_local_color_table) current_frame_data.local_color_table.data else self.global_color_table.data;
 
-            var new_frame = try self.createNewAnimationFrame();
+            var new_animation_frame = try self.createNewAnimationFrame();
 
-            if (current_frame.graphics_control) |graphics_control| {
-                new_frame.duration = @as(f32, @floatFromInt(graphics_control.delay_time)) * (1.0 / 100.0);
+            if (current_frame_data.graphics_control) |graphics_control| {
+                new_animation_frame.duration = @as(f32, @floatFromInt(graphics_control.delay_time)) * (1.0 / 100.0);
             }
 
             for (effective_color_table, 0..) |palette_entry, index| {
-                new_frame.pixels.indexed8.palette[index] = color.Rgba32.initRgb(palette_entry.r, palette_entry.g, palette_entry.b);
+                new_animation_frame.pixels.indexed8.palette[index] = color.Rgba32.initRgb(palette_entry.r, palette_entry.g, palette_entry.b);
             }
 
-            var array_pixel_buffer = try std.ArrayList(u8).initCapacity(self.allocator, current_frame.image_descriptor.?.width * current_frame.image_descriptor.?.height);
+            var array_pixel_buffer = try std.ArrayList(u8).initCapacity(self.allocator, current_frame_data.image_descriptor.?.width * current_frame_data.image_descriptor.?.height);
             defer array_pixel_buffer.deinit();
 
             const lzw_minimum_code_size = try context.reader.readByte();
@@ -546,25 +546,27 @@ pub const GIF = struct {
             }
 
             // Fill frame with background color
-            @memset(new_frame.pixels.indexed8.indices, self.header.background_color_index);
+            @memset(new_animation_frame.pixels.indexed8.indices, self.header.background_color_index);
 
-            if (current_frame.image_descriptor.?.flags.is_interlaced) {
+            if (current_frame_data.image_descriptor.?.flags.is_interlaced) {
                 var source_y: usize = 0;
 
                 for (InterlacePasses) |pass| {
-                    var target_y = pass.start + current_frame.image_descriptor.?.top_position;
+                    var target_y = pass.start + current_frame_data.image_descriptor.?.top_position;
 
                     while (target_y < self.header.height) {
-                        const source_stride = source_y * current_frame.image_descriptor.?.width;
+                        const source_stride = source_y * current_frame_data.image_descriptor.?.width;
                         const target_stride = target_y * self.header.width;
 
-                        for (0..current_frame.image_descriptor.?.width) |source_x| {
-                            const target_x = source_x + current_frame.image_descriptor.?.left_position;
+                        for (0..current_frame_data.image_descriptor.?.width) |source_x| {
+                            const target_x = source_x + current_frame_data.image_descriptor.?.left_position;
 
                             const source_index = source_stride + source_x;
                             const target_index = target_stride + target_x;
 
-                            new_frame.pixels.indexed8.indices[target_index] = array_pixel_buffer.items[source_index];
+                            if (source_index < array_pixel_buffer.items.len and target_index < new_animation_frame.pixels.indexed8.indices.len) {
+                                new_animation_frame.pixels.indexed8.indices[target_index] = array_pixel_buffer.items[source_index];
+                            }
                         }
 
                         target_y += pass.step;
@@ -572,30 +574,32 @@ pub const GIF = struct {
                     }
                 }
             } else {
-                for (0..current_frame.image_descriptor.?.height) |source_y| {
-                    const target_y = source_y + current_frame.image_descriptor.?.top_position;
+                for (0..current_frame_data.image_descriptor.?.height) |source_y| {
+                    const target_y = source_y + current_frame_data.image_descriptor.?.top_position;
 
-                    const source_stride = source_y * current_frame.image_descriptor.?.width;
+                    const source_stride = source_y * current_frame_data.image_descriptor.?.width;
                     const target_stride = target_y * self.header.width;
 
-                    for (0..current_frame.image_descriptor.?.width) |source_x| {
-                        const target_x = source_x + current_frame.image_descriptor.?.left_position;
+                    for (0..current_frame_data.image_descriptor.?.width) |source_x| {
+                        const target_x = source_x + current_frame_data.image_descriptor.?.left_position;
 
                         const source_index = source_stride + source_x;
                         const target_index = target_stride + target_x;
 
-                        new_frame.pixels.indexed8.indices[target_index] = array_pixel_buffer.items[source_index];
+                        if (source_index < array_pixel_buffer.items.len and target_index < new_animation_frame.pixels.indexed8.indices.len) {
+                            new_animation_frame.pixels.indexed8.indices[target_index] = array_pixel_buffer.items[source_index];
+                        }
                     }
                 }
             }
 
-            try context.frame_list.append(self.allocator, new_frame);
+            try context.frame_list.append(self.allocator, new_animation_frame);
         }
     }
 
-    fn allocNewFrame(self: *Self) !*Frame {
+    fn allocNewFrame(self: *Self) !*FrameData {
         var new_frame = try self.frames.addOne(self.allocator);
-        new_frame.* = Frame{};
+        new_frame.* = FrameData{};
         return new_frame;
     }
 
