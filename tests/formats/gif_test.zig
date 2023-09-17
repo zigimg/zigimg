@@ -63,7 +63,7 @@ test "Iterate on a single GIF file" {
         return error.SkipZigTest;
     }
 
-    try doGifTest("all-reds");
+    try doGifTest("interlace");
 }
 
 const IniFile = struct {

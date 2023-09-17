@@ -106,6 +106,13 @@ const Versions = [_][]const u8{
 
 const ExtensionBlockTerminator = 0x00;
 
+const InterlacePasses = [_]struct { start: usize, step: usize }{
+    .{ .start = 0, .step = 8 },
+    .{ .start = 4, .step = 8 },
+    .{ .start = 2, .step = 4 },
+    .{ .start = 1, .step = 2 },
+};
+
 // TODO: Move to utils.zig
 pub fn FixedStorage(comptime T: type, comptime storage_size: usize) type {
     return struct {
@@ -538,19 +545,44 @@ pub const GIF = struct {
                 data_block_size = try context.reader.readByte();
             }
 
-            for (0..current_frame.image_descriptor.?.height) |source_y| {
-                const target_y = source_y + current_frame.image_descriptor.?.top_position;
+            if (current_frame.image_descriptor.?.flags.is_interlaced) {
+                var source_y: usize = 0;
 
-                const source_stride = source_y * self.header.width;
-                const target_stride = target_y * self.header.width;
+                for (InterlacePasses) |pass| {
+                    var target_y = pass.start + current_frame.image_descriptor.?.top_position;
 
-                for (0..current_frame.image_descriptor.?.width) |source_x| {
-                    const target_x = source_x + current_frame.image_descriptor.?.left_position;
-                    const target_index = target_stride + target_x;
+                    while (target_y < self.header.height) {
+                        const source_stride = source_y * current_frame.image_descriptor.?.width;
+                        const target_stride = target_y * self.header.width;
 
-                    const source_index = source_stride + source_x;
+                        for (0..current_frame.image_descriptor.?.width) |source_x| {
+                            const target_x = source_x + current_frame.image_descriptor.?.left_position;
 
-                    new_frame.pixels.indexed8.indices[target_index] = array_pixel_buffer.items[source_index];
+                            const source_index = source_stride + source_x;
+                            const target_index = target_stride + target_x;
+
+                            new_frame.pixels.indexed8.indices[target_index] = array_pixel_buffer.items[source_index];
+                        }
+
+                        target_y += pass.step;
+                        source_y += 1;
+                    }
+                }
+            } else {
+                for (0..current_frame.image_descriptor.?.height) |source_y| {
+                    const target_y = source_y + current_frame.image_descriptor.?.top_position;
+
+                    const source_stride = source_y * current_frame.image_descriptor.?.width;
+                    const target_stride = target_y * self.header.width;
+
+                    for (0..current_frame.image_descriptor.?.width) |source_x| {
+                        const target_x = source_x + current_frame.image_descriptor.?.left_position;
+
+                        const source_index = source_stride + source_x;
+                        const target_index = target_stride + target_x;
+
+                        new_frame.pixels.indexed8.indices[target_index] = array_pixel_buffer.items[source_index];
+                    }
                 }
             }
 
