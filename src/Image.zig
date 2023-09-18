@@ -51,6 +51,10 @@ pub const AnimationLoopInfinite = -1;
 pub const AnimationFrame = struct {
     pixels: PixelStorage,
     duration: f32,
+
+    pub fn deinit(self: AnimationFrame, allocator: std.mem.Allocator) void {
+        self.pixels.deinit(allocator);
+    }
 };
 
 pub const Animation = struct {

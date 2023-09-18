@@ -340,6 +340,10 @@ pub const GIF = struct {
 
         if (extension_kind_opt) |extension_kind| {
             if (extension_kind == .graphic_control) {
+                // If we are seeing a Graphics Control Extension block, it means we need to start a new animation frame
+                var new_animation_frame = try self.createNewAnimationFrame();
+                errdefer new_animation_frame.deinit(self.allocator);
+
                 context.current_frame_data.?.graphics_control = blk: {
                     var graphics_control: GraphicControlExtension = undefined;
 
@@ -351,7 +355,13 @@ pub const GIF = struct {
 
                     if (graphics_control.flags.has_transparent_color) {
                         graphics_control.transparent_color_index = try context.reader.readByte();
+                        @memset(new_animation_frame.pixels.indexed8.indices, graphics_control.transparent_color_index);
+                    } else {
+                        graphics_control.transparent_color_index = 0;
+                        @memset(new_animation_frame.pixels.indexed8.indices, self.header.background_color_index);
                     }
+
+                    new_animation_frame.duration = @as(f32, @floatFromInt(graphics_control.delay_time)) * (1.0 / 100.0);
 
                     // Eat block terminator
                     _ = try context.reader.readByte();
@@ -363,9 +373,22 @@ pub const GIF = struct {
                     return ImageReadError.InvalidData;
                 };
 
+                // Add the new frame to the list now that everything is ok so far
+                try context.frame_list.append(self.allocator, new_animation_frame);
+
+                // Continue reading the graphics rendering block
                 try self.readGraphicRenderingBlock(context, new_block_kind, null);
             }
         } else {
+            if (context.frame_list.items.len == 0) {
+                const new_animation_frame = try self.createNewAnimationFrame();
+
+                // Fill frame with background color
+                @memset(new_animation_frame.pixels.indexed8.indices, self.header.background_color_index);
+
+                try context.frame_list.append(self.allocator, new_animation_frame);
+            }
+
             try self.readGraphicRenderingBlock(context, block_kind, extension_kind_opt);
         }
     }
@@ -504,14 +527,10 @@ pub const GIF = struct {
 
             const effective_color_table = if (current_frame_data.image_descriptor.?.flags.has_local_color_table) current_frame_data.local_color_table.data else self.global_color_table.data;
 
-            var new_animation_frame = try self.createNewAnimationFrame();
-
-            if (current_frame_data.graphics_control) |graphics_control| {
-                new_animation_frame.duration = @as(f32, @floatFromInt(graphics_control.delay_time)) * (1.0 / 100.0);
-            }
+            var current_animation_frame = &context.frame_list.items[context.frame_list.items.len - 1];
 
             for (effective_color_table, 0..) |palette_entry, index| {
-                new_animation_frame.pixels.indexed8.palette[index] = color.Rgba32.initRgb(palette_entry.r, palette_entry.g, palette_entry.b);
+                current_animation_frame.pixels.indexed8.palette[index] = color.Rgba32.initRgb(palette_entry.r, palette_entry.g, palette_entry.b);
             }
 
             var array_pixel_buffer = try std.ArrayList(u8).initCapacity(self.allocator, current_frame_data.image_descriptor.?.width * current_frame_data.image_descriptor.?.height);
@@ -545,9 +564,6 @@ pub const GIF = struct {
                 data_block_size = try context.reader.readByte();
             }
 
-            // Fill frame with background color
-            @memset(new_animation_frame.pixels.indexed8.indices, self.header.background_color_index);
-
             if (current_frame_data.image_descriptor.?.flags.is_interlaced) {
                 var source_y: usize = 0;
 
@@ -564,8 +580,8 @@ pub const GIF = struct {
                             const source_index = source_stride + source_x;
                             const target_index = target_stride + target_x;
 
-                            if (source_index < array_pixel_buffer.items.len and target_index < new_animation_frame.pixels.indexed8.indices.len) {
-                                new_animation_frame.pixels.indexed8.indices[target_index] = array_pixel_buffer.items[source_index];
+                            if (source_index < array_pixel_buffer.items.len and target_index < current_animation_frame.pixels.indexed8.indices.len) {
+                                current_animation_frame.pixels.indexed8.indices[target_index] = array_pixel_buffer.items[source_index];
                             }
                         }
 
@@ -586,14 +602,12 @@ pub const GIF = struct {
                         const source_index = source_stride + source_x;
                         const target_index = target_stride + target_x;
 
-                        if (source_index < array_pixel_buffer.items.len and target_index < new_animation_frame.pixels.indexed8.indices.len) {
-                            new_animation_frame.pixels.indexed8.indices[target_index] = array_pixel_buffer.items[source_index];
+                        if (source_index < array_pixel_buffer.items.len and target_index < current_animation_frame.pixels.indexed8.indices.len) {
+                            current_animation_frame.pixels.indexed8.indices[target_index] = array_pixel_buffer.items[source_index];
                         }
                     }
                 }
             }
-
-            try context.frame_list.append(self.allocator, new_animation_frame);
         }
     }
 
