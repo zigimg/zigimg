@@ -10,6 +10,7 @@ const color = @import("../color.zig");
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 
 const Markers = @import("./jpeg/markers.zig").Markers;
+const FrameHeader = @import("./jpeg/frame_header.zig");
 const JFIFHeader = @import("./jpeg/jfif_header.zig");
 
 // TODO: Chroma subsampling
@@ -223,130 +224,6 @@ const HuffmanReader = struct {
             (@as(i32, 1) << (magnitude - 1));
 
         return base + @as(i32, @bitCast(unsigned_bits));
-    }
-};
-
-const Component = struct {
-    id: u8,
-    horizontal_sampling_factor: u4,
-    vertical_sampling_factor: u4,
-    quantization_table_id: u8,
-
-    pub fn read(reader: Image.Stream.Reader) ImageReadError!Component {
-        const component_id = try reader.readByte();
-        const sampling_factors = try reader.readByte();
-        const quantization_table_id = try reader.readByte();
-
-        const horizontal_sampling_factor: u4 = @intCast(sampling_factors >> 4);
-        const vertical_sampling_factor: u4 = @intCast(sampling_factors & 0xF);
-
-        if (horizontal_sampling_factor < 1 or horizontal_sampling_factor > 4) {
-            return ImageReadError.InvalidData;
-        }
-
-        if (vertical_sampling_factor < 1 or vertical_sampling_factor > 4) {
-            return ImageReadError.InvalidData;
-        }
-
-        return Component{
-            .id = component_id,
-            .horizontal_sampling_factor = horizontal_sampling_factor,
-            .vertical_sampling_factor = vertical_sampling_factor,
-            .quantization_table_id = quantization_table_id,
-        };
-    }
-};
-
-const FrameHeader = struct {
-    allocator: Allocator,
-
-    sample_precision: u8,
-    row_count: u16,
-    samples_per_row: u16,
-
-    components: []Component,
-
-    pub fn read(allocator: Allocator, reader: Image.Stream.Reader) ImageReadError!FrameHeader {
-        var segment_size = try reader.readIntBig(u16);
-        if (JPEG_DEBUG) std.debug.print("StartOfFrame: frame size = 0x{X}\n", .{segment_size});
-        segment_size -= 2;
-
-        const sample_precision = try reader.readByte();
-        const row_count = try reader.readIntBig(u16);
-        const samples_per_row = try reader.readIntBig(u16);
-
-        const component_count = try reader.readByte();
-
-        if (component_count != 1 and component_count != 3) {
-            return ImageReadError.InvalidData;
-        }
-
-        if (JPEG_DEBUG) std.debug.print("  {}x{}, precision={}, {} components\n", .{ samples_per_row, row_count, sample_precision, component_count });
-
-        segment_size -= 6;
-
-        var components = try allocator.alloc(Component, component_count);
-        errdefer allocator.free(components);
-
-        if (JPEG_VERY_DEBUG) std.debug.print("  Components:\n", .{});
-        var i: usize = 0;
-        while (i < component_count) : (i += 1) {
-            components[i] = try Component.read(reader);
-            segment_size -= 3;
-
-            if (JPEG_VERY_DEBUG) {
-                std.debug.print("    ID={}, Vfactor={}, Hfactor={} QtableID={}\n", .{
-                    components[i].id, components[i].vertical_sampling_factor, components[i].horizontal_sampling_factor, components[i].quantization_table_id,
-                });
-            }
-        }
-
-        std.debug.assert(segment_size == 0);
-
-        return FrameHeader{
-            .allocator = allocator,
-            .sample_precision = sample_precision,
-            .row_count = row_count,
-            .samples_per_row = samples_per_row,
-            .components = components,
-        };
-    }
-
-    pub fn deinit(self: *FrameHeader) void {
-        self.allocator.free(self.components);
-    }
-
-    pub fn getMaxHorizontalSamplingFactor(self: FrameHeader) usize {
-        var ret: u4 = 0;
-        for (self.components) |component| {
-            if (ret < component.horizontal_sampling_factor) {
-                ret = component.horizontal_sampling_factor;
-            }
-        }
-
-        return ret;
-    }
-
-    pub fn getMaxVerticalSamplingFactor(self: FrameHeader) usize {
-        var ret: u4 = 0;
-        for (self.components) |component| {
-            if (ret < component.vertical_sampling_factor) {
-                ret = component.vertical_sampling_factor;
-            }
-        }
-
-        return ret;
-    }
-
-    pub fn getBlockCount(self: FrameHeader, component_id: usize) usize {
-        // MCU of non-interleaved is just one block.
-        if (self.components.len == 1) {
-            return 1;
-        }
-
-        const horizontal_block_count = self.components[component_id].horizontal_sampling_factor;
-        const vertical_block_count = self.components[component_id].vertical_sampling_factor;
-        return horizontal_block_count * vertical_block_count;
     }
 };
 
@@ -968,7 +845,10 @@ pub const JPEG = struct {
             }
 
             switch (@as(Markers, @enumFromInt(marker))) {
-                .sof0 => {
+                // TODO(angelo): this should be moved inside the frameheader, it's part of thet
+                // and then the header just dispatches correctly what to do with it.
+                // JPEG should be as clear as possible
+                .sof0 => {  // Baseline DCT
                     if (self.frame != null) {
                         return ImageError.Unsupported;
                     }
@@ -976,15 +856,15 @@ pub const JPEG = struct {
                     self.frame = try Frame.read(self.allocator, &self.quantization_tables, stream);
                 },
 
-                .sof1 => return ImageError.Unsupported,
-                .sof2 => return ImageError.Unsupported,
-                .sof3 => return ImageError.Unsupported,
+                .sof1 => return ImageError.Unsupported,  // extended sequential DCT Huffman coding
+                .sof2 => return ImageError.Unsupported,  // progressive DCT Huffman coding
+                .sof3 => return ImageError.Unsupported,  // lossless (sequential) Huffman coding
                 .sof5 => return ImageError.Unsupported,
                 .sof6 => return ImageError.Unsupported,
                 .sof7 => return ImageError.Unsupported,
-                .sof9 => return ImageError.Unsupported,
-                .sof10 => return ImageError.Unsupported,
-                .sof11 => return ImageError.Unsupported,
+                .sof9 => return ImageError.Unsupported,   // extended sequential DCT arithmetic coding
+                .sof10 => return ImageError.Unsupported,  // progressive DCT arithmetic coding
+                .sof11 => return ImageError.Unsupported,  // lossless (sequential) arithmetic coding
                 .sof13 => return ImageError.Unsupported,
                 .sof14 => return ImageError.Unsupported,
                 .sof15 => return ImageError.Unsupported,
@@ -1006,6 +886,7 @@ pub const JPEG = struct {
                 },
 
                 else => {
+                    // TODO(angelo): raise invalid marker, more precise error.
                     return ImageReadError.InvalidData;
                 },
             }
