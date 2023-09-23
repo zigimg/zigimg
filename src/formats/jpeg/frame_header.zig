@@ -89,7 +89,7 @@ pub fn read(allocator: Allocator, reader: Image.Stream.Reader) ImageReadError!Se
     }
 
     // see B 8.2 table for the meaning of this check.
-    std.debug.assert(segment_size == 8 + 3 * component_count, "segment size is wrong");
+    std.debug.assert(segment_size == 8 + 3 * component_count);
 
     return Self{
         .allocator = allocator,

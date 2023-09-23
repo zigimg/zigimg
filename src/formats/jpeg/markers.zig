@@ -1,7 +1,7 @@
 
 //! Marker codes, see t-81 section B.1.1.3
 
-const Markers = enum(u16) {
+pub const Markers = enum(u16) {
     // Start of Frame markers, non-differential, Huffman coding
     sof0 = 0xFFC0, // Baseline DCT
     sof1 = 0xFFC1, // Extended sequential DCT

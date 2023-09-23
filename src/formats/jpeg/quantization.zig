@@ -43,7 +43,7 @@ pub const Header = struct {
     }   
 };
 
-const Table = union(enum) {
+pub const Table = union(enum) {
     const Self = @This();
     q8: [64]u8,
     q16: [64]u16,

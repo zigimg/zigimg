@@ -9,12 +9,12 @@ const FormatInterface = @import("../format_interface.zig").FormatInterface;
 const color = @import("../color.zig");
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 
-const Markers = @import("./jpeg/markers.zig").Markers;
 const FrameHeader = @import("./jpeg/frame_header.zig");
 const JFIFHeader = @import("./jpeg/jfif_header.zig");
 const ScanHeader = @import("./jpeg/scan_header.zig");
 const ScanComponentSpec = ScanHeader.ScanComponentSpec;
 
+const Markers = @import("./jpeg/utils.zig").Markers;
 const ZigzagOffsets = @import("./jpeg/utils.zig").ZigzagOffsets;
 const IDCTMultipliers = @import("./jpeg/utils.zig").IDCTMultipliers;
 const QuantizationTable = @import("./jpeg/quantization.zig").Table;
