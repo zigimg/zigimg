@@ -9,10 +9,12 @@ const Markers = @import("./markers.zig").Markers;
 
 const Self = @This();
 
-pub const DensityUnit = enum {
-    pixels,
-    dots_per_inch,
-    dots_per_cm,
+/// see https://www.ecma-international.org/wp-content/uploads/ECMA_TR-98_1st_edition_june_2009.pdf
+/// chapt 10.
+pub const DensityUnit = enum(u8) {
+    pixels = 0,
+    dots_per_inch = 1,
+    dots_per_cm = 2,
 };
 
 jfif_revision: u16,
@@ -51,11 +53,14 @@ pub fn read(stream: *Image.Stream) !Self {
     const thumbnailHeight = try reader.readByte();
 
     if (thumbnailWidth != 0 or thumbnailHeight != 0) {
-        // TODO: Support thumbnails
+        // TODO: Support thumbnails (not important)
         return error.ThumbnailImagesUnsupported;
     }
 
     // Make sure there are no application markers after us.
+    // TODO: Support application markers, present in versions 1.02 and above.
+    // see https://www.ecma-international.org/wp-content/uploads/ECMA_TR-98_1st_edition_june_2009.pdf
+    // chapt 10.1
     if (((try reader.readIntBig(u16)) & 0xFFF0) == @intFromEnum(Markers.application0)) {
         return error.ExtraneousApplicationMarker;
     }
