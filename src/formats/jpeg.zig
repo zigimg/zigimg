@@ -9,6 +9,9 @@ const FormatInterface = @import("../format_interface.zig").FormatInterface;
 const color = @import("../color.zig");
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 
+const Markers = @import("./jpeg/markers.zig").Markers;
+const JFIFHeader = @import("./jpeg/jfif_header.zig");
+
 // TODO: Chroma subsampling
 // TODO: Progressive scans
 // TODO: Non-baseline sequential DCT
@@ -19,115 +22,6 @@ const JPEG_VERY_DEBUG = false;
 const MAX_COMPONENTS = 3;
 const MAX_BLOCKS = 8;
 const MCU = [64]i32;
-
-/// Marker codes, see t-81 section B.1.1.3
-const Markers = enum(u16) {
-    // Start of Frame markers, non-differential, Huffman coding
-    sof0 = 0xFFC0, // Baseline DCT
-    sof1 = 0xFFC1, // Extended sequential DCT
-    sof2 = 0xFFC2, // Progressive DCT
-    sof3 = 0xFFC3, // Lossless sequential
-
-    // Start of Frame markers, differential, Huffman coding
-    sof5 = 0xFFC5, // Differential sequential DCT
-    sof6 = 0xFFC6, // Differential progressive DCT
-    sof7 = 0xFFC7, // Differential lossless sequential
-
-    // Start of Frame markers, non-differential, arithmetic coding
-    sof9 = 0xFFC9, // Extended sequential DCT
-    sof10 = 0xFFCA, // Progressive DCT
-    sof11 = 0xFFCB, // Lossless sequential
-
-    // Start of Frame markers, differential, arithmetic coding
-    sof13 = 0xFFCD, // Differential sequential DCT
-    sof14 = 0xFFCE, // Differential progressive DCT
-    sof15 = 0xFFCF, // Differential lossless sequential
-
-    define_huffman_tables = 0xFFC4,
-    define_arithmetic_coding = 0xFFCC,
-
-    // 0xFFD0-0xFFD7: Restart markers, add as needed
-
-    start_of_image = 0xFFD8,
-    end_of_image = 0xFFD9,
-    start_of_scan = 0xFFDA,
-    define_quantization_tables = 0xFFDB,
-    define_number_of_lines = 0xFFDC,
-    define_restart_interval = 0xFFDD,
-    define_hierarchical_progression = 0xFFDE,
-    expand_reference_components = 0xFFDF,
-
-    // 0xFFE0-0xFFEF application segments markers add 0-15 as needed.
-    application0 = 0xFFE0,
-
-    // 0xFFF0-0xFFFD jpeg extension markers add 0-13 as needed.
-    jpeg_extension0 = 0xFFF0,
-    comment = 0xFFFE,
-
-    // reserved markers from 0xFF01-0xFFBF, add as needed
-};
-
-const DensityUnit = enum {
-    pixels,
-    dots_per_inch,
-    dots_per_cm,
-};
-
-const JFIFHeader = struct {
-    jfif_revision: u16,
-    density_unit: DensityUnit,
-    x_density: u16,
-    y_density: u16,
-
-    fn read(stream: *Image.Stream) !JFIFHeader {
-        // Read the first APP0 header.
-        const reader = stream.reader();
-        try stream.seekTo(2);
-        const maybe_app0_marker = try reader.readIntBig(u16);
-        if (maybe_app0_marker != @intFromEnum(Markers.application0)) {
-            return error.App0MarkerDoesNotExist;
-        }
-
-        // Header length
-        _ = try reader.readIntBig(u16);
-
-        var identifier_buffer: [4]u8 = undefined;
-        _ = try reader.read(identifier_buffer[0..]);
-
-        if (!std.mem.eql(u8, identifier_buffer[0..], "JFIF")) {
-            return error.JfifIdentifierNotSet;
-        }
-
-        // NUL byte after JFIF
-        _ = try reader.readByte();
-
-        const jfif_revision = try reader.readIntBig(u16);
-        const density_unit: DensityUnit = @enumFromInt(try reader.readByte());
-        const x_density = try reader.readIntBig(u16);
-        const y_density = try reader.readIntBig(u16);
-
-        const thumbnailWidth = try reader.readByte();
-        const thumbnailHeight = try reader.readByte();
-
-        if (thumbnailWidth != 0 or thumbnailHeight != 0) {
-            return error.ThumbnailImagesUnsupported;
-        }
-
-        // Make sure there are no application markers after us.
-        if (((try reader.readIntBig(u16)) & 0xFFF0) == @intFromEnum(Markers.application0)) {
-            return error.ExtraneousApplicationMarker;
-        }
-
-        try stream.seekBy(-2);
-
-        return JFIFHeader{
-            .jfif_revision = jfif_revision,
-            .density_unit = density_unit,
-            .x_density = x_density,
-            .y_density = y_density,
-        };
-    }
-};
 
 const QuantizationTable = union(enum) {
     q8: [64]u8,

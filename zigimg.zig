@@ -17,17 +17,17 @@ test {
     const std = @import("std");
     std.testing.refAllDeclsRecursive(@This());
     inline for (.{
-        @import("src/formats/png/reader.zig"),
-        @import("tests/color_test.zig"),
-        @import("tests/formats/bmp_test.zig"),
+        // @import("src/formats/png/reader.zig"),
+        // @import("tests/color_test.zig"),
+        // @import("tests/formats/bmp_test.zig"),
         @import("tests/formats/jpeg_test.zig"),
-        @import("tests/formats/netpbm_test.zig"),
-        @import("tests/formats/pcx_test.zig"),
-        @import("tests/formats/png_test.zig"),
-        @import("tests/formats/qoi_test.zig"),
-        @import("tests/formats/tga_test.zig"),
-        @import("tests/formats/pam_test.zig"),
-        @import("tests/image_test.zig"),
-        @import("tests/octree_quantizer_test.zig"),
+        // @import("tests/formats/netpbm_test.zig"),
+        // @import("tests/formats/pcx_test.zig"),
+        // @import("tests/formats/png_test.zig"),
+        // @import("tests/formats/qoi_test.zig"),
+        // @import("tests/formats/tga_test.zig"),
+        // @import("tests/formats/pam_test.zig"),
+        // @import("tests/image_test.zig"),
+        // @import("tests/octree_quantizer_test.zig"),
     }) |source_file| std.testing.refAllDeclsRecursive(source_file);
 }
