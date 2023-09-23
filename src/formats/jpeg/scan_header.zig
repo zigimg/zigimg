@@ -74,7 +74,7 @@ pub fn read(reader: Image.Stream.Reader) ImageReadError!Self {
     };
 }
 
-const ScanComponentSpec = struct {
+pub const ScanComponentSpec = struct {
     component_selector: u8,
     dc_table_selector: u4,
     ac_table_selector: u4,

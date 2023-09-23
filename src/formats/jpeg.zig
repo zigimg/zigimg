@@ -13,7 +13,11 @@ const Markers = @import("./jpeg/markers.zig").Markers;
 const FrameHeader = @import("./jpeg/frame_header.zig");
 const JFIFHeader = @import("./jpeg/jfif_header.zig");
 const ScanHeader = @import("./jpeg/scan_header.zig");
+const ScanComponentSpec = ScanHeader.ScanComponentSpec;
 
+const ZigzagOffsets = @import("./jpeg/utils.zig").ZigzagOffsets;
+const IDCTMultipliers = @import("./jpeg/utils.zig").IDCTMultipliers;
+const QuantizationTable = @import("./jpeg/quantization.zig").Table;
 // TODO: Chroma subsampling
 // TODO: Progressive scans
 // TODO: Non-baseline sequential DCT
@@ -26,51 +30,6 @@ const JPEG_VERY_DEBUG = false;
 const MAX_COMPONENTS = 3;
 const MAX_BLOCKS = 8;
 const MCU = [64]i32;
-
-const QuantizationTable = union(enum) {
-    q8: [64]u8,
-    q16: [64]u16,
-
-    pub fn read(precision: u8, reader: Image.Stream.Reader) ImageReadError!QuantizationTable {
-        // 0 = 8 bits, 1 = 16 bits
-        switch (precision) {
-            0 => {
-                var table = QuantizationTable{ .q8 = undefined };
-
-                var offset: usize = 0;
-                while (offset < 64) : (offset += 1) {
-                    const value = try reader.readByte();
-                    table.q8[ZigzagOffsets[offset]] = value;
-                }
-
-                if (JPEG_DEBUG) {
-                    var i: usize = 0;
-                    while (i < 8) : (i += 1) {
-                        var j: usize = 0;
-                        while (j < 8) : (j += 1) {
-                            std.debug.print("{d:4} ", .{table.q8[i * 8 + j]});
-                        }
-                        std.debug.print("\n", .{});
-                    }
-                }
-
-                return table;
-            },
-            1 => {
-                var table = QuantizationTable{ .q16 = undefined };
-
-                var offset: usize = 0;
-                while (offset < 64) : (offset += 1) {
-                    const value = try reader.readIntBig(u16);
-                    table.q16[ZigzagOffsets[offset]] = value;
-                }
-
-                return table;
-            },
-            else => return ImageReadError.InvalidData,
-        }
-    }
-};
 
 const HuffmanCode = struct { length_minus_one: u4, code: u16 };
 const HuffmanCodeMap = std.AutoArrayHashMap(HuffmanCode, u8);
@@ -228,83 +187,6 @@ const HuffmanReader = struct {
 
         return base + @as(i32, @bitCast(unsigned_bits));
     }
-};
-
-// See figure A.6 in T.81.
-const ZigzagOffsets = blk: {
-    var offsets: [64]usize = undefined;
-    offsets[0] = 0;
-
-    var current_offset: usize = 0;
-    var direction: enum { north_east, south_west } = .north_east;
-    var i: usize = 1;
-    while (i < 64) : (i += 1) {
-        switch (direction) {
-            .north_east => {
-                if (current_offset < 8) {
-                    // Hit top edge
-                    current_offset += 1;
-                    direction = .south_west;
-                } else if (current_offset % 8 == 7) {
-                    // Hit right edge
-                    current_offset += 8;
-                    direction = .south_west;
-                } else {
-                    current_offset -= 7;
-                }
-            },
-            .south_west => {
-                if (current_offset >= 56) {
-                    // Hit bottom edge
-                    current_offset += 1;
-                    direction = .north_east;
-                } else if (current_offset % 8 == 0) {
-                    // Hit left edge
-                    current_offset += 8;
-                    direction = .north_east;
-                } else {
-                    current_offset += 7;
-                }
-            },
-        }
-
-        if (current_offset >= 64) {
-            @compileError(std.fmt.comptimePrint("ZigzagOffsets: Hit offset {} (>= 64) at index {}!\n", .{ current_offset, i }));
-        }
-
-        offsets[i] = current_offset;
-    }
-
-    break :blk offsets;
-};
-
-// The precalculated IDCT multipliers. This is possible because the only part of
-// the IDCT calculation that changes between runs is the coefficients.
-const IDCTMultipliers = blk: {
-    var multipliers: [8][8][8][8]f32 = undefined;
-    @setEvalBranchQuota(18086);
-
-    var y: usize = 0;
-    while (y < 8) : (y += 1) {
-        var x: usize = 0;
-        while (x < 8) : (x += 1) {
-            var u: usize = 0;
-            while (u < 8) : (u += 1) {
-                var v: usize = 0;
-                while (v < 8) : (v += 1) {
-                    const C_u: f32 = if (u == 0) 1.0 / @sqrt(2.0) else 1.0;
-                    const C_v: f32 = if (v == 0) 1.0 / @sqrt(2.0) else 1.0;
-
-                    const x_cosine = @cos(((2 * @as(f32, @floatFromInt(x)) + 1) * @as(f32, @floatFromInt(u)) * std.math.pi) / 16.0);
-                    const y_cosine = @cos(((2 * @as(f32, @floatFromInt(y)) + 1) * @as(f32, @floatFromInt(v)) * std.math.pi) / 16.0);
-                    const uv_value = C_u * C_v * x_cosine * y_cosine;
-                    multipliers[y][x][u][v] = uv_value;
-                }
-            }
-        }
-    }
-
-    break :blk multipliers;
 };
 
 const Scan = struct {
