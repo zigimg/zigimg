@@ -90,6 +90,8 @@ zig build test
 * Support GIF87a and GIF89a
 * Support animated GIF with Netscape application extension for looping information
 * Supported interlaced
+* Supports tiled and layered images used to achieve pseudo true color and more.
+* The plain text extension is not supported
 
 ### PBM - Portable Bitmap format
 

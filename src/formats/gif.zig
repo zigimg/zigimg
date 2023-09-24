@@ -66,18 +66,6 @@ pub const CommentExtension = struct {
     comment_storage: [256]u8,
 };
 
-pub const PlainTextExtension = struct {
-    text_grid_top_position: u16,
-    text_grid_left_position: u16,
-    text_grid_width: u16,
-    character_cell_width: u8,
-    character_cell_height: u8,
-    text_foreground_color_index: u8,
-    text_background_color_index: u8,
-    plain_text: []u8,
-    plain_text_storage: [256]u8,
-};
-
 pub const ApplicationExtension = struct {
     application_identifier: [8]u8,
     authentification_code: [3]u8,
@@ -144,7 +132,6 @@ pub const GIF = struct {
         local_color_table: FixedStorage(color.Rgb24, 256) = FixedStorage(color.Rgb24, 256).init(),
         graphics_control: ?GraphicControlExtension = null,
         image_descriptor: ?ImageDescriptor = null,
-        plain_text: ?PlainTextExtension = null,
     };
 
     const Self = @This();
@@ -378,6 +365,8 @@ pub const GIF = struct {
 
                 // Continue reading the graphics rendering block
                 try self.readGraphicRenderingBlock(context, new_block_kind, null);
+            } else if (extension_kind == .plain_text) {
+                try self.readGraphicRenderingBlock(context, block_kind, extension_kind_opt);
             }
         } else {
             if (context.frame_list.items.len == 0) {
@@ -411,35 +400,12 @@ pub const GIF = struct {
 
                 switch (extension_kind) {
                     .plain_text => {
-                        context.current_frame_data.?.plain_text = blk: {
-                            // Eat block size
-                            _ = try context.reader.readByte();
+                        // Skip plain text extension, it is not worth it to support it
+                        const block_size = try context.reader.readByte();
+                        try context.reader.skipBytes(block_size, .{});
 
-                            var new_plain_text_entry: PlainTextExtension = undefined;
-
-                            new_plain_text_entry.text_grid_left_position = try context.reader.readIntLittle(u16);
-                            new_plain_text_entry.text_grid_top_position = try context.reader.readIntLittle(u16);
-                            new_plain_text_entry.text_grid_width = try context.reader.readIntLittle(u16);
-                            new_plain_text_entry.character_cell_width = try context.reader.readByte();
-                            new_plain_text_entry.character_cell_height = try context.reader.readByte();
-                            new_plain_text_entry.text_foreground_color_index = try context.reader.readByte();
-                            new_plain_text_entry.text_background_color_index = try context.reader.readByte();
-
-                            var fixed_alloc = std.heap.FixedBufferAllocator.init(new_plain_text_entry.plain_text_storage[0..]);
-                            var plain_data_list = std.ArrayList(u8).init(fixed_alloc.allocator());
-
-                            var read_data = try context.reader.readByte();
-
-                            while (read_data != ExtensionBlockTerminator) {
-                                try plain_data_list.append(read_data);
-
-                                read_data = try context.reader.readByte();
-                            }
-
-                            new_plain_text_entry.plain_text = plain_data_list.items;
-
-                            break :blk new_plain_text_entry;
-                        };
+                        const sub_data_size = try context.reader.readByte();
+                        try context.reader.skipBytes(sub_data_size + 1, .{});
                     },
                     else => {
                         return ImageReadError.InvalidData;
