@@ -22,7 +22,7 @@ quantization_tables: *[4]?QuantizationTable,
 dc_huffman_tables: [2]?HuffmanTable,
 ac_huffman_tables: [2]?HuffmanTable,
 
-const JPEG_DEBUG = true;
+const JPEG_DEBUG = false;
 
 pub fn read(allocator: Allocator, quantization_tables: *[4]?QuantizationTable, stream: *Image.Stream) ImageReadError!Self {
     const reader = stream.reader();
@@ -222,6 +222,8 @@ fn renderToPixelsRgb(self: *const Self, mcu_storage: *[MAX_COMPONENTS][MAX_BLOCK
 }
 
 fn idct(mcu: *const MCU, x: u3, y: u3, mcu_id: usize, component_id: usize) i8 {
+    // TODO(angelo): if Ns > 1 it is not interleaved, so the order this should be fixed...
+    // FIXME is wrong for Ns > 1
     var reconstructed_pixel: f32 = 0.0;
 
     var u: usize = 0;

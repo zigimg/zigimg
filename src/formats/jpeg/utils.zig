@@ -49,11 +49,12 @@ pub const ZigzagOffsets = blk: {
     break :blk offsets;
 };
 
-// The precalculated IDCT multipliers. This is possible because the only part of
-// the IDCT calculation that changes between runs is the coefficients.
+/// The precalculated IDCT multipliers. This is possible because the only part of
+/// the IDCT calculation that changes between runs is the coefficients.
+/// see A.3.3 of t.81 1992
 pub const IDCTMultipliers = blk: {
     var multipliers: [8][8][8][8]f32 = undefined;
-    @setEvalBranchQuota(18086);
+    @setEvalBranchQuota(4700);
 
     var y: usize = 0;
     while (y < 8) : (y += 1) {
@@ -104,7 +105,15 @@ pub const Markers = enum(u16) {
     define_huffman_tables = 0xFFC4,
     define_arithmetic_coding = 0xFFCC,
 
-    // 0xFFD0-0xFFD7: Restart markers, add as needed
+    // 0xFFD0-0xFFD7: Restart markers
+    restart0 = 0xFFD0,
+    restart1 = 0xFFD1,
+    restart2 = 0xFFD2,
+    restart3 = 0xFFD3,
+    restart4 = 0xFFD4,
+    restart5 = 0xFFD5,
+    restart6 = 0xFFD6,
+    restart7 = 0xFFD7,
 
     start_of_image = 0xFFD8,
     end_of_image = 0xFFD9,
