@@ -22,7 +22,7 @@ quantization_tables: *[4]?QuantizationTable,
 dc_huffman_tables: [2]?HuffmanTable,
 ac_huffman_tables: [2]?HuffmanTable,
 
-const JPEG_DEBUG = false;
+const JPEG_DEBUG = true;
 
 pub fn read(allocator: Allocator, quantization_tables: *[4]?QuantizationTable, stream: *Image.Stream) ImageReadError!Self {
     const reader = stream.reader();

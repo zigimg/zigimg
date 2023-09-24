@@ -11,8 +11,6 @@ const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 
 const FrameHeader = @import("./jpeg/frame_header.zig");
 const JFIFHeader = @import("./jpeg/jfif_header.zig");
-const ScanHeader = @import("./jpeg/scan_header.zig");
-const ScanComponentSpec = ScanHeader.ScanComponentSpec;
 
 const Markers = @import("./jpeg/utils.zig").Markers;
 const ZigzagOffsets = @import("./jpeg/utils.zig").ZigzagOffsets;
