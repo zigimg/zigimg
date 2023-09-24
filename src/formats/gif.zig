@@ -27,49 +27,52 @@ pub const Header = extern struct {
 };
 
 pub const ImageDescriptorFlags = packed struct(u8) {
-    local_color_table_size: u3,
-    reserved: u2,
-    sort: bool,
-    is_interlaced: bool,
-    has_local_color_table: bool,
+    local_color_table_size: u3 = 0,
+    reserved: u2 = 0,
+    sort: bool = false,
+    is_interlaced: bool = false,
+    has_local_color_table: bool = false,
 };
 
 pub const ImageDescriptor = extern struct {
-    left_position: u16 align(1),
-    top_position: u16 align(1),
-    width: u16 align(1),
-    height: u16 align(1),
-    flags: ImageDescriptorFlags align(1),
+    left_position: u16 align(1) = 0,
+    top_position: u16 align(1) = 0,
+    width: u16 align(1) = 0,
+    height: u16 align(1) = 0,
+    flags: ImageDescriptorFlags align(1) = .{},
 };
 
 pub const GraphicControlExtensionFlags = packed struct(u8) {
-    has_transparent_color: bool,
-    user_input: bool,
+    has_transparent_color: bool = false,
+    user_input: bool = false,
     disposal_method: enum(u3) {
         none = 0,
         do_not_dispose = 1,
         restore_background_color = 2,
         restore_to_previous = 3,
         _,
-    },
-    reserved: u3,
+    } = .none,
+    reserved: u3 = 0,
 };
 
 pub const GraphicControlExtension = extern struct {
-    flags: GraphicControlExtensionFlags align(1),
-    delay_time: u16 align(1),
-    transparent_color_index: u8 align(1),
+    flags: GraphicControlExtensionFlags align(1) = .{},
+    delay_time: u16 align(1) = 0,
+    transparent_color_index: u8 align(1) = 0,
 };
 
 pub const CommentExtension = struct {
-    comment: []u8,
-    comment_storage: [256]u8,
+    comment: FixedStorage(u8, 256) = FixedStorage(u8, 256).init(),
 };
 
 pub const ApplicationExtension = struct {
     application_identifier: [8]u8,
     authentification_code: [3]u8,
     data: []u8,
+
+    pub fn deinit(self: ApplicationExtension, allocator: std.mem.Allocator) void {
+        allocator.free(self.data);
+    }
 };
 
 const DataBlockKind = enum((u8)) {
@@ -125,36 +128,61 @@ pub const GIF = struct {
     global_color_table: FixedStorage(color.Rgb24, 256) = FixedStorage(color.Rgb24, 256).init(),
     frames: std.ArrayListUnmanaged(FrameData) = .{},
     comments: std.ArrayListUnmanaged(CommentExtension) = .{},
-    application_info: ?ApplicationExtension = null,
+    application_infos: std.ArrayListUnmanaged(ApplicationExtension) = .{},
     allocator: std.mem.Allocator = undefined,
 
-    pub const FrameData = struct {
+    pub const SubImage = struct {
         local_color_table: FixedStorage(color.Rgb24, 256) = FixedStorage(color.Rgb24, 256).init(),
-        graphics_control: ?GraphicControlExtension = null,
-        image_descriptor: ?ImageDescriptor = null,
+        image_descriptor: ImageDescriptor = .{},
+        pixels: []u8 = &.{},
+
+        pub fn deinit(self: SubImage, allocator: std.mem.Allocator) void {
+            allocator.free(self.pixels);
+        }
     };
 
-    const Self = @This();
+    pub const FrameData = struct {
+        graphics_control: ?GraphicControlExtension = null,
+        sub_images: std.ArrayListUnmanaged(SubImage) = .{},
+
+        pub fn deinit(self: *FrameData, allocator: std.mem.Allocator) void {
+            for (self.sub_images.items) |sub_image| {
+                sub_image.deinit(allocator);
+            }
+
+            self.sub_images.deinit(allocator);
+        }
+
+        pub fn allocNewSubImage(self: *FrameData, allocator: std.mem.Allocator) !*SubImage {
+            var new_sub_image = try self.sub_images.addOne(allocator);
+            new_sub_image.* = SubImage{};
+            return new_sub_image;
+        }
+    };
 
     const ReaderContext = struct {
         reader: Image.Stream.Reader = undefined,
-        frame_list: Image.Animation.FrameList = .{},
         current_frame_data: ?*FrameData = null,
     };
 
-    pub fn init(allocator: std.mem.Allocator) Self {
+    pub fn init(allocator: std.mem.Allocator) GIF {
         return .{
             .allocator = allocator,
         };
     }
 
-    pub fn deinit(self: *Self) void {
+    pub fn deinit(self: *GIF) void {
+        for (self.frames.items) |*frame| {
+            frame.deinit(self.allocator);
+        }
+
+        for (self.application_infos.items) |application_info| {
+            application_info.deinit(self.allocator);
+        }
+
         self.frames.deinit(self.allocator);
         self.comments.deinit(self.allocator);
-
-        if (self.application_info) |application_info| {
-            self.allocator.free(application_info.data);
-        }
+        self.application_infos.deinit(self.allocator);
     }
 
     pub fn formatInterface() FormatInterface {
@@ -190,7 +218,7 @@ pub const GIF = struct {
         var result = Image.init(allocator);
         errdefer result.deinit();
 
-        var gif = Self.init(allocator);
+        var gif = GIF.init(allocator);
         defer gif.deinit();
 
         var frames = try gif.read(stream);
@@ -213,24 +241,16 @@ pub const GIF = struct {
         _ = encoder_options;
     }
 
-    pub fn loopCount(self: Self) i32 {
+    pub fn loopCount(self: GIF) i32 {
         _ = self;
         // TODO: mlarouche: Read this information from the application extension
         return Image.AnimationLoopInfinite;
     }
 
-    pub fn read(self: *Self, stream: *Image.Stream) ImageReadError!Image.Animation.FrameList {
+    pub fn read(self: *GIF, stream: *Image.Stream) ImageReadError!Image.Animation.FrameList {
         var context = ReaderContext{
             .reader = stream.reader(),
         };
-
-        errdefer {
-            for (context.frame_list.items) |entry| {
-                entry.pixels.deinit(self.allocator);
-            }
-
-            context.frame_list.deinit(self.allocator);
-        }
 
         self.header = try utils.readStructLittle(context.reader, Header);
 
@@ -265,18 +285,11 @@ pub const GIF = struct {
 
         try self.readData(&context);
 
-        if (context.frame_list.items.len == 0) {
-            const empty_frame = try self.createNewAnimationFrame();
-            @memset(empty_frame.pixels.indexed8.palette, color.Rgba32.initRgba(0, 0, 0, 0));
-
-            try context.frame_list.append(self.allocator, empty_frame);
-        }
-
-        return context.frame_list;
+        return try self.render();
     }
 
     // <Data> ::= <Graphic Block> | <Special-Purpose Block>
-    fn readData(self: *Self, context: *ReaderContext) !void {
+    fn readData(self: *GIF, context: *ReaderContext) ImageReadError!void {
         var current_block = context.reader.readEnum(DataBlockKind, .Little) catch {
             return ImageReadError.InvalidData;
         };
@@ -322,14 +335,11 @@ pub const GIF = struct {
     }
 
     // <Graphic Block> ::= [Graphic Control Extension] <Graphic-Rendering Block>
-    fn readGraphicBlock(self: *Self, context: *ReaderContext, block_kind: DataBlockKind, extension_kind_opt: ?ExtensionKind) !void {
-        context.current_frame_data = try self.allocNewFrame();
-
+    fn readGraphicBlock(self: *GIF, context: *ReaderContext, block_kind: DataBlockKind, extension_kind_opt: ?ExtensionKind) ImageReadError!void {
         if (extension_kind_opt) |extension_kind| {
             if (extension_kind == .graphic_control) {
                 // If we are seeing a Graphics Control Extension block, it means we need to start a new animation frame
-                var new_animation_frame = try self.createNewAnimationFrame();
-                errdefer new_animation_frame.deinit(self.allocator);
+                context.current_frame_data = try self.allocNewFrame();
 
                 context.current_frame_data.?.graphics_control = blk: {
                     var graphics_control: GraphicControlExtension = undefined;
@@ -342,13 +352,9 @@ pub const GIF = struct {
 
                     if (graphics_control.flags.has_transparent_color) {
                         graphics_control.transparent_color_index = try context.reader.readByte();
-                        @memset(new_animation_frame.pixels.indexed8.indices, graphics_control.transparent_color_index);
                     } else {
                         graphics_control.transparent_color_index = 0;
-                        @memset(new_animation_frame.pixels.indexed8.indices, self.header.background_color_index);
                     }
-
-                    new_animation_frame.duration = @as(f32, @floatFromInt(graphics_control.delay_time)) * (1.0 / 100.0);
 
                     // Eat block terminator
                     _ = try context.reader.readByte();
@@ -360,22 +366,14 @@ pub const GIF = struct {
                     return ImageReadError.InvalidData;
                 };
 
-                // Add the new frame to the list now that everything is ok so far
-                try context.frame_list.append(self.allocator, new_animation_frame);
-
                 // Continue reading the graphics rendering block
                 try self.readGraphicRenderingBlock(context, new_block_kind, null);
             } else if (extension_kind == .plain_text) {
                 try self.readGraphicRenderingBlock(context, block_kind, extension_kind_opt);
             }
         } else {
-            if (context.frame_list.items.len == 0) {
-                const new_animation_frame = try self.createNewAnimationFrame();
-
-                // Fill frame with background color
-                @memset(new_animation_frame.pixels.indexed8.indices, self.header.background_color_index);
-
-                try context.frame_list.append(self.allocator, new_animation_frame);
+            if (context.current_frame_data == null) {
+                context.current_frame_data = try self.allocNewFrame();
             }
 
             try self.readGraphicRenderingBlock(context, block_kind, extension_kind_opt);
@@ -383,7 +381,7 @@ pub const GIF = struct {
     }
 
     // <Graphic-Rendering Block> ::= <Table-Based Image> | Plain Text Extension
-    fn readGraphicRenderingBlock(self: *Self, context: *ReaderContext, block_kind: DataBlockKind, extension_kind_opt: ?ExtensionKind) !void {
+    fn readGraphicRenderingBlock(self: *GIF, context: *ReaderContext, block_kind: DataBlockKind, extension_kind_opt: ?ExtensionKind) ImageReadError!void {
         switch (block_kind) {
             .image_descriptor => {
                 try self.readImageDescriptorAndData(context);
@@ -419,12 +417,12 @@ pub const GIF = struct {
     }
 
     // <Special-Purpose Block> ::= Application Extension | Comment Extension
-    fn readSpecialPurposeBlock(self: *Self, context: *ReaderContext, extension_kind: ExtensionKind) !void {
+    fn readSpecialPurposeBlock(self: *GIF, context: *ReaderContext, extension_kind: ExtensionKind) ImageReadError!void {
         switch (extension_kind) {
             .comment => {
                 var new_comment_entry = try self.comments.addOne(self.allocator);
 
-                var fixed_alloc = std.heap.FixedBufferAllocator.init(new_comment_entry.comment_storage[0..]);
+                var fixed_alloc = std.heap.FixedBufferAllocator.init(new_comment_entry.comment.storage[0..]);
                 var comment_list = std.ArrayList(u8).init(fixed_alloc.allocator());
 
                 var read_data = try context.reader.readByte();
@@ -435,10 +433,10 @@ pub const GIF = struct {
                     read_data = try context.reader.readByte();
                 }
 
-                new_comment_entry.comment = comment_list.items;
+                new_comment_entry.comment.data = comment_list.items;
             },
             .application_extension => {
-                self.application_info = blk: {
+                const new_application_info = blk: {
                     var application_info: ApplicationExtension = undefined;
 
                     // Eat block size
@@ -462,6 +460,8 @@ pub const GIF = struct {
 
                     break :blk application_info;
                 };
+
+                try self.application_infos.append(self.allocator, new_application_info);
             },
             else => {
                 return ImageReadError.InvalidData;
@@ -470,37 +470,30 @@ pub const GIF = struct {
     }
 
     // <Table-Based Image> ::= Image Descriptor [Local Color Table] Image Data
-    fn readImageDescriptorAndData(self: *Self, context: *ReaderContext) !void {
+    fn readImageDescriptorAndData(self: *GIF, context: *ReaderContext) ImageReadError!void {
         if (context.current_frame_data) |current_frame_data| {
-            current_frame_data.image_descriptor = try utils.readStructLittle(context.reader, ImageDescriptor);
+            var sub_image = try current_frame_data.allocNewSubImage(self.allocator);
+            sub_image.image_descriptor = try utils.readStructLittle(context.reader, ImageDescriptor);
 
             // Don't read any futher if the local width or height is zero
-            if (current_frame_data.image_descriptor.?.width == 0 or current_frame_data.image_descriptor.?.height == 0) {
+            if (sub_image.image_descriptor.width == 0 or sub_image.image_descriptor.height == 0) {
                 return;
             }
 
-            const local_color_table_size = @as(usize, 1) << (@as(u6, @intCast(current_frame_data.image_descriptor.?.flags.local_color_table_size)) + 1);
+            const local_color_table_size = @as(usize, 1) << (@as(u6, @intCast(sub_image.image_descriptor.flags.local_color_table_size)) + 1);
 
-            current_frame_data.local_color_table.resize(local_color_table_size);
+            sub_image.local_color_table.resize(local_color_table_size);
 
-            if (current_frame_data.image_descriptor.?.flags.has_local_color_table) {
+            if (sub_image.image_descriptor.flags.has_local_color_table) {
                 var index: usize = 0;
 
                 while (index < local_color_table_size) : (index += 1) {
-                    current_frame_data.local_color_table.data[index] = try utils.readStructLittle(context.reader, color.Rgb24);
+                    sub_image.local_color_table.data[index] = try utils.readStructLittle(context.reader, color.Rgb24);
                 }
             }
 
-            const effective_color_table = if (current_frame_data.image_descriptor.?.flags.has_local_color_table) current_frame_data.local_color_table.data else self.global_color_table.data;
-
-            var current_animation_frame = &context.frame_list.items[context.frame_list.items.len - 1];
-
-            for (effective_color_table, 0..) |palette_entry, index| {
-                current_animation_frame.pixels.indexed8.palette[index] = color.Rgba32.initRgb(palette_entry.r, palette_entry.g, palette_entry.b);
-            }
-
-            var array_pixel_buffer = try std.ArrayList(u8).initCapacity(self.allocator, current_frame_data.image_descriptor.?.width * current_frame_data.image_descriptor.?.height);
-            defer array_pixel_buffer.deinit();
+            sub_image.pixels = try self.allocator.alloc(u8, sub_image.image_descriptor.height * sub_image.image_descriptor.width);
+            var pixels_buffer = std.io.fixedBufferStream(sub_image.pixels);
 
             const lzw_minimum_code_size = try context.reader.readByte();
 
@@ -523,74 +516,311 @@ pub const GIF = struct {
                     .buffer = std.io.fixedBufferStream(data_block.data),
                 };
 
-                lzw_decoder.decode(data_block_reader.reader(), array_pixel_buffer.writer()) catch {
+                lzw_decoder.decode(data_block_reader.reader(), pixels_buffer.writer()) catch {
                     return ImageReadError.InvalidData;
                 };
 
                 data_block_size = try context.reader.readByte();
             }
+        }
+    }
 
-            if (current_frame_data.image_descriptor.?.flags.is_interlaced) {
-                var source_y: usize = 0;
+    fn render(self: *GIF) ImageReadError!Image.Animation.FrameList {
+        const final_pixel_format = self.findBestPixelFormat();
 
-                for (InterlacePasses) |pass| {
-                    var target_y = pass.start + current_frame_data.image_descriptor.?.top_position;
+        var frame_list = Image.Animation.FrameList{};
 
-                    while (target_y < self.header.height) {
-                        const source_stride = source_y * current_frame_data.image_descriptor.?.width;
-                        const target_stride = target_y * self.header.width;
+        if (self.frames.items.len == 0) {
+            var current_animation_frame = try self.createNewAnimationFrame(final_pixel_format);
+            fillPalette(&current_animation_frame, self.global_color_table.data, null);
+            fillWithBackgroundColor(&current_animation_frame, self.global_color_table.data, self.header.background_color_index);
+            try frame_list.append(self.allocator, current_animation_frame);
+            return frame_list;
+        }
 
-                        for (0..current_frame_data.image_descriptor.?.width) |source_x| {
-                            const target_x = source_x + current_frame_data.image_descriptor.?.left_position;
+        for (self.frames.items) |frame| {
+            var current_animation_frame = try self.createNewAnimationFrame(final_pixel_format);
 
-                            const source_index = source_stride + source_x;
-                            const target_index = target_stride + target_x;
-
-                            if (source_index < array_pixel_buffer.items.len and target_index < current_animation_frame.pixels.indexed8.indices.len) {
-                                current_animation_frame.pixels.indexed8.indices[target_index] = array_pixel_buffer.items[source_index];
-                            }
-                        }
-
-                        target_y += pass.step;
-                        source_y += 1;
-                    }
+            var transparency_index_opt: ?u8 = null;
+            if (frame.graphics_control) |graphics_control| {
+                current_animation_frame.duration = @as(f32, @floatFromInt(graphics_control.delay_time)) * (1.0 / 100.0);
+                if (graphics_control.flags.has_transparent_color) {
+                    transparency_index_opt = graphics_control.transparent_color_index;
                 }
-            } else {
-                for (0..current_frame_data.image_descriptor.?.height) |source_y| {
-                    const target_y = source_y + current_frame_data.image_descriptor.?.top_position;
+            }
 
-                    const source_stride = source_y * current_frame_data.image_descriptor.?.width;
+            if (self.header.flags.use_global_color_table) {
+                fillPalette(&current_animation_frame, self.global_color_table.data, transparency_index_opt);
+
+                if (transparency_index_opt == null) {
+                    fillWithBackgroundColor(&current_animation_frame, self.global_color_table.data, self.header.background_color_index);
+                }
+            }
+
+            for (frame.sub_images.items) |sub_image| {
+                const effective_color_table = if (sub_image.image_descriptor.flags.has_local_color_table) sub_image.local_color_table.data else self.global_color_table.data;
+
+                if (sub_image.image_descriptor.flags.has_local_color_table) {
+                    fillPalette(&current_animation_frame, effective_color_table, transparency_index_opt);
+                }
+
+                self.renderSubImage(&sub_image, &current_animation_frame, effective_color_table, transparency_index_opt);
+            }
+
+            try frame_list.append(self.allocator, current_animation_frame);
+        }
+
+        return frame_list;
+    }
+
+    fn fillPalette(current_frame: *Image.AnimationFrame, effective_color_table: []const color.Rgb24, transparency_index_opt: ?u8) void {
+        // TODO: Support transparency index for indexed images
+        _ = transparency_index_opt;
+
+        switch (current_frame.pixels) {
+            .indexed1 => |pixels| {
+                for (0..@min(effective_color_table.len, pixels.palette.len)) |index| {
+                    pixels.palette[index] = color.Rgba32.fromU32Rgb(effective_color_table[index].toU32Rgb());
+                }
+            },
+            .indexed2 => |pixels| {
+                for (0..@min(effective_color_table.len, pixels.palette.len)) |index| {
+                    pixels.palette[index] = color.Rgba32.fromU32Rgb(effective_color_table[index].toU32Rgb());
+                }
+            },
+            .indexed4 => |pixels| {
+                for (0..@min(effective_color_table.len, pixels.palette.len)) |index| {
+                    pixels.palette[index] = color.Rgba32.fromU32Rgb(effective_color_table[index].toU32Rgb());
+                }
+            },
+            .indexed8 => |pixels| {
+                for (0..@min(effective_color_table.len, pixels.palette.len)) |index| {
+                    pixels.palette[index] = color.Rgba32.fromU32Rgb(effective_color_table[index].toU32Rgb());
+                }
+            },
+            else => {},
+        }
+    }
+
+    fn fillWithBackgroundColor(current_frame: *Image.AnimationFrame, effective_color_table: []const color.Rgb24, background_color_index: u8) void {
+        if (background_color_index >= effective_color_table.len) {
+            return;
+        }
+
+        switch (current_frame.pixels) {
+            .indexed1 => |pixels| @memset(pixels.indices, @intCast(background_color_index)),
+            .indexed2 => |pixels| @memset(pixels.indices, @intCast(background_color_index)),
+            .indexed4 => |pixels| @memset(pixels.indices, @intCast(background_color_index)),
+            .indexed8 => |pixels| @memset(pixels.indices, background_color_index),
+            .rgb24 => |pixels| @memset(pixels, effective_color_table[background_color_index]),
+            .rgba32 => |pixels| @memset(pixels, color.Rgba32.fromU32Rgba(effective_color_table[background_color_index].toU32Rgb())),
+            else => std.debug.panic("Pixel format {s} not supported", .{@tagName(current_frame.pixels)}),
+        }
+    }
+
+    fn renderSubImage(self: *const GIF, sub_image: *const SubImage, current_frame: *Image.AnimationFrame, effective_color_table: []const color.Rgb24, transparency_index_opt: ?u8) void {
+        if (sub_image.image_descriptor.flags.is_interlaced) {
+            var source_y: usize = 0;
+
+            for (InterlacePasses) |pass| {
+                var target_y = pass.start + sub_image.image_descriptor.top_position;
+
+                while (target_y < self.header.height) {
+                    const source_stride = source_y * sub_image.image_descriptor.width;
                     const target_stride = target_y * self.header.width;
 
-                    for (0..current_frame_data.image_descriptor.?.width) |source_x| {
-                        const target_x = source_x + current_frame_data.image_descriptor.?.left_position;
+                    for (0..sub_image.image_descriptor.width) |source_x| {
+                        const target_x = source_x + sub_image.image_descriptor.left_position;
 
                         const source_index = source_stride + source_x;
                         const target_index = target_stride + target_x;
 
-                        if (source_index < array_pixel_buffer.items.len and target_index < current_animation_frame.pixels.indexed8.indices.len) {
-                            current_animation_frame.pixels.indexed8.indices[target_index] = array_pixel_buffer.items[source_index];
-                        }
+                        plotPixel(sub_image, current_frame, effective_color_table, transparency_index_opt, source_index, target_index);
                     }
+
+                    target_y += pass.step;
+                    source_y += 1;
+                }
+            }
+        } else {
+            for (0..sub_image.image_descriptor.height) |source_y| {
+                const target_y = source_y + sub_image.image_descriptor.top_position;
+
+                const source_stride = source_y * sub_image.image_descriptor.width;
+                const target_stride = target_y * self.header.width;
+
+                for (0..sub_image.image_descriptor.width) |source_x| {
+                    const target_x = source_x + sub_image.image_descriptor.left_position;
+
+                    const source_index = source_stride + source_x;
+                    const target_index = target_stride + target_x;
+
+                    plotPixel(sub_image, current_frame, effective_color_table, transparency_index_opt, source_index, target_index);
                 }
             }
         }
     }
 
-    fn allocNewFrame(self: *Self) !*FrameData {
+    fn plotPixel(sub_image: *const SubImage, current_frame: *Image.AnimationFrame, effective_color_table: []const color.Rgb24, transparency_index_opt: ?u8, source_index: usize, target_index: usize) void {
+        if (source_index >= sub_image.pixels.len) {
+            return;
+        }
+
+        switch (current_frame.pixels) {
+            .indexed1 => |pixels| {
+                if (target_index >= pixels.indices.len) {
+                    return;
+                }
+
+                if (transparency_index_opt) |transparency_index| {
+                    if (sub_image.pixels[source_index] == transparency_index) {
+                        return;
+                    }
+                }
+
+                pixels.indices[target_index] = @truncate(sub_image.pixels[source_index]);
+            },
+            .indexed2 => |pixels| {
+                if (target_index >= pixels.indices.len) {
+                    return;
+                }
+
+                if (transparency_index_opt) |transparency_index| {
+                    if (sub_image.pixels[source_index] == transparency_index) {
+                        return;
+                    }
+                }
+
+                pixels.indices[target_index] = @truncate(sub_image.pixels[source_index]);
+            },
+            .indexed4 => |pixels| {
+                if (target_index >= pixels.indices.len) {
+                    return;
+                }
+
+                if (transparency_index_opt) |transparency_index| {
+                    if (sub_image.pixels[source_index] == transparency_index) {
+                        return;
+                    }
+                }
+
+                pixels.indices[target_index] = @truncate(sub_image.pixels[source_index]);
+            },
+            .indexed8 => |pixels| {
+                if (target_index >= pixels.indices.len) {
+                    return;
+                }
+
+                if (transparency_index_opt) |transparency_index| {
+                    if (sub_image.pixels[source_index] == transparency_index) {
+                        return;
+                    }
+                }
+
+                pixels.indices[target_index] = @intCast(sub_image.pixels[source_index]);
+            },
+            .rgb24 => |pixels| {
+                if (target_index >= pixels.len) {
+                    return;
+                }
+
+                if (transparency_index_opt) |transparency_index| {
+                    if (sub_image.pixels[source_index] == transparency_index) {
+                        return;
+                    }
+                }
+
+                const pixel_index = sub_image.pixels[source_index];
+                if (pixel_index < effective_color_table.len) {
+                    pixels[target_index] = effective_color_table[pixel_index];
+                }
+            },
+            .rgba32 => |pixels| {
+                if (target_index >= pixels.len) {
+                    return;
+                }
+
+                if (transparency_index_opt) |transparency_index| {
+                    if (sub_image.pixels[source_index] == transparency_index) {
+                        return;
+                    }
+                }
+
+                const pixel_index = sub_image.pixels[source_index];
+                if (pixel_index < effective_color_table.len) {
+                    pixels[target_index] = color.Rgba32.fromU32Rgba(effective_color_table[pixel_index].toU32Rgba());
+                }
+            },
+            else => {
+                std.debug.panic("Pixel format {s} not supported", .{@tagName(current_frame.pixels)});
+            },
+        }
+    }
+
+    fn allocNewFrame(self: *GIF) !*FrameData {
         var new_frame = try self.frames.addOne(self.allocator);
         new_frame.* = FrameData{};
         return new_frame;
     }
 
-    fn createNewAnimationFrame(self: *const Self) !Image.AnimationFrame {
+    fn createNewAnimationFrame(self: *const GIF, pixel_format: PixelFormat) !Image.AnimationFrame {
         var new_frame = Image.AnimationFrame{
-            .pixels = try color.PixelStorage.init(self.allocator, PixelFormat.indexed8, @as(usize, @intCast(self.header.width * self.header.height))),
+            .pixels = try color.PixelStorage.init(self.allocator, pixel_format, @as(usize, @intCast(self.header.width * self.header.height))),
             .duration = 0.0,
         };
 
-        @memset(new_frame.pixels.indexed8.indices, 0);
+        // Set all pixels to all zeroes
+        switch (new_frame.pixels) {
+            .indexed1 => |pixels| @memset(pixels.indices, 0),
+            .indexed2 => |pixels| @memset(pixels.indices, 0),
+            .indexed4 => |pixels| @memset(pixels.indices, 0),
+            .indexed8 => |pixels| @memset(pixels.indices, 0),
+            .rgb24 => |pixels| @memset(pixels, color.Rgb24.fromU32Rgb(0)),
+            .rgba32 => |pixels| @memset(pixels, color.Rgba32.fromU32Rgba(0)),
+            else => std.debug.panic("Pixel format {} not supported", .{pixel_format}),
+        }
 
         return new_frame;
+    }
+
+    fn findBestPixelFormat(self: *const GIF) PixelFormat {
+        var total_color_count: usize = 0;
+
+        if (self.header.flags.use_global_color_table) {
+            total_color_count = @as(usize, 1) << (@as(u6, @intCast(self.header.flags.global_color_table_size)) + 1);
+        }
+
+        var use_transparency: bool = false;
+
+        for (self.frames.items) |frame| {
+            if (frame.graphics_control) |graphic_control| {
+                if (graphic_control.flags.has_transparent_color) {
+                    use_transparency = true;
+                }
+            }
+
+            for (frame.sub_images.items) |sub_image| {
+                if (sub_image.image_descriptor.flags.has_local_color_table) {
+                    total_color_count += @as(usize, 1) << (@as(u6, @intCast(sub_image.image_descriptor.flags.local_color_table_size)) + 1);
+                }
+            }
+        }
+
+        // TODO: Handle indexed format with transparency
+        if (total_color_count <= (1 << 1)) {
+            return .indexed1;
+        } else if (total_color_count <= (1 << 2)) {
+            return .indexed2;
+        } else if (total_color_count <= (1 << 4)) {
+            return .indexed4;
+        } else if (total_color_count <= (1 << 8)) {
+            return .indexed8;
+        }
+
+        if (use_transparency) {
+            return .rgba32;
+        }
+
+        return .rgb24;
     }
 };

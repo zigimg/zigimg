@@ -63,7 +63,7 @@ test "Iterate on a single GIF file" {
         return error.SkipZigTest;
     }
 
-    try doGifTest("images-combine");
+    try doGifTest("high-color");
 }
 
 const IniFile = struct {
@@ -257,7 +257,15 @@ fn doGifTest(entry_name: []const u8) !void {
 
                     var frame_data_iterator = color.PixelStorageIterator.init(&frames.items[frame_index].pixels);
 
-                    const gif_background_color = frames.items[frame_index].pixels.indexed8.palette[gif_file.header.background_color_index];
+                    const background_color_index = gif_file.header.background_color_index;
+
+                    var gif_background_color = switch (frames.items[frame_index].pixels) {
+                        .indexed1 => |pixels| if (background_color_index < pixels.palette.len) pixels.palette[background_color_index] else color.Rgba32.initRgba(0, 0, 0, 0),
+                        .indexed2 => |pixels| if (background_color_index < pixels.palette.len) pixels.palette[background_color_index] else color.Rgba32.initRgba(0, 0, 0, 0),
+                        .indexed4 => |pixels| if (background_color_index < pixels.palette.len) pixels.palette[background_color_index] else color.Rgba32.initRgba(0, 0, 0, 0),
+                        .indexed8 => |pixels| if (background_color_index < pixels.palette.len) pixels.palette[background_color_index] else color.Rgba32.initRgba(0, 0, 0, 0),
+                        else => color.Rgba32.initRgba(0, 0, 0, 0),
+                    };
 
                     for (pixel_list.items) |expected_color| {
                         if (frame_data_iterator.next()) |actual_color| {
