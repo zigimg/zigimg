@@ -5,7 +5,7 @@
 const std = @import("std");
 
 const Image = @import("../../Image.zig");
-const Markers = @import("./markers.zig").Markers;
+const Markers = @import("./utils.zig").Markers;
 
 const Self = @This();
 

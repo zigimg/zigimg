@@ -10,6 +10,7 @@ const QuantizationTable = @import("quantization.zig").Table;
 const HuffmanTable = @import("huffman.zig").Table;
 const color = @import("../../color.zig");
 
+const IDCTMultipliers = @import("utils.zig").IDCTMultipliers;
 const MAX_COMPONENTS = @import("utils.zig").MAX_COMPONENTS;
 const MAX_BLOCKS = @import("utils.zig").MAX_BLOCKS;
 const MCU = @import("utils.zig").MCU;
