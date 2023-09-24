@@ -56,7 +56,7 @@ pub fn read(allocator: Allocator, quantization_tables: *[4]?QuantizationTable, s
     return self;
 }
 
-pub fn deinit(self: *Frame) void {
+pub fn deinit(self: *Self) void {
     for (&self.dc_huffman_tables) |*maybe_huffman_table| {
         if (maybe_huffman_table.*) |*huffman_table| {
             huffman_table.deinit();
