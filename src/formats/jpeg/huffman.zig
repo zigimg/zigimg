@@ -126,6 +126,8 @@ pub const Reader = struct {
 
         var i: u5 = 0;
         while (i < 16) : (i += 1) {
+            // NOTE: if the table is stored as a tree, this is O(1) to update the new node,
+            // instead of O(log n), so should be faster.
             code = (code << 1) | (try self.readBit());
             if (self.table.?.code_map.get(.{ .length_minus_one = @intCast(i), .code = code })) |value| {
                 return value;
