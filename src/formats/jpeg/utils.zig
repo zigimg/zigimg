@@ -124,3 +124,7 @@ pub const Markers = enum(u16) {
 
     // reserved markers from 0xFF01-0xFFBF, add as needed
 };
+
+pub const MAX_COMPONENTS = 3;
+pub const MAX_BLOCKS = 8;
+pub const MCU = [64]i32;
