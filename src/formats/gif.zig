@@ -792,6 +792,8 @@ pub const GIF = struct {
 
         var use_transparency: bool = false;
 
+        var max_color_per_frame: usize = 0;
+
         for (self.frames.items) |frame| {
             if (frame.graphics_control) |graphic_control| {
                 if (graphic_control.flags.has_transparent_color) {
@@ -799,12 +801,18 @@ pub const GIF = struct {
                 }
             }
 
+            var color_per_frame: usize = 0;
+
             for (frame.sub_images.items) |sub_image| {
                 if (sub_image.image_descriptor.flags.has_local_color_table) {
-                    total_color_count += @as(usize, 1) << (@as(u6, @intCast(sub_image.image_descriptor.flags.local_color_table_size)) + 1);
+                    color_per_frame += @as(usize, 1) << (@as(u6, @intCast(sub_image.image_descriptor.flags.local_color_table_size)) + 1);
                 }
             }
+
+            max_color_per_frame = @max(max_color_per_frame, color_per_frame);
         }
+
+        total_color_count += max_color_per_frame;
 
         // TODO: Handle indexed format with transparency
         if (total_color_count <= (1 << 1)) {
