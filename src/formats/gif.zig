@@ -516,8 +516,10 @@ pub const GIF = struct {
                     .buffer = std.io.fixedBufferStream(data_block.data),
                 };
 
-                lzw_decoder.decode(data_block_reader.reader(), pixels_buffer.writer()) catch {
-                    return ImageReadError.InvalidData;
+                lzw_decoder.decode(data_block_reader.reader(), pixels_buffer.writer()) catch |err| {
+                    if (err != error.NoSpaceLeft) {
+                        return ImageReadError.InvalidData;
+                    }
                 };
 
                 data_block_size = try context.reader.readByte();
