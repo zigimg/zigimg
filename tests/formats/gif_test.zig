@@ -63,7 +63,7 @@ test "Iterate on a single GIF file" {
         return error.SkipZigTest;
     }
 
-    try doGifTest("disabled-transparent");
+    try doGifTest("loop-infinite");
 }
 
 const IniFile = struct {
@@ -231,7 +231,7 @@ fn doGifTest(entry_name: []const u8) !void {
             try helpers.expectEq(gif_file.global_color_table.data[gif_file.header.background_color_index].toU32Rgba(), expected_background_color.toU32Rgba());
         }
 
-        _ = expected_loop_count;
+        try helpers.expectEq(gif_file.loopCount(), expected_loop_count);
 
         const string_frames = config_section.getValue("frames") orelse return error.InvalidGifConfigFile;
 

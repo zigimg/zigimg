@@ -242,9 +242,17 @@ pub const GIF = struct {
     }
 
     pub fn loopCount(self: GIF) i32 {
-        _ = self;
-        // TODO: mlarouche: Read this information from the application extension
-        return Image.AnimationLoopInfinite;
+        for (self.application_infos.items) |application_info| {
+            if (std.mem.eql(u8, application_info.application_identifier[0..], "NETSCAPE") and std.mem.eql(u8, application_info.authentification_code[0..], "2.0")) {
+                const loop_count = std.mem.readIntSlice(u16, application_info.data[1..], .Little);
+                if (loop_count == 0) {
+                    return Image.AnimationLoopInfinite;
+                }
+                return loop_count;
+            }
+        }
+
+        return 0;
     }
 
     pub fn read(self: *GIF, stream: *Image.Stream) ImageReadError!Image.Animation.FrameList {
@@ -451,12 +459,17 @@ pub const GIF = struct {
                     var data_list = try std.ArrayListUnmanaged(u8).initCapacity(self.allocator, 256);
                     defer data_list.deinit(self.allocator);
 
-                    var read_data = try context.reader.readByte();
+                    var data_block_size = try context.reader.readByte();
 
-                    while (read_data != ExtensionBlockTerminator) {
-                        try data_list.append(self.allocator, read_data);
+                    while (data_block_size > 0) {
+                        var data_block = FixedStorage(u8, 256).init();
+                        data_block.resize(data_block_size);
 
-                        read_data = try context.reader.readByte();
+                        _ = try context.reader.read(data_block.data[0..]);
+
+                        try data_list.appendSlice(self.allocator, data_block.data);
+
+                        data_block_size = try context.reader.readByte();
                     }
 
                     application_info.data = try self.allocator.dupe(u8, data_list.items);
