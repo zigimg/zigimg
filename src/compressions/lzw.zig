@@ -7,6 +7,7 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
         area_allocator: std.heap.ArenaAllocator,
         code_size: u8 = 0,
         clear_code: u13 = 0,
+        initial_code_size: u8 = 0,
         end_information_code: u13 = 0,
         next_code: u13 = 0,
         previous_code: ?u13 = null,
@@ -22,6 +23,10 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
                 .area_allocator = std.heap.ArenaAllocator.init(allocator),
                 .code_size = initial_code_size,
                 .dictionary = std.AutoArrayHashMap(u13, []const u8).init(allocator),
+                .initial_code_size = initial_code_size,
+                .clear_code = @as(u13, 1) << @intCast(initial_code_size),
+                .end_information_code = (@as(u13, 1) << @intCast(initial_code_size)) + 1,
+                .next_code = (@as(u13, 1) << @intCast(initial_code_size)) + 2,
             };
 
             // Reset dictionary and code to its default state
@@ -85,6 +90,8 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
                 } else {
                     if (read_code == self.clear_code) {
                         try self.resetDictionary();
+                        bits_to_read = self.code_size + 1;
+                        self.previous_code = read_code;
                     } else if (read_code == self.end_information_code) {
                         return;
                     } else {
@@ -124,6 +131,9 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
             self.dictionary.clearRetainingCapacity();
             self.area_allocator.deinit();
 
+            self.code_size = self.initial_code_size;
+            self.next_code = (@as(u13, 1) << @intCast(self.initial_code_size)) + 2;
+
             self.area_allocator = std.heap.ArenaAllocator.init(self.area_allocator.child_allocator);
             var allocator = self.area_allocator.allocator();
 
@@ -137,11 +147,6 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
 
                 try self.dictionary.put(index, data);
             }
-
-            self.clear_code = index;
-            self.end_information_code = index + 1;
-            self.next_code = index + 2;
-            self.previous_code = null;
         }
     };
 }
