@@ -95,6 +95,21 @@ const Versions = [_][]const u8{
     "89a",
 };
 
+const ApplicationExtensions = struct {
+    identifier: []const u8,
+    code: []const u8,
+};
+const AnimationApplicationExtensions = [_]ApplicationExtensions{
+    .{
+        .identifier = "NETSCAPE",
+        .code = "2.0",
+    },
+    .{
+        .identifier = "ANIMEXTS",
+        .code = "1.0",
+    },
+};
+
 const ExtensionBlockTerminator = 0x00;
 
 const InterlacePasses = [_]struct { start: usize, step: usize }{
@@ -163,6 +178,7 @@ pub const GIF = struct {
     const ReaderContext = struct {
         reader: Image.Stream.Reader = undefined,
         current_frame_data: ?*FrameData = null,
+        has_animation_application_extension: bool = false,
     };
 
     pub fn init(allocator: std.mem.Allocator) GIF {
@@ -243,12 +259,14 @@ pub const GIF = struct {
 
     pub fn loopCount(self: GIF) i32 {
         for (self.application_infos.items) |application_info| {
-            if ((std.mem.eql(u8, application_info.application_identifier[0..], "NETSCAPE") and std.mem.eql(u8, application_info.authentification_code[0..], "2.0")) or (std.mem.eql(u8, application_info.application_identifier[0..], "ANIMEXTS") and std.mem.eql(u8, application_info.authentification_code[0..], "1.0"))) {
-                const loop_count = std.mem.readIntSlice(u16, application_info.data[1..], .Little);
-                if (loop_count == 0) {
-                    return Image.AnimationLoopInfinite;
+            for (AnimationApplicationExtensions) |anim_extension| {
+                if (std.mem.eql(u8, application_info.application_identifier[0..], anim_extension.identifier) and std.mem.eql(u8, application_info.authentification_code[0..], anim_extension.code)) {
+                    const loop_count = std.mem.readIntSlice(u16, application_info.data[1..], .Little);
+                    if (loop_count == 0) {
+                        return Image.AnimationLoopInfinite;
+                    }
+                    return loop_count;
                 }
-                return loop_count;
             }
         }
 
@@ -385,6 +403,8 @@ pub const GIF = struct {
         } else {
             if (context.current_frame_data == null) {
                 context.current_frame_data = try self.allocNewFrame();
+            } else if (context.has_animation_application_extension) {
+                context.current_frame_data = try self.allocNewFrame();
             }
 
             try self.readGraphicRenderingBlock(context, block_kind, extension_kind_opt);
@@ -476,6 +496,13 @@ pub const GIF = struct {
 
                     break :blk application_info;
                 };
+
+                for (AnimationApplicationExtensions) |anim_extension| {
+                    if (std.mem.eql(u8, new_application_info.application_identifier[0..], anim_extension.identifier) and std.mem.eql(u8, new_application_info.authentification_code[0..], anim_extension.code)) {
+                        context.has_animation_application_extension = true;
+                        break;
+                    }
+                }
 
                 try self.application_infos.append(self.allocator, new_application_info);
             },
