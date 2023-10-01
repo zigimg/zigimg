@@ -353,6 +353,9 @@ pub const GIF = struct {
                     if (graphics_control.flags.has_transparent_color) {
                         graphics_control.transparent_color_index = try context.reader.readByte();
                     } else {
+                        // Eat transparent index byte
+                        _ = try context.reader.readByte();
+
                         graphics_control.transparent_color_index = 0;
                     }
 
