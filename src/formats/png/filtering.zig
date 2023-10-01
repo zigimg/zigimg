@@ -149,9 +149,9 @@ fn average(a: u9, b: u9) u8 {
 
 fn paeth(b4: u8, up: u8, b4_up: u8) u8 {
     const p: i16 = @as(i16, @intCast(b4)) + up - b4_up;
-    const pa = std.math.absInt(p - b4) catch unreachable;
-    const pb = std.math.absInt(p - up) catch unreachable;
-    const pc = std.math.absInt(p - b4_up) catch unreachable;
+    const pa = @abs(p - b4);
+    const pb = @abs(p - up);
+    const pc = @abs(p - b4_up);
 
     if (pa <= pb and pa <= pc) {
         return b4;
