@@ -42,16 +42,18 @@ pub const ImageDescriptor = extern struct {
     flags: ImageDescriptorFlags align(1) = .{},
 };
 
+pub const DisposeMethod = enum(u3) {
+    none = 0,
+    do_not_dispose = 1,
+    restore_background_color = 2,
+    restore_to_previous = 3,
+    _,
+};
+
 pub const GraphicControlExtensionFlags = packed struct(u8) {
     has_transparent_color: bool = false,
     user_input: bool = false,
-    disposal_method: enum(u3) {
-        none = 0,
-        do_not_dispose = 1,
-        restore_background_color = 2,
-        restore_to_previous = 3,
-        _,
-    } = .none,
+    disposal_method: DisposeMethod = .none,
     reserved: u3 = 0,
 };
 
@@ -583,23 +585,45 @@ pub const GIF = struct {
             return frame_list;
         }
 
+        var canvas = try self.createNewAnimationFrame(final_pixel_format);
+        defer canvas.deinit(self.allocator);
+
+        var previous_canvas = try self.createNewAnimationFrame(final_pixel_format);
+        defer previous_canvas.deinit(self.allocator);
+
+        if (self.header.flags.use_global_color_table) {
+            fillPalette(&canvas, self.global_color_table.data, null);
+            fillWithBackgroundColor(&canvas, self.global_color_table.data, self.header.background_color_index);
+
+            copyFrame(&canvas, &previous_canvas);
+        }
+
+        var has_graphic_control = false;
+        for (self.frames.items) |frame| {
+            if (frame.graphics_control != null) {
+                has_graphic_control = true;
+                break;
+            }
+        }
+
         for (self.frames.items) |frame| {
             var current_animation_frame = try self.createNewAnimationFrame(final_pixel_format);
 
             var transparency_index_opt: ?u8 = null;
+
+            var dispose_method: DisposeMethod = .none;
+
             if (frame.graphics_control) |graphics_control| {
                 current_animation_frame.duration = @as(f32, @floatFromInt(graphics_control.delay_time)) * (1.0 / 100.0);
                 if (graphics_control.flags.has_transparent_color) {
                     transparency_index_opt = graphics_control.transparent_color_index;
                 }
+
+                dispose_method = graphics_control.flags.disposal_method;
             }
 
             if (self.header.flags.use_global_color_table) {
                 fillPalette(&current_animation_frame, self.global_color_table.data, transparency_index_opt);
-
-                if (transparency_index_opt == null) {
-                    fillWithBackgroundColor(&current_animation_frame, self.global_color_table.data, self.header.background_color_index);
-                }
             }
 
             for (frame.sub_images.items) |sub_image| {
@@ -609,10 +633,34 @@ pub const GIF = struct {
                     fillPalette(&current_animation_frame, effective_color_table, transparency_index_opt);
                 }
 
-                self.renderSubImage(&sub_image, &current_animation_frame, effective_color_table, transparency_index_opt);
+                self.renderSubImage(&sub_image, &canvas, effective_color_table, transparency_index_opt);
             }
 
-            try frame_list.append(self.allocator, current_animation_frame);
+            copyFrame(&canvas, &current_animation_frame);
+
+            if (!has_graphic_control or (has_graphic_control and frame.graphics_control != null)) {
+                try frame_list.append(self.allocator, current_animation_frame);
+            } else {
+                current_animation_frame.deinit(self.allocator);
+            }
+
+            switch (dispose_method) {
+                .restore_to_previous => {
+                    copyFrame(&previous_canvas, &canvas);
+                },
+                .restore_background_color => {
+                    for (frame.sub_images.items) |sub_image| {
+                        const effective_color_table = if (sub_image.image_descriptor.flags.has_local_color_table) sub_image.local_color_table.data else self.global_color_table.data;
+
+                        self.replaceWithBackground(&sub_image, &canvas, effective_color_table, transparency_index_opt);
+                    }
+
+                    copyFrame(&canvas, &previous_canvas);
+                },
+                else => {
+                    copyFrame(&canvas, &previous_canvas);
+                },
+            }
         }
 
         return frame_list;
@@ -660,6 +708,92 @@ pub const GIF = struct {
             .rgb24 => |pixels| @memset(pixels, effective_color_table[background_color_index]),
             .rgba32 => |pixels| @memset(pixels, color.Rgba32.fromU32Rgba(effective_color_table[background_color_index].toU32Rgb())),
             else => std.debug.panic("Pixel format {s} not supported", .{@tagName(current_frame.pixels)}),
+        }
+    }
+
+    fn copyFrame(source: *Image.AnimationFrame, target: *Image.AnimationFrame) void {
+        switch (target.pixels) {
+            .indexed1 => |pixels| @memcpy(pixels.indices, source.pixels.indexed1.indices),
+            .indexed2 => |pixels| @memcpy(pixels.indices, source.pixels.indexed2.indices),
+            .indexed4 => |pixels| @memcpy(pixels.indices, source.pixels.indexed4.indices),
+            .indexed8 => |pixels| @memcpy(pixels.indices, source.pixels.indexed8.indices),
+            .rgb24 => |pixels| @memcpy(pixels, source.pixels.rgb24),
+            .rgba32 => |pixels| @memcpy(pixels, source.pixels.rgba32),
+            else => std.debug.panic("Pixel format {s} not supported", .{@tagName(target.pixels)}),
+        }
+    }
+
+    fn replaceWithBackground(self: *const GIF, sub_image: *const SubImage, canvas: *Image.AnimationFrame, effective_color_table: []const color.Rgb24, transparency_index_opt: ?u8) void {
+        const background_color_index = if (transparency_index_opt != null) transparency_index_opt.? else self.header.background_color_index;
+
+        for (0..sub_image.image_descriptor.height) |source_y| {
+            const target_y = source_y + sub_image.image_descriptor.top_position;
+
+            const source_stride = source_y * sub_image.image_descriptor.width;
+            const target_stride = target_y * self.header.width;
+
+            for (0..sub_image.image_descriptor.width) |source_x| {
+                const target_x = source_x + sub_image.image_descriptor.left_position;
+
+                const source_index = source_stride + source_x;
+                const target_index = target_stride + target_x;
+
+                if (source_index >= sub_image.pixels.len) {
+                    continue;
+                }
+
+                switch (canvas.pixels) {
+                    .indexed1 => |pixels| {
+                        if (target_index >= pixels.indices.len) {
+                            return;
+                        }
+
+                        pixels.indices[target_index] = @intCast(background_color_index);
+                    },
+                    .indexed2 => |pixels| {
+                        if (target_index >= pixels.indices.len) {
+                            return;
+                        }
+
+                        pixels.indices[target_index] = @intCast(background_color_index);
+                    },
+                    .indexed4 => |pixels| {
+                        if (target_index >= pixels.indices.len) {
+                            return;
+                        }
+
+                        pixels.indices[target_index] = @intCast(background_color_index);
+                    },
+                    .indexed8 => |pixels| {
+                        if (target_index >= pixels.indices.len) {
+                            return;
+                        }
+
+                        pixels.indices[target_index] = background_color_index;
+                    },
+                    .rgb24 => |pixels| {
+                        if (target_index >= pixels.len) {
+                            return;
+                        }
+
+                        if (background_color_index < effective_color_table.len) {
+                            pixels[target_index] = effective_color_table[background_color_index];
+                        }
+                    },
+                    .rgba32 => |pixels| {
+                        if (target_index >= pixels.len) {
+                            return;
+                        }
+
+                        if (background_color_index < effective_color_table.len) {
+                            pixels[target_index] = color.Rgba32.fromU32Rgba(effective_color_table[background_color_index].toU32Rgba());
+                        }
+                    },
+                    else => {
+                        std.debug.panic("Pixel format {s} not supported", .{@tagName(canvas.pixels)});
+                    },
+                }
+            }
         }
     }
 
