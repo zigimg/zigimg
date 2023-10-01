@@ -132,8 +132,14 @@ const IniFile = struct {
                             if (self.sections.getPtr(current_section)) |section_entry| {
                                 const value = blk: {
                                     if (string_value.len > 0 and std.ascii.isDigit(string_value[0])) {
+                                        const parsed_number = std.fmt.parseInt(u32, string_value, 10) catch {
+                                            break :blk Value{
+                                                .string = string_value,
+                                            };
+                                        };
+
                                         break :blk Value{
-                                            .number = try std.fmt.parseInt(u32, string_value, 10),
+                                            .number = parsed_number,
                                         };
                                     }
 
