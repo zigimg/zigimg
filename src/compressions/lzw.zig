@@ -16,6 +16,8 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
         remaining_data: ?u13 = null,
         remaining_bits: u4 = 0,
 
+        const MaxCodeSize = 12;
+
         const Self = @This();
 
         pub fn init(allocator: std.mem.Allocator, initial_code_size: u8) !Self {
@@ -81,7 +83,7 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
                             self.next_code += 1;
 
                             const max_code = @as(u13, 1) << @intCast(self.code_size + 1);
-                            if (self.next_code == max_code) {
+                            if (self.next_code == max_code and (self.code_size + 1) < MaxCodeSize) {
                                 self.code_size += 1;
                                 bits_to_read += 1;
                             }
@@ -107,7 +109,7 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
                                 self.next_code += 1;
 
                                 const max_code = @as(u13, 1) << @intCast(self.code_size + 1);
-                                if (self.next_code == max_code) {
+                                if (self.next_code == max_code and (self.code_size + 1) < MaxCodeSize) {
                                     self.code_size += 1;
                                     bits_to_read += 1;
                                 }
