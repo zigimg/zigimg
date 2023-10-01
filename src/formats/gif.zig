@@ -243,7 +243,7 @@ pub const GIF = struct {
 
     pub fn loopCount(self: GIF) i32 {
         for (self.application_infos.items) |application_info| {
-            if (std.mem.eql(u8, application_info.application_identifier[0..], "NETSCAPE") and std.mem.eql(u8, application_info.authentification_code[0..], "2.0")) {
+            if ((std.mem.eql(u8, application_info.application_identifier[0..], "NETSCAPE") and std.mem.eql(u8, application_info.authentification_code[0..], "2.0")) or (std.mem.eql(u8, application_info.application_identifier[0..], "ANIMEXTS") and std.mem.eql(u8, application_info.authentification_code[0..], "1.0"))) {
                 const loop_count = std.mem.readIntSlice(u16, application_info.data[1..], .Little);
                 if (loop_count == 0) {
                     return Image.AnimationLoopInfinite;

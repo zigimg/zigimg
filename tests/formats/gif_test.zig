@@ -63,7 +63,7 @@ test "Iterate on a single GIF file" {
         return error.SkipZigTest;
     }
 
-    try doGifTest("loop-infinite");
+    try doGifTest("loop-animexts");
 }
 
 const IniFile = struct {
