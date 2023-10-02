@@ -205,7 +205,7 @@ pub const GIF = struct {
         for (self.comments.items) |comment| {
             comment.deinit(self.allocator);
         }
- 
+
         self.frames.deinit(self.allocator);
         self.comments.deinit(self.allocator);
         self.application_infos.deinit(self.allocator);
@@ -332,25 +332,36 @@ pub const GIF = struct {
 
         while (current_block != .end_of_file) {
             var is_graphic_block = false;
-            var extension_kind: ?ExtensionKind = null;
+            var extension_kind_opt: ?ExtensionKind = null;
 
             switch (current_block) {
                 .image_descriptor => {
                     is_graphic_block = true;
                 },
                 .extension => {
-                    extension_kind = context.reader.readEnum(ExtensionKind, .Little) catch {
-                        return ImageReadError.InvalidData;
+                    extension_kind_opt = context.reader.readEnum(ExtensionKind, .Little) catch blk: {
+                        var dummy_byte = try context.reader.readByte();
+                        while (dummy_byte != ExtensionBlockTerminator) {
+                            dummy_byte = try context.reader.readByte();
+                        }
+                        break :blk null;
                     };
 
-                    switch (extension_kind.?) {
-                        .graphic_control => {
-                            is_graphic_block = true;
-                        },
-                        .plain_text => {
-                            is_graphic_block = true;
-                        },
-                        else => {},
+                    if (extension_kind_opt) |extension_kind| {
+                        switch (extension_kind) {
+                            .graphic_control => {
+                                is_graphic_block = true;
+                            },
+                            .plain_text => {
+                                is_graphic_block = true;
+                            },
+                            else => {},
+                        }
+                    } else {
+                        current_block = context.reader.readEnum(DataBlockKind, .Little) catch {
+                            return ImageReadError.InvalidData;
+                        };
+                        continue;
                     }
                 },
                 .end_of_file => {
@@ -359,9 +370,9 @@ pub const GIF = struct {
             }
 
             if (is_graphic_block) {
-                try self.readGraphicBlock(context, current_block, extension_kind);
+                try self.readGraphicBlock(context, current_block, extension_kind_opt);
             } else {
-                try self.readSpecialPurposeBlock(context, extension_kind.?);
+                try self.readSpecialPurposeBlock(context, extension_kind_opt.?);
             }
 
             current_block = context.reader.readEnum(DataBlockKind, .Little) catch {
