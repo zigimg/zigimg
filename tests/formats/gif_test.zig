@@ -282,6 +282,12 @@ fn doGifTest(entry_name: []const u8) !void {
                             }
                         }
                     }
+
+                    if (config_section.getValue("delay")) |delay| {
+                        const actual_duration: u32 = @intFromFloat(frames.items[frame_index].duration * 100);
+
+                        try helpers.expectEq(actual_duration, delay.number);
+                    }
                 } else {
                     return error.InvalidGifConfigFile;
                 }
