@@ -30,6 +30,7 @@ pub const WriteError = Error ||
 
 pub const Format = enum {
     bmp,
+    gif,
     jpg,
     pbm,
     pcx,
@@ -50,11 +51,17 @@ pub const AnimationLoopInfinite = -1;
 pub const AnimationFrame = struct {
     pixels: PixelStorage,
     duration: f32,
+
+    pub fn deinit(self: AnimationFrame, allocator: std.mem.Allocator) void {
+        self.pixels.deinit(allocator);
+    }
 };
 
 pub const Animation = struct {
-    frames: std.ArrayListUnmanaged(AnimationFrame) = .{},
+    frames: FrameList = .{},
     loop_count: i32 = AnimationLoopInfinite,
+
+    pub const FrameList = std.ArrayListUnmanaged(AnimationFrame);
 
     pub fn deinit(self: *Animation, allocator: std.mem.Allocator) void {
         // Animation share its first frame with the pixels in Image, we don't want to free it twice

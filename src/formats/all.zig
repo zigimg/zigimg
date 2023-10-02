@@ -1,4 +1,5 @@
 pub const BMP = @import("bmp.zig").Bitmap;
+pub const GIF = @import("gif.zig").GIF;
 pub const JPEG = @import("jpeg.zig").JPEG;
 pub const PBM = @import("netpbm.zig").PBM;
 pub const PCX = @import("pcx.zig").PCX;
@@ -11,6 +12,7 @@ pub const PAM = @import("pam.zig").PAM;
 
 pub const ImageEncoderOptions = union(@import("../Image.zig").Format) {
     bmp: void,
+    gif: void,
     jpg: void,
     pbm: PBM.EncoderOptions,
     pcx: void,

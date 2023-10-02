@@ -186,6 +186,17 @@ test "Should detect Memory BMP properly" {
     defer test_image.deinit();
 }
 
+test "Should detect GIF properly" {
+    const image_tests = &[_][]const u8{
+        helpers.fixtures_path ++ "gif/depth1.gif",
+    };
+
+    for (image_tests) |image_path| {
+        var test_image = try helpers.testImageFromFile(image_path);
+        defer test_image.deinit();
+    }
+}
+
 test "Should detect PCX properly" {
     const image_tests = &[_][]const u8{
         helpers.fixtures_path ++ "pcx/test-bpp1.pcx",

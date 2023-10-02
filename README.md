@@ -61,7 +61,7 @@ zig build test
 | ------------- |:-------------:|:--------------:|
 | ANIM          | ❌            | ❌            |
 | BMP           | ✔️ (Partial)  | ❌            |
-| GIF           | ❌            | ❌            |
+| GIF           | ✔️            | ❌            |
 | ICO           | ❌            | ❌            |
 | IILBM         | ❌            | ❌            |
 | JPEG          | ❌            | ❌            |
@@ -84,6 +84,14 @@ zig build test
 * 24-bit RGB
 * 32 RGBA
 * Doesn't support any compression
+
+### GIF - Graphics Interchange Format
+
+* Support GIF87a and GIF89a
+* Support animated GIF with Netscape application extension for looping information
+* Supported interlaced
+* Supports tiled and layered images used to achieve pseudo true color and more.
+* The plain text extension is not supported
 
 ### PBM - Portable Bitmap format
 
