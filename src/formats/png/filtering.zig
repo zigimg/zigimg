@@ -4,6 +4,7 @@ const PixelFormat = @import("../../pixel_format.zig").PixelFormat;
 const Image = @import("../../Image.zig");
 const HeaderData = @import("types.zig").HeaderData;
 const builtin = @import("builtin");
+const tracy = @import("tracy");
 
 pub const FilterType = enum(u8) {
     none = 0,
@@ -26,6 +27,9 @@ pub const FilterChoice = union(FilterChoiceStrategies) {
 };
 
 pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: FilterChoice, header: HeaderData) Image.WriteError!void {
+    const t = tracy.trace(@src(), null);
+    defer t.end();
+
     var scanline: color.PixelStorage = undefined;
     var previous_scanline: ?color.PixelStorage = null;
 
@@ -36,8 +40,7 @@ pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: Filter
 
     const pixel_len = format.pixelStride();
 
-    var y: usize = 0;
-    while (y < header.height) : (y += 1) {
+    for (0..header.height) |y| {
         scanline = pixels.slice(y * header.width, (y + 1) * header.width);
 
         const filter_type: FilterType = switch (filter_choice) {
@@ -48,23 +51,79 @@ pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: Filter
 
         try writer.writeByte(@intFromEnum(filter_type));
 
-        for (0..scanline.asBytes().len) |byte_index| {
-            const i = if (builtin.target.cpu.arch.endian() == .Little) pixelByteSwappedIndex(scanline, byte_index) else byte_index;
+        const write_byte_trace = tracy.trace(@src(), "write row");
+        defer write_byte_trace.end();
 
-            const sample = scanline.asBytes()[i];
-            const previous: u8 = if (byte_index >= pixel_len) scanline.asBytes()[i - pixel_len] else 0;
-            const above: u8 = if (previous_scanline) |b| b.asBytes()[i] else 0;
-            const above_previous = if (previous_scanline) |b| (if (byte_index >= pixel_len) b.asBytes()[i - pixel_len] else 0) else 0;
+        switch (scanline) {
+            .rgba32 => {
+                for (scanline.asBytes()[0..pixel_len], 0..) |sample, i| {
+                    // start off the scanline
+                    const above: u8 = if (previous_scanline) |b| b.asBytes()[i] else 0;
 
-            const byte: u8 = switch (filter_type) {
-                .none => sample,
-                .sub => sample -% previous,
-                .up => sample -% above,
-                .average => sample -% average(previous, above),
-                .paeth => sample -% paeth(previous, above, above_previous),
-            };
+                    const byte: u8 = switch (filter_type) {
+                        .none, .sub => sample,
+                        .up => sample -% above,
+                        .average => sample -% average(0, above),
+                        .paeth => sample -% paeth(0, above, 0),
+                    };
 
-            try writer.writeByte(byte);
+                    try writer.writeByte(byte);
+                }
+
+                // Write out the rest of the bytes
+                const bytes = scanline.asBytes()[pixel_len..];
+                const previous_bytes = scanline.asBytes()[0 .. scanline.asBytes().len - pixel_len];
+                if (previous_scanline) |prev_line| {
+                    const above_bytes = prev_line.asBytes()[pixel_len..];
+                    const above_previous_bytes = prev_line.asBytes()[0 .. scanline.asBytes().len - pixel_len];
+                    switch (filter_type) {
+                        .none => try writer.writeAll(bytes),
+                        .sub => for (bytes, previous_bytes) |sample, previous| {
+                            try writer.writeByte(sample -% previous);
+                        },
+                        .up => for (bytes, above_bytes) |sample, above| {
+                            try writer.writeByte(sample -% above);
+                        },
+                        .average => for (bytes, previous_bytes, above_bytes) |sample, previous, above| {
+                            try writer.writeByte(sample -% average(previous, above));
+                        },
+                        .paeth => for (bytes, previous_bytes, above_bytes, above_previous_bytes) |sample, previous, above, above_previous| {
+                            try writer.writeByte(sample -% paeth(previous, above, above_previous));
+                        },
+                    }
+                } else {
+                    switch (filter_type) {
+                        .none, .up => try writer.writeAll(bytes),
+                        .sub => for (bytes, previous_bytes) |sample, previous| {
+                            try writer.writeByte(sample -% previous);
+                        },
+                        .average => for (bytes, previous_bytes) |sample, previous| {
+                            try writer.writeByte(sample -% average(previous, 0));
+                        },
+                        .paeth => for (bytes, previous_bytes) |sample, previous| {
+                            try writer.writeByte(sample -% paeth(previous, 0, 0));
+                        },
+                    }
+                }
+            },
+            else => for (0..scanline.asBytes().len) |byte_index| {
+                const i = if (builtin.target.cpu.arch.endian() == .Little) pixelByteSwappedIndex(scanline, byte_index) else byte_index;
+
+                const sample = scanline.asBytes()[i];
+                const previous: u8 = if (byte_index >= pixel_len) scanline.asBytes()[i - pixel_len] else 0;
+                const above: u8 = if (previous_scanline) |b| b.asBytes()[i] else 0;
+                const above_previous = if (previous_scanline) |b| (if (byte_index >= pixel_len) b.asBytes()[i - pixel_len] else 0) else 0;
+
+                const byte: u8 = switch (filter_type) {
+                    .none => sample,
+                    .sub => sample -% previous,
+                    .up => sample -% above,
+                    .average => sample -% average(previous, above),
+                    .paeth => sample -% paeth(previous, above, above_previous),
+                };
+
+                try writer.writeByte(byte);
+            },
         }
         previous_scanline = scanline;
     }
@@ -102,22 +161,23 @@ fn byteSwappedIndex(comptime T: type, byte_index: usize) usize {
 }
 
 fn filterChoiceHeuristic(scanline: color.PixelStorage, previous_scanline: ?color.PixelStorage) FilterType {
+    const t = tracy.trace(@src(), null);
+    defer t.end();
+
     const pixel_len = @as(PixelFormat, scanline).pixelStride();
-    var max_score: usize = 0;
-    var best: FilterType = .none;
-    inline for ([_]FilterType{ .none, .sub, .up, .average, .paeth }) |filter_type| {
-        var previous_byte: u8 = 0;
-        var combo: usize = 0;
-        var score: usize = 0;
 
-        for (0..scanline.asBytes().len) |byte_index| {
-            const i = if (builtin.target.cpu.arch.endian() == .Little) pixelByteSwappedIndex(scanline, byte_index) else byte_index;
+    const filter_types = [_]FilterType{ .none, .sub, .up, .average, .paeth };
 
-            const sample = scanline.asBytes()[i];
-            const previous: u8 = if (byte_index >= pixel_len) scanline.asBytes()[i - pixel_len] else 0;
-            const above: u8 = if (previous_scanline) |b| b.asBytes()[i] else 0;
-            const above_previous = if (previous_scanline) |b| (if (byte_index >= pixel_len) b.asBytes()[i - pixel_len] else 0) else 0;
+    var previous_bytes: [filter_types.len]u8 = [_]u8{0} ** filter_types.len;
+    var combos: [filter_types.len]usize = [_]usize{0} ** filter_types.len;
+    var scores: [filter_types.len]usize = [_]usize{0} ** filter_types.len;
 
+    for (scanline.asBytes(), 0..) |sample, i| {
+        const previous: u8 = if (i >= pixel_len) scanline.asBytes()[i - pixel_len] else 0;
+        const above: u8 = if (previous_scanline) |b| b.asBytes()[i] else 0;
+        const above_previous = if (previous_scanline) |b| (if (i >= pixel_len) b.asBytes()[i - pixel_len] else 0) else 0;
+
+        inline for (filter_types, &previous_bytes, &combos, &scores) |filter_type, *previous_byte, *combo, *score| {
             const byte: u8 = switch (filter_type) {
                 .none => sample,
                 .sub => sample -% previous,
@@ -126,15 +186,19 @@ fn filterChoiceHeuristic(scanline: color.PixelStorage, previous_scanline: ?color
                 .paeth => sample -% paeth(previous, above, above_previous),
             };
 
-            if (byte == previous_byte) {
-                combo += 1;
+            if (byte == previous_byte.*) {
+                combo.* += 1;
             } else {
-                score += combo * combo;
-                combo = 0;
-                previous_byte = byte;
+                score.* += combo.* * combo.*;
+                combo.* = 0;
+                previous_byte.* = byte;
             }
         }
+    }
 
+    var best: FilterType = .none;
+    var max_score: usize = 0;
+    inline for (filter_types, scores) |filter_type, score| {
         if (score > max_score) {
             max_score = score;
             best = filter_type;
@@ -178,7 +242,7 @@ test "filtering 16-bit grayscale pixels uses correct endianess" {
     });
     defer std.testing.allocator.free(pixels);
 
-    try filter(output_bytes.writer(), .{ .grayscale16 = pixels }, .heuristic, .{
+    try filter(output_bytes.writer(), .{ .grayscale16 = pixels }, .{ .specified = .none }, .{
         .width = 4,
         .height = 2,
         .bit_depth = 16,

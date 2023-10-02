@@ -14,6 +14,7 @@ const FormatInterface = @import("../format_interface.zig").FormatInterface;
 const ImageReadError = Image.ReadError;
 const ImageWriteError = Image.WriteError;
 const Allocator = std.mem.Allocator;
+const tracy = @import("tracy");
 
 pub const HeaderData = types.HeaderData;
 pub const ColorType = types.ColorType;
@@ -74,6 +75,9 @@ pub const PNG = struct {
     }
 
     pub fn writeImage(allocator: Allocator, write_stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) ImageWriteError!void {
+        const t = tracy.trace(@src(), null);
+        defer t.end();
+
         const options = encoder_options.png;
 
         try ensureWritable(image);
@@ -152,6 +156,9 @@ pub const PNG = struct {
 
     // IDAT (multiple maybe)
     fn writeData(allocator: Allocator, writer: anytype, pixels: color.PixelStorage, header: HeaderData, filter_choice: filter.FilterChoice) ImageWriteError!void {
+        const t = tracy.trace(@src(), null);
+        defer t.end();
+
         // Note: there may be more than 1 chunk
         // TODO: provide choice of how much it buffers (how much data per idat chunk)
         var chunks = chunk_writer.chunkWriter(writer, "IDAT");

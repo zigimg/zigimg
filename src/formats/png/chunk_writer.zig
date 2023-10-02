@@ -1,4 +1,5 @@
 const std = @import("std");
+const tracy = @import("tracy");
 
 const io = std.io;
 const mem = std.mem;
@@ -19,15 +20,13 @@ pub fn ChunkWriter(comptime buffer_size: usize, comptime WriterType: type) type 
         const Self = @This();
 
         pub fn flush(self: *Self) !void {
-            try self.unbuffered_writer.writeIntBig(u32, @as(u32, @truncate(self.end)));
-
             var crc = Crc.init();
-
             crc.update(&self.section_id);
-            try self.unbuffered_writer.writeAll(&self.section_id);
             crc.update(self.buf[0..self.end]);
-            try self.unbuffered_writer.writeAll(self.buf[0..self.end]);
 
+            try self.unbuffered_writer.writeIntBig(u32, @as(u32, @truncate(self.end)));
+            try self.unbuffered_writer.writeAll(&self.section_id);
+            try self.unbuffered_writer.writeAll(self.buf[0..self.end]);
             try self.unbuffered_writer.writeIntBig(u32, crc.final());
 
             self.end = 0;
