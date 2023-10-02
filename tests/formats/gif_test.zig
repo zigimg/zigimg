@@ -233,6 +233,21 @@ fn doGifTest(entry_name: []const u8) !void {
 
         try helpers.expectEq(gif_file.loopCount(), expected_loop_count);
 
+        if (config_section.getValue("comment")) |comment_value| {
+            const first_quote_index = std.mem.indexOfScalar(u8, comment_value.string, '\'') orelse 0;
+            const last_quote_index = std.mem.lastIndexOfScalar(u8, comment_value.string, '\'') orelse comment_value.string.len;
+
+            const comment_slice = comment_value.string[(first_quote_index + 1)..(last_quote_index)];
+
+            try std.testing.expect(gif_file.comments.items.len > 0);
+
+            if (std.mem.eql(u8, comment_slice, "\\x00")) {
+                try helpers.expectEq(gif_file.comments.items[0].comment[0], 0);
+            } else {
+                try helpers.expectEqSlice(u8, gif_file.comments.items[0].comment, comment_slice);
+            }
+        }
+
         const string_frames = config_section.getValue("frames") orelse return error.InvalidGifConfigFile;
 
         if (string_frames.string.len > 0) {

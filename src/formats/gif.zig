@@ -64,7 +64,11 @@ pub const GraphicControlExtension = extern struct {
 };
 
 pub const CommentExtension = struct {
-    comment: FixedStorage(u8, 256) = FixedStorage(u8, 256).init(),
+    comment: []u8,
+
+    pub fn deinit(self: CommentExtension, allocator: std.mem.Allocator) void {
+        allocator.free(self.comment);
+    }
 };
 
 pub const ApplicationExtension = struct {
@@ -198,6 +202,10 @@ pub const GIF = struct {
             application_info.deinit(self.allocator);
         }
 
+        for (self.comments.items) |comment| {
+            comment.deinit(self.allocator);
+        }
+ 
         self.frames.deinit(self.allocator);
         self.comments.deinit(self.allocator);
         self.application_infos.deinit(self.allocator);
@@ -455,18 +463,23 @@ pub const GIF = struct {
             .comment => {
                 var new_comment_entry = try self.comments.addOne(self.allocator);
 
-                var fixed_alloc = std.heap.FixedBufferAllocator.init(new_comment_entry.comment.storage[0..]);
-                var comment_list = std.ArrayList(u8).init(fixed_alloc.allocator());
+                var comment_list = try std.ArrayListUnmanaged(u8).initCapacity(self.allocator, 256);
+                defer comment_list.deinit(self.allocator);
 
-                var read_data = try context.reader.readByte();
+                var data_block_size = try context.reader.readByte();
 
-                while (read_data != ExtensionBlockTerminator) {
-                    try comment_list.append(read_data);
+                while (data_block_size > 0) {
+                    var data_block = FixedStorage(u8, 256).init();
+                    data_block.resize(data_block_size);
 
-                    read_data = try context.reader.readByte();
+                    _ = try context.reader.read(data_block.data[0..]);
+
+                    try comment_list.appendSlice(self.allocator, data_block.data);
+
+                    data_block_size = try context.reader.readByte();
                 }
 
-                new_comment_entry.comment.data = comment_list.items;
+                new_comment_entry.comment = try self.allocator.dupe(u8, comment_list.items);
             },
             .application_extension => {
                 const new_application_info = blk: {
