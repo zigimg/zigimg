@@ -5,7 +5,7 @@ const ImageError = Image.Error;
 const ImageReadError = Image.ReadError;
 const ImageWriteError = Image.WriteError;
 const Image = @import("../Image.zig");
-const FormatInterface = @import("../format_interface.zig").FormatInterface;
+const FormatInterface = @import("../FormatInterface.zig");
 const color = @import("../color.zig");
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 

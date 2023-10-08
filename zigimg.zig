@@ -1,7 +1,7 @@
 pub const AllFormats = @import("src/formats/all.zig");
 pub const bmp = @import("src/formats/bmp.zig");
 pub const color = @import("src/color.zig");
-pub const FormatInterface = @import("src/format_interface.zig").FormatInterface;
+pub const FormatInterface = @import("src/FormatInterface.zig");
 pub const Image = @import("src/Image.zig");
 pub const gif = @import("src/formats/gif.zig");
 pub const netpbm = @import("src/formats/netpbm.zig");
@@ -17,7 +17,7 @@ pub const pam = @import("src/formats/pam.zig");
 test {
     const std = @import("std");
     std.testing.refAllDecls(@This());
-    
+
     inline for (.{
         @import("src/formats/png/reader.zig"),
         @import("src/compressions/lzw.zig"),

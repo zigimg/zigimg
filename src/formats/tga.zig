@@ -1,5 +1,5 @@
 const Allocator = std.mem.Allocator;
-const FormatInterface = @import("../format_interface.zig").FormatInterface;
+const FormatInterface = @import("../FormatInterface.zig");
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const color = @import("../color.zig");
 const ImageError = Image.Error;
