@@ -11,7 +11,7 @@ pub const TGA = @import("tga.zig").TGA;
 pub const PAM = @import("pam.zig").PAM;
 
 pub const ImageEncoderOptions = union(@import("../Image.zig").Format) {
-    bmp: void,
+    bmp: BMP.EncoderOptions,
     gif: void,
     jpg: void,
     pbm: PBM.EncoderOptions,

@@ -60,7 +60,7 @@ zig build test
 | Image Format  | Read          | Write          |
 | ------------- |:-------------:|:--------------:|
 | ANIM          | ❌            | ❌            |
-| BMP           | ✔️ (Partial)  | ❌            |
+| BMP           | ✔️ (Partial)  | ✔️ (Partial)  |
 | GIF           | ✔️            | ❌            |
 | ICO           | ❌            | ❌            |
 | IILBM         | ❌            | ❌            |
@@ -81,8 +81,8 @@ zig build test
 
 * version 4 BMP
 * version 5 BMP
-* 24-bit RGB
-* 32 RGBA
+* 24-bit RGB read & write
+* 32-bit RGBA read & write
 * Doesn't support any compression
 
 ### GIF - Graphics Interchange Format
