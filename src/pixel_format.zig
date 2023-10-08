@@ -27,29 +27,27 @@ pub const PixelFormat = enum(u32) {
     rgba64 = 0x410,
     float32 = 0x2420,
 
-    const Self = @This();
-
-    pub fn isJustGrayscale(self: Self) bool {
+    pub fn isJustGrayscale(self: PixelFormat) bool {
         return @intFromEnum(self) & 0xf00 == 0x100;
     }
 
-    pub fn isIndex(self: Self) bool {
+    pub fn isIndex(self: PixelFormat) bool {
         return @intFromEnum(self) <= @intFromEnum(PixelFormat.indexed16);
     }
 
-    pub fn isStandardRgb(self: Self) bool {
+    pub fn isStandardRgb(self: PixelFormat) bool {
         return self == .rgb24 or self == .rgb48;
     }
 
-    pub fn isRgba(self: Self) bool {
+    pub fn isRgba(self: PixelFormat) bool {
         return self == .rgba32 or self == .rgba64;
     }
 
-    pub fn is16Bit(self: Self) bool {
+    pub fn is16Bit(self: PixelFormat) bool {
         return @intFromEnum(self) & 0xff == 0x10;
     }
 
-    pub fn pixelStride(self: Self) u8 {
+    pub fn pixelStride(self: PixelFormat) u8 {
         // Using bit manipulations of values is not really faster than this switch
         return switch (self) {
             .invalid => 0,
@@ -63,7 +61,7 @@ pub const PixelFormat = enum(u32) {
         };
     }
 
-    pub fn bitsPerChannel(self: Self) u8 {
+    pub fn bitsPerChannel(self: PixelFormat) u8 {
         return switch (self) {
             .invalid => 0,
             .rgb565 => unreachable, // TODO: what to do in that case?
@@ -77,7 +75,7 @@ pub const PixelFormat = enum(u32) {
         };
     }
 
-    pub fn channelCount(self: Self) u8 {
+    pub fn channelCount(self: PixelFormat) u8 {
         return switch (self) {
             .invalid => 0,
             .grayscale8Alpha, .grayscale16Alpha => 2,
