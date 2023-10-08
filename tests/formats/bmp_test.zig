@@ -8,7 +8,7 @@ const testing = std.testing;
 const Image = @import("../../src/Image.zig");
 const helpers = @import("../helpers.zig");
 
-fn verifyBitmapRGBAV5(the_bitmap: bmp.Bitmap, pixels: color.PixelStorage) !void {
+fn verifyBitmapRGBAV5(the_bitmap: bmp.BMP, pixels: color.PixelStorage) !void {
     try helpers.expectEq(the_bitmap.file_header.size, 153738);
     try helpers.expectEq(the_bitmap.file_header.reserved, 0);
     try helpers.expectEq(the_bitmap.file_header.pixel_offset, 138);
@@ -94,7 +94,7 @@ test "Read simple version 4 24-bit RGB bitmap" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
     defer file.close();
 
-    var the_bitmap = bmp.Bitmap{};
+    var the_bitmap = bmp.BMP{};
 
     var stream_source = std.io.StreamSource{ .file = file };
 
@@ -153,7 +153,7 @@ test "Read a valid version 5 RGBA bitmap from file" {
 
     var stream_source = std.io.StreamSource{ .file = file };
 
-    var the_bitmap = bmp.Bitmap{};
+    var the_bitmap = bmp.BMP{};
 
     const pixels = try the_bitmap.read(helpers.zigimg_test_allocator, &stream_source);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -166,7 +166,7 @@ test "Read a valid version 5 RGBA bitmap from memory" {
     var buffer: []const u8 = try helpers.testReadFile(helpers.fixtures_path ++ "bmp/windows_rgba_v5.bmp", MemoryRGBABitmap[0..]);
     var stream_source = std.io.StreamSource{ .const_buffer = std.io.fixedBufferStream(buffer) };
 
-    var the_bitmap = bmp.Bitmap{};
+    var the_bitmap = bmp.BMP{};
 
     const pixels = try the_bitmap.read(helpers.zigimg_test_allocator, &stream_source);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -180,7 +180,7 @@ test "Should error when reading an invalid file" {
 
     var stream_source = std.io.StreamSource{ .file = file };
 
-    var the_bitmap = bmp.Bitmap{};
+    var the_bitmap = bmp.BMP{};
 
     const invalidFile = the_bitmap.read(helpers.zigimg_test_allocator, &stream_source);
     try helpers.expectError(invalidFile, ImageReadError.InvalidData);
