@@ -6,7 +6,7 @@ This is a work in progress library to create, process, read and write different 
 
 ## Install & Build
 
-This project assume current Zig master (0.11.0-dev.3879+5804f3f75 or higher) with stage2 self-hosted compiler.
+This project assume current Zig master (0.12.0-dev.799+d68f39b54 or higher) with stage2 self-hosted compiler.
 
 ### Use zigimg in your project
 
