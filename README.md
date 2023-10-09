@@ -65,7 +65,7 @@ zig build test
 | ICO           | ❌            | ❌            |
 | IILBM         | ❌            | ❌            |
 | JPEG          | ❌            | ❌            |
-| PAM           | ❌            | ❌            |
+| PAM           | ✔️            | ✔️            |
 | PBM           | ✔️            | ❌            |
 | PCX           | ✔️            | ❌            |
 | PGM           | ✔️ (Partial)  | ✔️ (Partial)  |
@@ -92,6 +92,18 @@ zig build test
 * Supported interlaced
 * Supports tiled and layered images used to achieve pseudo true color and more.
 * The plain text extension is not supported
+
+### PAM - Portable Arbitrary Map
+
+Currently, this only supports a subset of PAMs where:
+* The tuple type is official (see `man 5 pam`) or easily inferred (and by extension, depth is 4 or less)
+* All the images in a sequence have the same dimensions and maxval (it is technically possible to support animations with different maxvals and tuple types as each `AnimationFrame` has its own `PixelStorage`, however, this is likely not expected by users of the library)
+* Grayscale,
+* Grayscale with alpha
+* Rgb555
+* Rgb24 and Rgba32
+* Bgr24 and Bgra32
+* Rgb48 and Rgba64
 
 ### PBM - Portable Bitmap format
 
