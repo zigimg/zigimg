@@ -4,6 +4,8 @@ This is a work in progress library to create, process, read and write different 
 
 ![License](https://img.shields.io/github/license/zigimg/zigimg) ![Issue](https://img.shields.io/github/issues-raw/zigimg/zigimg?style=flat) ![Commit](https://img.shields.io/github/last-commit/zigimg/zigimg) ![CI](https://github.com/zigimg/zigimg/workflows/CI/badge.svg)
 
+![Join our Discord!](https://discordapp.com/api/guilds/1161009516771549374/widget.png?style=banner2)
+
 ## Install & Build
 
 This project assume current Zig master (0.12.0-dev.799+d68f39b54 or higher) with stage2 self-hosted compiler.
@@ -45,7 +47,9 @@ exe.addAnonymousModule("zigimg", .{.source_file = .{ .path = "zigimg.zig" }});
 },
 ```
 
-### Test suite
+
+## Test suite
+
 To run the test suite, checkout the [test suite](https://github.com/zigimg/test-suite) and run
 
 1. Checkout zigimg
