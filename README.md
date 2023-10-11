@@ -4,7 +4,7 @@ This is a work in progress library to create, process, read and write different 
 
 ![License](https://img.shields.io/github/license/zigimg/zigimg) ![Issue](https://img.shields.io/github/issues-raw/zigimg/zigimg?style=flat) ![Commit](https://img.shields.io/github/last-commit/zigimg/zigimg) ![CI](https://github.com/zigimg/zigimg/workflows/CI/badge.svg)
 
-![Join our Discord!](https://discordapp.com/api/guilds/1161009516771549374/widget.png?style=banner2)
+[![Join our Discord!](https://discordapp.com/api/guilds/1161009516771549374/widget.png?style=banner2)](https://discord.gg/TYgEEuEGnK)
 
 ## Install & Build
 
