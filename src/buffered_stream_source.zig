@@ -2,6 +2,9 @@ const std = @import("std");
 
 const DefaultBufferSize = 4 * 1024;
 
+pub const DefaultBufferedStreamSourceReader = BufferedStreamSourceReader(DefaultBufferSize);
+pub const DefaultBufferedStreamSourceWriter = BufferedStreamSourceWriter(DefaultBufferSize);
+
 // An buffered stream that can read and seek StreamSource
 pub fn BufferedStreamSourceReader(comptime BufferSize: usize) type {
     return struct {
