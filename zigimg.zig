@@ -21,6 +21,7 @@ test {
     inline for (.{
         @import("src/formats/png/reader.zig"),
         @import("src/compressions/lzw.zig"),
+        @import("tests/buffered_stream_source_test.zig"),
         @import("tests/color_test.zig"),
         @import("tests/formats/bmp_test.zig"),
         @import("tests/formats/gif_test.zig"),
