@@ -234,6 +234,13 @@ pub fn BufferedStreamSourceWriter(comptime BufferSize: usize) type {
         pub fn seekableStream(self: *Self) SeekableStream {
             return .{ .context = self };
         }
+
+        pub fn flush(self: *Self) WriteError!void {
+            return switch (self.buffered_writer.unbuffered_writer.context.*) {
+                .file => self.buffered_writer.flush(),
+                else => {},
+            };
+        }
     };
 }
 

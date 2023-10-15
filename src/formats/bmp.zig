@@ -1,3 +1,4 @@
+const buffered_stream_source = @import("../buffered_stream_source.zig");
 const color = @import("../color.zig");
 const FormatInterface = @import("../FormatInterface.zig");
 const Image = @import("../Image.zig");
@@ -177,7 +178,7 @@ pub const BMP = struct {
         return result;
     }
 
-    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) Image.WriteError!void {
+    pub fn writeImage(allocator: std.mem.Allocator, stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) Image.WriteError!void {
         var bmp = BMP{};
 
         //  Fill header information based on pixel format
@@ -233,7 +234,7 @@ pub const BMP = struct {
             },
         }
 
-        try bmp.write(write_stream, image.pixels);
+        try bmp.write(stream, image.pixels);
 
         _ = allocator;
         _ = encoder_options;
@@ -276,17 +277,17 @@ pub const BMP = struct {
     }
 
     pub fn read(self: *BMP, allocator: std.mem.Allocator, stream: *Image.Stream) Image.ReadError!color.PixelStorage {
+        var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
+
         // Read file header
-        const reader = stream.reader();
+        const reader = buffered_stream.reader();
         self.file_header = try utils.readStructLittle(reader, BitmapFileHeader);
         if (!std.mem.eql(u8, self.file_header.magic_header[0..], BitmapMagicHeader[0..])) {
             return Image.ReadError.InvalidData;
         }
 
-        // Read header size to figure out the header type, also TODO: Use PeekableStream when I understand how to use it
-        const current_header_pos = try stream.getPos();
         var header_size = try reader.readIntLittle(u32);
-        try stream.seekTo(current_header_pos);
+        try buffered_stream.seekBy(-@sizeOf(u32));
 
         // Read info header
         self.info_header = switch (header_size) {
@@ -326,8 +327,10 @@ pub const BMP = struct {
         return pixels;
     }
 
-    pub fn write(self: BMP, write_stream: *Image.Stream, pixels: color.PixelStorage) Image.WriteError!void {
-        const writer = write_stream.writer();
+    pub fn write(self: BMP, stream: *Image.Stream, pixels: color.PixelStorage) Image.WriteError!void {
+        var buffered_stream = buffered_stream_source.bufferedStreamSourceWriter(stream);
+
+        const writer = buffered_stream.writer();
 
         try utils.writeStructLittle(writer, self.file_header);
 
@@ -344,6 +347,8 @@ pub const BMP = struct {
         }
 
         try writePixels(writer, pixels, self.width(), self.height());
+
+        try buffered_stream.flush();
     }
 
     fn findPixelFormat(bit_count: u32, compression: CompressionMethod) Image.Error!PixelFormat {
@@ -356,7 +361,7 @@ pub const BMP = struct {
         }
     }
 
-    fn readPixels(reader: Image.Stream.Reader, pixel_width: i32, pixel_height: i32, pixels: *color.PixelStorage) Image.ReadError!void {
+    fn readPixels(reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader, pixel_width: i32, pixel_height: i32, pixels: *color.PixelStorage) Image.ReadError!void {
         return switch (pixels.*) {
             .bgr24 => {
                 return readPixelsInternal(pixels.bgr24, reader, pixel_width, pixel_height);
@@ -370,7 +375,7 @@ pub const BMP = struct {
         };
     }
 
-    fn readPixelsInternal(pixels: anytype, reader: Image.Stream.Reader, pixel_width: i32, pixel_height: i32) Image.ReadError!void {
+    fn readPixelsInternal(pixels: anytype, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader, pixel_width: i32, pixel_height: i32) Image.ReadError!void {
         const ColorBufferType = @typeInfo(@TypeOf(pixels)).Pointer.child;
 
         var x: i32 = 0;
@@ -385,7 +390,7 @@ pub const BMP = struct {
         }
     }
 
-    fn writePixels(writer: Image.Stream.Writer, pixels: color.PixelStorage, pixel_width: i32, pixel_height: i32) Image.WriteError!void {
+    fn writePixels(writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, pixels: color.PixelStorage, pixel_width: i32, pixel_height: i32) Image.WriteError!void {
         return switch (pixels) {
             .bgr24 => {
                 return writePixelsInternal(pixels.bgr24, writer, pixel_width, pixel_height);
@@ -399,7 +404,7 @@ pub const BMP = struct {
         };
     }
 
-    fn writePixelsInternal(pixels: anytype, writer: Image.Stream.Writer, pixel_width: i32, pixel_height: i32) Image.WriteError!void {
+    fn writePixelsInternal(pixels: anytype, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, pixel_width: i32, pixel_height: i32) Image.WriteError!void {
         var x: i32 = 0;
         var y: i32 = pixel_height - 1;
         while (y >= 0) : (y -= 1) {
