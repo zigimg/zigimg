@@ -1,13 +1,11 @@
-const FormatInterface = @import("../FormatInterface.zig");
-const PixelFormat = @import("../pixel_format.zig").PixelFormat;
+const buffered_stream_source = @import("../buffered_stream_source.zig");
 const color = @import("../color.zig");
+const FormatInterface = @import("../FormatInterface.zig");
 const Image = @import("../Image.zig");
+const lzw = @import("../compressions/lzw.zig");
+const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const std = @import("std");
 const utils = @import("../utils.zig");
-const lzw = @import("../compressions/lzw.zig");
-
-const ImageReadError = Image.ReadError;
-const ImageWriteError = Image.WriteError;
 
 pub const HeaderFlags = packed struct {
     global_color_table_size: u3 = 0,
@@ -182,7 +180,7 @@ pub const GIF = struct {
     };
 
     const ReaderContext = struct {
-        reader: Image.Stream.Reader = undefined,
+        reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader = undefined,
         current_frame_data: ?*FrameData = null,
         has_animation_application_extension: bool = false,
     };
@@ -240,7 +238,7 @@ pub const GIF = struct {
         return false;
     }
 
-    pub fn readImage(allocator: std.mem.Allocator, stream: *Image.Stream) ImageReadError!Image {
+    pub fn readImage(allocator: std.mem.Allocator, stream: *Image.Stream) Image.ReadError!Image {
         var result = Image.init(allocator);
         errdefer result.deinit();
 
@@ -249,7 +247,7 @@ pub const GIF = struct {
 
         var frames = try gif.read(stream);
         if (frames.items.len == 0) {
-            return ImageReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
 
         result.width = gif.header.width;
@@ -283,15 +281,16 @@ pub const GIF = struct {
         return 0;
     }
 
-    pub fn read(self: *GIF, stream: *Image.Stream) ImageReadError!Image.Animation.FrameList {
+    pub fn read(self: *GIF, stream: *Image.Stream) Image.ReadError!Image.Animation.FrameList {
+        var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
         var context = ReaderContext{
-            .reader = stream.reader(),
+            .reader = buffered_stream.reader(),
         };
 
         self.header = try utils.readStructLittle(context.reader, Header);
 
         if (!std.mem.eql(u8, self.header.magic[0..], Magic)) {
-            return ImageReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
 
         var valid_version = false;
@@ -304,7 +303,7 @@ pub const GIF = struct {
         }
 
         if (!valid_version) {
-            return ImageReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
 
         const global_color_table_size = @as(usize, 1) << (@as(u6, @intCast(self.header.flags.global_color_table_size)) + 1);
@@ -325,9 +324,9 @@ pub const GIF = struct {
     }
 
     // <Data> ::= <Graphic Block> | <Special-Purpose Block>
-    fn readData(self: *GIF, context: *ReaderContext) ImageReadError!void {
+    fn readData(self: *GIF, context: *ReaderContext) Image.ReadError!void {
         var current_block = context.reader.readEnum(DataBlockKind, .Little) catch {
-            return ImageReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         };
 
         while (current_block != .end_of_file) {
@@ -359,7 +358,7 @@ pub const GIF = struct {
                         }
                     } else {
                         current_block = context.reader.readEnum(DataBlockKind, .Little) catch {
-                            return ImageReadError.InvalidData;
+                            return Image.ReadError.InvalidData;
                         };
                         continue;
                     }
@@ -376,13 +375,13 @@ pub const GIF = struct {
             }
 
             current_block = context.reader.readEnum(DataBlockKind, .Little) catch {
-                return ImageReadError.InvalidData;
+                return Image.ReadError.InvalidData;
             };
         }
     }
 
     // <Graphic Block> ::= [Graphic Control Extension] <Graphic-Rendering Block>
-    fn readGraphicBlock(self: *GIF, context: *ReaderContext, block_kind: DataBlockKind, extension_kind_opt: ?ExtensionKind) ImageReadError!void {
+    fn readGraphicBlock(self: *GIF, context: *ReaderContext, block_kind: DataBlockKind, extension_kind_opt: ?ExtensionKind) Image.ReadError!void {
         if (extension_kind_opt) |extension_kind| {
             if (extension_kind == .graphic_control) {
                 // If we are seeing a Graphics Control Extension block, it means we need to start a new animation frame
@@ -413,7 +412,7 @@ pub const GIF = struct {
                 };
 
                 var new_block_kind = context.reader.readEnum(DataBlockKind, .Little) catch {
-                    return ImageReadError.InvalidData;
+                    return Image.ReadError.InvalidData;
                 };
 
                 // Continue reading the graphics rendering block
@@ -433,7 +432,7 @@ pub const GIF = struct {
     }
 
     // <Graphic-Rendering Block> ::= <Table-Based Image> | Plain Text Extension
-    fn readGraphicRenderingBlock(self: *GIF, context: *ReaderContext, block_kind: DataBlockKind, extension_kind_opt: ?ExtensionKind) ImageReadError!void {
+    fn readGraphicRenderingBlock(self: *GIF, context: *ReaderContext, block_kind: DataBlockKind, extension_kind_opt: ?ExtensionKind) Image.ReadError!void {
         switch (block_kind) {
             .image_descriptor => {
                 try self.readImageDescriptorAndData(context);
@@ -444,7 +443,7 @@ pub const GIF = struct {
                     extension_kind = value;
                 } else {
                     extension_kind = context.reader.readEnum(ExtensionKind, .Little) catch {
-                        return ImageReadError.InvalidData;
+                        return Image.ReadError.InvalidData;
                     };
                 }
 
@@ -458,7 +457,7 @@ pub const GIF = struct {
                         try context.reader.skipBytes(sub_data_size + 1, .{});
                     },
                     else => {
-                        return ImageReadError.InvalidData;
+                        return Image.ReadError.InvalidData;
                     },
                 }
             },
@@ -469,7 +468,7 @@ pub const GIF = struct {
     }
 
     // <Special-Purpose Block> ::= Application Extension | Comment Extension
-    fn readSpecialPurposeBlock(self: *GIF, context: *ReaderContext, extension_kind: ExtensionKind) ImageReadError!void {
+    fn readSpecialPurposeBlock(self: *GIF, context: *ReaderContext, extension_kind: ExtensionKind) Image.ReadError!void {
         switch (extension_kind) {
             .comment => {
                 var new_comment_entry = try self.comments.addOne(self.allocator);
@@ -533,13 +532,13 @@ pub const GIF = struct {
                 try self.application_infos.append(self.allocator, new_application_info);
             },
             else => {
-                return ImageReadError.InvalidData;
+                return Image.ReadError.InvalidData;
             },
         }
     }
 
     // <Table-Based Image> ::= Image Descriptor [Local Color Table] Image Data
-    fn readImageDescriptorAndData(self: *GIF, context: *ReaderContext) ImageReadError!void {
+    fn readImageDescriptorAndData(self: *GIF, context: *ReaderContext) Image.ReadError!void {
         if (context.current_frame_data) |current_frame_data| {
             var sub_image = try current_frame_data.allocNewSubImage(self.allocator);
             sub_image.image_descriptor = try utils.readStructLittle(context.reader, ImageDescriptor);
@@ -587,7 +586,7 @@ pub const GIF = struct {
 
                 lzw_decoder.decode(data_block_reader.reader(), pixels_buffer.writer()) catch |err| {
                     if (err != error.NoSpaceLeft) {
-                        return ImageReadError.InvalidData;
+                        return Image.ReadError.InvalidData;
                     }
                 };
 
@@ -596,7 +595,7 @@ pub const GIF = struct {
         }
     }
 
-    fn render(self: *GIF) ImageReadError!Image.Animation.FrameList {
+    fn render(self: *GIF) Image.ReadError!Image.Animation.FrameList {
         const final_pixel_format = self.findBestPixelFormat();
 
         var frame_list = Image.Animation.FrameList{};
