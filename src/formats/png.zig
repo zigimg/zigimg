@@ -1,19 +1,20 @@
 // Implement PNG image format according to W3C Portable Network Graphics (PNG) specification second edition (ISO/IEC 15948:2003 (E))
 // Last version: https://www.w3.org/TR/PNG/
 
-const std = @import("std");
-const types = @import("png/types.zig");
-const reader = @import("png/reader.zig");
+const Allocator = std.mem.Allocator;
+const buffered_stream_source = @import("../buffered_stream_source.zig");
 const chunk_writer = @import("png/chunk_writer.zig");
-const filter = @import("png/filtering.zig");
 const color = @import("../color.zig");
-const PixelFormat = @import("../pixel_format.zig").PixelFormat;
-const ZlibCompressor = @import("png/zlib_compressor.zig").ZlibCompressor;
-const Image = @import("../Image.zig");
+const filter = @import("png/filtering.zig");
 const FormatInterface = @import("../FormatInterface.zig");
+const Image = @import("../Image.zig");
 const ImageReadError = Image.ReadError;
 const ImageWriteError = Image.WriteError;
-const Allocator = std.mem.Allocator;
+const PixelFormat = @import("../pixel_format.zig").PixelFormat;
+const reader = @import("png/reader.zig");
+const std = @import("std");
+const types = @import("png/types.zig");
+const ZlibCompressor = @import("png/zlib_compressor.zig").ZlibCompressor;
 
 pub const HeaderData = types.HeaderData;
 pub const ColorType = types.ColorType;
@@ -101,7 +102,8 @@ pub const PNG = struct {
         if (header.filter_method != .adaptive)
             return ImageWriteError.Unsupported;
 
-        var writer = write_stream.writer();
+        var buffered_stream = buffered_stream_source.bufferedStreamSourceWriter(write_stream);
+        var writer = buffered_stream.writer();
 
         try writeSignature(writer);
         try writeHeader(writer, header);
@@ -111,6 +113,8 @@ pub const PNG = struct {
         }
         try writeData(allocator, writer, pixels, header, filter_choice);
         try writeTrailer(writer);
+
+        try buffered_stream.flush();
     }
 
     pub fn ensureWritable(image: Image) !void {
