@@ -1,17 +1,18 @@
 // Adapted from https://github.com/MasterQ32/zig-qoi
 // with permission from Felix Queißner
 const Allocator = std.mem.Allocator;
-const FormatInterface = @import("../FormatInterface.zig");
-const PixelFormat = @import("../pixel_format.zig").PixelFormat;
+const buffered_stream_source = @import("../buffered_stream_source.zig");
 const color = @import("../color.zig");
+const FormatInterface = @import("../FormatInterface.zig");
+const fs = std.fs;
+const Image = @import("../Image.zig");
 const ImageError = Image.Error;
 const ImageReadError = Image.ReadError;
 const ImageWriteError = Image.WriteError;
-const fs = std.fs;
-const Image = @import("../Image.zig");
 const io = std.io;
 const mem = std.mem;
 const path = std.fs.path;
+const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const std = @import("std");
 const utils = @import("../utils.zig");
 
@@ -186,11 +187,13 @@ pub const QOI = struct {
     }
 
     pub fn read(self: *Self, allocator: Allocator, stream: *Image.Stream) ImageReadError!color.PixelStorage {
+        var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
+
         var magic_buffer: [Header.correct_magic.len]u8 = undefined;
 
-        const reader = stream.reader();
+        const reader = buffered_stream.reader();
 
-        _ = try stream.read(magic_buffer[0..]);
+        _ = try buffered_stream.read(magic_buffer[0..]);
 
         if (!std.mem.eql(u8, magic_buffer[0..], Header.correct_magic[0..])) {
             return ImageReadError.InvalidData;
@@ -284,8 +287,9 @@ pub const QOI = struct {
         return pixels;
     }
 
-    pub fn write(self: Self, write_stream: *Image.Stream, pixels: color.PixelStorage) ImageWriteError!void {
-        const writer = write_stream.writer();
+    pub fn write(self: Self, stream: *Image.Stream, pixels: color.PixelStorage) ImageWriteError!void {
+        var buffered_stream = buffered_stream_source.bufferedStreamSourceWriter(stream);
+        const writer = buffered_stream.writer();
         try writer.writeAll(&self.header.encode());
 
         switch (pixels) {
@@ -310,9 +314,11 @@ pub const QOI = struct {
             0x00,
             0x01,
         });
+
+        try buffered_stream.flush();
     }
 
-    fn writeData(write_stream: Image.Stream.Writer, pixels_data: anytype) ImageWriteError!void {
+    fn writeData(writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, pixels_data: anytype) ImageWriteError!void {
         var color_lut = std.mem.zeroes([64]QoiColor);
 
         var previous_pixel = QoiColor{ .r = 0, .g = 0, .b = 0, .a = 0xFF };
@@ -332,7 +338,7 @@ pub const QOI = struct {
             if (run_length > 0 and (run_length == 62 or !same_pixel or (i == (pixels_data.len - 1)))) {
                 // QOI_OP_RUN
                 std.debug.assert(run_length >= 1 and run_length <= 62);
-                try write_stream.writeByte(0b1100_0000 | @as(u8, @truncate(run_length - 1)));
+                try writer.writeByte(0b1100_0000 | @as(u8, @truncate(run_length - 1)));
                 run_length = 0;
             }
 
@@ -340,7 +346,7 @@ pub const QOI = struct {
                 const hash = pixel.hash();
                 if (color_lut[hash].eql(pixel)) {
                     // QOI_OP_INDEX
-                    try write_stream.writeByte(0b0000_0000 | hash);
+                    try writer.writeByte(0b0000_0000 | hash);
                 } else {
                     color_lut[hash] = pixel;
 
@@ -358,16 +364,16 @@ pub const QOI = struct {
                             (mapRange2(diff_r) << 4) |
                             (mapRange2(diff_g) << 2) |
                             (mapRange2(diff_b) << 0);
-                        try write_stream.writeByte(byte);
+                        try writer.writeByte(byte);
                     } else if (diff_a == 0 and inRange6(diff_g) and inRange4(diff_rg) and inRange4(diff_rb)) {
                         // QOI_OP_LUMA
-                        try write_stream.writeAll(&[2]u8{
+                        try writer.writeAll(&[2]u8{
                             0b1000_0000 | mapRange6(diff_g),
                             (mapRange4(diff_rg) << 4) | (mapRange4(diff_rb) << 0),
                         });
                     } else if (diff_a == 0) {
                         // QOI_OP_RGB
-                        try write_stream.writeAll(&[4]u8{
+                        try writer.writeAll(&[4]u8{
                             0b1111_1110,
                             pixel.r,
                             pixel.g,
@@ -375,7 +381,7 @@ pub const QOI = struct {
                         });
                     } else {
                         // QOI_OP_RGBA
-                        try write_stream.writeAll(&[5]u8{
+                        try writer.writeAll(&[5]u8{
                             0b1111_1111,
                             pixel.r,
                             pixel.g,
