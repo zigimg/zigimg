@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const DefaultBufferSize = 4 * 1024;
+const DefaultBufferSize = 8 * 1024;
 
 pub const DefaultBufferedStreamSourceReader = BufferedStreamSourceReader(DefaultBufferSize);
 pub const DefaultBufferedStreamSourceWriter = BufferedStreamSourceWriter(DefaultBufferSize);
