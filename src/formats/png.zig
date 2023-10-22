@@ -102,8 +102,7 @@ pub const PNG = struct {
         if (header.filter_method != .adaptive)
             return ImageWriteError.Unsupported;
 
-        var buffered_stream = buffered_stream_source.bufferedStreamSourceWriter(write_stream);
-        var writer = buffered_stream.writer();
+        var writer = write_stream.writer();
 
         try writeSignature(writer);
         try writeHeader(writer, header);
@@ -113,8 +112,6 @@ pub const PNG = struct {
         }
         try writeData(allocator, writer, pixels, header, filter_choice);
         try writeTrailer(writer);
-
-        try buffered_stream.flush();
     }
 
     pub fn ensureWritable(image: Image) !void {
