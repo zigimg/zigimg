@@ -1,14 +1,15 @@
-const std = @import("std");
-const utils = @import("../../utils.zig");
-const png = @import("types.zig");
+const Allocator = std.mem.Allocator;
+const buffered_stream_source = @import("../../buffered_stream_source.zig");
 const color = @import("../../color.zig");
-const PixelStorage = color.PixelStorage;
-const PixelFormat = @import("../../pixel_format.zig").PixelFormat;
+const Crc32 = std.hash.Crc32;
+const File = std.fs.File;
 const Image = @import("../../Image.zig");
 const mem = std.mem;
-const File = std.fs.File;
-const Crc32 = std.hash.Crc32;
-const Allocator = std.mem.Allocator;
+const PixelFormat = @import("../../pixel_format.zig").PixelFormat;
+const PixelStorage = color.PixelStorage;
+const png = @import("types.zig");
+const std = @import("std");
+const utils = @import("../../utils.zig");
 
 // Png specification: http://www.libpng.org/pub/png/spec/iso/index-object.html
 
@@ -44,7 +45,7 @@ fn callChunkProcessors(processors: []ReaderProcessor, chunk_process_data: *Chunk
 // slow so we also provide buffering here. We can't used BufferedReader because we need
 // more control than it currently provides.
 const IDatChunksReader = struct {
-    stream: *Image.Stream,
+    stream: *buffered_stream_source.DefaultBufferedStreamSourceReader,
     buffer: [4096]u8 = undefined,
     data: []u8,
     processors: []ReaderProcessor,
@@ -55,7 +56,7 @@ const IDatChunksReader = struct {
     const Self = @This();
 
     fn init(
-        stream: *Image.Stream,
+        stream: *buffered_stream_source.DefaultBufferedStreamSourceReader,
         processors: []ReaderProcessor,
         chunk_process_data: *ChunkProcessData,
     ) Self {
@@ -144,7 +145,7 @@ pub fn loadHeader(stream: *Image.Stream) Image.ReadError!png.HeaderData {
     var header_data: [@sizeOf(png.HeaderData)]u8 = undefined;
     try reader.readNoEof(&header_data);
 
-    var struct_stream = Image.Stream{ .buffer = std.io.fixedBufferStream(&header_data) };
+    var struct_stream = std.io.fixedBufferStream(&header_data);
 
     const header = try utils.readStructBig(struct_stream.reader(), png.HeaderData);
     if (!header.isValid()) return Image.ReadError.InvalidData;
@@ -188,6 +189,7 @@ pub fn loadWithHeader(
     allocator: Allocator,
     in_options: ReaderOptions,
 ) Image.ReadError!PixelStorage {
+    var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
     var options = in_options;
     var temp_allocator = options.temp_allocator;
     var fb_allocator = std.heap.FixedBufferAllocator.init(try temp_allocator.alloc(u8, required_temp_bytes));
@@ -199,7 +201,7 @@ pub fn loadWithHeader(
     var result: PixelStorage = undefined;
 
     var chunk_process_data = ChunkProcessData{
-        .stream = stream,
+        .stream = &buffered_stream,
         .chunk_id = png.Chunks.IHDR.id,
         .chunk_length = @sizeOf(png.HeaderData),
         .current_format = header.getPixelFormat(),
@@ -208,7 +210,7 @@ pub fn loadWithHeader(
     };
     try callChunkProcessors(options.processors, &chunk_process_data);
 
-    var reader = stream.reader();
+    var reader = buffered_stream.reader();
 
     while (true) {
         const chunk = (try utils.readStructBig(reader, png.ChunkHeader));
@@ -230,7 +232,7 @@ pub fn loadWithHeader(
                 if (header.color_type == .indexed and palette.len == 0) {
                     return Image.ReadError.InvalidData;
                 }
-                result = try readAllData(stream, header, palette, allocator, &options, &chunk_process_data);
+                result = try readAllData(&buffered_stream, header, palette, allocator, &options, &chunk_process_data);
                 data_found = true;
             },
             png.Chunks.PLTE.id => {
@@ -239,7 +241,7 @@ pub fn loadWithHeader(
                 // We ignore if tRNS is already found
                 if (data_found) {
                     // If IDAT was already processed we skip and ignore this palette
-                    try stream.seekBy(chunk.length + @sizeOf(u32));
+                    try buffered_stream.seekBy(chunk.length + @sizeOf(u32));
                 } else {
                     if (chunk.length % 3 != 0) return Image.ReadError.InvalidData;
                     const palette_entries = chunk.length / 3;
@@ -267,7 +269,7 @@ pub fn loadWithHeader(
 }
 
 fn readAllData(
-    stream: *Image.Stream,
+    buffered_stream: *buffered_stream_source.DefaultBufferedStreamSourceReader,
     header: *const png.HeaderData,
     palette: []color.Rgb24,
     allocator: Allocator,
@@ -282,7 +284,7 @@ fn readAllData(
     const dest_format = chunk_process_data.current_format;
     var result = try PixelStorage.init(allocator, dest_format, width * height);
     errdefer result.deinit(allocator);
-    var idat_chunks_reader = IDatChunksReader.init(stream, options.processors, chunk_process_data);
+    var idat_chunks_reader = IDatChunksReader.init(buffered_stream, options.processors, chunk_process_data);
     var idat_reader: IDATReader = .{ .context = &idat_chunks_reader };
     var decompress_stream = std.compress.zlib.decompressStream(options.temp_allocator, idat_reader) catch return Image.ReadError.InvalidData;
 
@@ -554,7 +556,7 @@ fn callRowProcessors(processors: []ReaderProcessor, process_data: *RowProcessDat
 }
 
 pub const ChunkProcessData = struct {
-    stream: *Image.Stream,
+    stream: *buffered_stream_source.DefaultBufferedStreamSourceReader,
     chunk_id: u32,
     chunk_length: u32,
     current_format: PixelFormat,

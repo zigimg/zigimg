@@ -2,7 +2,6 @@
 // Last version: https://www.w3.org/TR/PNG/
 
 const Allocator = std.mem.Allocator;
-const buffered_stream_source = @import("../buffered_stream_source.zig");
 const chunk_writer = @import("png/chunk_writer.zig");
 const color = @import("../color.zig");
 const filter = @import("png/filtering.zig");
