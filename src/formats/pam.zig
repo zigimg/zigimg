@@ -6,6 +6,7 @@ const ascii = std.ascii;
 const fmt = std.fmt;
 const meta = std.meta;
 const Allocator = std.mem.Allocator;
+const buffered_stream_source = @import("../buffered_stream_source.zig");
 const color = @import("../color.zig");
 const FormatInterface = @import("../FormatInterface.zig");
 const PixelStorage = color.PixelStorage;
@@ -332,11 +333,8 @@ pub const PAM = struct {
     }
 
     pub fn readImage(allocator: Allocator, stream: *Image.Stream) ImageReadError!Image {
-        // TODO: this is a workaround for the current lack of built-in
-        // buffering. Remove this if/when buffering is properly
-        // supported.
-        var buffered_reader = io.bufferedReader(stream.reader());
-        const reader = buffered_reader.reader();
+        var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
+        const reader = buffered_stream.reader();
         var image: Image = try readFrame(allocator, reader) orelse return ImageReadError.InvalidData; // empty stream
         errdefer image.deinit();
 
@@ -421,8 +419,8 @@ pub const PAM = struct {
     }
 
     pub fn writeImage(allocator: Allocator, stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) ImageWriteError!void {
-        var buffered_writer = io.bufferedWriter(stream.writer());
-        const writer = buffered_writer.writer();
+        var buffered_stream = buffered_stream_source.bufferedStreamSourceWriter(stream);
+        const writer = buffered_stream.writer();
 
         var comments = std.ArrayList([]const u8).init(allocator);
         defer comments.deinit();
@@ -459,7 +457,8 @@ pub const PAM = struct {
 
             try writeFrame(writer, frame_img, .{ .pam = .{ .comments = comments.items } });
         }
-        try buffered_writer.flush();
+
+        try buffered_stream.flush();
     }
 
     pub fn writeFrame(writer: anytype, frame: Image, encoder_options: Image.EncoderOptions) ImageWriteError!void {

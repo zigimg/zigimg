@@ -48,17 +48,17 @@ fn checkEnumFields(data: anytype) StructReadError!void {
     }
 }
 
-pub fn readStructNative(reader: std.io.StreamSource.Reader, comptime T: type) StructReadError!T {
+pub fn readStructNative(reader: anytype, comptime T: type) StructReadError!T {
     var result: T = try reader.readStruct(T);
     try checkEnumFields(&result);
     return result;
 }
 
-pub fn writeStructNative(writer: std.io.StreamSource.Writer, value: anytype) StructWriteError!void {
+pub fn writeStructNative(writer: anytype, value: anytype) StructWriteError!void {
     try writer.writeStruct(value);
 }
 
-pub fn writeStructForeign(writer: std.io.StreamSource.Writer, value: anytype) StructWriteError!void {
+pub fn writeStructForeign(writer: anytype, value: anytype) StructWriteError!void {
     const T = @typeInfo(@TypeOf(value));
     inline for (std.meta.fields(T)) |field| {
         switch (@typeInfo(field.type)) {
@@ -115,7 +115,7 @@ fn swapFieldBytes(data: anytype) StructReadError!void {
     }
 }
 
-pub fn readStructForeign(reader: std.io.StreamSource.Reader, comptime T: type) StructReadError!T {
+pub fn readStructForeign(reader: anytype, comptime T: type) StructReadError!T {
     var result: T = try reader.readStruct(T);
     try swapFieldBytes(&result);
     return result;
