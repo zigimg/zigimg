@@ -13,30 +13,30 @@ const std = @import("std");
 const utils = @import("../utils.zig");
 const simd = @import("../simd.zig");
 
+const Version = 5;
+
 pub const PCXHeader = extern struct {
     id: u8 = 0x0A,
-    version: u8,
-    compression: u8,
-    bpp: u8,
-    xmin: u16 align(1),
-    ymin: u16 align(1),
-    xmax: u16 align(1),
-    ymax: u16 align(1),
-    horizontal_dpi: u16 align(1),
-    vertical_dpi: u16 align(1),
-    builtin_palette: [48]u8,
+    version: u8 = Version,
+    compression: u8 = 1,
+    bpp: u8 = 0,
+    xmin: u16 align(1) = 0,
+    ymin: u16 align(1) = 0,
+    xmax: u16 align(1) = 0,
+    ymax: u16 align(1) = 0,
+    horizontal_dpi: u16 align(1) = 0,
+    vertical_dpi: u16 align(1) = 0,
+    builtin_palette: [48]u8 = [_]u8{0} ** 48,
     _reserved0: u8 = 0,
-    planes: u8,
-    stride: u16 align(1),
-    palette_information: u16 align(1),
-    screen_width: u16 align(1),
-    screen_height: u16 align(1),
-
-    // HACK: For some reason, padding as field does not report 128 bytes for the header.
-    var padding: [54]u8 = undefined;
+    planes: u8 = 0,
+    stride: u16 align(1) = 0,
+    palette_information: u16 align(1) = 0,
+    screen_width: u16 align(1) = 0,
+    screen_height: u16 align(1) = 0,
+    padding: [54]u8 = [_]u8{0} ** 54,
 
     comptime {
-        std.debug.assert(@sizeOf(@This()) == 74);
+        std.debug.assert(@sizeOf(PCXHeader) == 128);
     }
 };
 
@@ -238,6 +238,8 @@ pub const PCX = struct {
     width: usize = 0,
     height: usize = 0,
 
+    pub const EncoderOptions = struct {};
+
     pub fn formatInterface() FormatInterface {
         return FormatInterface{
             .format = format,
@@ -280,11 +282,15 @@ pub const PCX = struct {
         return result;
     }
 
-    pub fn writeImage(allocator: Allocator, write_stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) ImageWriteError!void {
+    pub fn writeImage(allocator: Allocator, stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) ImageWriteError!void {
         _ = allocator;
-        _ = write_stream;
-        _ = image;
         _ = encoder_options;
+
+        var pcx = PCX{};
+
+        // Fill header info based on image
+
+        try pcx.write(stream, image.pixels);
     }
 
     pub fn pixelFormat(self: PCX) ImageReadError!PixelFormat {
@@ -309,7 +315,6 @@ pub const PCX = struct {
         var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
         const reader = buffered_stream.reader();
         self.header = try utils.readStructLittle(reader, PCXHeader);
-        _ = try buffered_stream.read(PCXHeader.padding[0..]);
 
         if (self.header.id != 0x0A) {
             return ImageReadError.InvalidData;
@@ -438,5 +443,14 @@ pub const PCX = struct {
         }
 
         return pixels;
+    }
+
+    pub fn write(self: PCX, stream: *Image.Stream, pixels: color.PixelStorage) Image.WriteError!void {
+        _ = pixels;
+        var buffered_stream = buffered_stream_source.bufferedStreamSourceWriter(stream);
+
+        const writer = buffered_stream.writer();
+
+        try utils.writeStructLittle(writer, self.header);
     }
 };
