@@ -1,13 +1,14 @@
 // Adapted from https://github.com/MasterQ32/zig-gamedev-lib/blob/master/src/netbpm.zig
 // with permission from Felix Queißner
 const Allocator = std.mem.Allocator;
-const FormatInterface = @import("../format_interface.zig").FormatInterface;
-const PixelFormat = @import("../pixel_format.zig").PixelFormat;
+const buffered_stream_source = @import("../buffered_stream_source.zig");
 const color = @import("../color.zig");
+const FormatInterface = @import("../FormatInterface.zig");
+const Image = @import("../Image.zig");
 const ImageError = Image.Error;
 const ImageReadError = Image.ReadError;
 const ImageWriteError = Image.WriteError;
-const Image = @import("../Image.zig");
+const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const std = @import("std");
 const utils = @import("../utils.zig");
 
@@ -36,7 +37,7 @@ pub const Header = struct {
     max_value: usize,
 };
 
-fn parseHeader(reader: Image.Stream.Reader) ImageReadError!Header {
+fn parseHeader(reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!Header {
     var header: Header = undefined;
 
     var magic: [2]u8 = undefined;
@@ -85,7 +86,7 @@ fn isWhitespace(b: u8) bool {
     };
 }
 
-fn readNextByte(reader: Image.Stream.Reader) ImageReadError!u8 {
+fn readNextByte(reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!u8 {
     while (true) {
         var b = try reader.readByte();
         switch (b) {
@@ -112,7 +113,7 @@ fn readNextByte(reader: Image.Stream.Reader) ImageReadError!u8 {
 
 /// skips whitespace and comments, then reads a number from the stream.
 /// this function reads one whitespace behind the number as a terminator.
-fn parseNumber(reader: Image.Stream.Reader, buffer: []u8) ImageReadError!usize {
+fn parseNumber(reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader, buffer: []u8) ImageReadError!usize {
     var input_length: usize = 0;
     while (true) {
         var b = try readNextByte(reader);
@@ -131,7 +132,7 @@ fn parseNumber(reader: Image.Stream.Reader, buffer: []u8) ImageReadError!usize {
     }
 }
 
-fn loadBinaryBitmap(header: Header, data: []color.Grayscale1, reader: Image.Stream.Reader) ImageReadError!void {
+fn loadBinaryBitmap(header: Header, data: []color.Grayscale1, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!void {
     var bit_reader = std.io.bitReader(.Big, reader);
 
     for (0..header.height) |row_index| {
@@ -142,7 +143,7 @@ fn loadBinaryBitmap(header: Header, data: []color.Grayscale1, reader: Image.Stre
     }
 }
 
-fn loadAsciiBitmap(header: Header, data: []color.Grayscale1, reader: Image.Stream.Reader) ImageReadError!void {
+fn loadAsciiBitmap(header: Header, data: []color.Grayscale1, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!void {
     var data_index: usize = 0;
     const data_end = header.width * header.height;
 
@@ -161,14 +162,14 @@ fn loadAsciiBitmap(header: Header, data: []color.Grayscale1, reader: Image.Strea
     }
 }
 
-fn readLinearizedValue(reader: Image.Stream.Reader, max_value: usize) ImageReadError!u8 {
+fn readLinearizedValue(reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader, max_value: usize) ImageReadError!u8 {
     return if (max_value > 255)
         @truncate(255 * @as(usize, try reader.readIntBig(u16)) / max_value)
     else
         @truncate(255 * @as(usize, try reader.readByte()) / max_value);
 }
 
-fn loadBinaryGraymap(header: Header, pixels: *color.PixelStorage, reader: Image.Stream.Reader) ImageReadError!void {
+fn loadBinaryGraymap(header: Header, pixels: *color.PixelStorage, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!void {
     var data_index: usize = 0;
     const data_end = header.width * header.height;
     if (header.max_value <= 255) {
@@ -182,7 +183,7 @@ fn loadBinaryGraymap(header: Header, pixels: *color.PixelStorage, reader: Image.
     }
 }
 
-fn loadAsciiGraymap(header: Header, pixels: *color.PixelStorage, reader: Image.Stream.Reader) ImageReadError!void {
+fn loadAsciiGraymap(header: Header, pixels: *color.PixelStorage, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!void {
     var read_buffer: [16]u8 = undefined;
 
     var data_index: usize = 0;
@@ -199,7 +200,7 @@ fn loadAsciiGraymap(header: Header, pixels: *color.PixelStorage, reader: Image.S
     }
 }
 
-fn loadBinaryRgbmap(header: Header, data: []color.Rgb24, reader: Image.Stream.Reader) ImageReadError!void {
+fn loadBinaryRgbmap(header: Header, data: []color.Rgb24, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!void {
     var data_index: usize = 0;
     const data_end = header.width * header.height;
 
@@ -212,7 +213,7 @@ fn loadBinaryRgbmap(header: Header, data: []color.Rgb24, reader: Image.Stream.Re
     }
 }
 
-fn loadAsciiRgbmap(header: Header, data: []color.Rgb24, reader: Image.Stream.Reader) ImageReadError!void {
+fn loadAsciiRgbmap(header: Header, data: []color.Rgb24, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!void {
     var read_buffer: [16]u8 = undefined;
 
     var data_index: usize = 0;
@@ -329,7 +330,8 @@ fn Netpbm(comptime image_format: Image.Format, comptime header_numbers: []const 
         }
 
         pub fn read(self: *Self, allocator: Allocator, stream: *Image.Stream) ImageReadError!color.PixelStorage {
-            const reader = stream.reader();
+            var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
+            const reader = buffered_stream.reader();
             self.header = try parseHeader(reader);
 
             const pixel_format = try self.pixelFormat();
@@ -365,8 +367,10 @@ fn Netpbm(comptime image_format: Image.Format, comptime header_numbers: []const 
         }
 
         pub fn write(self: *Self, write_stream: *Image.Stream, pixels: color.PixelStorage) ImageWriteError!void {
+            var buffered_stream = buffered_stream_source.bufferedStreamSourceWriter(write_stream);
+
             const image_type = if (self.header.binary) header_numbers[1] else header_numbers[0];
-            const writer = write_stream.writer();
+            const writer = buffered_stream.writer();
             try writer.print("P{c}\n", .{image_type});
             _ = try writer.write("# Created by zigimg\n");
 
@@ -486,6 +490,8 @@ fn Netpbm(comptime image_format: Image.Format, comptime header_numbers: []const 
                     },
                 }
             }
+
+            try buffered_stream.flush();
         }
     };
 }

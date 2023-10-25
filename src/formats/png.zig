@@ -1,19 +1,19 @@
 // Implement PNG image format according to W3C Portable Network Graphics (PNG) specification second edition (ISO/IEC 15948:2003 (E))
 // Last version: https://www.w3.org/TR/PNG/
 
-const std = @import("std");
-const types = @import("png/types.zig");
-const reader = @import("png/reader.zig");
+const Allocator = std.mem.Allocator;
 const chunk_writer = @import("png/chunk_writer.zig");
-const filter = @import("png/filtering.zig");
 const color = @import("../color.zig");
-const PixelFormat = @import("../pixel_format.zig").PixelFormat;
-const ZlibCompressor = @import("png/zlib_compressor.zig").ZlibCompressor;
+const filter = @import("png/filtering.zig");
+const FormatInterface = @import("../FormatInterface.zig");
 const Image = @import("../Image.zig");
-const FormatInterface = @import("../format_interface.zig").FormatInterface;
 const ImageReadError = Image.ReadError;
 const ImageWriteError = Image.WriteError;
-const Allocator = std.mem.Allocator;
+const PixelFormat = @import("../pixel_format.zig").PixelFormat;
+const reader = @import("png/reader.zig");
+const std = @import("std");
+const types = @import("png/types.zig");
+const ZlibCompressor = @import("png/zlib_compressor.zig").ZlibCompressor;
 
 pub const HeaderData = types.HeaderData;
 pub const ColorType = types.ColorType;

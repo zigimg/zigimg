@@ -4,9 +4,11 @@ This is a work in progress library to create, process, read and write different 
 
 ![License](https://img.shields.io/github/license/zigimg/zigimg) ![Issue](https://img.shields.io/github/issues-raw/zigimg/zigimg?style=flat) ![Commit](https://img.shields.io/github/last-commit/zigimg/zigimg) ![CI](https://github.com/zigimg/zigimg/workflows/CI/badge.svg)
 
+[![Join our Discord!](https://discordapp.com/api/guilds/1161009516771549374/widget.png?style=banner2)](https://discord.gg/TYgEEuEGnK)
+
 ## Install & Build
 
-This project assume current Zig master (0.11.0-dev.3879+5804f3f75 or higher) with stage2 self-hosted compiler.
+This project assume current Zig master (0.12.0-dev.799+d68f39b54 or higher) with stage2 self-hosted compiler.
 
 ### Use zigimg in your project
 
@@ -45,7 +47,9 @@ exe.addAnonymousModule("zigimg", .{.source_file = .{ .path = "zigimg.zig" }});
 },
 ```
 
-### Test suite
+
+## Test suite
+
 To run the test suite, checkout the [test suite](https://github.com/zigimg/test-suite) and run
 
 1. Checkout zigimg
@@ -60,12 +64,12 @@ zig build test
 | Image Format  | Read          | Write          |
 | ------------- |:-------------:|:--------------:|
 | ANIM          | ❌            | ❌            |
-| BMP           | ✔️ (Partial)  | ❌            |
-| GIF           | ❌            | ❌            |
+| BMP           | ✔️ (Partial)  | ✔️ (Partial)  |
+| GIF           | ✔️            | ❌            |
 | ICO           | ❌            | ❌            |
 | IILBM         | ❌            | ❌            |
 | JPEG          | ❌            | ❌            |
-| PAM           | ❌            | ❌            |
+| PAM           | ✔️            | ✔️            |
 | PBM           | ✔️            | ❌            |
 | PCX           | ✔️            | ❌            |
 | PGM           | ✔️ (Partial)  | ✔️ (Partial)  |
@@ -81,9 +85,29 @@ zig build test
 
 * version 4 BMP
 * version 5 BMP
-* 24-bit RGB
-* 32 RGBA
+* 24-bit RGB read & write
+* 32-bit RGBA read & write
 * Doesn't support any compression
+
+### GIF - Graphics Interchange Format
+
+* Support GIF87a and GIF89a
+* Support animated GIF with Netscape application extension for looping information
+* Supported interlaced
+* Supports tiled and layered images used to achieve pseudo true color and more.
+* The plain text extension is not supported
+
+### PAM - Portable Arbitrary Map
+
+Currently, this only supports a subset of PAMs where:
+* The tuple type is official (see `man 5 pam`) or easily inferred (and by extension, depth is 4 or less)
+* All the images in a sequence have the same dimensions and maxval (it is technically possible to support animations with different maxvals and tuple types as each `AnimationFrame` has its own `PixelStorage`, however, this is likely not expected by users of the library)
+* Grayscale,
+* Grayscale with alpha
+* Rgb555
+* Rgb24 and Rgba32
+* Bgr24 and Bgra32
+* Rgb48 and Rgba64
 
 ### PBM - Portable Bitmap format
 

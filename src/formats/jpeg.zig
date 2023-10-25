@@ -1,11 +1,13 @@
 const std = @import("std");
+const buffered_stream_source = @import("../buffered_stream_source.zig");
+
 const Allocator = std.mem.Allocator;
 
 const ImageError = Image.Error;
 const ImageReadError = Image.ReadError;
 const ImageWriteError = Image.WriteError;
 const Image = @import("../Image.zig");
-const FormatInterface = @import("../format_interface.zig").FormatInterface;
+const FormatInterface = @import("../FormatInterface.zig");
 const color = @import("../color.zig");
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 
@@ -49,7 +51,7 @@ pub const JPEG = struct {
         }
     }
 
-    fn parseDefineQuantizationTables(self: *JPEG, reader: Image.Stream.Reader) ImageReadError!void {
+    fn parseDefineQuantizationTables(self: *JPEG, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!void {
         var segment_size = try reader.readIntBig(u16);
         if (JPEG_DEBUG) std.debug.print("DefineQuantizationTables: segment size = 0x{X}\n", .{segment_size});
         segment_size -= 2;
@@ -70,7 +72,7 @@ pub const JPEG = struct {
         }
     }
 
-    fn parseScan(self: *JPEG, reader: Image.Stream.Reader, pixels_opt: *?color.PixelStorage) ImageReadError!void {
+    fn parseScan(self: *JPEG, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader, pixels_opt: *?color.PixelStorage) ImageReadError!void {
         if (self.frame) |frame| {
             try Scan.performScan(&frame, reader, pixels_opt);
         } else return ImageReadError.InvalidData;
@@ -91,7 +93,9 @@ pub const JPEG = struct {
     }
 
     pub fn read(self: *JPEG, stream: *Image.Stream, pixels_opt: *?color.PixelStorage) ImageReadError!Frame {
-        const jfif_header = JFIFHeader.read(stream) catch |err| switch (err) {
+        var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
+
+        const jfif_header = JFIFHeader.read(&buffered_stream) catch |err| switch (err) {
             error.App0MarkerDoesNotExist, error.JfifIdentifierNotSet, error.ThumbnailImagesUnsupported, error.ExtraneousApplicationMarker => return ImageReadError.InvalidData,
             else => |e| return e,
         };
@@ -104,7 +108,7 @@ pub const JPEG = struct {
             }
         }
 
-        const reader = stream.reader();
+        const reader = buffered_stream.reader();
         var marker = try reader.readIntBig(u16);
         while (marker != @intFromEnum(Markers.end_of_image)) : (marker = try reader.readIntBig(u16)) {
             if (JPEG_DEBUG) std.debug.print("Parsing marker value: 0x{X}\n", .{marker});
@@ -112,7 +116,7 @@ pub const JPEG = struct {
             if (marker >= @intFromEnum(Markers.application0) and marker < @intFromEnum(Markers.application0) + 16) {
                 if (JPEG_DEBUG) std.debug.print("Skipping application data segment\n", .{});
                 const application_data_length = try reader.readIntBig(u16);
-                try stream.seekBy(application_data_length - 2);
+                try buffered_stream.seekBy(application_data_length - 2);
                 continue;
             }
 
@@ -125,7 +129,7 @@ pub const JPEG = struct {
                         return ImageError.Unsupported;
                     }
 
-                    self.frame = try Frame.read(self.allocator, &self.quantization_tables, stream);
+                    self.frame = try Frame.read(self.allocator, &self.quantization_tables, &buffered_stream);
                 },
 
                 .sof1 => return ImageError.Unsupported,  // extended sequential DCT Huffman coding
@@ -154,7 +158,7 @@ pub const JPEG = struct {
                     if (JPEG_DEBUG) std.debug.print("Skipping comment segment\n", .{});
 
                     const comment_length = try reader.readIntBig(u16);
-                    try stream.seekBy(comment_length - 2);
+                    try buffered_stream.seekBy(comment_length - 2);
                 },
 
                 else => {
@@ -182,15 +186,17 @@ pub const JPEG = struct {
     }
 
     fn formatDetect(stream: *Image.Stream) ImageReadError!bool {
-        const reader = stream.reader();
+        var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
+
+        const reader = buffered_stream.reader();
         const maybe_start_of_image = try reader.readIntBig(u16);
         if (maybe_start_of_image != @intFromEnum(Markers.start_of_image)) {
             return false;
         }
 
-        try stream.seekTo(6);
+        try buffered_stream.seekTo(6);
         var identifier_buffer: [4]u8 = undefined;
-        _ = try stream.read(identifier_buffer[0..]);
+        _ = try buffered_stream.read(identifier_buffer[0..]);
 
         return std.mem.eql(u8, identifier_buffer[0..], "JFIF");
     }

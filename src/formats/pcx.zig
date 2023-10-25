@@ -1,13 +1,14 @@
 // Adapted from https://github.com/MasterQ32/zig-gamedev-lib/blob/master/src/pcx.zig
 // with permission from Felix Queißner
 const Allocator = std.mem.Allocator;
-const FormatInterface = @import("../format_interface.zig").FormatInterface;
-const PixelFormat = @import("../pixel_format.zig").PixelFormat;
+const buffered_stream_source = @import("../buffered_stream_source.zig");
 const color = @import("../color.zig");
+const FormatInterface = @import("../FormatInterface.zig");
+const Image = @import("../Image.zig");
 const ImageError = Image.Error;
 const ImageReadError = Image.ReadError;
 const ImageWriteError = Image.WriteError;
-const Image = @import("../Image.zig");
+const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const std = @import("std");
 const utils = @import("../utils.zig");
 
@@ -44,10 +45,10 @@ const RLEDecoder = struct {
         remaining: usize,
     };
 
-    reader: Image.Stream.Reader,
+    reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader,
     current_run: ?Run,
 
-    fn init(reader: Image.Stream.Reader) RLEDecoder {
+    fn init(reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) RLEDecoder {
         return RLEDecoder{
             .reader = reader,
             .current_run = null,
@@ -168,9 +169,10 @@ pub const PCX = struct {
     }
 
     pub fn read(self: *Self, allocator: Allocator, stream: *Image.Stream) ImageReadError!color.PixelStorage {
-        const reader = stream.reader();
+        var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
+        const reader = buffered_stream.reader();
         self.header = try utils.readStructLittle(reader, PCXHeader);
-        _ = try stream.read(PCXHeader.padding[0..]);
+        _ = try buffered_stream.read(PCXHeader.padding[0..]);
 
         if (self.header.id != 0x0A) {
             return ImageReadError.InvalidData;
@@ -283,8 +285,8 @@ pub const PCX = struct {
             }
 
             if (pixels == .indexed8) {
-                const end_pos = try stream.getEndPos();
-                try stream.seekTo(end_pos - 769);
+                const end_pos = try buffered_stream.getEndPos();
+                try buffered_stream.seekTo(end_pos - 769);
 
                 if ((try reader.readByte()) != 0x0C)
                     return ImageReadError.InvalidData;
