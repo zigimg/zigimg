@@ -1,6 +1,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
+const buffered_stream_source = @import("../../buffered_stream_source.zig");
 const Image = @import("../../Image.zig");
 const ImageReadError = Image.ReadError;
 
@@ -24,8 +25,8 @@ ac_huffman_tables: [2]?HuffmanTable,
 
 const JPEG_DEBUG = false;
 
-pub fn read(allocator: Allocator, quantization_tables: *[4]?QuantizationTable, stream: *Image.Stream) ImageReadError!Self {
-    const reader = stream.reader();
+pub fn read(allocator: Allocator, quantization_tables: *[4]?QuantizationTable, buffered_stream: *buffered_stream_source.DefaultBufferedStreamSourceReader) ImageReadError!Self {
+    const reader = buffered_stream.reader();
     var frame_header = try FrameHeader.read(allocator, reader);
 
     var self = Self{
@@ -52,7 +53,7 @@ pub fn read(allocator: Allocator, quantization_tables: *[4]?QuantizationTable, s
     }
 
     // Undo the last marker read
-    try stream.seekBy(-2);
+    try buffered_stream.seekBy(-2);
 
     return self;
 }
@@ -73,7 +74,7 @@ pub fn deinit(self: *Self) void {
     self.frame_header.deinit();
 }
 
-fn parseDefineHuffmanTables(self: *Self, reader: Image.Stream.Reader) ImageReadError!void {
+fn parseDefineHuffmanTables(self: *Self, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!void {
     var segment_size = try reader.readIntBig(u16);
     if (JPEG_DEBUG) std.debug.print("DefineHuffmanTables: segment size = 0x{X}\n", .{segment_size});
     segment_size -= 2;

@@ -4,6 +4,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
+const buffered_stream_source = @import("../../buffered_stream_source.zig");
 const Image = @import("../../Image.zig");
 const ImageReadError = Image.ReadError;
 
@@ -23,7 +24,7 @@ pub const Table = struct {
 
     table_class: u8,
 
-    pub fn read(allocator: Allocator, table_class: u8, reader: Image.Stream.Reader) ImageReadError!Self {
+    pub fn read(allocator: Allocator, table_class: u8, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!Self {
         if (table_class & 1 != table_class)
             return ImageReadError.InvalidData;
 
@@ -87,12 +88,12 @@ pub const Reader = struct {
     const Self = @This();
 
     table: ?*const Table = null,
-    reader: Image.Stream.Reader,
+    reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader,
     byte_buffer: u8 = 0,
     bits_left: u4 = 0,
     last_byte_was_ff: bool = false,
 
-    pub fn init(reader: Image.Stream.Reader) Self {
+    pub fn init(reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) Self {
         return .{
             .reader = reader,
         };

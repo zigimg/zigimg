@@ -3,6 +3,7 @@
 
 const std = @import("std");
 
+const buffered_stream_source = @import("../../buffered_stream_source.zig");
 const Image = @import("../../Image.zig");
 const ImageReadError = Image.ReadError;
 
@@ -16,7 +17,7 @@ const Component = struct {
     vertical_sampling_factor: u4,
     quantization_table_id: u8,
 
-    pub fn read(reader: Image.Stream.Reader) ImageReadError!Component {
+    pub fn read(reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!Component {
         const component_id = try reader.readByte();
         const sampling_factors = try reader.readByte();
         const quantization_table_id = try reader.readByte();
@@ -57,7 +58,7 @@ samples_per_row: u16,
 
 components: []Component,
 
-pub fn read(allocator: Allocator, reader: Image.Stream.Reader) ImageReadError!Self {
+pub fn read(allocator: Allocator, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!Self {
     var segment_size = try reader.readIntBig(u16);
     if (JPEG_DEBUG) std.debug.print("StartOfFrame: frame size = 0x{X}\n", .{segment_size});
 

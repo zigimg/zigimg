@@ -1,5 +1,6 @@
 const std = @import("std");
 
+const buffered_stream_source = @import("../../buffered_stream_source.zig");
 const color = @import("../../color.zig");
 const Image = @import("../../Image.zig");
 const ImageReadError = Image.ReadError;
@@ -24,7 +25,7 @@ scan_header: ScanHeader,
 mcu_storage: [MAX_COMPONENTS][MAX_BLOCKS]MCU,
 prediction_values: [3]i12,
 
-pub fn init(frame: *const Frame, reader: Image.Stream.Reader) ImageReadError!Self {
+pub fn init(frame: *const Frame, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!Self {
     const scan_header = try ScanHeader.read(reader);
     return Self{
         .frame = frame,
@@ -38,7 +39,7 @@ pub fn init(frame: *const Frame, reader: Image.Stream.Reader) ImageReadError!Sel
 /// Perform the scan operation.
 /// We assume the AC and DC huffman tables are already set up, and ready to decode.
 /// This should implement section E.2.3 of t-81 1992.
-pub fn performScan(frame: *const Frame, reader: Image.Stream.Reader, pixels_opt: *?color.PixelStorage) ImageReadError!void {
+pub fn performScan(frame: *const Frame, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader, pixels_opt: *?color.PixelStorage) ImageReadError!void {
     var self = try Self.init(frame, reader);
 
     const mcu_count = Self.calculateMCUCountInFrame(&frame.frame_header);
@@ -176,7 +177,7 @@ pub const ScanComponentSpec = struct {
     dc_table_selector: u4,
     ac_table_selector: u4,
 
-    pub fn read(reader: Image.Stream.Reader) ImageReadError!ScanComponentSpec {
+    pub fn read(reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!ScanComponentSpec {
         const component_selector = try reader.readByte();
         const entropy_coding_selectors = try reader.readByte();
 
@@ -209,7 +210,7 @@ pub const Header = struct {
     approximation_low: u4,
 
 
-    pub fn read(reader: Image.Stream.Reader) ImageReadError!Header {
+    pub fn read(reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!Header {
         var segment_size = try reader.readIntBig(u16);
         if (JPEG_DEBUG) std.debug.print("StartOfScan: segment size = 0x{X}\n", .{segment_size});
 

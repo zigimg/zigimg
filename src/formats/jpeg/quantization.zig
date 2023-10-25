@@ -2,6 +2,7 @@
 
 const std = @import("std");
 
+const buffered_stream_source = @import("../../buffered_stream_source.zig");
 const Image = @import("../../Image.zig");
 const ImageReadError = Image.ReadError;
 
@@ -24,7 +25,7 @@ pub const Header = struct {
 
     table: Table,
 
-    pub fn read(reader: Image.Stream.Reader) ImageReadError!Self {
+    pub fn read(reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!Self {
         _ = try reader.readIntBig(u16); // read the size, but we don't need it
 
         const precision_and_destination = try reader.readByte();
@@ -48,7 +49,7 @@ pub const Table = union(enum) {
     q8: [64]u8,
     q16: [64]u16,
 
-    pub fn read(precision: u8, reader: Image.Stream.Reader) ImageReadError!Self {
+    pub fn read(precision: u8, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!Self {
         // 0 = 8 bits, 1 = 16 bits
         switch (precision) {
             0 => {

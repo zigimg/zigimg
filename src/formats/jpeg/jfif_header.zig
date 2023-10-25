@@ -4,6 +4,7 @@
 
 const std = @import("std");
 
+const buffered_stream_source = @import("../../buffered_stream_source.zig");
 const Image = @import("../../Image.zig");
 const Markers = @import("./utils.zig").Markers;
 
@@ -22,10 +23,10 @@ density_unit: DensityUnit,
 x_density: u16,
 y_density: u16,
 
-pub fn read(stream: *Image.Stream) !Self {
+pub fn read(buffered_stream: *buffered_stream_source.DefaultBufferedStreamSourceReader) !Self {
     // Read the first APP0 header.
-    const reader = stream.reader();
-    try stream.seekTo(2);
+    const reader = buffered_stream.reader();
+    try buffered_stream.seekTo(2);
     const maybe_app0_marker = try reader.readIntBig(u16);
     if (maybe_app0_marker != @intFromEnum(Markers.application0)) {
         return error.App0MarkerDoesNotExist;
@@ -65,7 +66,7 @@ pub fn read(stream: *Image.Stream) !Self {
         return error.ExtraneousApplicationMarker;
     }
 
-    try stream.seekBy(-2);
+    try buffered_stream.seekBy(-2);
 
     return Self{
         .jfif_revision = jfif_revision,
