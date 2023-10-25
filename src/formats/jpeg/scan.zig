@@ -16,7 +16,7 @@ const ZigzagOffsets = @import("utils.zig").ZigzagOffsets;
 
 const Self = @This();
 
-const JPEG_DEBUG = true;
+const JPEG_DEBUG = false;
 const JPEG_VERY_DEBUG = false;
 
 frame: *const Frame,

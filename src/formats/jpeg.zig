@@ -31,7 +31,7 @@ const Scan = @import("./jpeg/scan.zig");
 
 // TODO: Hierarchical mode of JPEG compression.
 
-const JPEG_DEBUG = true;
+const JPEG_DEBUG = false;
 
 pub const JPEG = struct {
     frame: ?Frame = null,
