@@ -209,7 +209,6 @@ pub const Header = struct {
     approximation_high: u4,
     approximation_low: u4,
 
-
     pub fn read(reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!Header {
         var segment_size = try reader.readIntBig(u16);
         if (JPEG_DEBUG) std.debug.print("StartOfScan: segment size = 0x{X}\n", .{segment_size});
@@ -219,7 +218,7 @@ pub const Header = struct {
             return ImageReadError.InvalidData;
         }
 
-        if (JPEG_DEBUG) std.debug.print("  Component count: {}\n", .{ component_count });
+        if (JPEG_DEBUG) std.debug.print("  Component count: {}\n", .{component_count});
 
         var components = [_]?ScanComponentSpec{null} ** 4;
 

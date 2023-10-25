@@ -20,7 +20,7 @@ const IDCTMultipliers = @import("./jpeg/utils.zig").IDCTMultipliers;
 const QuantizationTable = @import("./jpeg/quantization.zig").Table;
 
 const HuffmanReader = @import("./jpeg/huffman.zig").Reader;
-const HuffmanTable =  @import("./jpeg/huffman.zig").Table;
+const HuffmanTable = @import("./jpeg/huffman.zig").Table;
 const Frame = @import("./jpeg/Frame.zig");
 const Scan = @import("./jpeg/Scan.zig");
 
@@ -124,7 +124,7 @@ pub const JPEG = struct {
                 // TODO(angelo): this should be moved inside the frameheader, it's part of thet
                 // and then the header just dispatches correctly what to do with it.
                 // JPEG should be as clear as possible
-                .sof0 => {  // Baseline DCT
+                .sof0 => { // Baseline DCT
                     if (self.frame != null) {
                         return ImageError.Unsupported;
                     }
@@ -132,15 +132,15 @@ pub const JPEG = struct {
                     self.frame = try Frame.read(self.allocator, &self.quantization_tables, &buffered_stream);
                 },
 
-                .sof1 => return ImageError.Unsupported,  // extended sequential DCT Huffman coding
-                .sof2 => return ImageError.Unsupported,  // progressive DCT Huffman coding
-                .sof3 => return ImageError.Unsupported,  // lossless (sequential) Huffman coding
+                .sof1 => return ImageError.Unsupported, // extended sequential DCT Huffman coding
+                .sof2 => return ImageError.Unsupported, // progressive DCT Huffman coding
+                .sof3 => return ImageError.Unsupported, // lossless (sequential) Huffman coding
                 .sof5 => return ImageError.Unsupported,
                 .sof6 => return ImageError.Unsupported,
                 .sof7 => return ImageError.Unsupported,
-                .sof9 => return ImageError.Unsupported,   // extended sequential DCT arithmetic coding
-                .sof10 => return ImageError.Unsupported,  // progressive DCT arithmetic coding
-                .sof11 => return ImageError.Unsupported,  // lossless (sequential) arithmetic coding
+                .sof9 => return ImageError.Unsupported, // extended sequential DCT arithmetic coding
+                .sof10 => return ImageError.Unsupported, // progressive DCT arithmetic coding
+                .sof11 => return ImageError.Unsupported, // lossless (sequential) arithmetic coding
                 .sof13 => return ImageError.Unsupported,
                 .sof14 => return ImageError.Unsupported,
                 .sof15 => return ImageError.Unsupported,

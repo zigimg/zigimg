@@ -41,7 +41,7 @@ pub const Header = struct {
             .table_destination = table_destination,
             .table = table,
         };
-    }   
+    }
 };
 
 pub const Table = union(enum) {
