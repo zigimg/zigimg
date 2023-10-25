@@ -8,7 +8,6 @@ const ImageReadError = Image.ReadError;
 const testing = std.testing;
 
 test "Should error on non JPEG images" {
-    std.log.info("Testing non JPEG images", .{});
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
     defer file.close();
 
