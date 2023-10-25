@@ -13,24 +13,37 @@ const std = @import("std");
 const utils = @import("../utils.zig");
 const simd = @import("../simd.zig");
 
-const Version = 5;
+const MagicHeader: u8 = 0x0A;
+const Version: u8 = 5;
+const VGAPaletteIdentifier: u8 = 0x0C;
+
+pub const Compression = enum(u8) {
+    none,
+    rle,
+};
+
+pub const PaletteInfo = enum(u16) {
+    color = 1,
+    grayscale = 2,
+    _,
+};
 
 pub const PCXHeader = extern struct {
-    id: u8 = 0x0A,
+    id: u8 = MagicHeader,
     version: u8 = Version,
-    compression: u8 = 1,
+    compression: Compression = .rle,
     bpp: u8 = 0,
     xmin: u16 align(1) = 0,
     ymin: u16 align(1) = 0,
     xmax: u16 align(1) = 0,
     ymax: u16 align(1) = 0,
-    horizontal_dpi: u16 align(1) = 0,
-    vertical_dpi: u16 align(1) = 0,
-    builtin_palette: [48]u8 = [_]u8{0} ** 48,
+    horizontal_dpi: u16 align(1) = 320, // Default values found in the PCX image in the test suite
+    vertical_dpi: u16 align(1) = 200, // Default values found in the PCX image in the test suite
+    builtin_palette: [16]color.Rgb24 = [_]color.Rgb24{.{ .r = 0, .g = 0, .b = 0 }} ** 16,
     _reserved0: u8 = 0,
     planes: u8 = 0,
     stride: u16 align(1) = 0,
-    palette_information: u16 align(1) = 0,
+    palette_information: PaletteInfo align(1) = .color,
     screen_width: u16 align(1) = 0,
     screen_height: u16 align(1) = 0,
     padding: [54]u8 = [_]u8{0} ** 54,
@@ -39,6 +52,9 @@ pub const PCXHeader = extern struct {
         std.debug.assert(@sizeOf(PCXHeader) == 128);
     }
 };
+
+const RLEPairMask = 0xC0;
+const RLELengthMask = 0xFF - RLEPairMask;
 
 const RLEDecoder = struct {
     const Run = struct {
@@ -67,10 +83,10 @@ const RLEDecoder = struct {
         } else {
             while (true) {
                 var byte = try self.reader.readByte();
-                if (byte == 0xC0) // skip over "zero length runs"
+                if (byte == RLEPairMask) // skip over "zero length runs"
                     continue;
-                if ((byte & 0xC0) == 0xC0) {
-                    const len = byte & 0x3F;
+                if ((byte & RLEPairMask) == RLEPairMask) {
+                    const len = byte & RLELengthMask;
                     std.debug.assert(len > 0);
                     const result = try self.reader.readByte();
                     if (len > 1) {
@@ -99,7 +115,7 @@ const RLEEncoder = struct {
     const LengthToCheck = 16;
     const VectorType = @Vector(LengthToCheck, u8);
 
-    const RlePair = packed struct(u8) {
+    const RLEPair = packed struct(u8) {
         length: u6 = 0,
         identifier: u2 = (1 << 2) - 1,
     };
@@ -181,7 +197,7 @@ const RLEEncoder = struct {
     }
 
     inline fn flushRlePair(writer: anytype, value: u8, count: usize) !void {
-        const rle_pair = RlePair{
+        const rle_pair = RLEPair{
             .length = @truncate(count),
         };
         try writer.writeByte(@bitCast(rle_pair));
@@ -190,7 +206,7 @@ const RLEEncoder = struct {
 
     inline fn flushRawBytes(writer: anytype, value: u8, count: usize) !void {
         // Must flush byte greater than 192 (0xC0) as a RLE pair
-        if ((value & 0xC0) == 0xC0) {
+        if ((value & RLEPairMask) == RLEPairMask) {
             for (0..count) |_| {
                 try flushRlePair(writer, value, 1);
             }
@@ -257,11 +273,11 @@ pub const PCX = struct {
         var magic_number_bufffer: [2]u8 = undefined;
         _ = try stream.read(magic_number_bufffer[0..]);
 
-        if (magic_number_bufffer[0] != 0x0A) {
+        if (magic_number_bufffer[0] != MagicHeader) {
             return false;
         }
 
-        if (magic_number_bufffer[1] > 0x05) {
+        if (magic_number_bufffer[1] > Version) {
             return false;
         }
 
@@ -288,7 +304,47 @@ pub const PCX = struct {
 
         var pcx = PCX{};
 
+        if (image.width > std.math.maxInt(u16) or image.height > std.math.maxInt(u16)) {
+            return ImageWriteError.Unsupported;
+        }
+
+        pcx.header.xmax = @truncate(image.width - 1);
+        pcx.header.ymax = @truncate(image.height - 1);
+        pcx.header.horizontal_dpi = 320;
+        pcx.header.vertical_dpi = 200;
+
         // Fill header info based on image
+        switch (image.pixels) {
+            .indexed1 => |pixels| {
+                pcx.header.bpp = 1;
+                pcx.header.planes = 1;
+
+                pcx.fillPalette(pixels.palette);
+            },
+            .indexed4 => |pixels| {
+                pcx.header.bpp = 4;
+                pcx.header.planes = 1;
+
+                pcx.fillPalette(pixels.palette);
+            },
+            .indexed8 => |pixels| {
+                pcx.header.bpp = 8;
+                pcx.header.planes = 1;
+
+                pcx.fillPalette(pixels.palette);
+            },
+            .rgb24 => {
+                pcx.header.bpp = 8;
+                pcx.header.planes = 3;
+            },
+            else => {
+                return ImageWriteError.Unsupported;
+            },
+        }
+
+        pcx.header.stride = @as(u16, @intCast(image.width / 8)) * pcx.header.bpp;
+        // Add one if the result is a odd number
+        pcx.header.stride += (pcx.header.stride & 0x1);
 
         try pcx.write(stream, image.pixels);
     }
@@ -411,33 +467,34 @@ pub const PCX = struct {
         try decoder.finish();
 
         if (pixel_format == .indexed1 or pixel_format == .indexed4 or pixel_format == .indexed8) {
-            var pal = switch (pixels) {
+            var palette = switch (pixels) {
                 .indexed1 => |*storage| storage.palette[0..],
                 .indexed4 => |*storage| storage.palette[0..],
                 .indexed8 => |*storage| storage.palette[0..],
                 else => undefined,
             };
 
-            var i: usize = 0;
-            while (i < @min(pal.len, self.header.builtin_palette.len / 3)) : (i += 1) {
-                pal[i].r = self.header.builtin_palette[3 * i + 0];
-                pal[i].g = self.header.builtin_palette[3 * i + 1];
-                pal[i].b = self.header.builtin_palette[3 * i + 2];
-                pal[i].a = 1.0;
+            const effective_len = @min(palette.len, self.header.builtin_palette.len);
+            for (0..effective_len) |index| {
+                palette[index].r = self.header.builtin_palette[index].r;
+                palette[index].g = self.header.builtin_palette[index].g;
+                palette[index].b = self.header.builtin_palette[index].b;
+                palette[index].a = 255;
             }
 
             if (pixels == .indexed8) {
                 const end_pos = try buffered_stream.getEndPos();
                 try buffered_stream.seekTo(end_pos - 769);
 
-                if ((try reader.readByte()) != 0x0C)
+                if ((try reader.readByte()) != VGAPaletteIdentifier) {
                     return ImageReadError.InvalidData;
+                }
 
-                for (pal) |*c| {
-                    c.r = try reader.readByte();
-                    c.g = try reader.readByte();
-                    c.b = try reader.readByte();
-                    c.a = 1.0;
+                for (palette) |*current_entry| {
+                    current_entry.r = try reader.readByte();
+                    current_entry.g = try reader.readByte();
+                    current_entry.b = try reader.readByte();
+                    current_entry.a = 255;
                 }
             }
         }
@@ -446,11 +503,44 @@ pub const PCX = struct {
     }
 
     pub fn write(self: PCX, stream: *Image.Stream, pixels: color.PixelStorage) Image.WriteError!void {
-        _ = pixels;
+        switch (pixels) {
+            .indexed1,
+            .indexed4,
+            .indexed8,
+            .rgb24,
+            => {
+                // Do nothing
+            },
+            else => {
+                return ImageWriteError.Unsupported;
+            },
+        }
+
         var buffered_stream = buffered_stream_source.bufferedStreamSourceWriter(stream);
 
         const writer = buffered_stream.writer();
 
         try utils.writeStructLittle(writer, self.header);
+
+        // TODO: Write pixels
+
+        // Write VGA palette if required
+        if (pixels == .indexed8) {
+            try writer.writeByte(VGAPaletteIdentifier);
+
+            for (pixels.indexed8.palette) |current_entry| {
+                const rgb24_color = color.Rgb24.fromU32Rgba(current_entry.toU32Rgba());
+                try utils.writeStructLittle(writer, rgb24_color);
+            }
+        }
+    }
+
+    fn fillPalette(self: PCX, palette: []const color.Rgba32) void {
+        const effective_len = @min(palette.len, self.header.builtin_palette.len);
+        for (0..effective_len) |index| {
+            self.header.builtin_palette[index].r = palette[index].r;
+            self.header.builtin_palette[index].g = palette[index].g;
+            self.header.builtin_palette[index].b = palette[index].b;
+        }
     }
 };
