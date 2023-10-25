@@ -310,8 +310,6 @@ pub const PCX = struct {
 
         pcx.header.xmax = @truncate(image.width - 1);
         pcx.header.ymax = @truncate(image.height - 1);
-        pcx.header.horizontal_dpi = 320;
-        pcx.header.vertical_dpi = 200;
 
         // Fill header info based on image
         switch (image.pixels) {
@@ -535,7 +533,7 @@ pub const PCX = struct {
         }
     }
 
-    fn fillPalette(self: PCX, palette: []const color.Rgba32) void {
+    fn fillPalette(self: *PCX, palette: []const color.Rgba32) void {
         const effective_len = @min(palette.len, self.header.builtin_palette.len);
         for (0..effective_len) |index| {
             self.header.builtin_palette[index].r = palette[index].r;
