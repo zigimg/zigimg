@@ -6,7 +6,7 @@ const Image = @import("../../Image.zig");
 const ImageReadError = Image.ReadError;
 
 const Markers = @import("utils.zig").Markers;
-const FrameHeader = @import("frame_header.zig");
+const FrameHeader = @import("FrameHeader.zig");
 const QuantizationTable = @import("quantization.zig").Table;
 const HuffmanTable = @import("huffman.zig").Table;
 const color = @import("../../color.zig");

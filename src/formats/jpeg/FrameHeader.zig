@@ -50,12 +50,11 @@ const Component = struct {
 };
 
 const Self = @This();
-allocator: Allocator,
 
+allocator: Allocator,
 sample_precision: u8,
 row_count: u16,
 samples_per_row: u16,
-
 components: []Component,
 
 pub fn read(allocator: Allocator, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!Self {

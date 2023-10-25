@@ -11,8 +11,8 @@ const FormatInterface = @import("../FormatInterface.zig");
 const color = @import("../color.zig");
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 
-const FrameHeader = @import("./jpeg/frame_header.zig");
-const JFIFHeader = @import("./jpeg/jfif_header.zig");
+const FrameHeader = @import("./jpeg/FrameHeader.zig");
+const JFIFHeader = @import("./jpeg/JFIFHeader.zig");
 
 const Markers = @import("./jpeg/utils.zig").Markers;
 const ZigzagOffsets = @import("./jpeg/utils.zig").ZigzagOffsets;
@@ -21,8 +21,8 @@ const QuantizationTable = @import("./jpeg/quantization.zig").Table;
 
 const HuffmanReader = @import("./jpeg/huffman.zig").Reader;
 const HuffmanTable =  @import("./jpeg/huffman.zig").Table;
-const Frame = @import("./jpeg/frame.zig");
-const Scan = @import("./jpeg/scan.zig");
+const Frame = @import("./jpeg/Frame.zig");
+const Scan = @import("./jpeg/Scan.zig");
 
 // TODO: Chroma subsampling
 // TODO: Progressive scans

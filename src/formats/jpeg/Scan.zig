@@ -5,8 +5,8 @@ const color = @import("../../color.zig");
 const Image = @import("../../Image.zig");
 const ImageReadError = Image.ReadError;
 
-const FrameHeader = @import("frame_header.zig");
-const Frame = @import("frame.zig");
+const FrameHeader = @import("FrameHeader.zig");
+const Frame = @import("Frame.zig");
 const HuffmanReader = @import("huffman.zig").Reader;
 
 const MAX_COMPONENTS = @import("utils.zig").MAX_COMPONENTS;
