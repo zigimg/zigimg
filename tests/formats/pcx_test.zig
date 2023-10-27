@@ -18,8 +18,8 @@ test "PCX indexed1 (linear)" {
     const pixels = try pcxFile.read(helpers.zigimg_test_allocator, &stream_source);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(pcxFile.width, 27);
-    try helpers.expectEq(pcxFile.height, 27);
+    try helpers.expectEq(pcxFile.width(), 27);
+    try helpers.expectEq(pcxFile.height(), 27);
     try helpers.expectEq(try pcxFile.pixelFormat(), PixelFormat.indexed1);
 
     try testing.expect(pixels == .indexed1);
@@ -55,8 +55,8 @@ test "PCX indexed4 (linear)" {
     const pixels = try pcxFile.read(helpers.zigimg_test_allocator, &stream_source);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(pcxFile.width, 27);
-    try helpers.expectEq(pcxFile.height, 27);
+    try helpers.expectEq(pcxFile.width(), 27);
+    try helpers.expectEq(pcxFile.height(), 27);
     try helpers.expectEq(try pcxFile.pixelFormat(), PixelFormat.indexed4);
 
     try testing.expect(pixels == .indexed4);
@@ -93,8 +93,8 @@ test "PCX indexed8 (linear)" {
     const pixels = try pcxFile.read(helpers.zigimg_test_allocator, &stream_source);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(pcxFile.width, 27);
-    try helpers.expectEq(pcxFile.height, 27);
+    try helpers.expectEq(pcxFile.width(), 27);
+    try helpers.expectEq(pcxFile.height(), 27);
     try helpers.expectEq(try pcxFile.pixelFormat(), PixelFormat.indexed8);
 
     try testing.expect(pixels == .indexed8);
@@ -136,8 +136,8 @@ test "PCX indexed24 (planar)" {
     try helpers.expectEq(pcxFile.header.planes, 3);
     try helpers.expectEq(pcxFile.header.bpp, 8);
 
-    try helpers.expectEq(pcxFile.width, 27);
-    try helpers.expectEq(pcxFile.height, 27);
+    try helpers.expectEq(pcxFile.width(), 27);
+    try helpers.expectEq(pcxFile.height(), 27);
     try helpers.expectEq(try pcxFile.pixelFormat(), PixelFormat.rgb24);
 
     try testing.expect(pixels == .rgb24);
@@ -161,4 +161,60 @@ test "PCX indexed24 (planar)" {
     try helpers.expectEq(pixels.rgb24[26 * 27 + 26].r, 0x88);
     try helpers.expectEq(pixels.rgb24[26 * 27 + 26].g, 0xb7);
     try helpers.expectEq(pixels.rgb24[26 * 27 + 26].b, 0x55);
+}
+
+test "Write PCX indexed8 (odd width)" {
+    const image_file_name = "zigimg_pcx_indexed8_odd.pcx";
+
+    var source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "pcx/test-bpp8.pcx");
+    defer source_file.close();
+
+    var source_image = try Image.fromFile(std.testing.allocator, &source_file);
+    defer source_image.deinit();
+
+    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+        .pcx = .{},
+    });
+
+    defer {
+        std.fs.cwd().deleteFile(image_file_name) catch {};
+    }
+
+    const read_file = try helpers.testOpenFile(image_file_name);
+    defer read_file.close();
+
+    var stream_source = std.io.StreamSource{ .file = read_file };
+
+    var pcxFile = pcx.PCX{};
+
+    const pixels = try pcxFile.read(helpers.zigimg_test_allocator, &stream_source);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(pcxFile.width(), 27);
+    try helpers.expectEq(pcxFile.height(), 27);
+    try helpers.expectEq(try pcxFile.pixelFormat(), PixelFormat.indexed8);
+
+    try testing.expect(pixels == .indexed8);
+
+    try helpers.expectEq(pixels.indexed8.indices[0], 37);
+    try helpers.expectEq(pixels.indexed8.indices[3 * 27 + 15], 60);
+    try helpers.expectEq(pixels.indexed8.indices[26 * 27 + 26], 254);
+
+    const palette0 = pixels.indexed8.palette[0];
+
+    try helpers.expectEq(palette0.r, 0x46);
+    try helpers.expectEq(palette0.g, 0x1c);
+    try helpers.expectEq(palette0.b, 0x71);
+
+    const palette15 = pixels.indexed8.palette[15];
+
+    try helpers.expectEq(palette15.r, 0x41);
+    try helpers.expectEq(palette15.g, 0x49);
+    try helpers.expectEq(palette15.b, 0x30);
+
+    const palette219 = pixels.indexed8.palette[219];
+
+    try helpers.expectEq(palette219.r, 0x61);
+    try helpers.expectEq(palette219.g, 0x8e);
+    try helpers.expectEq(palette219.b, 0xc3);
 }
