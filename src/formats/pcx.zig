@@ -667,12 +667,12 @@ pub const PCX = struct {
                     current_byte |= pixel;
                     try rle_encoder.encodeByte(writer, current_byte);
                 } else {
-                    current_byte = @as(u8,pixel) << 4;
+                    current_byte = @as(u8, pixel) << 4;
                 }
             }
 
             if (!is_even) {
-                try rle_encoder.encodeByte(writer, 0x00);
+                try rle_encoder.encodeByte(writer, current_byte);
             }
         }
 

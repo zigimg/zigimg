@@ -308,25 +308,17 @@ test "Write PCX indexed4 (odd width)" {
 
     try testing.expect(pixels == .indexed4);
 
-    try helpers.expectEq(pixels.indexed4.indices[0], 1);
-    try helpers.expectEq(pixels.indexed4.indices[1], 9);
-    try helpers.expectEq(pixels.indexed4.indices[2], 0);
-    try helpers.expectEq(pixels.indexed4.indices[3], 0);
-    try helpers.expectEq(pixels.indexed4.indices[4], 4);
-    try helpers.expectEq(pixels.indexed4.indices[14 * 27 + 9], 6);
-    try helpers.expectEq(pixels.indexed4.indices[25 * 27 + 25], 7);
+    const image_size = source_image.width * source_image.height;
+    for (0..image_size) |index| {
+        try helpers.expectEq(pixels.indexed4.indices[index], source_image.pixels.indexed4.indices[index]);
+    }
 
-    const palette0 = pixels.indexed4.palette[0];
-
-    try helpers.expectEq(palette0.r, 0x5e);
-    try helpers.expectEq(palette0.g, 0x37);
-    try helpers.expectEq(palette0.b, 0x97);
-
-    const palette15 = pixels.indexed4.palette[15];
-
-    try helpers.expectEq(palette15.r, 0x60);
-    try helpers.expectEq(palette15.g, 0xb5);
-    try helpers.expectEq(palette15.b, 0x68);
+    for (0..pixels.indexed4.palette.len) |index| {
+        try helpers.expectEq(pixels.indexed4.palette[index].r, source_image.pixels.indexed4.palette[index].r);
+        try helpers.expectEq(pixels.indexed4.palette[index].g, source_image.pixels.indexed4.palette[index].g);
+        try helpers.expectEq(pixels.indexed4.palette[index].b, source_image.pixels.indexed4.palette[index].b);
+        try helpers.expectEq(pixels.indexed4.palette[index].a, 255);
+    }
 }
 
 test "Write PCX indexed 4 (even width)" {
@@ -381,28 +373,16 @@ test "Write PCX indexed 4 (even width)" {
 
     try testing.expect(pixels == .indexed4);
 
-    // Check palette
-    for (0..16) |index| {
-        const current_step = index % colors_per_channel;
-        const current_channel = index / colors_per_channel;
-        const current_intensity = color.toIntColor(u8, @as(f32, @floatFromInt(current_step)) / @as(f32, @floatFromInt(colors_per_channel)));
-
-        try helpers.expectEq(rainbow_test.pixels.indexed4.palette[index].a, 255);
-
-        switch (current_channel) {
-            0 => try helpers.expectEq(rainbow_test.pixels.indexed4.palette[index].r, current_intensity),
-            1 => try helpers.expectEq(rainbow_test.pixels.indexed4.palette[index].g, current_intensity),
-            2, 3 => try helpers.expectEq(rainbow_test.pixels.indexed4.palette[index].b, current_intensity),
-            else => {},
-        }
+    const image_size = rainbow_test.width * rainbow_test.height;
+    for (0..image_size) |index| {
+        try helpers.expectEq(pixels.indexed4.indices[index], rainbow_test.pixels.indexed4.indices[index]);
     }
 
-    // Check indices
-    for (0..16) |y| {
-        const stride = y * 16;
-        for (0..16) |x| {
-            try helpers.expectEq(pixels.indexed4.indices[stride + x], @as(u4, @intCast(y)));
-        }
+    for (0..pixels.indexed4.palette.len) |index| {
+        try helpers.expectEq(pixels.indexed4.palette[index].r, rainbow_test.pixels.indexed4.palette[index].r);
+        try helpers.expectEq(pixels.indexed4.palette[index].g, rainbow_test.pixels.indexed4.palette[index].g);
+        try helpers.expectEq(pixels.indexed4.palette[index].b, rainbow_test.pixels.indexed4.palette[index].b);
+        try helpers.expectEq(pixels.indexed4.palette[index].a, 255);
     }
 }
 
@@ -433,33 +413,17 @@ test "Write PCX indexed8 (odd width)" {
     const pixels = try pcxFile.read(helpers.zigimg_test_allocator, &stream_source);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(pcxFile.width(), 27);
-    try helpers.expectEq(pcxFile.height(), 27);
-    try helpers.expectEq(try pcxFile.pixelFormat(), PixelFormat.indexed8);
+    const image_size = source_image.width * source_image.height;
+    for (0..image_size) |index| {
+        try helpers.expectEq(pixels.indexed8.indices[index], source_image.pixels.indexed8.indices[index]);
+    }
 
-    try testing.expect(pixels == .indexed8);
-
-    try helpers.expectEq(pixels.indexed8.indices[0], 37);
-    try helpers.expectEq(pixels.indexed8.indices[3 * 27 + 15], 60);
-    try helpers.expectEq(pixels.indexed8.indices[26 * 27 + 26], 254);
-
-    const palette0 = pixels.indexed8.palette[0];
-
-    try helpers.expectEq(palette0.r, 0x46);
-    try helpers.expectEq(palette0.g, 0x1c);
-    try helpers.expectEq(palette0.b, 0x71);
-
-    const palette15 = pixels.indexed8.palette[15];
-
-    try helpers.expectEq(palette15.r, 0x41);
-    try helpers.expectEq(palette15.g, 0x49);
-    try helpers.expectEq(palette15.b, 0x30);
-
-    const palette219 = pixels.indexed8.palette[219];
-
-    try helpers.expectEq(palette219.r, 0x61);
-    try helpers.expectEq(palette219.g, 0x8e);
-    try helpers.expectEq(palette219.b, 0xc3);
+    for (0..pixels.indexed8.palette.len) |index| {
+        try helpers.expectEq(pixels.indexed8.palette[index].r, source_image.pixels.indexed8.palette[index].r);
+        try helpers.expectEq(pixels.indexed8.palette[index].g, source_image.pixels.indexed8.palette[index].g);
+        try helpers.expectEq(pixels.indexed8.palette[index].b, source_image.pixels.indexed8.palette[index].b);
+        try helpers.expectEq(pixels.indexed8.palette[index].a, 255);
+    }
 }
 
 test "Write PCX indexed 8 (even width)" {
@@ -472,6 +436,10 @@ test "Write PCX indexed 8 (even width)" {
         const current_step = index % colors_per_channel;
         const current_channel = index / colors_per_channel;
         const current_intensity = color.toIntColor(u8, @as(f32, @floatFromInt(current_step)) / @as(f32, @floatFromInt(colors_per_channel)));
+
+        rainbow_test.pixels.indexed8.palette[index].r = 0;
+        rainbow_test.pixels.indexed8.palette[index].g = 0;
+        rainbow_test.pixels.indexed8.palette[index].b = 0;
         rainbow_test.pixels.indexed8.palette[index].a = 255;
         switch (current_channel) {
             0 => rainbow_test.pixels.indexed8.palette[index].r = current_intensity,
@@ -514,28 +482,16 @@ test "Write PCX indexed 8 (even width)" {
 
     try testing.expect(pixels == .indexed8);
 
-    // Check palette
-    for (0..255) |index| {
-        const current_step = index % colors_per_channel;
-        const current_channel = index / colors_per_channel;
-        const current_intensity = color.toIntColor(u8, @as(f32, @floatFromInt(current_step)) / @as(f32, @floatFromInt(colors_per_channel)));
-
-        try helpers.expectEq(rainbow_test.pixels.indexed8.palette[index].a, 255);
-
-        switch (current_channel) {
-            0 => try helpers.expectEq(rainbow_test.pixels.indexed8.palette[index].r, current_intensity),
-            1 => try helpers.expectEq(rainbow_test.pixels.indexed8.palette[index].g, current_intensity),
-            2, 3 => try helpers.expectEq(rainbow_test.pixels.indexed8.palette[index].b, current_intensity),
-            else => {},
-        }
+    const image_size = rainbow_test.width * rainbow_test.height;
+    for (0..image_size) |index| {
+        try helpers.expectEq(pixels.indexed8.indices[index], rainbow_test.pixels.indexed8.indices[index]);
     }
 
-    // Check indices
-    for (0..255) |y| {
-        const stride = y * 256;
-        for (0..255) |x| {
-            try helpers.expectEq(pixels.indexed8.indices[stride + x], @as(u8, @intCast(y)));
-        }
+    for (0..pixels.indexed8.palette.len) |index| {
+        try helpers.expectEq(pixels.indexed8.palette[index].r, rainbow_test.pixels.indexed8.palette[index].r);
+        try helpers.expectEq(pixels.indexed8.palette[index].g, rainbow_test.pixels.indexed8.palette[index].g);
+        try helpers.expectEq(pixels.indexed8.palette[index].b, rainbow_test.pixels.indexed8.palette[index].b);
+        try helpers.expectEq(pixels.indexed8.palette[index].a, 255);
     }
 }
 
