@@ -583,6 +583,13 @@ pub const PCX = struct {
                 } else {
                     try self.writeIndexed8Odd(writer, indexed);
                 }
+
+                // Write VGA palette
+                try writer.writeByte(VGAPaletteIdentifier);
+                for (pixels.indexed8.palette) |current_entry| {
+                    const rgb24_color = color.Rgb24.fromU32Rgba(current_entry.toU32Rgba());
+                    try utils.writeStructLittle(writer, rgb24_color);
+                }
             },
             .rgb24 => |data| {
                 try self.writeRgb24(writer, data);
@@ -590,16 +597,6 @@ pub const PCX = struct {
             else => {
                 return ImageWriteError.Unsupported;
             },
-        }
-
-        // Write VGA palette if required
-        if (pixels == .indexed8) {
-            try writer.writeByte(VGAPaletteIdentifier);
-
-            for (pixels.indexed8.palette) |current_entry| {
-                const rgb24_color = color.Rgb24.fromU32Rgba(current_entry.toU32Rgba());
-                try utils.writeStructLittle(writer, rgb24_color);
-            }
         }
 
         try buffered_stream.flush();
