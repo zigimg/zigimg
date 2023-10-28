@@ -71,7 +71,7 @@ zig build test
 | JPEG          | ❌            | ❌            |
 | PAM           | ✔️            | ✔️            |
 | PBM           | ✔️            | ❌            |
-| PCX           | ✔️            | ❌            |
+| PCX           | ✔️            | ✔️            |
 | PGM           | ✔️ (Partial)  | ✔️ (Partial)  |
 | PNG           | ✔️            | ✔️ (Partial)  |
 | PPM           | ✔️ (Partial)  | ❌            |
