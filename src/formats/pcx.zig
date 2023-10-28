@@ -571,7 +571,9 @@ pub const PCX = struct {
         const is_even = ((actual_width & 0x1) == 0);
 
         switch (pixels) {
-            .indexed1 => {},
+            .indexed1 => |indexed| {
+                try self.writeIndexed1(writer, indexed);
+            },
             .indexed4 => |indexed| {
                 try self.writeIndexed4(writer, indexed);
             },
@@ -610,6 +612,39 @@ pub const PCX = struct {
             self.header.builtin_palette[index].g = palette[index].g;
             self.header.builtin_palette[index].b = palette[index].b;
         }
+    }
+
+    fn writeIndexed1(self: *const PCX, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: color.IndexedStorage1) Image.WriteError!void {
+        var rle_encoder = RLEStreamEncoder{};
+
+        const image_width = self.width();
+        const image_height = self.height();
+
+        const is_even = ((image_width & 0x1) == 0);
+
+        for (0..image_height) |y| {
+            const stride = y * image_width;
+
+            var current_byte: u8 = 0;
+
+            for (0..image_width) |x| {
+                const pixel = indexed.indices[stride + x];
+
+                const bit = @as(u3, @intCast(7 - (x % 8)));
+
+                current_byte |= @as(u8, pixel) << bit;
+                if (bit == 0) {
+                    try rle_encoder.encodeByte(writer, current_byte);
+                    current_byte = 0;
+                }
+            }
+
+            if (!is_even) {
+                try rle_encoder.encodeByte(writer, current_byte);
+            }
+        }
+
+        try rle_encoder.flush(writer);
     }
 
     fn writeIndexed4(self: *const PCX, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: color.IndexedStorage4) Image.WriteError!void {

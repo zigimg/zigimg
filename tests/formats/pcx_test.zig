@@ -163,6 +163,118 @@ test "PCX indexed24 (planar)" {
     try helpers.expectEq(pixels.rgb24[26 * 27 + 26].b, 0x55);
 }
 
+test "Write PCX indexed1 (odd width)" {
+    const image_file_name = "zigimg_pcx_indexed1_odd.pcx";
+
+    var source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "pcx/test-bpp1.pcx");
+    defer source_file.close();
+
+    var source_image = try Image.fromFile(helpers.zigimg_test_allocator, &source_file);
+    defer source_image.deinit();
+
+    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+        .pcx = .{},
+    });
+
+    defer {
+        std.fs.cwd().deleteFile(image_file_name) catch {};
+    }
+
+    const read_file = try helpers.testOpenFile(image_file_name);
+    defer read_file.close();
+
+    var stream_source = std.io.StreamSource{ .file = read_file };
+
+    var pcxFile = pcx.PCX{};
+
+    const pixels = try pcxFile.read(helpers.zigimg_test_allocator, &stream_source);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(pcxFile.width(), 27);
+    try helpers.expectEq(pcxFile.height(), 27);
+    try helpers.expectEq(try pcxFile.pixelFormat(), PixelFormat.indexed1);
+
+    try testing.expect(pixels == .indexed1);
+
+    const image_size = source_image.width * source_image.height;
+
+    for (0..image_size) |index| {
+        try helpers.expectEq(pixels.indexed1.indices[index], source_image.pixels.indexed1.indices[index]);
+    }
+
+    for (0..pixels.indexed1.palette.len) |index| {
+        try helpers.expectEq(pixels.indexed1.palette[index].r, source_image.pixels.indexed1.palette[index].r);
+        try helpers.expectEq(pixels.indexed1.palette[index].g, source_image.pixels.indexed1.palette[index].g);
+        try helpers.expectEq(pixels.indexed1.palette[index].b, source_image.pixels.indexed1.palette[index].b);
+        try helpers.expectEq(pixels.indexed1.palette[index].a, 255);
+    }
+}
+
+test "Write PCX indexed 1 (even width)" {
+    const image_width = 256;
+    const image_height = 256;
+    const checker_size = 32;
+
+    var image_pattern = try Image.create(helpers.zigimg_test_allocator, image_width, image_height, .indexed1);
+    defer image_pattern.deinit();
+
+    // Generate palette
+    image_pattern.pixels.indexed1.palette[0] = color.Rgba32.initRgb(0, 0, 0);
+    image_pattern.pixels.indexed1.palette[1] = color.Rgba32.initRgb(255, 255, 255);
+
+    // Generate pattern
+    for (0..image_height) |y| {
+        const stride = y * image_width;
+
+        const y_pattern = (y / checker_size) & 0x1;
+
+        for (0..image_width) |x| {
+            const x_pattern = (x / checker_size) & 0x1;
+
+            image_pattern.pixels.indexed1.indices[stride + x] = @truncate(~(y_pattern ^ x_pattern));
+        }
+    }
+
+    const image_file_name = "zigimg_pcx_indexed1_even.pcx";
+
+    try image_pattern.writeToFilePath(image_file_name, Image.EncoderOptions{
+        .pcx = .{},
+    });
+    defer {
+        std.fs.cwd().deleteFile(image_file_name) catch {};
+    }
+
+    const read_file = try helpers.testOpenFile(image_file_name);
+    defer read_file.close();
+
+    var stream_source = std.io.StreamSource{ .file = read_file };
+
+    var pcxFile = pcx.PCX{};
+
+    const pixels = try pcxFile.read(helpers.zigimg_test_allocator, &stream_source);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(pcxFile.width(), image_width);
+    try helpers.expectEq(pcxFile.height(), image_height);
+    try helpers.expectEq(try pcxFile.pixelFormat(), PixelFormat.indexed1);
+
+    try testing.expect(pixels == .indexed1);
+
+    // Check indices
+    const image_size = image_pattern.width * image_pattern.height;
+    for (0..image_size) |index| {
+        try helpers.expectEq(pixels.indexed1.indices[index], image_pattern.pixels.indexed1.indices[index]);
+    }
+
+    // Check palette
+    for (0..pixels.indexed1.palette.len) |index| {
+        try helpers.expectEq(pixels.indexed1.palette[index].r, image_pattern.pixels.indexed1.palette[index].r);
+        try helpers.expectEq(pixels.indexed1.palette[index].g, image_pattern.pixels.indexed1.palette[index].g);
+        try helpers.expectEq(pixels.indexed1.palette[index].b, image_pattern.pixels.indexed1.palette[index].b);
+        try helpers.expectEq(pixels.indexed1.palette[index].a, 255);
+    }
+}
+
 test "Write PCX indexed4 (odd width)" {
     const image_file_name = "zigimg_pcx_indexed4_odd.pcx";
 
