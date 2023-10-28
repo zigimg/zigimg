@@ -567,8 +567,6 @@ pub const PCX = struct {
 
         try utils.writeStructLittle(writer, self.header);
 
-        // TODO: Write pixels
-
         const actual_width = self.width();
         const is_even = ((actual_width & 0x1) == 0);
 
@@ -582,8 +580,10 @@ pub const PCX = struct {
                     try self.writeIndexed8Odd(writer, indexed);
                 }
             },
-            .rgb24 => {
-                // Do nothing
+            .rgb24 => |data| {
+                if (is_even) {} else {
+                    try self.writeRgb24Odd(writer, data);
+                }
             },
             else => {
                 return ImageWriteError.Unsupported;
@@ -628,6 +628,33 @@ pub const PCX = struct {
             const pixel_stride = indexed.indices[y_stride..(y_stride + image_width)];
             try rle_encoder.encode(writer, pixel_stride);
             try rle_encoder.encodeByte(writer, 0x00);
+        }
+
+        try rle_encoder.flush(writer);
+    }
+
+    fn writeRgb24Odd(self: *const PCX, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, pixels: []const color.Rgb24) Image.WriteError!void {
+        var rle_encoder = RLEStreamEncoder{};
+
+        const image_width = self.width();
+        const image_height = self.height();
+
+        for (0..image_height) |y| {
+            const stride = y * image_width;
+
+            for (0..3) |plane| {
+                for (0..image_width) |x| {
+                    const current_color = pixels[stride + x];
+                    switch (plane) {
+                        0 => try rle_encoder.encodeByte(writer, current_color.r),
+                        1 => try rle_encoder.encodeByte(writer, current_color.g),
+                        2 => try rle_encoder.encodeByte(writer, current_color.b),
+                        else => {},
+                    }
+                }
+
+                try rle_encoder.encodeByte(writer, 0x00);
+            }
         }
 
         try rle_encoder.flush(writer);

@@ -295,3 +295,60 @@ test "Write PCX indexed 8 (even width)" {
         }
     }
 }
+
+test "Write PCX rgb24 (odd width)" {
+    const image_file_name = "zigimg_pcx_bpp24_odd.pcx";
+
+    var source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "pcx/test-bpp24.pcx");
+    defer source_file.close();
+
+    var source_image = try Image.fromFile(helpers.zigimg_test_allocator, &source_file);
+    defer source_image.deinit();
+
+    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+        .pcx = .{},
+    });
+
+    defer {
+        std.fs.cwd().deleteFile(image_file_name) catch {};
+    }
+
+    const read_file = try helpers.testOpenFile(image_file_name);
+    defer read_file.close();
+
+    var stream_source = std.io.StreamSource{ .file = read_file };
+
+    var pcxFile = pcx.PCX{};
+
+    const pixels = try pcxFile.read(helpers.zigimg_test_allocator, &stream_source);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(pcxFile.header.planes, 3);
+    try helpers.expectEq(pcxFile.header.bpp, 8);
+
+    try helpers.expectEq(pcxFile.width(), 27);
+    try helpers.expectEq(pcxFile.height(), 27);
+    try helpers.expectEq(try pcxFile.pixelFormat(), PixelFormat.rgb24);
+
+    try testing.expect(pixels == .rgb24);
+
+    try helpers.expectEq(pixels.rgb24[0].r, 0x34);
+    try helpers.expectEq(pixels.rgb24[0].g, 0x53);
+    try helpers.expectEq(pixels.rgb24[0].b, 0x9f);
+
+    try helpers.expectEq(pixels.rgb24[1].r, 0x32);
+    try helpers.expectEq(pixels.rgb24[1].g, 0x5b);
+    try helpers.expectEq(pixels.rgb24[1].b, 0x96);
+
+    try helpers.expectEq(pixels.rgb24[26].r, 0xa8);
+    try helpers.expectEq(pixels.rgb24[26].g, 0x5a);
+    try helpers.expectEq(pixels.rgb24[26].b, 0x78);
+
+    try helpers.expectEq(pixels.rgb24[27].r, 0x2e);
+    try helpers.expectEq(pixels.rgb24[27].g, 0x54);
+    try helpers.expectEq(pixels.rgb24[27].b, 0x99);
+
+    try helpers.expectEq(pixels.rgb24[26 * 27 + 26].r, 0x88);
+    try helpers.expectEq(pixels.rgb24[26 * 27 + 26].g, 0xb7);
+    try helpers.expectEq(pixels.rgb24[26 * 27 + 26].b, 0x55);
+}
