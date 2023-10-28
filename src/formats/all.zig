@@ -15,7 +15,7 @@ pub const ImageEncoderOptions = union(@import("../Image.zig").Format) {
     gif: void,
     jpg: void,
     pbm: PBM.EncoderOptions,
-    pcx: void,
+    pcx: PCX.EncoderOptions,
     pgm: PGM.EncoderOptions,
     png: PNG.EncoderOptions,
     ppm: PPM.EncoderOptions,
