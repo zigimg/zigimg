@@ -169,7 +169,7 @@ test "Write PCX indexed8 (odd width)" {
     var source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "pcx/test-bpp8.pcx");
     defer source_file.close();
 
-    var source_image = try Image.fromFile(std.testing.allocator, &source_file);
+    var source_image = try Image.fromFile(helpers.zigimg_test_allocator, &source_file);
     defer source_image.deinit();
 
     try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
@@ -217,4 +217,81 @@ test "Write PCX indexed8 (odd width)" {
     try helpers.expectEq(palette219.r, 0x61);
     try helpers.expectEq(palette219.g, 0x8e);
     try helpers.expectEq(palette219.b, 0xc3);
+}
+
+test "Write PCX indexed 8 (even width)" {
+    var rainbow_test = try Image.create(helpers.zigimg_test_allocator, 256, 256, .indexed8);
+    defer rainbow_test.deinit();
+
+    // Generate palette
+    const colors_per_channel = 256 / 3;
+    for (0..255) |index| {
+        const current_step = index % colors_per_channel;
+        const current_channel = index / colors_per_channel;
+        const current_intensity = color.toIntColor(u8, @as(f32, @floatFromInt(current_step)) / @as(f32, @floatFromInt(colors_per_channel)));
+        rainbow_test.pixels.indexed8.palette[index].a = 255;
+        switch (current_channel) {
+            0 => rainbow_test.pixels.indexed8.palette[index].r = current_intensity,
+            1 => rainbow_test.pixels.indexed8.palette[index].g = current_intensity,
+            2, 3 => rainbow_test.pixels.indexed8.palette[index].b = current_intensity,
+            else => {},
+        }
+    }
+
+    // Generate pattern
+    for (0..255) |y| {
+        const stride = y * 256;
+        for (0..255) |x| {
+            rainbow_test.pixels.indexed8.indices[stride + x] = @truncate(y);
+        }
+    }
+
+    const image_file_name = "zigimg_pcx_indexed8_even.pcx";
+
+    try rainbow_test.writeToFilePath(image_file_name, Image.EncoderOptions{
+        .pcx = .{},
+    });
+    defer {
+        std.fs.cwd().deleteFile(image_file_name) catch {};
+    }
+
+    const read_file = try helpers.testOpenFile(image_file_name);
+    defer read_file.close();
+
+    var stream_source = std.io.StreamSource{ .file = read_file };
+
+    var pcxFile = pcx.PCX{};
+
+    const pixels = try pcxFile.read(helpers.zigimg_test_allocator, &stream_source);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(pcxFile.width(), 256);
+    try helpers.expectEq(pcxFile.height(), 256);
+    try helpers.expectEq(try pcxFile.pixelFormat(), PixelFormat.indexed8);
+
+    try testing.expect(pixels == .indexed8);
+
+    // Check palette
+    for (0..255) |index| {
+        const current_step = index % colors_per_channel;
+        const current_channel = index / colors_per_channel;
+        const current_intensity = color.toIntColor(u8, @as(f32, @floatFromInt(current_step)) / @as(f32, @floatFromInt(colors_per_channel)));
+
+        try helpers.expectEq(rainbow_test.pixels.indexed8.palette[index].a, 255);
+
+        switch (current_channel) {
+            0 => try helpers.expectEq(rainbow_test.pixels.indexed8.palette[index].r, current_intensity),
+            1 => try helpers.expectEq(rainbow_test.pixels.indexed8.palette[index].g, current_intensity),
+            2, 3 => try helpers.expectEq(rainbow_test.pixels.indexed8.palette[index].b, current_intensity),
+            else => {},
+        }
+    }
+
+    // Check indices
+    for (0..255) |y| {
+        const stride = y * 256;
+        for (0..255) |x| {
+            try helpers.expectEq(pixels.indexed8.indices[stride + x], @as(u8, @intCast(y)));
+        }
+    }
 }
