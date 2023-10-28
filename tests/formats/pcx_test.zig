@@ -163,6 +163,137 @@ test "PCX indexed24 (planar)" {
     try helpers.expectEq(pixels.rgb24[26 * 27 + 26].b, 0x55);
 }
 
+test "Write PCX indexed4 (odd width)" {
+    const image_file_name = "zigimg_pcx_indexed4_odd.pcx";
+
+    var source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "pcx/test-bpp4.pcx");
+    defer source_file.close();
+
+    var source_image = try Image.fromFile(helpers.zigimg_test_allocator, &source_file);
+    defer source_image.deinit();
+
+    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+        .pcx = .{},
+    });
+
+    defer {
+        std.fs.cwd().deleteFile(image_file_name) catch {};
+    }
+
+    const read_file = try helpers.testOpenFile(image_file_name);
+    defer read_file.close();
+
+    var stream_source = std.io.StreamSource{ .file = read_file };
+
+    var pcxFile = pcx.PCX{};
+
+    const pixels = try pcxFile.read(helpers.zigimg_test_allocator, &stream_source);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(pcxFile.width(), 27);
+    try helpers.expectEq(pcxFile.height(), 27);
+    try helpers.expectEq(try pcxFile.pixelFormat(), PixelFormat.indexed4);
+
+    try testing.expect(pixels == .indexed4);
+
+    try helpers.expectEq(pixels.indexed4.indices[0], 1);
+    try helpers.expectEq(pixels.indexed4.indices[1], 9);
+    try helpers.expectEq(pixels.indexed4.indices[2], 0);
+    try helpers.expectEq(pixels.indexed4.indices[3], 0);
+    try helpers.expectEq(pixels.indexed4.indices[4], 4);
+    try helpers.expectEq(pixels.indexed4.indices[14 * 27 + 9], 6);
+    try helpers.expectEq(pixels.indexed4.indices[25 * 27 + 25], 7);
+
+    const palette0 = pixels.indexed4.palette[0];
+
+    try helpers.expectEq(palette0.r, 0x5e);
+    try helpers.expectEq(palette0.g, 0x37);
+    try helpers.expectEq(palette0.b, 0x97);
+
+    const palette15 = pixels.indexed4.palette[15];
+
+    try helpers.expectEq(palette15.r, 0x60);
+    try helpers.expectEq(palette15.g, 0xb5);
+    try helpers.expectEq(palette15.b, 0x68);
+}
+
+test "Write PCX indexed 4 (even width)" {
+    var rainbow_test = try Image.create(helpers.zigimg_test_allocator, 16, 16, .indexed4);
+    defer rainbow_test.deinit();
+
+    // Generate palette
+    const colors_per_channel = 16 / 3;
+    for (0..16) |index| {
+        const current_step = index % colors_per_channel;
+        const current_channel = index / colors_per_channel;
+        const current_intensity = color.toIntColor(u8, @as(f32, @floatFromInt(current_step)) / @as(f32, @floatFromInt(colors_per_channel)));
+        rainbow_test.pixels.indexed4.palette[index].a = 255;
+        switch (current_channel) {
+            0 => rainbow_test.pixels.indexed4.palette[index].r = current_intensity,
+            1 => rainbow_test.pixels.indexed4.palette[index].g = current_intensity,
+            2, 3 => rainbow_test.pixels.indexed4.palette[index].b = current_intensity,
+            else => {},
+        }
+    }
+
+    // Generate pattern
+    for (0..16) |y| {
+        const stride = y * 16;
+        for (0..16) |x| {
+            rainbow_test.pixels.indexed4.indices[stride + x] = @truncate(y);
+        }
+    }
+
+    const image_file_name = "zigimg_pcx_indexed4_even.pcx";
+
+    try rainbow_test.writeToFilePath(image_file_name, Image.EncoderOptions{
+        .pcx = .{},
+    });
+    defer {
+        std.fs.cwd().deleteFile(image_file_name) catch {};
+    }
+
+    const read_file = try helpers.testOpenFile(image_file_name);
+    defer read_file.close();
+
+    var stream_source = std.io.StreamSource{ .file = read_file };
+
+    var pcxFile = pcx.PCX{};
+
+    const pixels = try pcxFile.read(helpers.zigimg_test_allocator, &stream_source);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(pcxFile.width(), 16);
+    try helpers.expectEq(pcxFile.height(), 16);
+    try helpers.expectEq(try pcxFile.pixelFormat(), PixelFormat.indexed4);
+
+    try testing.expect(pixels == .indexed4);
+
+    // Check palette
+    for (0..16) |index| {
+        const current_step = index % colors_per_channel;
+        const current_channel = index / colors_per_channel;
+        const current_intensity = color.toIntColor(u8, @as(f32, @floatFromInt(current_step)) / @as(f32, @floatFromInt(colors_per_channel)));
+
+        try helpers.expectEq(rainbow_test.pixels.indexed4.palette[index].a, 255);
+
+        switch (current_channel) {
+            0 => try helpers.expectEq(rainbow_test.pixels.indexed4.palette[index].r, current_intensity),
+            1 => try helpers.expectEq(rainbow_test.pixels.indexed4.palette[index].g, current_intensity),
+            2, 3 => try helpers.expectEq(rainbow_test.pixels.indexed4.palette[index].b, current_intensity),
+            else => {},
+        }
+    }
+
+    // Check indices
+    for (0..16) |y| {
+        const stride = y * 16;
+        for (0..16) |x| {
+            try helpers.expectEq(pixels.indexed4.indices[stride + x], @as(u4, @intCast(y)));
+        }
+    }
+}
+
 test "Write PCX indexed8 (odd width)" {
     const image_file_name = "zigimg_pcx_indexed8_odd.pcx";
 
@@ -351,4 +482,79 @@ test "Write PCX rgb24 (odd width)" {
     try helpers.expectEq(pixels.rgb24[26 * 27 + 26].r, 0x88);
     try helpers.expectEq(pixels.rgb24[26 * 27 + 26].g, 0xb7);
     try helpers.expectEq(pixels.rgb24[26 * 27 + 26].b, 0x55);
+}
+
+test "Write PCX rgb24 (even width)" {
+    var rainbow_test = try Image.create(helpers.zigimg_test_allocator, 256, 256, .rgb24);
+    defer rainbow_test.deinit();
+
+    // Generate pattern
+    const image_size = rainbow_test.width * rainbow_test.height;
+    for (0..image_size) |index| {
+        const y = index / rainbow_test.width;
+        const which_channel = y % 3;
+        const intensity: u8 = @truncate(y % rainbow_test.width);
+
+        rainbow_test.pixels.rgb24[index].r = 0;
+        rainbow_test.pixels.rgb24[index].g = 0;
+        rainbow_test.pixels.rgb24[index].b = 0;
+
+        switch (which_channel) {
+            0 => rainbow_test.pixels.rgb24[index].r = intensity,
+            1 => rainbow_test.pixels.rgb24[index].g = intensity,
+            2 => rainbow_test.pixels.rgb24[index].b = intensity,
+            else => {},
+        }
+    }
+
+    const image_file_name = "zigimg_pcx_rgb24_even.pcx";
+
+    try rainbow_test.writeToFilePath(image_file_name, Image.EncoderOptions{
+        .pcx = .{},
+    });
+    defer {
+        std.fs.cwd().deleteFile(image_file_name) catch {};
+    }
+
+    const read_file = try helpers.testOpenFile(image_file_name);
+    defer read_file.close();
+
+    var stream_source = std.io.StreamSource{ .file = read_file };
+
+    var pcxFile = pcx.PCX{};
+
+    const pixels = try pcxFile.read(helpers.zigimg_test_allocator, &stream_source);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(pcxFile.width(), 256);
+    try helpers.expectEq(pcxFile.height(), 256);
+    try helpers.expectEq(try pcxFile.pixelFormat(), PixelFormat.rgb24);
+
+    try testing.expect(pixels == .rgb24);
+
+    // Check pattern
+    for (0..image_size) |index| {
+        const y = index / rainbow_test.width;
+        const which_channel = y % 3;
+        const intensity: u8 = @truncate(y % rainbow_test.width);
+
+        switch (which_channel) {
+            0 => {
+                try helpers.expectEq(rainbow_test.pixels.rgb24[index].r, intensity);
+                try helpers.expectEq(rainbow_test.pixels.rgb24[index].g, 0);
+                try helpers.expectEq(rainbow_test.pixels.rgb24[index].b, 0);
+            },
+            1 => {
+                try helpers.expectEq(rainbow_test.pixels.rgb24[index].r, 0);
+                try helpers.expectEq(rainbow_test.pixels.rgb24[index].g, intensity);
+                try helpers.expectEq(rainbow_test.pixels.rgb24[index].b, 0);
+            },
+            2 => {
+                try helpers.expectEq(rainbow_test.pixels.rgb24[index].r, 0);
+                try helpers.expectEq(rainbow_test.pixels.rgb24[index].g, 0);
+                try helpers.expectEq(rainbow_test.pixels.rgb24[index].b, intensity);
+            },
+            else => {},
+        }
+    }
 }
