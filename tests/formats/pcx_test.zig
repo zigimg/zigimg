@@ -602,27 +602,8 @@ test "Write PCX rgb24 (even width)" {
 
     // Check pattern
     for (0..image_size) |index| {
-        const y = index / rainbow_test.width;
-        const which_channel = y % 3;
-        const intensity: u8 = @truncate(y % rainbow_test.width);
-
-        switch (which_channel) {
-            0 => {
-                try helpers.expectEq(rainbow_test.pixels.rgb24[index].r, intensity);
-                try helpers.expectEq(rainbow_test.pixels.rgb24[index].g, 0);
-                try helpers.expectEq(rainbow_test.pixels.rgb24[index].b, 0);
-            },
-            1 => {
-                try helpers.expectEq(rainbow_test.pixels.rgb24[index].r, 0);
-                try helpers.expectEq(rainbow_test.pixels.rgb24[index].g, intensity);
-                try helpers.expectEq(rainbow_test.pixels.rgb24[index].b, 0);
-            },
-            2 => {
-                try helpers.expectEq(rainbow_test.pixels.rgb24[index].r, 0);
-                try helpers.expectEq(rainbow_test.pixels.rgb24[index].g, 0);
-                try helpers.expectEq(rainbow_test.pixels.rgb24[index].b, intensity);
-            },
-            else => {},
-        }
+        try helpers.expectEq(pixels.rgb24[index].r, rainbow_test.pixels.rgb24[index].r);
+        try helpers.expectEq(pixels.rgb24[index].g, rainbow_test.pixels.rgb24[index].g);
+        try helpers.expectEq(pixels.rgb24[index].b, rainbow_test.pixels.rgb24[index].b);
     }
 }
