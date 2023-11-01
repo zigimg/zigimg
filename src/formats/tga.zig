@@ -233,6 +233,11 @@ pub const TGA = struct {
     header: TGAHeader = .{},
     extension: ?TGAExtension = null,
 
+    pub const EncoderOptions = struct {
+        rle_compressed: bool = true,
+        top_to_bottom_image: bool = false,
+    };
+
     const Self = @This();
 
     pub fn formatInterface() FormatInterface {
