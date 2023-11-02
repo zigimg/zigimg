@@ -313,8 +313,61 @@ pub const TGA = struct {
     pub fn writeImage(allocator: std.mem.Allocator, write_stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) Image.WriteError!void {
         _ = allocator;
         _ = write_stream;
-        _ = image;
-        _ = encoder_options;
+
+        const image_width = image.width();
+        const image_height = image.height();
+
+        if (image_width > std.math.maxInt(u16)) {
+            return Image.WriteError.Unsupported;
+        }
+
+        if (image_height > std.math.maxInt(u16)) {
+            return Image.WriteError.Unsupported;
+        }
+
+        var tga = TGA{};
+        tga.header.image_spec.width = @truncate(image_width);
+        tga.header.image.spec.height = @truncate(image_height);
+
+        if (encoder_options.tga.rle_compressed) {
+            tga.header.image_type.run_length = true;
+        }
+        if (encoder_options.tga.top_to_bottom_image) {
+            tga.header.image_spec.descriptor.top_to_bottom = true;
+        }
+
+        switch (image.pixels) {
+            .grayscale8 => {
+                tga.header.image_type.indexed = true;
+                tga.header.image_type.truecolor = true;
+
+                tga.header.image_spec.bit_per_pixel = 8;
+            },
+            .indexed8 => {
+                tga.header.image_type.indexed = true;
+
+                tga.header.image_spec.bit_per_pixel = 8;
+
+                tga.header.color_map_spec.bit_depth = 16;
+            },
+            .rgb555 => {
+                tga.header.image_type.indexed = false;
+                tga.header.image_type.truecolor = true;
+                tga.header.image_spec.bit_per_pixel = 16;
+            },
+            .rgb24 => {
+                tga.header.image_type.indexed = false;
+                tga.header.image_type.truecolor = true;
+
+                tga.header.image_spec.bit_per_pixel = 24;
+            },
+            .rgba32 => {
+                tga.header.image_type.indexed = false;
+                tga.header.image_type.truecolor = true;
+
+                tga.header.image_spec.bit_per_pixel = 32;
+            },
+        }
     }
 
     pub fn width(self: Self) usize {
