@@ -103,7 +103,7 @@ const IDatChunksReader = struct {
 
         if (self.remaining_chunk_length == 0) {
             // First read and check CRC of just finished chunk
-            const expected_crc = try reader.readIntBig(u32);
+            const expected_crc = try reader.readInt(u32, .big);
             const actual_crc = self.crc.final();
             if (actual_crc != expected_crc) {
                 return Image.ReadError.InvalidData;
@@ -150,7 +150,7 @@ pub fn loadHeader(stream: *Image.Stream) Image.ReadError!png.HeaderData {
     const header = try utils.readStructBig(struct_stream.reader(), png.HeaderData);
     if (!header.isValid()) return Image.ReadError.InvalidData;
 
-    const expected_crc = try reader.readIntBig(u32);
+    const expected_crc = try reader.readInt(u32, .big);
     var crc = Crc32.init();
     crc.update(png.Chunks.IHDR.name);
     crc.update(&header_data);
@@ -223,7 +223,7 @@ pub fn loadWithHeader(
             },
             png.Chunks.IEND.id => {
                 if (!data_found) return Image.ReadError.InvalidData;
-                _ = try reader.readIntNative(u32); // Read and ignore the crc
+                _ = try reader.readInt(u32, .big); // Read and ignore the crc
                 try callChunkProcessors(options.processors, &chunk_process_data);
                 return result;
             },
@@ -252,7 +252,7 @@ pub fn loadWithHeader(
                     var palette_bytes = mem.sliceAsBytes(palette);
                     try reader.readNoEof(palette_bytes);
 
-                    const expected_crc = try reader.readIntBig(u32);
+                    const expected_crc = try reader.readInt(u32, .big);
                     var crc = Crc32.init();
                     crc.update(png.Chunks.PLTE.name);
                     crc.update(palette_bytes);
@@ -277,7 +277,7 @@ fn readAllData(
     chunk_process_data: *ChunkProcessData,
 ) Image.ReadError!PixelStorage {
     const native_endian = comptime @import("builtin").cpu.arch.endian();
-    const is_little_endian = native_endian == .Little;
+    const is_little_endian = native_endian == .little;
     const width = header.width;
     const height = header.height;
     const channel_count = header.channelCount();
@@ -673,7 +673,7 @@ pub const TrnsProcessor = struct {
         switch (result_format) {
             .grayscale1, .grayscale2, .grayscale4, .grayscale8, .grayscale16 => {
                 if (data.chunk_length == 2) {
-                    self.trns_data = .{ .gray = try reader.readIntBig(u16) };
+                    self.trns_data = .{ .gray = try reader.readInt(u16, .big) };
                     result_format = if (result_format == .grayscale16) .grayscale16Alpha else .grayscale8Alpha;
                 } else {
                     try data.stream.seekBy(data.chunk_length); // Skip invalid

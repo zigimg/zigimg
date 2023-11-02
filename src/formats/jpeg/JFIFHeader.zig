@@ -27,13 +27,13 @@ pub fn read(buffered_stream: *buffered_stream_source.DefaultBufferedStreamSource
     // Read the first APP0 header.
     const reader = buffered_stream.reader();
     try buffered_stream.seekTo(2);
-    const maybe_app0_marker = try reader.readIntBig(u16);
+    const maybe_app0_marker = try reader.readInt(u16, .big);
     if (maybe_app0_marker != @intFromEnum(Markers.application0)) {
         return error.App0MarkerDoesNotExist;
     }
 
     // Header length
-    _ = try reader.readIntBig(u16);
+    _ = try reader.readInt(u16, .big);
 
     var identifier_buffer: [4]u8 = undefined;
     _ = try reader.read(identifier_buffer[0..]);
@@ -45,10 +45,10 @@ pub fn read(buffered_stream: *buffered_stream_source.DefaultBufferedStreamSource
     // NUL byte after JFIF
     _ = try reader.readByte();
 
-    const jfif_revision = try reader.readIntBig(u16);
+    const jfif_revision = try reader.readInt(u16, .big);
     const density_unit: DensityUnit = @enumFromInt(try reader.readByte());
-    const x_density = try reader.readIntBig(u16);
-    const y_density = try reader.readIntBig(u16);
+    const x_density = try reader.readInt(u16, .big);
+    const y_density = try reader.readInt(u16, .big);
 
     const thumbnailWidth = try reader.readByte();
     const thumbnailHeight = try reader.readByte();
@@ -62,7 +62,7 @@ pub fn read(buffered_stream: *buffered_stream_source.DefaultBufferedStreamSource
     // TODO: Support application markers, present in versions 1.02 and above.
     // see https://www.ecma-international.org/wp-content/uploads/ECMA_TR-98_1st_edition_june_2009.pdf
     // chapt 10.1
-    if (((try reader.readIntBig(u16)) & 0xFFF0) == @intFromEnum(Markers.application0)) {
+    if (((try reader.readInt(u16, .big)) & 0xFFF0) == @intFromEnum(Markers.application0)) {
         return error.ExtraneousApplicationMarker;
     }
 

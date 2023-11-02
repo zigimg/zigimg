@@ -92,8 +92,8 @@ pub const Header = extern struct {
     fn encode(header: Header) [size]u8 {
         var result: [size]u8 = undefined;
         @memcpy(result[0..4], &correct_magic);
-        std.mem.writeIntBig(u32, result[4..8], header.width);
-        std.mem.writeIntBig(u32, result[8..12], header.height);
+        std.mem.writeInt(u32, result[4..8], header.width, .big);
+        std.mem.writeInt(u32, result[8..12], header.height, .big);
         result[12] = @intFromEnum(header.format);
         result[13] = @intFromEnum(header.colorspace);
         return result;

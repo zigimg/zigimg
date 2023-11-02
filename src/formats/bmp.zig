@@ -286,7 +286,7 @@ pub const BMP = struct {
             return Image.ReadError.InvalidData;
         }
 
-        var header_size = try reader.readIntLittle(u32);
+        var header_size = try reader.readInt(u32, .little);
         try buffered_stream.seekBy(-@sizeOf(u32));
 
         // Read info header

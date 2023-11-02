@@ -23,13 +23,13 @@ pub fn toMagicNumberForeign(magic: []const u8) u32 {
 }
 
 pub const toMagicNumberBig = switch (native_endian) {
-    .Little => toMagicNumberForeign,
-    .Big => toMagicNumberNative,
+    .little => toMagicNumberForeign,
+    .big => toMagicNumberNative,
 };
 
 pub const toMagicNumberLittle = switch (native_endian) {
-    .Little => toMagicNumberNative,
-    .Big => toMagicNumberForeign,
+    .little => toMagicNumberNative,
+    .big => toMagicNumberForeign,
 };
 
 fn checkEnumFields(data: anytype) StructReadError!void {
@@ -122,21 +122,21 @@ pub fn readStructForeign(reader: anytype, comptime T: type) StructReadError!T {
 }
 
 pub const readStructLittle = switch (native_endian) {
-    .Little => readStructNative,
-    .Big => readStructForeign,
+    .little => readStructNative,
+    .big => readStructForeign,
 };
 
 pub const readStructBig = switch (native_endian) {
-    .Little => readStructForeign,
-    .Big => readStructNative,
+    .little => readStructForeign,
+    .big => readStructNative,
 };
 
 pub const writeStructLittle = switch (native_endian) {
-    .Little => writeStructNative,
-    .Big => writeStructForeign,
+    .little => writeStructNative,
+    .big => writeStructForeign,
 };
 
 pub const writeStructBig = switch (native_endian) {
-    .Little => writeStructForeign,
-    .Big => writeStructNative,
+    .little => writeStructForeign,
+    .big => writeStructNative,
 };

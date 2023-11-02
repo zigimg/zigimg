@@ -52,7 +52,7 @@ pub const JPEG = struct {
     }
 
     fn parseDefineQuantizationTables(self: *JPEG, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!void {
-        var segment_size = try reader.readIntBig(u16);
+        var segment_size = try reader.readInt(u16, .big);
         if (JPEG_DEBUG) std.debug.print("DefineQuantizationTables: segment size = 0x{X}\n", .{segment_size});
         segment_size -= 2;
 
@@ -109,13 +109,13 @@ pub const JPEG = struct {
         }
 
         const reader = buffered_stream.reader();
-        var marker = try reader.readIntBig(u16);
-        while (marker != @intFromEnum(Markers.end_of_image)) : (marker = try reader.readIntBig(u16)) {
+        var marker = try reader.readInt(u16, .big);
+        while (marker != @intFromEnum(Markers.end_of_image)) : (marker = try reader.readInt(u16, .big)) {
             if (JPEG_DEBUG) std.debug.print("Parsing marker value: 0x{X}\n", .{marker});
 
             if (marker >= @intFromEnum(Markers.application0) and marker < @intFromEnum(Markers.application0) + 16) {
                 if (JPEG_DEBUG) std.debug.print("Skipping application data segment\n", .{});
-                const application_data_length = try reader.readIntBig(u16);
+                const application_data_length = try reader.readInt(u16, .big);
                 try buffered_stream.seekBy(application_data_length - 2);
                 continue;
             }
@@ -157,7 +157,7 @@ pub const JPEG = struct {
                 .comment => {
                     if (JPEG_DEBUG) std.debug.print("Skipping comment segment\n", .{});
 
-                    const comment_length = try reader.readIntBig(u16);
+                    const comment_length = try reader.readInt(u16, .big);
                     try buffered_stream.seekBy(comment_length - 2);
                 },
 
@@ -189,7 +189,7 @@ pub const JPEG = struct {
         var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
 
         const reader = buffered_stream.reader();
-        const maybe_start_of_image = try reader.readIntBig(u16);
+        const maybe_start_of_image = try reader.readInt(u16, .big);
         if (maybe_start_of_image != @intFromEnum(Markers.start_of_image)) {
             return false;
         }

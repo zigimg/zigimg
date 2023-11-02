@@ -49,7 +49,7 @@ pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: Filter
         try writer.writeByte(@intFromEnum(filter_type));
 
         for (0..scanline.asBytes().len) |byte_index| {
-            const i = if (builtin.target.cpu.arch.endian() == .Little) pixelByteSwappedIndex(scanline, byte_index) else byte_index;
+            const i = if (builtin.target.cpu.arch.endian() == .little) pixelByteSwappedIndex(scanline, byte_index) else byte_index;
 
             const sample = scanline.asBytes()[i];
             const previous: u8 = if (byte_index >= pixel_len) scanline.asBytes()[i - pixel_len] else 0;
@@ -111,7 +111,7 @@ fn filterChoiceHeuristic(scanline: color.PixelStorage, previous_scanline: ?color
         var score: usize = 0;
 
         for (0..scanline.asBytes().len) |byte_index| {
-            const i = if (builtin.target.cpu.arch.endian() == .Little) pixelByteSwappedIndex(scanline, byte_index) else byte_index;
+            const i = if (builtin.target.cpu.arch.endian() == .little) pixelByteSwappedIndex(scanline, byte_index) else byte_index;
 
             const sample = scanline.asBytes()[i];
             const previous: u8 = if (byte_index >= pixel_len) scanline.asBytes()[i - pixel_len] else 0;

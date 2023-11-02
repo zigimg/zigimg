@@ -518,7 +518,7 @@ pub const TGA = struct {
         const data_end: usize = self.header.color_map_spec.first_entry_index + self.header.color_map_spec.length;
 
         while (data_index < data_end) : (data_index += 1) {
-            const raw_color = try stream.readIntLittle(u16);
+            const raw_color = try stream.readInt(u16, .little);
 
             data.palette[data_index].r = color.scaleToIntColor(u8, (@as(u5, @truncate(raw_color >> (5 * 2)))));
             data.palette[data_index].g = color.scaleToIntColor(u8, (@as(u5, @truncate(raw_color >> 5))));
@@ -532,7 +532,7 @@ pub const TGA = struct {
         const data_end: usize = self.width() * self.height();
 
         while (data_index < data_end) : (data_index += 1) {
-            const raw_color = try stream.readIntLittle(u16);
+            const raw_color = try stream.readInt(u16, .little);
 
             data[data_index].r = @truncate(raw_color >> (5 * 2));
             data[data_index].g = @truncate(raw_color >> 5);
@@ -549,7 +549,7 @@ pub const TGA = struct {
             for (0..self.width()) |x| {
                 const data_index = stride + x;
 
-                const raw_color = try stream.readIntLittle(u16);
+                const raw_color = try stream.readInt(u16, .little);
 
                 data[data_index].r = @truncate(raw_color >> (5 * 2));
                 data[data_index].g = @truncate(raw_color >> 5);

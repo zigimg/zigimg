@@ -26,7 +26,7 @@ pub const Header = struct {
     table: Table,
 
     pub fn read(reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!Self {
-        _ = try reader.readIntBig(u16); // read the size, but we don't need it
+        _ = try reader.readInt(u16, .big); // read the size, but we don't need it
 
         const precision_and_destination = try reader.readByte();
         const table_precision = precision_and_destination >> 4;
@@ -79,7 +79,7 @@ pub const Table = union(enum) {
 
                 var offset: usize = 0;
                 while (offset < 64) : (offset += 1) {
-                    const value = try reader.readIntBig(u16);
+                    const value = try reader.readInt(u16, .big);
                     table.q16[ZigzagOffsets[offset]] = value;
                 }
 

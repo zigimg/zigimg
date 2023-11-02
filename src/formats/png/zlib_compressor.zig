@@ -56,7 +56,7 @@ pub fn ZlibCompressor(comptime WriterType: type) type {
             try self.compressor.close();
             self.compressor.deinit();
             // Write the checksum
-            try self.raw_writer.writeIntBig(u32, self.adler.final());
+            try self.raw_writer.writeInt(u32, self.adler.final(), .big);
         }
     };
 }

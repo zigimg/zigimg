@@ -384,10 +384,10 @@ pub const PAM = struct {
                         .value = try mapValue(u8, try reader.readByte(), @as(u8, @intCast(header.maxval)), math.maxInt(u8)),
                         .alpha = try mapValue(u8, try reader.readByte(), @as(u8, @intCast(header.maxval)), math.maxInt(u8)),
                     },
-                    .grayscale16 => |g| g[offset + column].value = try mapValue(u16, try reader.readIntLittle(u16), header.maxval, math.maxInt(u16)),
+                    .grayscale16 => |g| g[offset + column].value = try mapValue(u16, try reader.readInt(u16, .little), header.maxval, math.maxInt(u16)),
                     .grayscale16Alpha => |g| g[offset + column] = .{
-                        .value = try mapValue(u16, try reader.readIntLittle(u16), header.maxval, math.maxInt(u16)),
-                        .alpha = try mapValue(u16, try reader.readIntLittle(u16), header.maxval, math.maxInt(u16)),
+                        .value = try mapValue(u16, try reader.readInt(u16, .little), header.maxval, math.maxInt(u16)),
+                        .alpha = try mapValue(u16, try reader.readInt(u16, .little), header.maxval, math.maxInt(u16)),
                     },
                     .rgb24 => |x| x[offset + column] = .{
                         .r = try mapValue(u8, try reader.readByte(), @as(u8, @intCast(header.maxval)), math.maxInt(u8)),
@@ -401,15 +401,15 @@ pub const PAM = struct {
                         .a = try mapValue(u8, try reader.readByte(), @as(u8, @intCast(header.maxval)), math.maxInt(u8)),
                     },
                     .rgb48 => |x| x[offset + column] = .{
-                        .r = try mapValue(u16, try reader.readIntLittle(u16), header.maxval, math.maxInt(u16)),
-                        .g = try mapValue(u16, try reader.readIntLittle(u16), header.maxval, math.maxInt(u16)),
-                        .b = try mapValue(u16, try reader.readIntLittle(u16), header.maxval, math.maxInt(u16)),
+                        .r = try mapValue(u16, try reader.readInt(u16, .little), header.maxval, math.maxInt(u16)),
+                        .g = try mapValue(u16, try reader.readInt(u16, .little), header.maxval, math.maxInt(u16)),
+                        .b = try mapValue(u16, try reader.readInt(u16, .little), header.maxval, math.maxInt(u16)),
                     },
                     .rgba64 => |x| x[offset + column] = .{
-                        .r = try mapValue(u16, try reader.readIntLittle(u16), header.maxval, math.maxInt(u16)),
-                        .g = try mapValue(u16, try reader.readIntLittle(u16), header.maxval, math.maxInt(u16)),
-                        .b = try mapValue(u16, try reader.readIntLittle(u16), header.maxval, math.maxInt(u16)),
-                        .a = try mapValue(u16, try reader.readIntLittle(u16), header.maxval, math.maxInt(u16)),
+                        .r = try mapValue(u16, try reader.readInt(u16, .little), header.maxval, math.maxInt(u16)),
+                        .g = try mapValue(u16, try reader.readInt(u16, .little), header.maxval, math.maxInt(u16)),
+                        .b = try mapValue(u16, try reader.readInt(u16, .little), header.maxval, math.maxInt(u16)),
+                        .a = try mapValue(u16, try reader.readInt(u16, .little), header.maxval, math.maxInt(u16)),
                     },
                     else => unreachable,
                 }
@@ -472,14 +472,14 @@ pub const PAM = struct {
                     .grayscale1 => |x| try writer.writeByte(x[offset + column].value),
                     .grayscale4 => |x| try writer.writeByte(x[offset + column].value),
                     .grayscale8 => |x| try writer.writeByte(x[offset + column].value),
-                    .grayscale16 => |x| try writer.writeIntLittle(u16, x[offset + column].value),
+                    .grayscale16 => |x| try writer.writeInt(u16, x[offset + column].value, .little),
                     .grayscale8Alpha => |x| {
                         try writer.writeByte(x[offset + column].value);
                         try writer.writeByte(x[offset + column].alpha);
                     },
                     .grayscale16Alpha => |x| {
-                        try writer.writeIntLittle(u16, x[offset + column].value);
-                        try writer.writeIntLittle(u16, x[offset + column].alpha);
+                        try writer.writeInt(u16, x[offset + column].value, .little);
+                        try writer.writeInt(u16, x[offset + column].alpha, .little);
                     },
                     .rgb555 => |x| {
                         try writer.writeByte(x[offset + column].r);
@@ -509,15 +509,15 @@ pub const PAM = struct {
                         try writer.writeByte(x[offset + column].a);
                     },
                     .rgb48 => |x| {
-                        try writer.writeIntLittle(u16, x[offset + column].r);
-                        try writer.writeIntLittle(u16, x[offset + column].g);
-                        try writer.writeIntLittle(u16, x[offset + column].b);
+                        try writer.writeInt(u16, x[offset + column].r, .little);
+                        try writer.writeInt(u16, x[offset + column].g, .little);
+                        try writer.writeInt(u16, x[offset + column].b, .little);
                     },
                     .rgba64 => |x| {
-                        try writer.writeIntLittle(u16, x[offset + column].r);
-                        try writer.writeIntLittle(u16, x[offset + column].g);
-                        try writer.writeIntLittle(u16, x[offset + column].b);
-                        try writer.writeIntLittle(u16, x[offset + column].a);
+                        try writer.writeInt(u16, x[offset + column].r, .little);
+                        try writer.writeInt(u16, x[offset + column].g, .little);
+                        try writer.writeInt(u16, x[offset + column].b, .little);
+                        try writer.writeInt(u16, x[offset + column].a, .little);
                     },
                     else => unreachable, // can't happen, already handled in fromImage
                 }

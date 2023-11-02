@@ -133,7 +133,7 @@ fn parseNumber(reader: buffered_stream_source.DefaultBufferedStreamSourceReader.
 }
 
 fn loadBinaryBitmap(header: Header, data: []color.Grayscale1, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!void {
-    var bit_reader = std.io.bitReader(.Big, reader);
+    var bit_reader = std.io.bitReader(.big, reader);
 
     for (0..header.height) |row_index| {
         for (data[row_index * header.width ..][0..header.width]) |*sample| {
@@ -164,7 +164,7 @@ fn loadAsciiBitmap(header: Header, data: []color.Grayscale1, reader: buffered_st
 
 fn readLinearizedValue(reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader, max_value: usize) ImageReadError!u8 {
     return if (max_value > 255)
-        @truncate(255 * @as(usize, try reader.readIntBig(u16)) / max_value)
+        @truncate(255 * @as(usize, try reader.readInt(u16, .big)) / max_value)
     else
         @truncate(255 * @as(usize, try reader.readByte()) / max_value);
 }
@@ -178,7 +178,7 @@ fn loadBinaryGraymap(header: Header, pixels: *color.PixelStorage, reader: buffer
         }
     } else {
         while (data_index < data_end) : (data_index += 1) {
-            pixels.grayscale16[data_index] = color.Grayscale16{ .value = try reader.readIntBig(u16) };
+            pixels.grayscale16[data_index] = color.Grayscale16{ .value = try reader.readInt(u16, .big) };
         }
     }
 }
@@ -385,7 +385,7 @@ fn Netpbm(comptime image_format: Image.Format, comptime header_numbers: []const 
                     .bitmap => {
                         switch (pixels) {
                             .grayscale1 => |samples| {
-                                var bit_writer = std.io.bitWriter(.Big, writer);
+                                var bit_writer = std.io.bitWriter(.big, writer);
 
                                 for (0..self.header.height) |row_index| {
                                     for (samples[row_index * self.header.width ..][0..self.header.width]) |sample| {
@@ -404,12 +404,12 @@ fn Netpbm(comptime image_format: Image.Format, comptime header_numbers: []const 
                             .grayscale16 => {
                                 for (pixels.grayscale16) |entry| {
                                     // Big due to 16-bit PGM being semi standardized as big-endian
-                                    try writer.writeIntBig(u16, entry.value);
+                                    try writer.writeInt(u16, entry.value, .big);
                                 }
                             },
                             .grayscale8 => {
                                 for (pixels.grayscale8) |entry| {
-                                    try writer.writeIntLittle(u8, entry.value);
+                                    try writer.writeInt(u8, entry.value, .little);
                                 }
                             },
                             else => {

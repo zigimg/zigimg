@@ -54,10 +54,10 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
                 const rest_of_data = try bit_reader.readBits(u13, self.remaining_bits, &read_size);
                 if (read_size > 0) {
                     switch (endian) {
-                        .Little => {
+                        .little => {
                             read_code = remaining_data | (rest_of_data << @as(u4, @intCast(bits_to_read - self.remaining_bits)));
                         },
-                        .Big => {
+                        .big => {
                             read_code = (remaining_data << self.remaining_bits) | rest_of_data;
                         },
                     }
@@ -166,7 +166,7 @@ test "Should decode a simple LZW little-endian stream" {
         .buffer = std.io.fixedBufferStream(&out_data_storage),
     };
 
-    var lzw = try Decoder(.Little).init(std.testing.allocator, initial_code_size);
+    var lzw = try Decoder(.little).init(std.testing.allocator, initial_code_size);
     defer lzw.deinit();
 
     try lzw.decode(reader.reader(), out_data_buffer.writer());

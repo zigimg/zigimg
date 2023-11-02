@@ -269,7 +269,7 @@ pub const GIF = struct {
         for (self.application_infos.items) |application_info| {
             for (AnimationApplicationExtensions) |anim_extension| {
                 if (std.mem.eql(u8, application_info.application_identifier[0..], anim_extension.identifier) and std.mem.eql(u8, application_info.authentification_code[0..], anim_extension.code)) {
-                    const loop_count = std.mem.readIntSlice(u16, application_info.data[1..], .Little);
+                    const loop_count = std.mem.readPackedInt(u16, application_info.data[1..], 0, .little);
                     if (loop_count == 0) {
                         return Image.AnimationLoopInfinite;
                     }
@@ -325,7 +325,7 @@ pub const GIF = struct {
 
     // <Data> ::= <Graphic Block> | <Special-Purpose Block>
     fn readData(self: *GIF, context: *ReaderContext) Image.ReadError!void {
-        var current_block = context.reader.readEnum(DataBlockKind, .Little) catch {
+        var current_block = context.reader.readEnum(DataBlockKind, .little) catch {
             return Image.ReadError.InvalidData;
         };
 
@@ -338,7 +338,7 @@ pub const GIF = struct {
                     is_graphic_block = true;
                 },
                 .extension => {
-                    extension_kind_opt = context.reader.readEnum(ExtensionKind, .Little) catch blk: {
+                    extension_kind_opt = context.reader.readEnum(ExtensionKind, .little) catch blk: {
                         var dummy_byte = try context.reader.readByte();
                         while (dummy_byte != ExtensionBlockTerminator) {
                             dummy_byte = try context.reader.readByte();
@@ -357,7 +357,7 @@ pub const GIF = struct {
                             else => {},
                         }
                     } else {
-                        current_block = context.reader.readEnum(DataBlockKind, .Little) catch {
+                        current_block = context.reader.readEnum(DataBlockKind, .little) catch {
                             return Image.ReadError.InvalidData;
                         };
                         continue;
@@ -374,7 +374,7 @@ pub const GIF = struct {
                 try self.readSpecialPurposeBlock(context, extension_kind_opt.?);
             }
 
-            current_block = context.reader.readEnum(DataBlockKind, .Little) catch {
+            current_block = context.reader.readEnum(DataBlockKind, .little) catch {
                 return Image.ReadError.InvalidData;
             };
         }
@@ -394,7 +394,7 @@ pub const GIF = struct {
                     _ = try context.reader.readByte();
 
                     graphics_control.flags = try utils.readStructLittle(context.reader, GraphicControlExtensionFlags);
-                    graphics_control.delay_time = try context.reader.readIntLittle(u16);
+                    graphics_control.delay_time = try context.reader.readInt(u16, .little);
 
                     if (graphics_control.flags.has_transparent_color) {
                         graphics_control.transparent_color_index = try context.reader.readByte();
@@ -411,7 +411,7 @@ pub const GIF = struct {
                     break :blk graphics_control;
                 };
 
-                var new_block_kind = context.reader.readEnum(DataBlockKind, .Little) catch {
+                var new_block_kind = context.reader.readEnum(DataBlockKind, .little) catch {
                     return Image.ReadError.InvalidData;
                 };
 
@@ -442,7 +442,7 @@ pub const GIF = struct {
                 if (extension_kind_opt) |value| {
                     extension_kind = value;
                 } else {
-                    extension_kind = context.reader.readEnum(ExtensionKind, .Little) catch {
+                    extension_kind = context.reader.readEnum(ExtensionKind, .little) catch {
                         return Image.ReadError.InvalidData;
                     };
                 }
@@ -569,7 +569,7 @@ pub const GIF = struct {
                 return Image.ReadError.InvalidData;
             }
 
-            var lzw_decoder = try lzw.Decoder(.Little).init(self.allocator, lzw_minimum_code_size);
+            var lzw_decoder = try lzw.Decoder(.little).init(self.allocator, lzw_minimum_code_size);
             defer lzw_decoder.deinit();
 
             var data_block_size = try context.reader.readByte();
