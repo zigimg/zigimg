@@ -120,8 +120,6 @@ const TargaRLEDecoder = struct {
 
     pub const Reader = std.io.Reader(*TargaRLEDecoder, Image.ReadError, read);
 
-    const Self = @This();
-
     const State = enum {
         read_header,
         repeated,
@@ -137,8 +135,8 @@ const TargaRLEDecoder = struct {
         packet_type: PacketType,
     };
 
-    pub fn init(allocator: std.mem.Allocator, source_reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader, bytes_per_pixels: usize) !Self {
-        var result = Self{
+    pub fn init(allocator: std.mem.Allocator, source_reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader, bytes_per_pixels: usize) !TargaRLEDecoder {
+        var result = TargaRLEDecoder{
             .allocator = allocator,
             .source_reader = source_reader,
             .bytes_per_pixel = bytes_per_pixels,
@@ -149,11 +147,11 @@ const TargaRLEDecoder = struct {
         return result;
     }
 
-    pub fn deinit(self: Self) void {
+    pub fn deinit(self: TargaRLEDecoder) void {
         self.allocator.free(self.repeat_data);
     }
 
-    pub fn read(self: *Self, dest: []u8) Image.ReadError!usize {
+    pub fn read(self: *TargaRLEDecoder, dest: []u8) Image.ReadError!usize {
         var read_count: usize = 0;
 
         if (self.state == .read_header) {
@@ -206,7 +204,7 @@ const TargaRLEDecoder = struct {
         return read_count;
     }
 
-    pub fn reader(self: *Self) Reader {
+    pub fn reader(self: *TargaRLEDecoder) Reader {
         return .{ .context = self };
     }
 };
@@ -238,8 +236,6 @@ pub const TGA = struct {
         top_to_bottom_image: bool = false,
         color_map_depth: u8 = 24,
     };
-
-    const Self = @This();
 
     pub fn formatInterface() FormatInterface {
         return FormatInterface{
@@ -300,7 +296,7 @@ pub const TGA = struct {
     pub fn readImage(allocator: std.mem.Allocator, stream: *Image.Stream) Image.ReadError!Image {
         var result = Image.init(allocator);
         errdefer result.deinit();
-        var tga = Self{};
+        var tga = TGA{};
 
         const pixels = try tga.read(allocator, stream);
 
@@ -387,15 +383,15 @@ pub const TGA = struct {
         }
     }
 
-    pub fn width(self: Self) usize {
+    pub fn width(self: TGA) usize {
         return self.header.image_spec.width;
     }
 
-    pub fn height(self: Self) usize {
+    pub fn height(self: TGA) usize {
         return self.header.image_spec.height;
     }
 
-    pub fn pixelFormat(self: Self) Image.ReadError!PixelFormat {
+    pub fn pixelFormat(self: TGA) Image.ReadError!PixelFormat {
         if (self.header.image_type.indexed) {
             if (self.header.image_type.truecolor) {
                 return PixelFormat.grayscale8;
@@ -414,7 +410,7 @@ pub const TGA = struct {
         return Image.Error.Unsupported;
     }
 
-    pub fn read(self: *Self, allocator: std.mem.Allocator, stream: *Image.Stream) !color.PixelStorage {
+    pub fn read(self: *TGA, allocator: std.mem.Allocator, stream: *Image.Stream) !color.PixelStorage {
         var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
 
         // Read footage
@@ -546,7 +542,7 @@ pub const TGA = struct {
         return pixels;
     }
 
-    fn readGrayscale8TopToBottom(self: *Self, data: []color.Grayscale8, stream: TargaStream.Reader) Image.ReadError!void {
+    fn readGrayscale8TopToBottom(self: *TGA, data: []color.Grayscale8, stream: TargaStream.Reader) Image.ReadError!void {
         var data_index: usize = 0;
         const data_end: usize = self.width() * self.height();
 
@@ -555,7 +551,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readGrayscale8BottomToTop(self: *Self, data: []color.Grayscale8, stream: TargaStream.Reader) Image.ReadError!void {
+    fn readGrayscale8BottomToTop(self: *TGA, data: []color.Grayscale8, stream: TargaStream.Reader) Image.ReadError!void {
         for (0..self.height()) |y| {
             const inverted_y = self.height() - y - 1;
 
@@ -568,7 +564,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readIndexed8TopToBottom(self: *Self, data: color.IndexedStorage8, stream: TargaStream.Reader) Image.ReadError!void {
+    fn readIndexed8TopToBottom(self: *TGA, data: color.IndexedStorage8, stream: TargaStream.Reader) Image.ReadError!void {
         var data_index: usize = 0;
         const data_end: usize = self.width() * self.height();
 
@@ -577,7 +573,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readIndexed8BottomToTop(self: *Self, data: color.IndexedStorage8, stream: TargaStream.Reader) Image.ReadError!void {
+    fn readIndexed8BottomToTop(self: *TGA, data: color.IndexedStorage8, stream: TargaStream.Reader) Image.ReadError!void {
         for (0..self.height()) |y| {
             const inverted_y = self.height() - y - 1;
 
@@ -590,7 +586,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readColorMap16(self: *Self, data: color.IndexedStorage8, stream: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) Image.ReadError!void {
+    fn readColorMap16(self: *TGA, data: color.IndexedStorage8, stream: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) Image.ReadError!void {
         var data_index: usize = self.header.color_map_spec.first_entry_index;
         const data_end: usize = self.header.color_map_spec.first_entry_index + self.header.color_map_spec.length;
 
@@ -604,7 +600,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readColorMap24(self: *Self, data: color.IndexedStorage8, stream: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) Image.ReadError!void {
+    fn readColorMap24(self: *TGA, data: color.IndexedStorage8, stream: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) Image.ReadError!void {
         var data_index: usize = self.header.color_map_spec.first_entry_index;
         const data_end: usize = self.header.color_map_spec.first_entry_index + self.header.color_map_spec.length;
 
@@ -616,7 +612,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readTruecolor16TopToBottom(self: *Self, data: []color.Rgb555, stream: TargaStream.Reader) Image.ReadError!void {
+    fn readTruecolor16TopToBottom(self: *TGA, data: []color.Rgb555, stream: TargaStream.Reader) Image.ReadError!void {
         var data_index: usize = 0;
         const data_end: usize = self.width() * self.height();
 
@@ -629,7 +625,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readTruecolor16BottomToTop(self: *Self, data: []color.Rgb555, stream: TargaStream.Reader) Image.ReadError!void {
+    fn readTruecolor16BottomToTop(self: *TGA, data: []color.Rgb555, stream: TargaStream.Reader) Image.ReadError!void {
         for (0..self.height()) |y| {
             const inverted_y = self.height() - y - 1;
 
@@ -647,7 +643,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readTruecolor24TopToBottom(self: *Self, data: []color.Rgb24, stream: TargaStream.Reader) Image.ReadError!void {
+    fn readTruecolor24TopToBottom(self: *TGA, data: []color.Rgb24, stream: TargaStream.Reader) Image.ReadError!void {
         var data_index: usize = 0;
         const data_end: usize = self.width() * self.height();
 
@@ -658,7 +654,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readTruecolor24BottomTopTop(self: *Self, data: []color.Rgb24, stream: TargaStream.Reader) Image.ReadError!void {
+    fn readTruecolor24BottomTopTop(self: *TGA, data: []color.Rgb24, stream: TargaStream.Reader) Image.ReadError!void {
         for (0..self.height()) |y| {
             const inverted_y = self.height() - y - 1;
 
@@ -673,7 +669,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readTruecolor32TopToBottom(self: *Self, data: []color.Rgba32, stream: TargaStream.Reader) Image.ReadError!void {
+    fn readTruecolor32TopToBottom(self: *TGA, data: []color.Rgba32, stream: TargaStream.Reader) Image.ReadError!void {
         var data_index: usize = 0;
         const data_end: usize = self.width() * self.height();
 
@@ -691,7 +687,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readTruecolor32BottomToTop(self: *Self, data: []color.Rgba32, stream: TargaStream.Reader) Image.ReadError!void {
+    fn readTruecolor32BottomToTop(self: *TGA, data: []color.Rgba32, stream: TargaStream.Reader) Image.ReadError!void {
         for (0..self.height()) |y| {
             const inverted_y = self.height() - y - 1;
 
@@ -712,5 +708,11 @@ pub const TGA = struct {
                 }
             }
         }
+    }
+
+    pub fn write(self: TGA, stream: *Image.Stream, pixels: color.PixelStorage) Image.WriteError!void {
+        _ = pixels;
+        _ = stream;
+        _ = self;
     }
 };
