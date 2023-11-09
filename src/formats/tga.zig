@@ -236,6 +236,7 @@ pub const TGA = struct {
     pub const EncoderOptions = struct {
         rle_compressed: bool = true,
         top_to_bottom_image: bool = false,
+        color_map_depth: u8 = 24,
     };
 
     const Self = @This();
@@ -314,8 +315,10 @@ pub const TGA = struct {
         _ = allocator;
         _ = write_stream;
 
-        const image_width = image.width();
-        const image_height = image.height();
+        const tga_encoder_options = encoder_options.tga;
+
+        const image_width = image.width;
+        const image_height = image.height;
 
         if (image_width > std.math.maxInt(u16)) {
             return Image.WriteError.Unsupported;
@@ -325,14 +328,19 @@ pub const TGA = struct {
             return Image.WriteError.Unsupported;
         }
 
+        if (tga_encoder_options.color_map_depth != 16 or tga_encoder_options.color_map_depth != 24) {
+            return Image.WriteError.Unsupported;
+        }
+
         var tga = TGA{};
         tga.header.image_spec.width = @truncate(image_width);
-        tga.header.image.spec.height = @truncate(image_height);
+        tga.header.image_spec.height = @truncate(image_height);
+        tga.extension = TGAExtension{};
 
-        if (encoder_options.tga.rle_compressed) {
+        if (tga_encoder_options.rle_compressed) {
             tga.header.image_type.run_length = true;
         }
-        if (encoder_options.tga.top_to_bottom_image) {
+        if (tga_encoder_options.top_to_bottom_image) {
             tga.header.image_spec.descriptor.top_to_bottom = true;
         }
 
@@ -348,7 +356,9 @@ pub const TGA = struct {
 
                 tga.header.image_spec.bit_per_pixel = 8;
 
-                tga.header.color_map_spec.bit_depth = 16;
+                tga.header.color_map_spec.bit_depth = tga_encoder_options.color_map_depth;
+
+                tga.header.has_color_map = 1;
             },
             .rgb555 => {
                 tga.header.image_type.indexed = false;
@@ -366,6 +376,13 @@ pub const TGA = struct {
                 tga.header.image_type.truecolor = true;
 
                 tga.header.image_spec.bit_per_pixel = 32;
+
+                tga.header.image_spec.descriptor.num_attributes_bit = 8;
+
+                tga.extension.?.attributes = .useful_alpha_channel;
+            },
+            else => {
+                return Image.WriteError.Unsupported;
             },
         }
     }
@@ -480,11 +497,13 @@ pub const TGA = struct {
                 }
             },
             .indexed8 => {
-                // Read color map
+                // Read color map, it is not compressed by RLE so always use the original reader
                 switch (self.header.color_map_spec.bit_depth) {
                     15, 16 => {
-                        var temp_targa_stream = TargaStream{ .image = reader };
-                        try self.readColorMap16(pixels.indexed8, temp_targa_stream.reader());
+                        try self.readColorMap16(pixels.indexed8, reader);
+                    },
+                    24 => {
+                        try self.readColorMap24(pixels.indexed8, reader);
                     },
                     else => {
                         return Image.Error.Unsupported;
@@ -571,7 +590,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readColorMap16(self: *Self, data: color.IndexedStorage8, stream: TargaStream.Reader) Image.ReadError!void {
+    fn readColorMap16(self: *Self, data: color.IndexedStorage8, stream: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) Image.ReadError!void {
         var data_index: usize = self.header.color_map_spec.first_entry_index;
         const data_end: usize = self.header.color_map_spec.first_entry_index + self.header.color_map_spec.length;
 
@@ -581,6 +600,18 @@ pub const TGA = struct {
             data.palette[data_index].r = color.scaleToIntColor(u8, (@as(u5, @truncate(raw_color >> (5 * 2)))));
             data.palette[data_index].g = color.scaleToIntColor(u8, (@as(u5, @truncate(raw_color >> 5))));
             data.palette[data_index].b = color.scaleToIntColor(u8, (@as(u5, @truncate(raw_color))));
+            data.palette[data_index].a = 255;
+        }
+    }
+
+    fn readColorMap24(self: *Self, data: color.IndexedStorage8, stream: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) Image.ReadError!void {
+        var data_index: usize = self.header.color_map_spec.first_entry_index;
+        const data_end: usize = self.header.color_map_spec.first_entry_index + self.header.color_map_spec.length;
+
+        while (data_index < data_end) : (data_index += 1) {
+            data.palette[data_index].b = try stream.readByte();
+            data.palette[data_index].g = try stream.readByte();
+            data.palette[data_index].r = try stream.readByte();
             data.palette[data_index].a = 255;
         }
     }
