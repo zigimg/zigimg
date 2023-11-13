@@ -450,3 +450,55 @@ test "Read stopsignsmallcompressed TGA v1 file" {
     try helpers.expectEq(pixels.rgb24[143 * width + 93], color.Rgb24.initRgb(188, 34, 24));
     try helpers.expectEq(pixels.rgb24[479 * width + 215], color.Rgb24.initRgb(33, 29, 17));
 }
+
+test "Write TGA uncompressed grayscale8" {
+    const image_file_name = "zigimg_tga_uncompressed_grayscale8.tga";
+
+    var source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/ubw8.tga");
+    defer source_file.close();
+
+    var source_image = try Image.fromFile(helpers.zigimg_test_allocator, &source_file);
+    defer source_image.deinit();
+
+    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+        .tga = .{ .rle_compressed = false, .color_map_depth = 16, .top_to_bottom_image = false },
+    });
+
+    defer {
+        std.fs.cwd().deleteFile(image_file_name) catch {};
+    }
+
+    const read_file = try helpers.testOpenFile(image_file_name);
+    defer read_file.close();
+
+    var stream_source = std.io.StreamSource{ .file = read_file };
+
+    var tga_file = tga.TGA{};
+
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(tga_file.width(), 128);
+    try helpers.expectEq(tga_file.height(), 128);
+    try helpers.expectEq(try tga_file.pixelFormat(), .grayscale8);
+
+    const expected_strip = [_]u8{ 76, 149, 178, 0, 76, 149, 178, 254, 76, 149, 178, 0, 76, 149, 178, 254 };
+
+    try testing.expect(pixels == .grayscale8);
+
+    const width = tga_file.width();
+    const height = tga_file.height();
+
+    var y: usize = 0;
+    while (y < height) : (y += 1) {
+        var x: usize = 0;
+
+        const stride = y * width;
+
+        while (x < width) : (x += 1) {
+            const strip_index = x / 8;
+
+            try helpers.expectEq(pixels.grayscale8[stride + x].value, expected_strip[strip_index]);
+        }
+    }
+}

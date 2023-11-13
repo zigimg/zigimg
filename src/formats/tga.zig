@@ -94,11 +94,11 @@ pub const TGAExtension = extern struct {
 };
 
 pub const TGAFooter = extern struct {
-    extension_offset: u32 align(1),
-    dev_area_offset: u32 align(1),
-    signature: [16]u8 align(1),
-    dot: u8 align(1),
-    null_value: u8 align(1),
+    extension_offset: u32 align(1) = 0,
+    dev_area_offset: u32 align(1) = 0,
+    signature: [16]u8 align(1) = undefined,
+    dot: u8 align(1) = '.',
+    null_value: u8 align(1) = 0,
 };
 
 pub const TGASignature = "TRUEVISION-XFILE";
@@ -309,7 +309,6 @@ pub const TGA = struct {
 
     pub fn writeImage(allocator: std.mem.Allocator, write_stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) Image.WriteError!void {
         _ = allocator;
-        _ = write_stream;
 
         const tga_encoder_options = encoder_options.tga;
 
@@ -324,7 +323,7 @@ pub const TGA = struct {
             return Image.WriteError.Unsupported;
         }
 
-        if (tga_encoder_options.color_map_depth != 16 or tga_encoder_options.color_map_depth != 24) {
+        if (!(tga_encoder_options.color_map_depth == 16 or tga_encoder_options.color_map_depth == 24)) {
             return Image.WriteError.Unsupported;
         }
 
@@ -381,6 +380,8 @@ pub const TGA = struct {
                 return Image.WriteError.Unsupported;
             },
         }
+
+        try tga.write(write_stream, image.pixels);
     }
 
     pub fn width(self: TGA) usize {
@@ -711,8 +712,44 @@ pub const TGA = struct {
     }
 
     pub fn write(self: TGA, stream: *Image.Stream, pixels: color.PixelStorage) Image.WriteError!void {
-        _ = pixels;
-        _ = stream;
-        _ = self;
+        var buffered_stream = buffered_stream_source.bufferedStreamSourceWriter(stream);
+        var writer = buffered_stream.writer();
+
+        try utils.writeStructLittle(writer, self.header);
+
+        if (self.header.image_type.run_length) {} else {
+            switch (pixels) {
+                .grayscale8 => |grayscale_pixels| {
+                    try self.writeUncompressedGrayscale8(writer, grayscale_pixels);
+                },
+                else => {
+                    return Image.WriteError.Unsupported;
+                },
+            }
+        }
+
+        var footer = TGAFooter{};
+        std.mem.copy(u8, footer.signature[0..], TGASignature[0..]);
+        try utils.writeStructLittle(writer, footer);
+
+        try buffered_stream.flush();
+    }
+
+    fn writeUncompressedGrayscale8(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, pixels: []const color.Grayscale8) Image.WriteError!void {
+        if (self.header.image_spec.descriptor.top_to_bottom) {
+            _ = try writer.write(std.mem.sliceAsBytes(pixels));
+        } else {
+            const bytes = std.mem.sliceAsBytes(pixels);
+
+            const effective_height = self.height();
+            const effective_width = self.width();
+
+            for (0..effective_height) |y| {
+                const flipped_y = effective_height - y - 1;
+                const stride = flipped_y * effective_width;
+
+                _ = try writer.write(bytes[stride..(stride + effective_width)]);
+            }
+        }
     }
 };
