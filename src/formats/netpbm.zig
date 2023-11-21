@@ -88,7 +88,7 @@ fn isWhitespace(b: u8) bool {
 
 fn readNextByte(reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!u8 {
     while (true) {
-        var b = try reader.readByte();
+        const b = try reader.readByte();
         switch (b) {
             // Before the whitespace character that delimits the raster, any characters
             // from a "#" through the next carriage return or newline character, is a
@@ -99,7 +99,7 @@ fn readNextByte(reader: buffered_stream_source.DefaultBufferedStreamSourceReader
             '#' => {
                 // eat up comment
                 while (true) {
-                    var c = try reader.readByte();
+                    const c = try reader.readByte();
                     switch (c) {
                         '\r', '\n' => break,
                         else => {},
@@ -116,7 +116,7 @@ fn readNextByte(reader: buffered_stream_source.DefaultBufferedStreamSourceReader
 fn parseNumber(reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader, buffer: []u8) ImageReadError!usize {
     var input_length: usize = 0;
     while (true) {
-        var b = try readNextByte(reader);
+        const b = try readNextByte(reader);
         if (isWhitespace(b)) {
             if (input_length > 0) {
                 return std.fmt.parseInt(usize, buffer[0..input_length], 10) catch return ImageReadError.InvalidData;
@@ -148,7 +148,7 @@ fn loadAsciiBitmap(header: Header, data: []color.Grayscale1, reader: buffered_st
     const data_end = header.width * header.height;
 
     while (data_index < data_end) {
-        var b = try reader.readByte();
+        const b = try reader.readByte();
         if (isWhitespace(b)) {
             continue;
         }
@@ -220,9 +220,9 @@ fn loadAsciiRgbmap(header: Header, data: []color.Rgb24, reader: buffered_stream_
     const data_end = header.width * header.height;
 
     while (data_index < data_end) : (data_index += 1) {
-        var r = try parseNumber(reader, read_buffer[0..]);
-        var g = try parseNumber(reader, read_buffer[0..]);
-        var b = try parseNumber(reader, read_buffer[0..]);
+        const r = try parseNumber(reader, read_buffer[0..]);
+        const g = try parseNumber(reader, read_buffer[0..]);
+        const b = try parseNumber(reader, read_buffer[0..]);
 
         data[data_index] = color.Rgb24{
             .r = @truncate(255 * r / header.max_value),

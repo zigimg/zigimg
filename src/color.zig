@@ -452,15 +452,15 @@ pub fn IndexedStorage(comptime T: type) type {
         const Self = @This();
 
         pub fn init(allocator: Allocator, pixel_count: usize) !Self {
-            var res = Self{
+            const result = Self{
                 .indices = try allocator.alloc(T, pixel_count),
                 .palette = try allocator.alloc(Rgba32, PaletteSize),
             };
 
             // Since not all palette entries need to be filled we make sure
             // they are all zero at the start.
-            @memset(res.palette, Rgba32.initRgba(0, 0, 0, 0));
-            return res;
+            @memset(result.palette, Rgba32.initRgba(0, 0, 0, 0));
+            return result;
         }
 
         pub fn deinit(self: Self, allocator: Allocator) void {

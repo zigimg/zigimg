@@ -58,7 +58,7 @@ samples_per_row: u16,
 components: []Component,
 
 pub fn read(allocator: Allocator, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!Self {
-    var segment_size = try reader.readInt(u16, .big);
+    const segment_size = try reader.readInt(u16, .big);
     if (JPEG_DEBUG) std.debug.print("StartOfFrame: frame size = 0x{X}\n", .{segment_size});
 
     const sample_precision = try reader.readByte();

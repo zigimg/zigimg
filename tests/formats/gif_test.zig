@@ -38,7 +38,7 @@ test "GIF test suite" {
     var reader = buffered_reader.reader();
 
     var area_alloc = std.heap.ArenaAllocator.init(helpers.zigimg_test_allocator);
-    var area_allocator = area_alloc.allocator();
+    const area_allocator = area_alloc.allocator();
     defer area_alloc.deinit();
 
     var read_line_opt = try reader.readUntilDelimiterOrEofAlloc(area_allocator, '\n', std.math.maxInt(u16));
@@ -167,7 +167,7 @@ fn doGifTest(entry_name: []const u8) !void {
     std.debug.print("GIF test {s}... ", .{entry_name});
 
     var area_alloc = std.heap.ArenaAllocator.init(helpers.zigimg_test_allocator);
-    var area_allocator = area_alloc.allocator();
+    const area_allocator = area_alloc.allocator();
     defer area_alloc.deinit();
 
     const config_filename = try std.fmt.allocPrint(area_allocator, "{s}.conf", .{entry_name});
@@ -280,7 +280,7 @@ fn doGifTest(entry_name: []const u8) !void {
 
                     const background_color_index = gif_file.header.background_color_index;
 
-                    var gif_background_color = switch (frames.items[frame_index].pixels) {
+                    const gif_background_color = switch (frames.items[frame_index].pixels) {
                         .indexed1 => |pixels| if (background_color_index < pixels.palette.len) pixels.palette[background_color_index] else color.Rgba32.initRgba(0, 0, 0, 0),
                         .indexed2 => |pixels| if (background_color_index < pixels.palette.len) pixels.palette[background_color_index] else color.Rgba32.initRgba(0, 0, 0, 0),
                         .indexed4 => |pixels| if (background_color_index < pixels.palette.len) pixels.palette[background_color_index] else color.Rgba32.initRgba(0, 0, 0, 0),

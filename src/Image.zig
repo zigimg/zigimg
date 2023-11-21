@@ -140,7 +140,7 @@ pub fn fromMemory(allocator: std.mem.Allocator, buffer: []const u8) !Image {
 
 /// Create a pixel surface from scratch
 pub fn create(allocator: std.mem.Allocator, width: usize, height: usize, pixel_format: PixelFormat) !Image {
-    var result = Image{
+    const result = Image{
         .allocator = allocator,
         .width = width,
         .height = height,
