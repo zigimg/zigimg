@@ -4,6 +4,7 @@ const buffered_stream_source = @import("../buffered_stream_source.zig");
 const color = @import("../color.zig");
 const Image = @import("../Image.zig");
 const std = @import("std");
+const simd = @import("../simd.zig");
 const utils = @import("../utils.zig");
 
 pub const TGAImageType = packed struct(u8) {
@@ -226,6 +227,148 @@ pub const TargaStream = union(enum) {
         return .{ .context = self };
     }
 };
+
+const RLEPair = packed struct(u8) {
+    length: u7 = 0,
+    identifier: u1 = 1,
+};
+
+const RLEPairMask = 1 << 7;
+const RLEMinLength = 2;
+const RLEMaxLength = RLEPairMask - 1;
+
+fn flushRLE(writer: anytype, value: u8, count: usize) !void {
+    var current_count = count;
+    while (current_count > 0) {
+        const length_to_write = @min(current_count, RLEMaxLength);
+
+        if (length_to_write >= RLEMinLength) {
+            try flushRlePair(writer, value, length_to_write);
+        } else {
+            try flushRawBytes(writer, value, length_to_write);
+        }
+
+        current_count -= length_to_write;
+    }
+}
+
+inline fn flushRlePair(writer: anytype, value: u8, count: usize) !void {
+    const rle_pair = RLEPair{
+        .length = @truncate(count),
+    };
+    try writer.writeByte(@bitCast(rle_pair));
+    try writer.writeByte(value);
+}
+
+inline fn flushRawBytes(writer: anytype, value: u8, count: usize) !void {
+    // Must flush byte greater than 128 (0x80) as a RLE pair
+    if ((value & RLEPairMask) == RLEPairMask) {
+        for (0..count) |_| {
+            try flushRlePair(writer, value, 1);
+        }
+    } else {
+        for (0..count) |_| {
+            try writer.writeByte(value);
+        }
+    }
+}
+
+const RLEFastEncoder = struct {
+    const LengthToCheck = 16;
+    const VectorType = @Vector(LengthToCheck, u8);
+
+    pub fn encode(source_data: []const u8, writer: anytype) !void {
+        if (source_data.len == 0) {
+            return;
+        }
+
+        var index: usize = 0;
+
+        var total_similar_count: usize = 0;
+
+        var current_byte: u8 = 0;
+
+        while (index < source_data.len and (index + LengthToCheck) <= source_data.len) {
+            // Read current byte
+            current_byte = source_data[index];
+
+            const current_byte_splatted: VectorType = @splat(current_byte);
+            const compare_chunk = simd.load(source_data[index..], VectorType, 0);
+
+            const compare_mask = (current_byte_splatted == compare_chunk);
+            const inverted_mask = ~@as(u16, @bitCast(compare_mask));
+            const current_similar_count = @ctz(inverted_mask);
+
+            if (current_similar_count == LengthToCheck) {
+                total_similar_count += current_similar_count;
+                index += current_similar_count;
+            } else {
+                total_similar_count += current_similar_count;
+
+                try flushRLE(writer, current_byte, total_similar_count);
+
+                total_similar_count = 0;
+
+                index += current_similar_count;
+            }
+        }
+
+        try flushRLE(writer, current_byte, total_similar_count);
+
+        // Process the rest sequentially
+        total_similar_count = 0;
+        if (index < source_data.len) {
+            current_byte = source_data[index];
+
+            while (index < source_data.len) {
+                const read_byte = source_data[index];
+                if (read_byte == current_byte) {
+                    total_similar_count += 1;
+                } else {
+                    try flushRLE(writer, current_byte, total_similar_count);
+
+                    current_byte = read_byte;
+                    total_similar_count = 1;
+                }
+
+                index += 1;
+            }
+
+            try flushRLE(writer, current_byte, total_similar_count);
+        }
+    }
+};
+
+test "TGA RLE Fast encoder" {
+    const uncompressed_data = [_]u8{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 64, 64, 2, 2, 2, 2, 2, 215, 215, 215, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 200, 200, 200, 200, 210, 210 };
+    const compressed_data = [_]u8{ 0x89, 0x01, 0x82, 0x40, 0x85, 0x02, 0x83, 0xD7, 0x8A, 0x03, 0x84, 0xC8, 0x82, 0xD2 };
+
+    var result_list = std.ArrayList(u8).init(std.testing.allocator);
+    defer result_list.deinit();
+
+    var writer = result_list.writer();
+
+    try RLEFastEncoder.encode(uncompressed_data[0..], writer);
+
+    try std.testing.expectEqualSlices(u8, compressed_data[0..], result_list.items);
+}
+
+test "TGA RLE Fast encoder should encore more than 128 bytes similar" {
+    const first_uncompressed_part = [_]u8{0x45} ** 135;
+    const second_uncompresse_part = [_]u8{ 0x1, 0x1, 0x1, 0x1 };
+    const uncompressed_data = first_uncompressed_part ++ second_uncompresse_part;
+
+    const compressed_data = [_]u8{ 0xFF, 0x45, 0x45, 0x87, 0x45, 0x84, 0x1 };
+
+    var result_list = std.ArrayList(u8).init(std.testing.allocator);
+    defer result_list.deinit();
+
+    var writer = result_list.writer();
+
+    try RLEFastEncoder.encode(uncompressed_data[0..], writer);
+
+    try std.testing.expectEqualSlices(u8, compressed_data[0..], result_list.items);
+}
 
 pub const TGA = struct {
     header: TGAHeader = .{},
@@ -727,6 +870,8 @@ pub const TGA = struct {
                 },
             }
         }
+
+        // TODO: Write extension
 
         var footer = TGAFooter{};
         std.mem.copy(u8, footer.signature[0..], TGASignature[0..]);
