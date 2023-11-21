@@ -346,7 +346,7 @@ test "TGA RLE Fast encoder" {
     var result_list = std.ArrayList(u8).init(std.testing.allocator);
     defer result_list.deinit();
 
-    var writer = result_list.writer();
+    const writer = result_list.writer();
 
     try RLEFastEncoder.encode(uncompressed_data[0..], writer);
 
@@ -363,7 +363,7 @@ test "TGA RLE Fast encoder should encore more than 128 bytes similar" {
     var result_list = std.ArrayList(u8).init(std.testing.allocator);
     defer result_list.deinit();
 
-    var writer = result_list.writer();
+    const writer = result_list.writer();
 
     try RLEFastEncoder.encode(uncompressed_data[0..], writer);
 
@@ -856,7 +856,7 @@ pub const TGA = struct {
 
     pub fn write(self: TGA, stream: *Image.Stream, pixels: color.PixelStorage) Image.WriteError!void {
         var buffered_stream = buffered_stream_source.bufferedStreamSourceWriter(stream);
-        var writer = buffered_stream.writer();
+        const writer = buffered_stream.writer();
 
         try utils.writeStructLittle(writer, self.header);
 
