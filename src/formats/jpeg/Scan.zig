@@ -210,7 +210,7 @@ pub const Header = struct {
     approximation_low: u4,
 
     pub fn read(reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!Header {
-        var segment_size = try reader.readInt(u16, .big);
+        const segment_size = try reader.readInt(u16, .big);
         if (JPEG_DEBUG) std.debug.print("StartOfScan: segment size = 0x{X}\n", .{segment_size});
 
         const component_count = try reader.readByte();

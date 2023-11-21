@@ -132,7 +132,7 @@ pub fn FixedStorage(comptime T: type, comptime storage_size: usize) type {
         const Self = @This();
 
         pub fn init() Self {
-            var result: Self = undefined;
+            const result: Self = undefined;
             return result;
         }
 
@@ -173,7 +173,7 @@ pub const GIF = struct {
         }
 
         pub fn allocNewSubImage(self: *FrameData, allocator: std.mem.Allocator) !*SubImage {
-            var new_sub_image = try self.sub_images.addOne(allocator);
+            const new_sub_image = try self.sub_images.addOne(allocator);
             new_sub_image.* = SubImage{};
             return new_sub_image;
         }
@@ -245,7 +245,7 @@ pub const GIF = struct {
         var gif = GIF.init(allocator);
         defer gif.deinit();
 
-        var frames = try gif.read(stream);
+        const frames = try gif.read(stream);
         if (frames.items.len == 0) {
             return Image.ReadError.InvalidData;
         }
@@ -411,7 +411,7 @@ pub const GIF = struct {
                     break :blk graphics_control;
                 };
 
-                var new_block_kind = context.reader.readEnum(DataBlockKind, .little) catch {
+                const new_block_kind = context.reader.readEnum(DataBlockKind, .little) catch {
                     return Image.ReadError.InvalidData;
                 };
 
@@ -960,13 +960,13 @@ pub const GIF = struct {
     }
 
     fn allocNewFrame(self: *GIF) !*FrameData {
-        var new_frame = try self.frames.addOne(self.allocator);
+        const new_frame = try self.frames.addOne(self.allocator);
         new_frame.* = FrameData{};
         return new_frame;
     }
 
     fn createNewAnimationFrame(self: *const GIF, pixel_format: PixelFormat) !Image.AnimationFrame {
-        var new_frame = Image.AnimationFrame{
+        const new_frame = Image.AnimationFrame{
             .pixels = try color.PixelStorage.init(self.allocator, pixel_format, @as(usize, @intCast(self.header.width)) * @as(usize, @intCast(self.header.height))),
             .duration = 0.0,
         };

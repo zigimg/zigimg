@@ -27,7 +27,7 @@ const JPEG_DEBUG = false;
 
 pub fn read(allocator: Allocator, quantization_tables: *[4]?QuantizationTable, buffered_stream: *buffered_stream_source.DefaultBufferedStreamSourceReader) ImageReadError!Self {
     const reader = buffered_stream.reader();
-    var frame_header = try FrameHeader.read(allocator, reader);
+    const frame_header = try FrameHeader.read(allocator, reader);
 
     var self = Self{
         .allocator = allocator,
