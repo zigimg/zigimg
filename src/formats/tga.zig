@@ -254,7 +254,7 @@ fn flushRLE(writer: anytype, value: u8, count: usize) !void {
 
 inline fn flushRlePair(writer: anytype, value: u8, count: usize) !void {
     const rle_pair = RLEPair{
-        .length = @truncate(count),
+        .length = @truncate(count - 1),
     };
     try writer.writeByte(@bitCast(rle_pair));
     try writer.writeByte(value);
@@ -341,7 +341,7 @@ const RLEFastEncoder = struct {
 
 test "TGA RLE Fast encoder" {
     const uncompressed_data = [_]u8{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 64, 64, 2, 2, 2, 2, 2, 215, 215, 215, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 200, 200, 200, 200, 210, 210 };
-    const compressed_data = [_]u8{ 0x89, 0x01, 0x82, 0x40, 0x85, 0x02, 0x83, 0xD7, 0x8A, 0x03, 0x84, 0xC8, 0x82, 0xD2 };
+    const compressed_data = [_]u8{ 0x88, 0x01, 0x81, 0x40, 0x84, 0x02, 0x82, 0xD7, 0x89, 0x03, 0x83, 0xC8, 0x81, 0xD2 };
 
     var result_list = std.ArrayList(u8).init(std.testing.allocator);
     defer result_list.deinit();
@@ -358,7 +358,7 @@ test "TGA RLE Fast encoder should encore more than 128 bytes similar" {
     const second_uncompresse_part = [_]u8{ 0x1, 0x1, 0x1, 0x1 };
     const uncompressed_data = first_uncompressed_part ++ second_uncompresse_part;
 
-    const compressed_data = [_]u8{ 0xFF, 0x45, 0x45, 0x87, 0x45, 0x84, 0x1 };
+    const compressed_data = [_]u8{ 0xFE, 0x45, 0x45, 0x86, 0x45, 0x83, 0x1 };
 
     var result_list = std.ArrayList(u8).init(std.testing.allocator);
     defer result_list.deinit();
@@ -860,15 +860,17 @@ pub const TGA = struct {
 
         try utils.writeStructLittle(writer, self.header);
 
-        if (self.header.image_type.run_length) {} else {
-            switch (pixels) {
-                .grayscale8 => |grayscale_pixels| {
+        switch (pixels) {
+            .grayscale8 => |grayscale_pixels| {
+                if (self.header.image_type.run_length) {
+                    try self.writeCompressedGrayscale8(writer, grayscale_pixels);
+                } else {
                     try self.writeUncompressedGrayscale8(writer, grayscale_pixels);
-                },
-                else => {
-                    return Image.WriteError.Unsupported;
-                },
-            }
+                }
+            },
+            else => {
+                return Image.WriteError.Unsupported;
+            },
         }
 
         // TODO: Write extension
@@ -894,6 +896,29 @@ pub const TGA = struct {
                 const stride = flipped_y * effective_width;
 
                 _ = try writer.write(bytes[stride..(stride + effective_width)]);
+            }
+        }
+    }
+
+    fn writeCompressedGrayscale8(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, pixels: []const color.Grayscale8) Image.WriteError!void {
+        const bytes = std.mem.sliceAsBytes(pixels);
+
+        const effective_height = self.height();
+        const effective_width = self.width();
+
+        // The TGA spec recommend that the RLE compression should be done on scanline per scanline basis
+        if (self.header.image_spec.descriptor.top_to_bottom) {
+            for (0..effective_height) |y| {
+                const stride = y * effective_width;
+
+                try RLEFastEncoder.encode(bytes[stride..(stride + effective_width)], writer);
+            }
+        } else {
+            for (0..effective_height) |y| {
+                const flipped_y = effective_height - y - 1;
+                const stride = flipped_y * effective_width;
+
+                try RLEFastEncoder.encode(bytes[stride..(stride + effective_width)], writer);
             }
         }
     }
