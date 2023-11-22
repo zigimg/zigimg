@@ -235,7 +235,7 @@ const RLEPair = packed struct(u8) {
 
 const RLEPairMask = 1 << 7;
 const RLEMinLength = 2;
-const RLEMaxLength = RLEPairMask - 1;
+const RLEMaxLength = RLEPairMask;
 
 fn flushRLE(writer: anytype, value: u8, count: usize) !void {
     var current_count = count;
@@ -358,7 +358,7 @@ test "TGA RLE Fast encoder should encore more than 128 bytes similar" {
     const second_uncompresse_part = [_]u8{ 0x1, 0x1, 0x1, 0x1 };
     const uncompressed_data = first_uncompressed_part ++ second_uncompresse_part;
 
-    const compressed_data = [_]u8{ 0xFE, 0x45, 0x45, 0x86, 0x45, 0x83, 0x1 };
+    const compressed_data = [_]u8{ 0xFF, 0x45, 0x86, 0x45, 0x83, 0x1 };
 
     var result_list = std.ArrayList(u8).init(std.testing.allocator);
     defer result_list.deinit();
