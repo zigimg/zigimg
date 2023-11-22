@@ -372,12 +372,14 @@ test "TGA RLE Fast encoder should encore more than 128 bytes similar" {
 
 pub const TGA = struct {
     header: TGAHeader = .{},
+    id: utils.FixedStorage(u8, 256) = .{},
     extension: ?TGAExtension = null,
 
     pub const EncoderOptions = struct {
         rle_compressed: bool = true,
         top_to_bottom_image: bool = false,
         color_map_depth: u8 = 24,
+        image_id: []const u8 = &.{},
     };
 
     pub fn formatInterface() FormatInterface {
@@ -480,6 +482,17 @@ pub const TGA = struct {
         }
         if (tga_encoder_options.top_to_bottom_image) {
             tga.header.image_spec.descriptor.top_to_bottom = true;
+        }
+
+        if (tga_encoder_options.image_id.len > 0) {
+            if (tga_encoder_options.image_id.len > tga.id.storage.len) {
+                return Image.WriteError.Unsupported;
+            }
+
+            tga.header.id_length = @truncate(tga_encoder_options.image_id.len);
+            tga.id.resize(tga_encoder_options.image_id.len);
+
+            @memcpy(tga.id.data[0..], tga_encoder_options.image_id[0..]);
         }
 
         switch (image.pixels) {
@@ -591,10 +604,9 @@ pub const TGA = struct {
 
         // Read ID
         if (self.header.id_length > 0) {
-            var id_buffer: [256]u8 = undefined;
-            @memset(id_buffer[0..], 0);
+            self.id.resize(self.header.id_length);
 
-            const read_id_size = try buffered_stream.read(id_buffer[0..self.header.id_length]);
+            const read_id_size = try buffered_stream.read(self.id.data[0..]);
 
             if (read_id_size != self.header.id_length) {
                 return Image.ReadError.InvalidData;
@@ -859,6 +871,14 @@ pub const TGA = struct {
         const writer = buffered_stream.writer();
 
         try utils.writeStructLittle(writer, self.header);
+
+        if (self.header.id_length > 0) {
+            if (self.id.data.len != self.header.id_length) {
+                return Image.WriteError.Unsupported;
+            }
+
+            _ = try writer.write(self.id.data);
+        }
 
         switch (pixels) {
             .grayscale8 => |grayscale_pixels| {

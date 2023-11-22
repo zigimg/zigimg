@@ -461,7 +461,12 @@ test "Write TGA uncompressed grayscale8" {
     defer source_image.deinit();
 
     try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
-        .tga = .{ .rle_compressed = false, .color_map_depth = 16, .top_to_bottom_image = false },
+        .tga = .{
+            .rle_compressed = false,
+            .color_map_depth = 16,
+            .top_to_bottom_image = false,
+            .image_id = "Truevision(R) Sample Image",
+        },
     });
 
     defer {
@@ -513,7 +518,12 @@ test "Write TGA compressed grayscale8" {
     defer source_image.deinit();
 
     try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
-        .tga = .{ .rle_compressed = true, .color_map_depth = 16, .top_to_bottom_image = true },
+        .tga = .{
+            .rle_compressed = true,
+            .color_map_depth = 16,
+            .top_to_bottom_image = false,
+            .image_id = "Truevision(R) Sample Image",
+        },
     });
     defer {
         std.fs.cwd().deleteFile(image_file_name) catch {};

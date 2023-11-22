@@ -6,6 +6,19 @@ const native_endian = builtin.target.cpu.arch.endian();
 pub const StructReadError = error{ EndOfStream, InvalidData } || std.io.StreamSource.ReadError;
 pub const StructWriteError = std.io.StreamSource.WriteError;
 
+pub fn FixedStorage(comptime T: type, comptime storage_size: usize) type {
+    return struct {
+        data: []T = &.{},
+        storage: [storage_size]T = undefined,
+
+        const Self = @This();
+
+        pub fn resize(self: *Self, size: usize) void {
+            self.data = self.storage[0..size];
+        }
+    };
+}
+
 pub fn toMagicNumberNative(magic: []const u8) u32 {
     var result: u32 = 0;
     for (magic, 0..) |character, index| {
