@@ -128,7 +128,7 @@ test "Read grayscale images" {
 }
 
 test "Read subsampling images" {
-    var testdir = std.fs.cwd().openIterableDir(helpers.fixtures_path ++ "jpeg/", .{ .access_sub_paths = false, .no_follow = true }) catch null;
+    var testdir = std.fs.cwd().openDir(helpers.fixtures_path ++ "jpeg/", .{ .access_sub_paths = false, .no_follow = true, .iterate = true }) catch null;
     if (testdir) |*idir| {
         defer idir.close();
 
@@ -138,7 +138,7 @@ test "Read subsampling images" {
             if (entry.kind != .file or !std.mem.endsWith(u8, entry.name, ".jpg") or !std.mem.startsWith(u8, entry.name, "subsampling_")) continue;
 
             std.debug.print("Testing file {s} ... ", .{entry.name});
-            var tst_file = try idir.dir.openFile(entry.name, .{ .mode = .read_only });
+            var tst_file = try idir.openFile(entry.name, .{ .mode = .read_only });
             defer tst_file.close();
 
             var stream = Image.Stream{ .file = tst_file };
