@@ -949,9 +949,11 @@ pub const TGA = struct {
                     try self.writeUncompressedGrayscale8(writer, grayscale_pixels);
                 }
             },
-            .indexed8 => |indexed| {
-                if (self.header.image_type.run_length) {} else {
-                    try self.writeUncompressedIndexed8(writer, &indexed);
+            .indexed8 => |*indexed| {
+                if (self.header.image_type.run_length) {
+                    try self.writeCompressedIndexed8(writer, indexed);
+                } else {
+                    try self.writeUncompressedIndexed8(writer, indexed);
                 }
             },
             else => {
@@ -1039,6 +1041,40 @@ pub const TGA = struct {
                 const stride = flipped_y * effective_width;
 
                 _ = try writer.write(indexed.indices[stride..(stride + effective_width)]);
+            }
+        }
+    }
+
+    fn writeCompressedIndexed8(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: *const color.IndexedStorage8) Image.WriteError!void {
+        // Color map needs to be written uncompressed
+        switch (self.header.color_map_spec.bit_depth) {
+            15, 16 => {
+                try self.writeColorMap16(writer, indexed);
+            },
+            24 => {
+                try self.writeColorMap24(writer, indexed);
+            },
+            else => {
+                return Image.Error.Unsupported;
+            },
+        }
+
+        const effective_height = self.height();
+        const effective_width = self.width();
+
+        // The TGA spec recommend that the RLE compression should be done on scanline per scanline basis
+        if (self.header.image_spec.descriptor.top_to_bottom) {
+            for (0..effective_height) |y| {
+                const stride = y * effective_width;
+
+                try RLEFastEncoder.encode(indexed.indices[stride..(stride + effective_width)], writer);
+            }
+        } else {
+            for (0..effective_height) |y| {
+                const flipped_y = effective_height - y - 1;
+                const stride = flipped_y * effective_width;
+
+                try RLEFastEncoder.encode(indexed.indices[stride..(stride + effective_width)], writer);
             }
         }
     }
