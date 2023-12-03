@@ -6,6 +6,11 @@ pub const PixelFormatVariant = enum(u4) {
     _,
 };
 
+/// The values for this enum are chosen so that:
+/// 1. value & 0xFF gives number of bits per channel
+/// 2. value & 0xF00 gives number of channels
+/// 3. value & 0xF000 gives a special variant number, 1 for Bgr, 2 for Float and 3 for special Rgb 565
+/// Note that palette index formats have number of channels set to 0.
 pub const PixelFormatInfo = packed struct {
     bits_per_channel: u8 = 0,
     channel_count: u4 = 0,
@@ -13,19 +18,10 @@ pub const PixelFormatInfo = packed struct {
     padding: u16 = 0,
 };
 
-pub inline fn toPixelFormatInfo(pixel_format: PixelFormat) PixelFormatInfo {
-    return @as(PixelFormatInfo, @bitCast(@intFromEnum(pixel_format)));
-}
-
 pub inline fn toPixelFormatValue(comptime pixel_format: PixelFormatInfo) u32 {
     return @bitCast(pixel_format);
 }
 
-/// The values for this enum are chosen so that:
-/// 1. value & 0xFF gives number of bits per channel
-/// 2. value & 0xF00 gives number of channels
-/// 3. value & 0xF000 gives a special variant number, 1 for Bgr, 2 for Float and 3 for special Rgb 565
-/// Note that palette index formats have number of channels set to 0.
 pub const PixelFormat = enum(u32) {
     invalid = 0,
     indexed1 = toPixelFormatValue(.{ .bits_per_channel = 1 }),
@@ -50,6 +46,10 @@ pub const PixelFormat = enum(u32) {
     rgb48 = toPixelFormatValue(.{ .channel_count = 3, .bits_per_channel = 16 }),
     rgba64 = toPixelFormatValue(.{ .channel_count = 4, .bits_per_channel = 16 }),
     float32 = toPixelFormatValue(.{ .variant = .float, .channel_count = 4, .bits_per_channel = 32 }),
+
+    pub inline fn toPixelFormatInfo(self: PixelFormat) PixelFormatInfo {
+        return @as(PixelFormatInfo, @bitCast(@intFromEnum(self)));
+    }
 
     pub fn isJustGrayscale(self: PixelFormat) bool {
         return toPixelFormatInfo(self).channel_count == 1;
