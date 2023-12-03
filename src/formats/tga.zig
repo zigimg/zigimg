@@ -961,7 +961,7 @@ pub const TGA = struct {
 
         var footer = TGAFooter{};
         footer.extension_offset = extension_offset;
-        std.mem.copy(u8, footer.signature[0..], TGASignature[0..]);
+        std.mem.copyForwards(u8, footer.signature[0..], TGASignature[0..]);
         try utils.writeStructLittle(writer, footer);
 
         try buffered_stream.flush();
