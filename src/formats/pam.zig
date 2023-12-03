@@ -223,7 +223,15 @@ const Header = struct {
     fn fromImage(image: Image) error{Unsupported}!Header {
         var header: Header = undefined;
         switch (image.pixelFormat()) {
-            .invalid, .indexed1, .indexed2, .indexed4, .indexed8, .indexed16, .float32, .rgb565 => return error.Unsupported, // unsupported pixel format
+            .invalid,
+            .indexed1,
+            .indexed2,
+            .indexed4,
+            .indexed8,
+            .indexed16,
+            .float32,
+            .rgb565,
+            => return error.Unsupported, // unsupported pixel format
 
             .grayscale1 => {
                 header.depth = 1;
@@ -260,7 +268,7 @@ const Header = struct {
                 header.maxval = math.maxInt(u16);
                 header.tuple_type = .gray_a;
             },
-            .rgb555 => {
+            .rgb555, .bgr555 => {
                 header.depth = 3;
                 header.maxval = math.maxInt(u5);
                 header.tuple_type = .rgb;
@@ -480,6 +488,11 @@ pub const PAM = struct {
                     .grayscale16Alpha => |x| {
                         try writer.writeInt(u16, x[offset + column].value, .little);
                         try writer.writeInt(u16, x[offset + column].alpha, .little);
+                    },
+                    .bgr555 => |x| {
+                        try writer.writeByte(x[offset + column].r);
+                        try writer.writeByte(x[offset + column].g);
+                        try writer.writeByte(x[offset + column].b);
                     },
                     .rgb555 => |x| {
                         try writer.writeByte(x[offset + column].r);

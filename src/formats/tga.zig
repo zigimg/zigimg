@@ -561,12 +561,14 @@ pub const TGA = struct {
 
                 tga.header.image_spec.bit_per_pixel = 8;
             },
-            .indexed8 => {
+            .indexed8 => |indexed| {
                 tga.header.image_type.indexed = true;
 
                 tga.header.image_spec.bit_per_pixel = 8;
 
                 tga.header.color_map_spec.bit_depth = tga_encoder_options.color_map_depth;
+                tga.header.color_map_spec.first_entry_index = 0;
+                tga.header.color_map_spec.length = @truncate(indexed.palette.len);
 
                 tga.header.has_color_map = 1;
             },
@@ -801,16 +803,16 @@ pub const TGA = struct {
         }
     }
 
-    fn readColorMap16(self: *TGA, data: color.IndexedStorage8, stream: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) Image.ReadError!void {
+    fn readColorMap16(self: *TGA, data: color.IndexedStorage8, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) Image.ReadError!void {
         var data_index: usize = self.header.color_map_spec.first_entry_index;
         const data_end: usize = self.header.color_map_spec.first_entry_index + self.header.color_map_spec.length;
 
         while (data_index < data_end) : (data_index += 1) {
-            const raw_color = try stream.readInt(u16, .little);
+            const read_color = try utils.readStructLittle(reader, color.Bgr555);
 
-            data.palette[data_index].r = color.scaleToIntColor(u8, (@as(u5, @truncate(raw_color >> (5 * 2)))));
-            data.palette[data_index].g = color.scaleToIntColor(u8, (@as(u5, @truncate(raw_color >> 5))));
-            data.palette[data_index].b = color.scaleToIntColor(u8, (@as(u5, @truncate(raw_color))));
+            data.palette[data_index].r = color.scaleToIntColor(u8, read_color.r);
+            data.palette[data_index].g = color.scaleToIntColor(u8, read_color.g);
+            data.palette[data_index].b = color.scaleToIntColor(u8, read_color.b);
             data.palette[data_index].a = 255;
         }
     }
@@ -947,6 +949,11 @@ pub const TGA = struct {
                     try self.writeUncompressedGrayscale8(writer, grayscale_pixels);
                 }
             },
+            .indexed8 => |indexed| {
+                if (self.header.image_type.run_length) {} else {
+                    try self.writeUncompressedIndexed8(writer, &indexed);
+                }
+            },
             else => {
                 return Image.WriteError.Unsupported;
             },
@@ -1005,6 +1012,64 @@ pub const TGA = struct {
 
                 try RLEFastEncoder.encode(bytes[stride..(stride + effective_width)], writer);
             }
+        }
+    }
+
+    fn writeUncompressedIndexed8(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: *const color.IndexedStorage8) Image.WriteError!void {
+        switch (self.header.color_map_spec.bit_depth) {
+            15, 16 => {
+                try self.writeColorMap16(writer, indexed);
+            },
+            24 => {
+                try self.writeColorMap24(writer, indexed);
+            },
+            else => {
+                return Image.Error.Unsupported;
+            },
+        }
+
+        if (self.header.image_spec.descriptor.top_to_bottom) {
+            _ = try writer.write(indexed.indices);
+        } else {
+            const effective_height = self.height();
+            const effective_width = self.width();
+
+            for (0..effective_height) |y| {
+                const flipped_y = effective_height - y - 1;
+                const stride = flipped_y * effective_width;
+
+                _ = try writer.write(indexed.indices[stride..(stride + effective_width)]);
+            }
+        }
+    }
+
+    fn writeColorMap16(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: *const color.IndexedStorage8) Image.WriteError!void {
+        var data_index: usize = self.header.color_map_spec.first_entry_index;
+        const data_end: usize = self.header.color_map_spec.first_entry_index + self.header.color_map_spec.length;
+
+        while (data_index < data_end) : (data_index += 1) {
+            const converted_color = color.Bgr555{
+                .r = color.scaleToIntColor(u5, indexed.palette[data_index].r),
+                .g = color.scaleToIntColor(u5, indexed.palette[data_index].g),
+                .b = color.scaleToIntColor(u5, indexed.palette[data_index].b),
+            };
+
+            try writer.writeInt(u16, @as(u15, @bitCast(converted_color)), .little);
+        }
+    }
+
+    fn writeColorMap24(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: *const color.IndexedStorage8) Image.WriteError!void {
+        var data_index: usize = self.header.color_map_spec.first_entry_index;
+        const data_end: usize = self.header.color_map_spec.first_entry_index + self.header.color_map_spec.length;
+
+        while (data_index < data_end) : (data_index += 1) {
+            const converted_color = color.Bgr24{
+                .r = indexed.palette[data_index].r,
+                .g = indexed.palette[data_index].g,
+                .b = indexed.palette[data_index].b,
+            };
+
+            try utils.writeStructLittle(writer, converted_color);
         }
     }
 };

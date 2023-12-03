@@ -348,9 +348,21 @@ fn RgbColor(comptime T: type) type {
     };
 }
 
+// Bgr555
+// OpenGL: n/a
+// Vulkan: VK_FORMAT_B5G5R5A1_UNORM_PACK16
+// Direct3D/DXGI: n/a
+pub const Bgr555 = packed struct {
+    b: u5 = 0,
+    g: u5 = 0,
+    r: u5 = 0,
+
+    pub usingnamespace RgbMethods(@This(), u5, u5, u5, void);
+};
+
 // Rgb555
 // OpenGL: GL_RGB5
-// Vulkan: VK_FORMAT_R5G6B5_UNORM_PACK16
+// Vulkan: VK_FORMAT_R5G5B5A1_UNORM_PACK16
 // Direct3D/DXGI: n/a
 pub const Rgb555 = packed struct {
     r: u5,
@@ -362,7 +374,7 @@ pub const Rgb555 = packed struct {
 
 // Rgb565
 // OpenGL: n/a
-// Vulkan: n/a
+// Vulkan: VK_FORMAT_R5G6B5_UNORM_PACK16
 // Direct3D/DXGI: n/a
 pub const Rgb565 = packed struct {
     r: u5,
@@ -535,10 +547,11 @@ pub const PixelStorage = union(PixelFormat) {
     grayscale16: []Grayscale16,
     grayscale8Alpha: []Grayscale8Alpha,
     grayscale16Alpha: []Grayscale16Alpha,
-    rgb565: []Rgb565,
     rgb555: []Rgb555,
+    rgb565: []Rgb565,
     rgb24: []Rgb24,
     rgba32: []Rgba32,
+    bgr555: []Bgr555,
     bgr24: []Bgr24,
     bgra32: []Bgra32,
     rgb48: []Rgb48,
@@ -634,6 +647,11 @@ pub const PixelStorage = union(PixelFormat) {
                     .rgb555 = try allocator.alloc(Rgb555, pixel_count),
                 };
             },
+            .bgr555 => {
+                return Self{
+                    .bgr555 = try allocator.alloc(Bgr555, pixel_count),
+                };
+            },
             .bgr24 => {
                 return Self{
                     .bgr24 = try allocator.alloc(Bgr24, pixel_count),
@@ -681,6 +699,7 @@ pub const PixelStorage = union(PixelFormat) {
             .rgba32 => |data| allocator.free(data),
             .rgb565 => |data| allocator.free(data),
             .rgb555 => |data| allocator.free(data),
+            .bgr555 => |data| allocator.free(data),
             .bgr24 => |data| allocator.free(data),
             .bgra32 => |data| allocator.free(data),
             .rgb48 => |data| allocator.free(data),
@@ -708,6 +727,7 @@ pub const PixelStorage = union(PixelFormat) {
             .rgba32 => |data| data.len,
             .rgb565 => |data| data.len,
             .rgb555 => |data| data.len,
+            .bgr555 => |data| data.len,
             .bgr24 => |data| data.len,
             .bgra32 => |data| data.len,
             .rgb48 => |data| data.len,
@@ -758,6 +778,7 @@ pub const PixelStorage = union(PixelFormat) {
             .rgba32 => |data| std.mem.sliceAsBytes(data),
             .rgb565 => |data| std.mem.sliceAsBytes(data),
             .rgb555 => |data| std.mem.sliceAsBytes(data),
+            .bgr555 => |data| std.mem.sliceAsBytes(data),
             .bgr24 => |data| std.mem.sliceAsBytes(data),
             .bgra32 => |data| std.mem.sliceAsBytes(data),
             .rgb48 => |data| std.mem.sliceAsBytes(data),
@@ -766,7 +787,7 @@ pub const PixelStorage = union(PixelFormat) {
         };
     }
 
-    /// Return the pixel data as a const byte slice
+    /// Return a slice of the current pixel storage
     pub fn slice(self: Self, begin: usize, end: usize) Self {
         return switch (self) {
             .invalid => .invalid,
@@ -786,6 +807,7 @@ pub const PixelStorage = union(PixelFormat) {
             .rgba32 => |data| .{ .rgba32 = data[begin..end] },
             .rgb565 => |data| .{ .rgb565 = data[begin..end] },
             .rgb555 => |data| .{ .rgb555 = data[begin..end] },
+            .bgr555 => |data| .{ .bgr555 = data[begin..end] },
             .bgr24 => |data| .{ .bgr24 = data[begin..end] },
             .bgra32 => |data| .{ .bgra32 = data[begin..end] },
             .rgb48 => |data| .{ .rgb48 = data[begin..end] },
@@ -832,6 +854,7 @@ pub const PixelStorageIterator = struct {
             .rgba32 => |data| data[self.current_index].toColorf32(),
             .rgb565 => |data| data[self.current_index].toColorf32(),
             .rgb555 => |data| data[self.current_index].toColorf32(),
+            .bgr555 => |data| data[self.current_index].toColorf32(),
             .bgr24 => |data| data[self.current_index].toColorf32(),
             .bgra32 => |data| data[self.current_index].toColorf32(),
             .rgb48 => |data| data[self.current_index].toColorf32(),
