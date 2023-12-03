@@ -460,18 +460,40 @@ test "Write TGA uncompressed grayscale8" {
     var source_image = try Image.fromFile(helpers.zigimg_test_allocator, &source_file);
     defer source_image.deinit();
 
-    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+    const encoder_options = Image.EncoderOptions{
         .tga = .{
             .rle_compressed = false,
             .color_map_depth = 16,
             .top_to_bottom_image = false,
             .image_id = "Truevision(R) Sample Image",
+            .author_name = "Jean Tremblay",
+            .job_id = "ubw8",
+            .job_time = .{
+                .hours = 2,
+                .minutes = 42,
+                .seconds = 24,
+            },
+            .software_id = "zigimg test suite",
+            .software_version = .{
+                .number = 101,
+                .letter = 'b',
+            },
+            .timestamp = .{
+                .year = 2023,
+                .month = 11,
+                .day = 23,
+                .hour = 9,
+                .minute = 20,
+                .second = 23,
+            },
         },
-    });
+    };
 
-    defer {
-        std.fs.cwd().deleteFile(image_file_name) catch {};
-    }
+    try source_image.writeToFilePath(image_file_name, encoder_options);
+
+    // defer {
+    //     std.fs.cwd().deleteFile(image_file_name) catch {};
+    // }
 
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
@@ -490,6 +512,20 @@ test "Write TGA uncompressed grayscale8" {
     const expected_strip = [_]u8{ 76, 149, 178, 0, 76, 149, 178, 254, 76, 149, 178, 0, 76, 149, 178, 254 };
 
     try testing.expect(pixels == .grayscale8);
+
+    try testing.expect(tga_file.extension != null);
+
+    if (tga_file.extension) |extension| {
+        try testing.expectStringStartsWith(extension.author_name[0..], encoder_options.tga.author_name);
+
+        try testing.expectStringStartsWith(extension.software_id[0..], encoder_options.tga.software_id);
+        try helpers.expectEq(extension.software_version, encoder_options.tga.software_version);
+
+        try testing.expectStringStartsWith(extension.job_id[0..], encoder_options.tga.job_id);
+        try helpers.expectEq(extension.job_time, encoder_options.tga.job_time);
+
+        try helpers.expectEq(extension.timestamp, encoder_options.tga.timestamp);
+    }
 
     const width = tga_file.width();
     const height = tga_file.height();

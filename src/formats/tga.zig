@@ -68,6 +68,35 @@ pub const TGAHeader = extern struct {
     }
 };
 
+pub const TGAExtensionComment = extern struct {
+    lines: [4][80:0]u8 = [_][80:0]u8{[_:0]u8{0} ** 80} ** 4,
+};
+
+pub const TGAExtensionSoftwareVersion = extern struct {
+    number: u16 align(1) = 0,
+    letter: u8 align(1) = ' ',
+};
+
+pub const TGAExtensionTimestamp = extern struct {
+    month: u16 align(1) = 0,
+    day: u16 align(1) = 0,
+    year: u16 align(1) = 0,
+    hour: u16 align(1) = 0,
+    minute: u16 align(1) = 0,
+    second: u16 align(1) = 0,
+};
+
+pub const TGAExtensionJobTime = extern struct {
+    hours: u16 align(1) = 0,
+    minutes: u16 align(1) = 0,
+    seconds: u16 align(1) = 0,
+};
+
+pub const TGAExtensionRatio = extern struct {
+    numerator: u16 align(1) = 0,
+    denominator: u16 align(1) = 0,
+};
+
 pub const TGAAttributeType = enum(u8) {
     no_alpha = 0,
     undefined_alpha_ignore = 1,
@@ -77,17 +106,17 @@ pub const TGAAttributeType = enum(u8) {
 };
 
 pub const TGAExtension = extern struct {
-    extension_size: u16 align(1) = 0,
-    author_name: [41]u8 align(1) = undefined,
-    author_comment: [324]u8 align(1) = undefined,
-    timestamp: [12]u8 align(1) = undefined,
-    job_id: [41]u8 align(1) = undefined,
-    job_time: [6]u8 align(1) = undefined,
-    software_id: [41]u8 align(1) = undefined,
-    software_version: [3]u8 align(1) = undefined,
-    key_color: [4]u8 align(1) = undefined,
-    pixel_aspect: [4]u8 align(1) = undefined,
-    gamma_value: [4]u8 align(1) = undefined,
+    extension_size: u16 align(1) = @sizeOf(TGAExtension),
+    author_name: [40:0]u8 align(1) = [_:0]u8{0} ** 40,
+    author_comment: TGAExtensionComment align(1) = .{},
+    timestamp: TGAExtensionTimestamp align(1) = .{},
+    job_id: [40:0]u8 align(1) = [_:0]u8{0} ** 40,
+    job_time: TGAExtensionJobTime align(1) = .{},
+    software_id: [40:0]u8 align(1) = [_:0]u8{0} ** 40,
+    software_version: TGAExtensionSoftwareVersion align(1) = .{},
+    key_color: color.Bgra32 align(1) = .{ .r = 0, .g = 0, .b = 0, .a = 0 },
+    pixel_aspect: TGAExtensionRatio align(1) = .{},
+    gamma_value: TGAExtensionRatio align(1) = .{},
     color_correction_offset: u32 align(1) = 0,
     postage_stamp_offset: u32 align(1) = 0,
     scanline_offset: u32 align(1) = 0,
@@ -380,6 +409,13 @@ pub const TGA = struct {
         top_to_bottom_image: bool = false,
         color_map_depth: u8 = 24,
         image_id: []const u8 = &.{},
+        author_name: [:0]const u8 = &.{},
+        author_comment: TGAExtensionComment = .{},
+        timestamp: TGAExtensionTimestamp = .{},
+        job_id: [:0]const u8 = &.{},
+        job_time: TGAExtensionJobTime = .{},
+        software_id: [:0]const u8 = &.{},
+        software_version: TGAExtensionSoftwareVersion = .{},
     };
 
     pub fn formatInterface() FormatInterface {
@@ -493,6 +529,29 @@ pub const TGA = struct {
             tga.id.resize(tga_encoder_options.image_id.len);
 
             @memcpy(tga.id.data[0..], tga_encoder_options.image_id[0..]);
+        }
+
+        if (tga.extension) |*extension| {
+            if (tga_encoder_options.author_name.len >= extension.author_name.len) {
+                return Image.WriteError.Unsupported;
+            }
+            if (tga_encoder_options.job_id.len >= extension.job_id.len) {
+                return Image.WriteError.Unsupported;
+            }
+            if (tga_encoder_options.software_id.len >= extension.software_id.len) {
+                return Image.WriteError.Unsupported;
+            }
+
+            std.mem.copyForwards(u8, extension.author_name[0..], tga_encoder_options.author_name[0..]);
+            extension.author_comment = tga_encoder_options.author_comment;
+
+            extension.timestamp = tga_encoder_options.timestamp;
+
+            std.mem.copyForwards(u8, extension.job_id[0..], tga_encoder_options.job_id[0..]);
+            extension.job_time = tga_encoder_options.job_time;
+
+            std.mem.copyForwards(u8, extension.software_id[0..], tga_encoder_options.software_id[0..]);
+            extension.software_version = tga_encoder_options.software_version;
         }
 
         switch (image.pixels) {
@@ -893,9 +952,15 @@ pub const TGA = struct {
             },
         }
 
-        // TODO: Write extension
+        var extension_offset: u32 = 0;
+        if (self.extension) |extension| {
+            extension_offset = @truncate(try buffered_stream.getPos());
+
+            try utils.writeStructLittle(writer, extension);
+        }
 
         var footer = TGAFooter{};
+        footer.extension_offset = extension_offset;
         std.mem.copy(u8, footer.signature[0..], TGASignature[0..]);
         try utils.writeStructLittle(writer, footer);
 
