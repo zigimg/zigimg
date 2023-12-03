@@ -727,8 +727,6 @@ test "Write uncompressed indexed8 (color map 24-bit)" {
     }
 }
 
-//
-
 test "Write compressed indexed8 (color map 16-bit)" {
     const image_file_name = "zigimg_tga_compressed_indexed8.tga";
 
