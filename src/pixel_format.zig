@@ -47,16 +47,19 @@ pub const PixelFormat = enum(u32) {
     rgba64 = toPixelFormatValue(.{ .channel_count = 4, .bits_per_channel = 16 }),
     float32 = toPixelFormatValue(.{ .variant = .float, .channel_count = 4, .bits_per_channel = 32 }),
 
-    pub inline fn toPixelFormatInfo(self: PixelFormat) PixelFormatInfo {
+    pub inline fn info(self: PixelFormat) PixelFormatInfo {
         return @as(PixelFormatInfo, @bitCast(@intFromEnum(self)));
     }
 
-    pub fn isJustGrayscale(self: PixelFormat) bool {
-        return toPixelFormatInfo(self).channel_count == 1;
+    pub fn isGrayscale(self: PixelFormat) bool {
+        return switch (self) {
+            .grayscale1, .grayscale2, .grayscale4, .grayscale8, .grayscale16, .grayscale8Alpha, .grayscale16Alpha => true,
+            else => false,
+        };
     }
 
-    pub fn isIndex(self: PixelFormat) bool {
-        return toPixelFormatInfo(self).channel_count == 0;
+    pub fn isIndexed(self: PixelFormat) bool {
+        return info(self).channel_count == 0;
     }
 
     pub fn isStandardRgb(self: PixelFormat) bool {
@@ -68,44 +71,33 @@ pub const PixelFormat = enum(u32) {
     }
 
     pub fn is16Bit(self: PixelFormat) bool {
-        return toPixelFormatInfo(self).bits_per_channel == 16;
+        return info(self).bits_per_channel == 16;
     }
 
     pub fn pixelStride(self: PixelFormat) u8 {
-        // Using bit manipulations of values is not really faster than this switch
+        if (self.isIndexed()) {
+            return (info(self).bits_per_channel + 7) / 8;
+        }
+
         return switch (self) {
-            .invalid => 0,
-            .indexed1, .indexed2, .indexed4, .indexed8, .grayscale1, .grayscale2, .grayscale4, .grayscale8 => 1,
-            .indexed16, .grayscale16, .grayscale8Alpha, .rgb565, .rgb555, .bgr555 => 2,
-            .rgb24, .bgr24 => 3,
-            .grayscale16Alpha, .rgba32, .bgra32 => 4,
-            .rgb48 => 6,
-            .rgba64 => 8,
-            .float32 => 16,
+            inline else => |value| (info(value).channel_count * info(value).bits_per_channel + 7) / 8,
         };
     }
 
     pub fn bitsPerChannel(self: PixelFormat) u8 {
         return switch (self) {
-            .invalid => 0,
             .rgb565 => unreachable, // TODO: what to do in that case?
-            .indexed1, .grayscale1 => 1,
-            .indexed2, .grayscale2 => 2,
-            .indexed4, .grayscale4 => 4,
-            .rgb555, .bgr555 => 5,
-            .indexed8, .grayscale8, .grayscale8Alpha, .rgb24, .rgba32, .bgr24, .bgra32 => 8,
-            .indexed16, .grayscale16, .grayscale16Alpha, .rgb48, .rgba64 => 16,
-            .float32 => 32,
+            inline else => |value| info(value).bits_per_channel,
         };
     }
 
     pub fn channelCount(self: PixelFormat) u8 {
+        if (self.isIndexed()) {
+            return 1;
+        }
+
         return switch (self) {
-            .invalid => 0,
-            .grayscale8Alpha, .grayscale16Alpha => 2,
-            .rgb565, .rgb555, .bgr555, .rgb24, .bgr24, .rgb48 => 3,
-            .rgba32, .bgra32, .rgba64, .float32 => 4,
-            else => 1,
+            inline else => |value| info(value).channel_count,
         };
     }
 };

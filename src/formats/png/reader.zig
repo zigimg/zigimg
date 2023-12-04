@@ -717,7 +717,7 @@ pub const TrnsProcessor = struct {
 
     pub fn processDataRow(self: *Self, data: *RowProcessData) Image.ReadError!PixelFormat {
         self.processed = true;
-        if (data.src_format.isIndex() or self.trns_data == .unset) {
+        if (data.src_format.isIndexed() or self.trns_data == .unset) {
             return data.src_format;
         }
         var pixel_stride: u8 = switch (data.dest_format) {
@@ -807,7 +807,7 @@ pub const PlteProcessor = struct {
     pub fn processChunk(self: *Self, data: *ChunkProcessData) Image.ReadError!PixelFormat {
         // This is critical chunk so it is already read and there is no need to read it here
         var result_format = data.current_format;
-        if (self.processed or !result_format.isIndex()) {
+        if (self.processed or !result_format.isIndexed()) {
             self.processed = true;
             return result_format;
         }
@@ -823,7 +823,7 @@ pub const PlteProcessor = struct {
     pub fn processDataRow(self: *Self, data: *RowProcessData) Image.ReadError!PixelFormat {
         self.processed = true;
 
-        if (!data.src_format.isIndex() or self.palette.len == 0) {
+        if (!data.src_format.isIndexed() or self.palette.len == 0) {
             return data.src_format;
         }
 

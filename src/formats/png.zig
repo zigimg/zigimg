@@ -105,7 +105,7 @@ pub const PNG = struct {
 
         try writeSignature(writer);
         try writeHeader(writer, header);
-        if (PixelFormat.isIndex(pixels)) {
+        if (PixelFormat.isIndexed(pixels)) {
             try writePalette(writer, pixels);
             try writeTransparencyInfo(writer, pixels); // TODO: pixel format where there is no transparency
         }
