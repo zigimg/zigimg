@@ -942,19 +942,11 @@ pub const TGA = struct {
         }
 
         switch (pixels) {
-            .grayscale8 => |grayscale_pixels| {
-                if (self.header.image_type.run_length) {
-                    try self.writeCompressedGrayscale8(writer, grayscale_pixels);
-                } else {
-                    try self.writeUncompressedGrayscale8(writer, grayscale_pixels);
-                }
+            .indexed8 => {
+                try self.writeIndexed8(writer, pixels);
             },
-            .indexed8 => |*indexed| {
-                if (self.header.image_type.run_length) {
-                    try self.writeCompressedIndexed8(writer, indexed);
-                } else {
-                    try self.writeUncompressedIndexed8(writer, indexed);
-                }
+            .grayscale8 => {
+                try self.writePixels(writer, pixels);
             },
             else => {
                 return Image.WriteError.Unsupported;
@@ -976,110 +968,63 @@ pub const TGA = struct {
         try buffered_stream.flush();
     }
 
-    fn writeUncompressedGrayscale8(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, pixels: []const color.Grayscale8) Image.WriteError!void {
-        if (self.header.image_spec.descriptor.top_to_bottom) {
-            _ = try writer.write(std.mem.sliceAsBytes(pixels));
-        } else {
-            const bytes = std.mem.sliceAsBytes(pixels);
-
-            const effective_height = self.height();
-            const effective_width = self.width();
-
-            for (0..effective_height) |y| {
-                const flipped_y = effective_height - y - 1;
-                const stride = flipped_y * effective_width;
-
-                _ = try writer.write(bytes[stride..(stride + effective_width)]);
-            }
-        }
-    }
-
-    fn writeCompressedGrayscale8(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, pixels: []const color.Grayscale8) Image.WriteError!void {
-        const bytes = std.mem.sliceAsBytes(pixels);
+    fn writePixels(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, pixels: color.PixelStorage) Image.WriteError!void {
+        const bytes = pixels.asConstBytes();
 
         const effective_height = self.height();
         const effective_width = self.width();
+        const bytes_per_pixel = std.meta.activeTag(pixels).pixelStride();
+        const pixel_stride = effective_width * bytes_per_pixel;
 
-        // The TGA spec recommend that the RLE compression should be done on scanline per scanline basis
-        if (self.header.image_spec.descriptor.top_to_bottom) {
-            for (0..effective_height) |y| {
-                const stride = y * effective_width;
+        if (self.header.image_type.run_length) {
+            // The TGA spec recommend that the RLE compression should be done on scanline per scanline basis
+            if (self.header.image_spec.descriptor.top_to_bottom) {
+                for (0..effective_height) |y| {
+                    const current_scanline = y * pixel_stride;
 
-                try RLEFastEncoder.encode(bytes[stride..(stride + effective_width)], writer);
+                    try RLEFastEncoder.encode(bytes[current_scanline..(current_scanline + pixel_stride)], writer);
+                }
+            } else {
+                for (0..effective_height) |y| {
+                    const flipped_y = effective_height - y - 1;
+                    const current_scanline = flipped_y * pixel_stride;
+
+                    try RLEFastEncoder.encode(bytes[current_scanline..(current_scanline + pixel_stride)], writer);
+                }
             }
         } else {
-            for (0..effective_height) |y| {
-                const flipped_y = effective_height - y - 1;
-                const stride = flipped_y * effective_width;
+            if (self.header.image_spec.descriptor.top_to_bottom) {
+                _ = try writer.write(bytes);
+            } else {
+                for (0..effective_height) |y| {
+                    const flipped_y = effective_height - y - 1;
+                    const current_scanline = flipped_y * pixel_stride;
 
-                try RLEFastEncoder.encode(bytes[stride..(stride + effective_width)], writer);
+                    _ = try writer.write(bytes[current_scanline..(current_scanline + pixel_stride)]);
+                }
             }
         }
     }
 
-    fn writeUncompressedIndexed8(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: *const color.IndexedStorage8) Image.WriteError!void {
+    fn writeIndexed8(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, pixels: color.PixelStorage) Image.WriteError!void {
+        // First write color map, the color map needs to be written uncompressed
         switch (self.header.color_map_spec.bit_depth) {
             15, 16 => {
-                try self.writeColorMap16(writer, indexed);
+                try self.writeColorMap16(writer, pixels.indexed8);
             },
             24 => {
-                try self.writeColorMap24(writer, indexed);
+                try self.writeColorMap24(writer, pixels.indexed8);
             },
             else => {
                 return Image.Error.Unsupported;
             },
         }
 
-        if (self.header.image_spec.descriptor.top_to_bottom) {
-            _ = try writer.write(indexed.indices);
-        } else {
-            const effective_height = self.height();
-            const effective_width = self.width();
-
-            for (0..effective_height) |y| {
-                const flipped_y = effective_height - y - 1;
-                const stride = flipped_y * effective_width;
-
-                _ = try writer.write(indexed.indices[stride..(stride + effective_width)]);
-            }
-        }
+        // Then write the indice data, compressed or uncompressed
+        try self.writePixels(writer, pixels);
     }
 
-    fn writeCompressedIndexed8(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: *const color.IndexedStorage8) Image.WriteError!void {
-        // Color map needs to be written uncompressed
-        switch (self.header.color_map_spec.bit_depth) {
-            15, 16 => {
-                try self.writeColorMap16(writer, indexed);
-            },
-            24 => {
-                try self.writeColorMap24(writer, indexed);
-            },
-            else => {
-                return Image.Error.Unsupported;
-            },
-        }
-
-        const effective_height = self.height();
-        const effective_width = self.width();
-
-        // The TGA spec recommend that the RLE compression should be done on scanline per scanline basis
-        if (self.header.image_spec.descriptor.top_to_bottom) {
-            for (0..effective_height) |y| {
-                const stride = y * effective_width;
-
-                try RLEFastEncoder.encode(indexed.indices[stride..(stride + effective_width)], writer);
-            }
-        } else {
-            for (0..effective_height) |y| {
-                const flipped_y = effective_height - y - 1;
-                const stride = flipped_y * effective_width;
-
-                try RLEFastEncoder.encode(indexed.indices[stride..(stride + effective_width)], writer);
-            }
-        }
-    }
-
-    fn writeColorMap16(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: *const color.IndexedStorage8) Image.WriteError!void {
+    fn writeColorMap16(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: color.IndexedStorage8) Image.WriteError!void {
         var data_index: usize = self.header.color_map_spec.first_entry_index;
         const data_end: usize = self.header.color_map_spec.first_entry_index + self.header.color_map_spec.length;
 
@@ -1094,7 +1039,7 @@ pub const TGA = struct {
         }
     }
 
-    fn writeColorMap24(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: *const color.IndexedStorage8) Image.WriteError!void {
+    fn writeColorMap24(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: color.IndexedStorage8) Image.WriteError!void {
         var data_index: usize = self.header.color_map_spec.first_entry_index;
         const data_end: usize = self.header.color_map_spec.first_entry_index + self.header.color_map_spec.length;
 
