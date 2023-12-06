@@ -353,9 +353,9 @@ fn RgbColor(comptime T: type) type {
 // Vulkan: VK_FORMAT_R5G6B5_UNORM_PACK16
 // Direct3D/DXGI: n/a
 pub const Rgb555 = packed struct {
-    r: u5,
-    g: u5,
     b: u5,
+    g: u5,
+    r: u5,
 
     pub usingnamespace RgbMethods(@This(), u5, u5, u5, void);
 };
@@ -365,9 +365,9 @@ pub const Rgb555 = packed struct {
 // Vulkan: n/a
 // Direct3D/DXGI: n/a
 pub const Rgb565 = packed struct {
-    r: u5,
-    g: u6,
     b: u5,
+    g: u6,
+    r: u5,
 
     pub usingnamespace RgbMethods(@This(), u5, u6, u5, void);
 };
