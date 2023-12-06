@@ -808,7 +808,7 @@ pub const TGA = struct {
         const data_end: usize = self.header.color_map_spec.first_entry_index + self.header.color_map_spec.length;
 
         while (data_index < data_end) : (data_index += 1) {
-            const read_color = try utils.readStructLittle(reader, color.Bgr555);
+            const read_color = try utils.readStructLittle(reader, color.Rgb555);
 
             data.palette[data_index].r = color.scaleToIntColor(u8, read_color.r);
             data.palette[data_index].g = color.scaleToIntColor(u8, read_color.g);
@@ -1029,7 +1029,7 @@ pub const TGA = struct {
         const data_end: usize = self.header.color_map_spec.first_entry_index + self.header.color_map_spec.length;
 
         while (data_index < data_end) : (data_index += 1) {
-            const converted_color = color.Bgr555{
+            const converted_color = color.Rgb555{
                 .r = color.scaleToIntColor(u5, indexed.palette[data_index].r),
                 .g = color.scaleToIntColor(u5, indexed.palette[data_index].g),
                 .b = color.scaleToIntColor(u5, indexed.palette[data_index].b),

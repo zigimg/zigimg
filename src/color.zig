@@ -348,14 +348,17 @@ fn RgbColor(comptime T: type) type {
     };
 }
 
+// NOTE: For all the packed structs colors, the order of color is reversed
+// because the least significant part of the struct needs to be first, as per packed struct rules
+
 // Bgr555
 // OpenGL: n/a
 // Vulkan: VK_FORMAT_B5G5R5A1_UNORM_PACK16
 // Direct3D/DXGI: n/a
 pub const Bgr555 = packed struct {
-    b: u5 = 0,
-    g: u5 = 0,
     r: u5 = 0,
+    g: u5 = 0,
+    b: u5 = 0,
 
     pub usingnamespace RgbMethods(@This(), u5, u5, u5, void);
 };
