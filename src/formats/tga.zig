@@ -510,7 +510,7 @@ pub const TGA = struct {
 
     pub const EncoderOptions = struct {
         rle_compressed: bool = true,
-        top_to_bottom_image: bool = false,
+        top_to_bottom_image: bool = true,
         color_map_depth: u8 = 24,
         image_id: []const u8 = &.{},
         author_name: [:0]const u8 = &.{},
