@@ -20,6 +20,6 @@ pub const ImageEncoderOptions = union(@import("../Image.zig").Format) {
     png: PNG.EncoderOptions,
     ppm: PPM.EncoderOptions,
     qoi: QOI.EncoderOptions,
-    tga: void,
+    tga: TGA.EncoderOptions,
     pam: PAM.EncoderOptions,
 };

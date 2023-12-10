@@ -123,35 +123,16 @@ const InterlacePasses = [_]struct { start: usize, step: usize }{
     .{ .start = 1, .step = 2 },
 };
 
-// TODO: Move to utils.zig
-pub fn FixedStorage(comptime T: type, comptime storage_size: usize) type {
-    return struct {
-        data: []T,
-        storage: [storage_size]T,
-
-        const Self = @This();
-
-        pub fn init() Self {
-            const result: Self = undefined;
-            return result;
-        }
-
-        pub fn resize(self: *Self, size: usize) void {
-            self.data = self.storage[0..size];
-        }
-    };
-}
-
 pub const GIF = struct {
     header: Header = .{},
-    global_color_table: FixedStorage(color.Rgb24, 256) = FixedStorage(color.Rgb24, 256).init(),
+    global_color_table: utils.FixedStorage(color.Rgb24, 256) = .{},
     frames: std.ArrayListUnmanaged(FrameData) = .{},
     comments: std.ArrayListUnmanaged(CommentExtension) = .{},
     application_infos: std.ArrayListUnmanaged(ApplicationExtension) = .{},
     allocator: std.mem.Allocator = undefined,
 
     pub const SubImage = struct {
-        local_color_table: FixedStorage(color.Rgb24, 256) = FixedStorage(color.Rgb24, 256).init(),
+        local_color_table: utils.FixedStorage(color.Rgb24, 256) = .{},
         image_descriptor: ImageDescriptor = .{},
         pixels: []u8 = &.{},
 
@@ -479,7 +460,7 @@ pub const GIF = struct {
                 var data_block_size = try context.reader.readByte();
 
                 while (data_block_size > 0) {
-                    var data_block = FixedStorage(u8, 256).init();
+                    var data_block = utils.FixedStorage(u8, 256){};
                     data_block.resize(data_block_size);
 
                     _ = try context.reader.read(data_block.data[0..]);
@@ -507,7 +488,7 @@ pub const GIF = struct {
                     var data_block_size = try context.reader.readByte();
 
                     while (data_block_size > 0) {
-                        var data_block = FixedStorage(u8, 256).init();
+                        var data_block = utils.FixedStorage(u8, 256){};
                         data_block.resize(data_block_size);
 
                         _ = try context.reader.read(data_block.data[0..]);
@@ -575,7 +556,7 @@ pub const GIF = struct {
             var data_block_size = try context.reader.readByte();
 
             while (data_block_size > 0) {
-                var data_block = FixedStorage(u8, 256).init();
+                var data_block = utils.FixedStorage(u8, 256){};
                 data_block.resize(data_block_size);
 
                 _ = try context.reader.read(data_block.data[0..]);
