@@ -1058,6 +1058,9 @@ pub const TGA = struct {
             .bgr24 => {
                 try self.writePixels(writer, pixels);
             },
+            .bgra32 => {
+                try self.writePixels(writer, pixels);
+            },
             else => {
                 return Image.WriteError.Unsupported;
             },

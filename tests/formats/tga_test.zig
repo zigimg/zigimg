@@ -1086,3 +1086,119 @@ test "Write compressed 24-bit true color TGA" {
         }
     }
 }
+
+test "Write uncompressed 32-bit true color TGA" {
+    const image_file_name = "zigimg_tga_uncompressed_true_color_32.tga";
+
+    var source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/utc32.tga");
+    defer source_file.close();
+
+    var source_image = try Image.fromFile(helpers.zigimg_test_allocator, &source_file);
+    defer source_image.deinit();
+
+    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+        .tga = .{
+            .rle_compressed = false,
+            .color_map_depth = 24,
+            .top_to_bottom_image = true,
+            .image_id = "Truevision(R) Sample Image",
+        },
+    });
+    defer {
+        std.fs.cwd().deleteFile(image_file_name) catch {};
+    }
+
+    const read_file = try helpers.testOpenFile(image_file_name);
+    defer read_file.close();
+
+    var stream_source = std.io.StreamSource{ .file = read_file };
+
+    var tga_file = tga.TGA{};
+
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(tga_file.width(), 128);
+    try helpers.expectEq(tga_file.height(), 128);
+    try helpers.expectEq(try tga_file.pixelFormat(), .bgra32);
+
+    const expected_strip = [_]u32{ 0xff0000, 0x00ff00, 0x0000ff, 0x000000, 0xff0000, 0x00ff00, 0x0000ff, 0xffffff, 0xff0000, 0x00ff00, 0x0000ff, 0x000000, 0xff0000, 0x00ff00, 0x0000ff, 0xffffff };
+
+    try testing.expect(pixels == .bgra32);
+
+    try helpers.expectEq(pixels.bgra32.len, 128 * 128);
+
+    const width = tga_file.width();
+    const height = tga_file.height();
+
+    var y: usize = 0;
+    while (y < height) : (y += 1) {
+        var x: usize = 0;
+
+        const stride = y * width;
+
+        while (x < width) : (x += 1) {
+            const strip_index = x / 8;
+
+            try helpers.expectEq(pixels.bgra32[stride + x].toU32Rgba(), expected_strip[strip_index] << 8 | 0xff);
+        }
+    }
+}
+
+test "Write compressed 32-bit true color TGA" {
+    const image_file_name = "zigimg_tga_compressed_true_color_32.tga";
+
+    var source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/ctc32.tga");
+    defer source_file.close();
+
+    var source_image = try Image.fromFile(helpers.zigimg_test_allocator, &source_file);
+    defer source_image.deinit();
+
+    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+        .tga = .{
+            .rle_compressed = true,
+            .color_map_depth = 24,
+            .top_to_bottom_image = true,
+            .image_id = "Truevision(R) Sample Image",
+        },
+    });
+    defer {
+        std.fs.cwd().deleteFile(image_file_name) catch {};
+    }
+
+    const read_file = try helpers.testOpenFile(image_file_name);
+    defer read_file.close();
+
+    var stream_source = std.io.StreamSource{ .file = read_file };
+
+    var tga_file = tga.TGA{};
+
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(tga_file.width(), 128);
+    try helpers.expectEq(tga_file.height(), 128);
+    try helpers.expectEq(try tga_file.pixelFormat(), .bgra32);
+
+    const expected_strip = [_]u32{ 0xff0000, 0x00ff00, 0x0000ff, 0x000000, 0xff0000, 0x00ff00, 0x0000ff, 0xffffff, 0xff0000, 0x00ff00, 0x0000ff, 0x000000, 0xff0000, 0x00ff00, 0x0000ff, 0xffffff };
+
+    try testing.expect(pixels == .bgra32);
+
+    try helpers.expectEq(pixels.bgra32.len, 128 * 128);
+
+    const width = tga_file.width();
+    const height = tga_file.height();
+
+    var y: usize = 0;
+    while (y < height) : (y += 1) {
+        var x: usize = 0;
+
+        const stride = y * width;
+
+        while (x < width) : (x += 1) {
+            const strip_index = x / 8;
+
+            try helpers.expectEq(pixels.bgra32[stride + x].toU32Rgba(), expected_strip[strip_index] << 8 | 0xff);
+        }
+    }
+}
