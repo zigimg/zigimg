@@ -681,13 +681,13 @@ pub const TGA = struct {
                 tga.header.image_type.truecolor = true;
                 tga.header.image_spec.bit_per_pixel = 16;
             },
-            .rgb24 => {
+            .bgr24 => {
                 tga.header.image_type.indexed = false;
                 tga.header.image_type.truecolor = true;
 
                 tga.header.image_spec.bit_per_pixel = 24;
             },
-            .rgba32 => {
+            .bgra32 => {
                 tga.header.image_type.indexed = false;
                 tga.header.image_type.truecolor = true;
 
@@ -723,8 +723,8 @@ pub const TGA = struct {
         } else if (self.header.image_type.truecolor) {
             switch (self.header.image_spec.bit_per_pixel) {
                 16 => return PixelFormat.rgb555,
-                24 => return PixelFormat.rgb24,
-                32 => return PixelFormat.rgba32,
+                24 => return PixelFormat.bgr24,
+                32 => return PixelFormat.bgra32,
                 else => {},
             }
         }
@@ -841,18 +841,18 @@ pub const TGA = struct {
                     try self.readTruecolor16BottomToTop(pixels.rgb555, targa_stream.reader());
                 }
             },
-            .rgb24 => {
+            .bgr24 => {
                 if (top_to_bottom_image) {
-                    try self.readTruecolor24TopToBottom(pixels.rgb24, targa_stream.reader());
+                    try self.readTruecolor24TopToBottom(pixels.bgr24, targa_stream.reader());
                 } else {
-                    try self.readTruecolor24BottomTopTop(pixels.rgb24, targa_stream.reader());
+                    try self.readTruecolor24BottomTopTop(pixels.bgr24, targa_stream.reader());
                 }
             },
-            .rgba32 => {
+            .bgra32 => {
                 if (top_to_bottom_image) {
-                    try self.readTruecolor32TopToBottom(pixels.rgba32, targa_stream.reader());
+                    try self.readTruecolor32TopToBottom(pixels.bgra32, targa_stream.reader());
                 } else {
-                    try self.readTruecolor32BottomToTop(pixels.rgba32, targa_stream.reader());
+                    try self.readTruecolor32BottomToTop(pixels.bgra32, targa_stream.reader());
                 }
             },
             else => {
@@ -964,7 +964,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readTruecolor24TopToBottom(self: *TGA, data: []color.Rgb24, stream: TargaStream.Reader) Image.ReadError!void {
+    fn readTruecolor24TopToBottom(self: *TGA, data: []color.Bgr24, stream: TargaStream.Reader) Image.ReadError!void {
         var data_index: usize = 0;
         const data_end: usize = self.width() * self.height();
 
@@ -975,7 +975,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readTruecolor24BottomTopTop(self: *TGA, data: []color.Rgb24, stream: TargaStream.Reader) Image.ReadError!void {
+    fn readTruecolor24BottomTopTop(self: *TGA, data: []color.Bgr24, stream: TargaStream.Reader) Image.ReadError!void {
         for (0..self.height()) |y| {
             const inverted_y = self.height() - y - 1;
 
@@ -990,7 +990,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readTruecolor32TopToBottom(self: *TGA, data: []color.Rgba32, stream: TargaStream.Reader) Image.ReadError!void {
+    fn readTruecolor32TopToBottom(self: *TGA, data: []color.Bgra32, stream: TargaStream.Reader) Image.ReadError!void {
         var data_index: usize = 0;
         const data_end: usize = self.width() * self.height();
 
@@ -1008,7 +1008,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readTruecolor32BottomToTop(self: *TGA, data: []color.Rgba32, stream: TargaStream.Reader) Image.ReadError!void {
+    fn readTruecolor32BottomToTop(self: *TGA, data: []color.Bgra32, stream: TargaStream.Reader) Image.ReadError!void {
         for (0..self.height()) |y| {
             const inverted_y = self.height() - y - 1;
 
@@ -1053,6 +1053,9 @@ pub const TGA = struct {
                 try self.writePixels(writer, pixels);
             },
             .rgb555 => {
+                try self.writePixels(writer, pixels);
+            },
+            .bgr24 => {
                 try self.writePixels(writer, pixels);
             },
             else => {
