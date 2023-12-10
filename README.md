@@ -70,11 +70,11 @@ zig build test
 | IILBM         | ❌            | ❌            |
 | JPEG          | ❌            | ❌            |
 | PAM           | ✔️            | ✔️            |
-| PBM           | ✔️            | ❌            |
+| PBM           | ✔️            | ✔️            |
 | PCX           | ✔️            | ✔️            |
 | PGM           | ✔️ (Partial)  | ✔️ (Partial)  |
 | PNG           | ✔️            | ✔️ (Partial)  |
-| PPM           | ✔️ (Partial)  | ❌            |
+| PPM           | ✔️ (Partial)  | ✔️ (Partial)  |
 | QOI           | ✔️            | ✔️            |
 | TGA           | ✔️            | ✔️            |
 | TIFF          | ❌            | ❌            |
