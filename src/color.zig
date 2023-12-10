@@ -349,7 +349,8 @@ fn RgbColor(comptime T: type) type {
 }
 
 // NOTE: For all the packed structs colors, the order of color is reversed
-// because the least significant part of the struct needs to be first, as per packed struct rules
+// because the least significant part of the struct needs to be first, as per packed struct rules.
+// Also little endian is assumed for those formats.
 
 // Bgr555
 // OpenGL: n/a
