@@ -407,6 +407,48 @@ fn RunLengthSIMDEncoder(comptime IntType: type) type {
     };
 }
 
+fn RLEStreamEncoder(comptime ColorType: type) type {
+    return struct {
+        rle_value: ?ColorType = null,
+        length: usize = 0,
+
+        const IntType = switch (ColorType) {
+            color.Bgr24 => u24,
+            color.Bgra32 => u32,
+            else => @compileError("Not supported color format"),
+        };
+
+        pub fn encode(self: *@This(), writer: anytype, value: ColorType) !void {
+            if (self.rle_value == null) {
+                self.rle_value = value;
+                self.length = 1;
+                return;
+            }
+
+            if (self.rle_value) |rle_value| {
+                if (std.mem.eql(u8, std.mem.asBytes(&rle_value), std.mem.asBytes(&value))) {
+                    self.length += 1;
+                } else {
+                    try RunLengthEncoderCommon.flush(IntType, writer, @as(IntType, @bitCast(rle_value)), self.length);
+
+                    self.length = 1;
+                    self.rle_value = value;
+                }
+            }
+        }
+
+        pub fn flush(self: *@This(), writer: anytype) !void {
+            if (self.length == 0) {
+                return;
+            }
+
+            if (self.rle_value) |rle_value| {
+                try RunLengthEncoderCommon.flush(IntType, writer, @as(IntType, @bitCast(rle_value)), self.length);
+            }
+        }
+    };
+}
+
 test "TGA RLE SIMD u8 (bytes) encoder" {
     const uncompressed_data = [_]u8{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 64, 64, 2, 2, 2, 2, 2, 215, 215, 215, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 200, 200, 200, 200, 210, 210 };
     const compressed_data = [_]u8{ 0x88, 0x01, 0x81, 0x40, 0x84, 0x02, 0x82, 0xD7, 0x89, 0x03, 0x83, 0xC8, 0x81, 0xD2 };
@@ -681,7 +723,7 @@ pub const TGA = struct {
                 tga.header.image_type.truecolor = true;
                 tga.header.image_spec.bit_per_pixel = 16;
             },
-            .bgr24 => {
+            .rgb24, .bgr24 => {
                 tga.header.image_type.indexed = false;
                 tga.header.image_type.truecolor = true;
 
@@ -1049,17 +1091,15 @@ pub const TGA = struct {
             .indexed8 => {
                 try self.writeIndexed8(writer, pixels);
             },
-            .grayscale8 => {
+            .grayscale8,
+            .rgb555,
+            .bgr24,
+            .bgra32,
+            => {
                 try self.writePixels(writer, pixels);
             },
-            .rgb555 => {
-                try self.writePixels(writer, pixels);
-            },
-            .bgr24 => {
-                try self.writePixels(writer, pixels);
-            },
-            .bgra32 => {
-                try self.writePixels(writer, pixels);
+            .rgb24 => {
+                try self.writeRgb24(writer, pixels);
             },
             else => {
                 return Image.WriteError.Unsupported;
@@ -1137,6 +1177,69 @@ pub const TGA = struct {
                     const current_scanline = flipped_y * pixel_stride;
 
                     _ = try writer.write(bytes[current_scanline..(current_scanline + pixel_stride)]);
+                }
+            }
+        }
+    }
+
+    fn writeRgb24(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, pixels: color.PixelStorage) Image.WriteError!void {
+        const image_width = self.width();
+        const image_height = self.height();
+
+        if (self.header.image_type.run_length) {
+            var rle_encoder = RLEStreamEncoder(color.Bgr24){};
+
+            if (self.header.image_spec.descriptor.top_to_bottom) {
+                for (0..image_height) |y| {
+                    const stride = y * image_width;
+
+                    for (0..image_width) |x| {
+                        const current_color = pixels.rgb24[stride + x];
+
+                        const bgr_color = color.Bgr24{ .r = current_color.r, .g = current_color.g, .b = current_color.b };
+
+                        try rle_encoder.encode(writer, bgr_color);
+                    }
+                }
+            } else {
+                for (0..image_height) |y| {
+                    const flipped_y = image_height - y - 1;
+                    const stride = flipped_y * image_width;
+
+                    for (0..image_width) |x| {
+                        const current_color = pixels.rgb24[stride + x];
+
+                        const bgr_color = color.Bgr24{ .r = current_color.r, .g = current_color.g, .b = current_color.b };
+
+                        try rle_encoder.encode(writer, bgr_color);
+                    }
+                }
+            }
+
+            try rle_encoder.flush(writer);
+        } else {
+            if (self.header.image_spec.descriptor.top_to_bottom) {
+                for (0..image_height) |y| {
+                    const stride = y * image_width;
+
+                    for (0..image_width) |x| {
+                        const current_color = pixels.rgb24[stride + x];
+                        try writer.writeByte(current_color.b);
+                        try writer.writeByte(current_color.g);
+                        try writer.writeByte(current_color.r);
+                    }
+                }
+            } else {
+                for (0..image_height) |y| {
+                    const flipped_y = image_height - y - 1;
+                    const stride = flipped_y * image_width;
+
+                    for (0..image_width) |x| {
+                        const current_color = pixels.rgb24[stride + x];
+                        try writer.writeByte(current_color.b);
+                        try writer.writeByte(current_color.g);
+                        try writer.writeByte(current_color.r);
+                    }
                 }
             }
         }

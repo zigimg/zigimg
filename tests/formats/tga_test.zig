@@ -1202,3 +1202,117 @@ test "Write compressed 32-bit true color TGA" {
         }
     }
 }
+
+test "Write uncompressed Rgb24 to TGA" {
+    const image_file_name = "zigimg_tga_uncompressed_rgb24.tga";
+
+    const uncompressed_source = [_]color.Rgb24{
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
+        .{ .r = 0x1, .g = 0x2, .b = 0x3 },
+        .{ .r = 0x4, .g = 0x5, .b = 0x6 },
+        .{ .r = 0x7, .g = 0x8, .b = 0x9 },
+    };
+
+    var source_image = try Image.create(helpers.zigimg_test_allocator, uncompressed_source.len, 1, .rgb24);
+    defer source_image.deinit();
+
+    @memcpy(source_image.pixels.rgb24[0..], uncompressed_source[0..]);
+
+    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+        .tga = .{
+            .rle_compressed = false,
+            .color_map_depth = 24,
+            .top_to_bottom_image = true,
+            .image_id = "Truevision(R) Sample Image",
+        },
+    });
+    defer {
+        std.fs.cwd().deleteFile(image_file_name) catch {};
+    }
+
+    const read_file = try helpers.testOpenFile(image_file_name);
+    defer read_file.close();
+
+    var stream_source = std.io.StreamSource{ .file = read_file };
+
+    var tga_file = tga.TGA{};
+
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(tga_file.width(), uncompressed_source.len);
+    try helpers.expectEq(tga_file.height(), 1);
+    try helpers.expectEq(try tga_file.pixelFormat(), .bgr24);
+
+    const image_size = source_image.width * source_image.height;
+
+    for (0..image_size) |index| {
+        try helpers.expectEq(pixels.bgr24[index].r, source_image.pixels.rgb24[index].r);
+        try helpers.expectEq(pixels.bgr24[index].g, source_image.pixels.rgb24[index].g);
+        try helpers.expectEq(pixels.bgr24[index].b, source_image.pixels.rgb24[index].b);
+    }
+}
+
+test "Write compressed Rgb24 to TGA" {
+    const image_file_name = "zigimg_tga_compressed_rgb24.tga";
+
+    const uncompressed_source = [_]color.Rgb24{
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
+        .{ .r = 0x1, .g = 0x2, .b = 0x3 },
+        .{ .r = 0x4, .g = 0x5, .b = 0x6 },
+        .{ .r = 0x7, .g = 0x8, .b = 0x9 },
+    };
+
+    var source_image = try Image.create(helpers.zigimg_test_allocator, uncompressed_source.len, 1, .rgb24);
+    defer source_image.deinit();
+
+    @memcpy(source_image.pixels.rgb24[0..], uncompressed_source[0..]);
+
+    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+        .tga = .{
+            .rle_compressed = true,
+            .color_map_depth = 24,
+            .top_to_bottom_image = true,
+            .image_id = "Truevision(R) Sample Image",
+        },
+    });
+    defer {
+        std.fs.cwd().deleteFile(image_file_name) catch {};
+    }
+
+    const read_file = try helpers.testOpenFile(image_file_name);
+    defer read_file.close();
+
+    var stream_source = std.io.StreamSource{ .file = read_file };
+
+    var tga_file = tga.TGA{};
+
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(tga_file.width(), uncompressed_source.len);
+    try helpers.expectEq(tga_file.height(), 1);
+    try helpers.expectEq(try tga_file.pixelFormat(), .bgr24);
+
+    const image_size = source_image.width * source_image.height;
+
+    for (0..image_size) |index| {
+        try helpers.expectEq(pixels.bgr24[index].r, source_image.pixels.rgb24[index].r);
+        try helpers.expectEq(pixels.bgr24[index].g, source_image.pixels.rgb24[index].g);
+        try helpers.expectEq(pixels.bgr24[index].b, source_image.pixels.rgb24[index].b);
+    }
+}
