@@ -729,7 +729,7 @@ pub const TGA = struct {
 
                 tga.header.image_spec.bit_per_pixel = 24;
             },
-            .bgra32 => {
+            .rgba32, .bgra32 => {
                 tga.header.image_type.indexed = false;
                 tga.header.image_type.truecolor = true;
 
@@ -1101,6 +1101,9 @@ pub const TGA = struct {
             .rgb24 => {
                 try self.writeRgb24(writer, pixels);
             },
+            .rgba32 => {
+                try self.writeRgba32(writer, pixels);
+            },
             else => {
                 return Image.WriteError.Unsupported;
             },
@@ -1239,6 +1242,71 @@ pub const TGA = struct {
                         try writer.writeByte(current_color.b);
                         try writer.writeByte(current_color.g);
                         try writer.writeByte(current_color.r);
+                    }
+                }
+            }
+        }
+    }
+
+    fn writeRgba32(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, pixels: color.PixelStorage) Image.WriteError!void {
+        const image_width = self.width();
+        const image_height = self.height();
+
+        if (self.header.image_type.run_length) {
+            var rle_encoder = RLEStreamEncoder(color.Bgra32){};
+
+            if (self.header.image_spec.descriptor.top_to_bottom) {
+                for (0..image_height) |y| {
+                    const stride = y * image_width;
+
+                    for (0..image_width) |x| {
+                        const current_color = pixels.rgba32[stride + x];
+
+                        const bgra_color = color.Bgra32{ .r = current_color.r, .g = current_color.g, .b = current_color.b, .a = current_color.a };
+
+                        try rle_encoder.encode(writer, bgra_color);
+                    }
+                }
+            } else {
+                for (0..image_height) |y| {
+                    const flipped_y = image_height - y - 1;
+                    const stride = flipped_y * image_width;
+
+                    for (0..image_width) |x| {
+                        const current_color = pixels.rgba32[stride + x];
+
+                        const bgra_color = color.Bgra32{ .r = current_color.r, .g = current_color.g, .b = current_color.b, .a = current_color.a };
+
+                        try rle_encoder.encode(writer, bgra_color);
+                    }
+                }
+            }
+
+            try rle_encoder.flush(writer);
+        } else {
+            if (self.header.image_spec.descriptor.top_to_bottom) {
+                for (0..image_height) |y| {
+                    const stride = y * image_width;
+
+                    for (0..image_width) |x| {
+                        const current_color = pixels.rgba32[stride + x];
+                        try writer.writeByte(current_color.b);
+                        try writer.writeByte(current_color.g);
+                        try writer.writeByte(current_color.r);
+                        try writer.writeByte(current_color.a);
+                    }
+                }
+            } else {
+                for (0..image_height) |y| {
+                    const flipped_y = image_height - y - 1;
+                    const stride = flipped_y * image_width;
+
+                    for (0..image_width) |x| {
+                        const current_color = pixels.rgba32[stride + x];
+                        try writer.writeByte(current_color.b);
+                        try writer.writeByte(current_color.g);
+                        try writer.writeByte(current_color.r);
+                        try writer.writeByte(current_color.a);
                     }
                 }
             }

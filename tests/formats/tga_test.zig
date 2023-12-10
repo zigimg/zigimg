@@ -1286,7 +1286,7 @@ test "Write compressed Rgb24 to TGA" {
         .tga = .{
             .rle_compressed = true,
             .color_map_depth = 24,
-            .top_to_bottom_image = true,
+            .top_to_bottom_image = false,
             .image_id = "Truevision(R) Sample Image",
         },
     });
@@ -1314,5 +1314,151 @@ test "Write compressed Rgb24 to TGA" {
         try helpers.expectEq(pixels.bgr24[index].r, source_image.pixels.rgb24[index].r);
         try helpers.expectEq(pixels.bgr24[index].g, source_image.pixels.rgb24[index].g);
         try helpers.expectEq(pixels.bgr24[index].b, source_image.pixels.rgb24[index].b);
+    }
+}
+
+test "Write uncompressed Rgba32 to TGA" {
+    const image_file_name = "zigimg_tga_uncompressed_rgba32.tga";
+
+    const uncompressed_source = [_]color.Rgba32{
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB, .a = 0x60 },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB, .a = 0x60 },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB, .a = 0x60 },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB, .a = 0x60 },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB, .a = 0x60 },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB, .a = 0x60 },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB, .a = 0x60 },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB, .a = 0x60 },
+        .{
+            .r = 0x1,
+            .g = 0x2,
+            .b = 0x3,
+            .a = 0x1A,
+        },
+        .{
+            .r = 0x4,
+            .g = 0x5,
+            .b = 0x6,
+            .a = 0x2B,
+        },
+        .{
+            .r = 0x7,
+            .g = 0x8,
+            .b = 0x9,
+            .a = 0x3F,
+        },
+    };
+
+    var source_image = try Image.create(helpers.zigimg_test_allocator, uncompressed_source.len, 1, .rgba32);
+    defer source_image.deinit();
+
+    @memcpy(source_image.pixels.rgba32[0..], uncompressed_source[0..]);
+
+    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+        .tga = .{
+            .rle_compressed = false,
+            .color_map_depth = 24,
+            .top_to_bottom_image = true,
+            .image_id = "Truevision(R) Sample Image",
+        },
+    });
+    defer {
+        std.fs.cwd().deleteFile(image_file_name) catch {};
+    }
+
+    const read_file = try helpers.testOpenFile(image_file_name);
+    defer read_file.close();
+
+    var stream_source = std.io.StreamSource{ .file = read_file };
+
+    var tga_file = tga.TGA{};
+
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(tga_file.width(), uncompressed_source.len);
+    try helpers.expectEq(tga_file.height(), 1);
+    try helpers.expectEq(try tga_file.pixelFormat(), .bgra32);
+
+    const image_size = source_image.width * source_image.height;
+
+    for (0..image_size) |index| {
+        try helpers.expectEq(pixels.bgra32[index].r, source_image.pixels.rgba32[index].r);
+        try helpers.expectEq(pixels.bgra32[index].g, source_image.pixels.rgba32[index].g);
+        try helpers.expectEq(pixels.bgra32[index].b, source_image.pixels.rgba32[index].b);
+        try helpers.expectEq(pixels.bgra32[index].a, source_image.pixels.rgba32[index].a);
+    }
+}
+
+test "Write compressed Rgba32 to TGA" {
+    const image_file_name = "zigimg_tga_compressed_rgba32.tga";
+
+    const uncompressed_source = [_]color.Rgba32{
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB, .a = 0x60 },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB, .a = 0x60 },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB, .a = 0x60 },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB, .a = 0x60 },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB, .a = 0x60 },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB, .a = 0x60 },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB, .a = 0x60 },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB, .a = 0x60 },
+        .{
+            .r = 0x1,
+            .g = 0x2,
+            .b = 0x3,
+            .a = 0x1A,
+        },
+        .{
+            .r = 0x4,
+            .g = 0x5,
+            .b = 0x6,
+            .a = 0x2B,
+        },
+        .{
+            .r = 0x7,
+            .g = 0x8,
+            .b = 0x9,
+            .a = 0x3F,
+        },
+    };
+
+    var source_image = try Image.create(helpers.zigimg_test_allocator, uncompressed_source.len, 1, .rgba32);
+    defer source_image.deinit();
+
+    @memcpy(source_image.pixels.rgba32[0..], uncompressed_source[0..]);
+
+    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+        .tga = .{
+            .rle_compressed = true,
+            .color_map_depth = 24,
+            .top_to_bottom_image = false,
+            .image_id = "Truevision(R) Sample Image",
+        },
+    });
+    defer {
+        std.fs.cwd().deleteFile(image_file_name) catch {};
+    }
+
+    const read_file = try helpers.testOpenFile(image_file_name);
+    defer read_file.close();
+
+    var stream_source = std.io.StreamSource{ .file = read_file };
+
+    var tga_file = tga.TGA{};
+
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(tga_file.width(), uncompressed_source.len);
+    try helpers.expectEq(tga_file.height(), 1);
+    try helpers.expectEq(try tga_file.pixelFormat(), .bgra32);
+
+    const image_size = source_image.width * source_image.height;
+
+    for (0..image_size) |index| {
+        try helpers.expectEq(pixels.bgra32[index].r, source_image.pixels.rgba32[index].r);
+        try helpers.expectEq(pixels.bgra32[index].g, source_image.pixels.rgba32[index].g);
+        try helpers.expectEq(pixels.bgra32[index].b, source_image.pixels.rgba32[index].b);
+        try helpers.expectEq(pixels.bgra32[index].a, source_image.pixels.rgba32[index].a);
     }
 }
