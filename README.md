@@ -76,7 +76,7 @@ zig build test
 | PNG           | ✔️            | ✔️ (Partial)  |
 | PPM           | ✔️ (Partial)  | ❌            |
 | QOI           | ✔️            | ✔️            |
-| TGA           | ✔️            | ❌            |
+| TGA           | ✔️            | ✔️            |
 | TIFF          | ❌            | ❌            |
 | XBM           | ❌            | ❌            |
 | XPM           | ❌            | ❌            |
@@ -140,5 +140,6 @@ Currently, this only supports a subset of PAMs where:
 
 ### TGA - Truevision TGA format
 
-* Supports uncompressed and compressed 8-bit grayscale, indexed with 16-bit colormap, truecolor with 24-bit or 32-bit bit depth.
-* Supports version 1 and version 2
+* Supports uncompressed and compressed 8-bit grayscale, indexed with 16-bit and 24-bit colormap, truecolor with 16-bit(RGB555), 24-bit or 32-bit bit depth.
+* Supports reading version 1 and version 2
+* Supports writing version 2
