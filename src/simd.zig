@@ -1,6 +1,7 @@
 const std = @import("std");
 
-pub fn load(mem: []const u8, comptime T: type, comptime len: u32) T {
+pub fn load(bytes: []const u8, comptime T: type, comptime len: u32) T {
+    const mem = std.mem.bytesAsSlice(vectorInnerType(T), bytes);
     var result: T = @splat(@as(vectorInnerType(T), 0));
     const vector_len = if (len == 0) vectorLength(T) else len;
     comptime var i: u32 = 0;
