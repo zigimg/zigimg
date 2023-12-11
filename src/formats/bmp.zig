@@ -332,14 +332,14 @@ pub const BMP = struct {
 
         const writer = buffered_stream.writer();
 
-        try utils.writeStructLittle(writer, self.file_header);
+        try utils.writeStruct(writer, self.file_header, .little);
 
         switch (self.info_header) {
             .v4 => |v4| {
-                try utils.writeStructLittle(writer, v4);
+                try utils.writeStruct(writer, v4, .little);
             },
             .v5 => |v5| {
-                try utils.writeStructLittle(writer, v5);
+                try utils.writeStruct(writer, v5, .little);
             },
             else => {
                 return Image.WriteError.InvalidData;
@@ -412,7 +412,7 @@ pub const BMP = struct {
 
             x = 0;
             while (x < pixel_width) : (x += 1) {
-                try utils.writeStructLittle(writer, pixels[@intCast(scanline + x)]);
+                try utils.writeStruct(writer, pixels[@intCast(scanline + x)], .little);
             }
         }
     }

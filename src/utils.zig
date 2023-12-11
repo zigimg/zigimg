@@ -136,16 +136,15 @@ pub fn readStructForeign(reader: anytype, comptime T: type) StructReadError!T {
 }
 
 pub inline fn readStruct(reader: anytype, comptime T: type, comptime wanted_endian: std.builtin.Endian) StructReadError!T {
-    return switch(native_endian)
-    {
+    return switch (native_endian) {
         .little => {
-            return switch(wanted_endian) {
+            return switch (wanted_endian) {
                 .little => readStructNative(reader, T),
                 .big => readStructForeign(reader, T),
             };
         },
         .big => {
-            return switch(wanted_endian) {
+            return switch (wanted_endian) {
                 .little => readStructForeign(reader, T),
                 .big => readStructNative(reader, T),
             };
@@ -153,12 +152,19 @@ pub inline fn readStruct(reader: anytype, comptime T: type, comptime wanted_endi
     };
 }
 
-pub const writeStructLittle = switch (native_endian) {
-    .little => writeStructNative,
-    .big => writeStructForeign,
-};
-
-pub const writeStructBig = switch (native_endian) {
-    .little => writeStructForeign,
-    .big => writeStructNative,
-};
+pub inline fn writeStruct(writer: anytype, value: anytype, comptime wanted_endian: std.builtin.Endian) StructWriteError!void {
+    return switch (native_endian) {
+        .little => {
+            return switch (wanted_endian) {
+                .little => writeStructNative(writer, value),
+                .big => writeStructForeign(writer, value),
+            };
+        },
+        .big => {
+            return switch (wanted_endian) {
+                .little => writeStructForeign(writer, value),
+                .big => writeStructNative(writer, value),
+            };
+        },
+    };
+}

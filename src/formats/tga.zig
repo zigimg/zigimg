@@ -1077,7 +1077,7 @@ pub const TGA = struct {
         var buffered_stream = buffered_stream_source.bufferedStreamSourceWriter(stream);
         const writer = buffered_stream.writer();
 
-        try utils.writeStructLittle(writer, self.header);
+        try utils.writeStruct(writer, self.header, .little);
 
         if (self.header.id_length > 0) {
             if (self.id.data.len != self.header.id_length) {
@@ -1113,13 +1113,13 @@ pub const TGA = struct {
         if (self.extension) |extension| {
             extension_offset = @truncate(try buffered_stream.getPos());
 
-            try utils.writeStructLittle(writer, extension);
+            try utils.writeStruct(writer, extension, .little);
         }
 
         var footer = TGAFooter{};
         footer.extension_offset = extension_offset;
         std.mem.copyForwards(u8, footer.signature[0..], TGASignature[0..]);
-        try utils.writeStructLittle(writer, footer);
+        try utils.writeStruct(writer, footer, .little);
 
         try buffered_stream.flush();
     }
@@ -1357,7 +1357,7 @@ pub const TGA = struct {
                 .b = indexed.palette[data_index].b,
             };
 
-            try utils.writeStructLittle(writer, converted_color);
+            try utils.writeStruct(writer, converted_color, .little);
         }
     }
 };

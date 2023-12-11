@@ -565,7 +565,7 @@ pub const PCX = struct {
 
         const writer = buffered_stream.writer();
 
-        try utils.writeStructLittle(writer, self.header);
+        try utils.writeStruct(writer, self.header, .little);
 
         const actual_width = self.width();
         const is_even = ((actual_width & 0x1) == 0);
@@ -588,7 +588,7 @@ pub const PCX = struct {
                 try writer.writeByte(VGAPaletteIdentifier);
                 for (pixels.indexed8.palette) |current_entry| {
                     const rgb24_color = color.Rgb24.fromU32Rgba(current_entry.toU32Rgba());
-                    try utils.writeStructLittle(writer, rgb24_color);
+                    try utils.writeStruct(writer, rgb24_color, .little);
                 }
             },
             .rgb24 => |data| {
