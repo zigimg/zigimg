@@ -199,7 +199,7 @@ pub const QOI = struct {
             return ImageReadError.InvalidData;
         }
 
-        self.header = utils.readStructBig(reader, Header) catch return ImageReadError.InvalidData;
+        self.header = utils.readStruct(reader, Header, .big) catch return ImageReadError.InvalidData;
 
         const pixel_format = try self.pixelFormat();
 

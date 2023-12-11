@@ -268,7 +268,7 @@ pub const GIF = struct {
             .reader = buffered_stream.reader(),
         };
 
-        self.header = try utils.readStructLittle(context.reader, Header);
+        self.header = try utils.readStruct(context.reader, Header, .little);
 
         if (!std.mem.eql(u8, self.header.magic[0..], Magic)) {
             return Image.ReadError.InvalidData;
@@ -295,7 +295,7 @@ pub const GIF = struct {
             var index: usize = 0;
 
             while (index < global_color_table_size) : (index += 1) {
-                self.global_color_table.data[index] = try utils.readStructLittle(context.reader, color.Rgb24);
+                self.global_color_table.data[index] = try utils.readStruct(context.reader, color.Rgb24, .little);
             }
         }
 
@@ -374,7 +374,7 @@ pub const GIF = struct {
                     // Eat block size
                     _ = try context.reader.readByte();
 
-                    graphics_control.flags = try utils.readStructLittle(context.reader, GraphicControlExtensionFlags);
+                    graphics_control.flags = try utils.readStruct(context.reader, GraphicControlExtensionFlags, .little);
                     graphics_control.delay_time = try context.reader.readInt(u16, .little);
 
                     if (graphics_control.flags.has_transparent_color) {
@@ -522,7 +522,7 @@ pub const GIF = struct {
     fn readImageDescriptorAndData(self: *GIF, context: *ReaderContext) Image.ReadError!void {
         if (context.current_frame_data) |current_frame_data| {
             var sub_image = try current_frame_data.allocNewSubImage(self.allocator);
-            sub_image.image_descriptor = try utils.readStructLittle(context.reader, ImageDescriptor);
+            sub_image.image_descriptor = try utils.readStruct(context.reader, ImageDescriptor, .little);
 
             // Don't read any futher if the local width or height is zero
             if (sub_image.image_descriptor.width == 0 or sub_image.image_descriptor.height == 0) {
@@ -537,7 +537,7 @@ pub const GIF = struct {
                 var index: usize = 0;
 
                 while (index < local_color_table_size) : (index += 1) {
-                    sub_image.local_color_table.data[index] = try utils.readStructLittle(context.reader, color.Rgb24);
+                    sub_image.local_color_table.data[index] = try utils.readStruct(context.reader, color.Rgb24, .little);
                 }
             }
 

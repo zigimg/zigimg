@@ -95,6 +95,7 @@ pub fn writeStructForeign(writer: anytype, value: anytype) StructWriteError!void
     }
 }
 
+// Extend std.mem.byteSwapAllFields to support enums
 fn swapFieldBytes(data: anytype) StructReadError!void {
     const T = @typeInfo(@TypeOf(data)).Pointer.child;
     inline for (std.meta.fields(T)) |entry| {
@@ -134,15 +135,23 @@ pub fn readStructForeign(reader: anytype, comptime T: type) StructReadError!T {
     return result;
 }
 
-pub const readStructLittle = switch (native_endian) {
-    .little => readStructNative,
-    .big => readStructForeign,
-};
-
-pub const readStructBig = switch (native_endian) {
-    .little => readStructForeign,
-    .big => readStructNative,
-};
+pub inline fn readStruct(reader: anytype, comptime T: type, comptime wanted_endian: std.builtin.Endian) StructReadError!T {
+    return switch(native_endian)
+    {
+        .little => {
+            return switch(wanted_endian) {
+                .little => readStructNative(reader, T),
+                .big => readStructForeign(reader, T),
+            };
+        },
+        .big => {
+            return switch(wanted_endian) {
+                .little => readStructForeign(reader, T),
+                .big => readStructNative(reader, T),
+            };
+        },
+    };
+}
 
 pub const writeStructLittle = switch (native_endian) {
     .little => writeStructNative,

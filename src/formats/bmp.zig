@@ -281,7 +281,7 @@ pub const BMP = struct {
 
         // Read file header
         const reader = buffered_stream.reader();
-        self.file_header = try utils.readStructLittle(reader, BitmapFileHeader);
+        self.file_header = try utils.readStruct(reader, BitmapFileHeader, .little);
         if (!std.mem.eql(u8, self.file_header.magic_header[0..], BitmapMagicHeader[0..])) {
             return Image.ReadError.InvalidData;
         }
@@ -291,9 +291,9 @@ pub const BMP = struct {
 
         // Read info header
         self.info_header = switch (header_size) {
-            BitmapInfoHeaderWindows31.HeaderSize => BitmapInfoHeader{ .windows31 = try utils.readStructLittle(reader, BitmapInfoHeaderWindows31) },
-            BitmapInfoHeaderV4.HeaderSize => BitmapInfoHeader{ .v4 = try utils.readStructLittle(reader, BitmapInfoHeaderV4) },
-            BitmapInfoHeaderV5.HeaderSize => BitmapInfoHeader{ .v5 = try utils.readStructLittle(reader, BitmapInfoHeaderV5) },
+            BitmapInfoHeaderWindows31.HeaderSize => BitmapInfoHeader{ .windows31 = try utils.readStruct(reader, BitmapInfoHeaderWindows31, .little) },
+            BitmapInfoHeaderV4.HeaderSize => BitmapInfoHeader{ .v4 = try utils.readStruct(reader, BitmapInfoHeaderV4, .little) },
+            BitmapInfoHeaderV5.HeaderSize => BitmapInfoHeader{ .v5 = try utils.readStruct(reader, BitmapInfoHeaderV5, .little) },
             else => return Image.Error.Unsupported,
         };
 
@@ -385,7 +385,7 @@ pub const BMP = struct {
 
             x = 0;
             while (x < pixel_width) : (x += 1) {
-                pixels[@intCast(scanline + x)] = try utils.readStructLittle(reader, ColorBufferType);
+                pixels[@intCast(scanline + x)] = try utils.readStruct(reader, ColorBufferType, .little);
             }
         }
     }

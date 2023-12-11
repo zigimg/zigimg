@@ -415,7 +415,7 @@ pub const PCX = struct {
     pub fn read(self: *PCX, allocator: Allocator, stream: *Image.Stream) ImageReadError!color.PixelStorage {
         var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
         const reader = buffered_stream.reader();
-        self.header = try utils.readStructLittle(reader, PCXHeader);
+        self.header = try utils.readStruct(reader, PCXHeader, .little);
 
         if (self.header.id != 0x0A) {
             return ImageReadError.InvalidData;

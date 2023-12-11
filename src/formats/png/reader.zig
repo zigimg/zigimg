@@ -115,7 +115,7 @@ const IDatChunksReader = struct {
             self.crc.update(png.Chunks.IDAT.name);
 
             // Try to load the next IDAT chunk
-            const chunk = try utils.readStructBig(reader, png.ChunkHeader);
+            const chunk = try utils.readStruct(reader, png.ChunkHeader, .big);
             if (chunk.type == png.Chunks.IDAT.id) {
                 self.remaining_chunk_length = chunk.length;
             } else {
@@ -138,7 +138,7 @@ pub fn loadHeader(stream: *Image.Stream) Image.ReadError!png.HeaderData {
         return Image.ReadError.InvalidData;
     }
 
-    const chunk = try utils.readStructBig(reader, png.ChunkHeader);
+    const chunk = try utils.readStruct(reader, png.ChunkHeader, .big);
     if (chunk.type != png.Chunks.IHDR.id) return Image.ReadError.InvalidData;
     if (chunk.length != @sizeOf(png.HeaderData)) return Image.ReadError.InvalidData;
 
@@ -147,7 +147,7 @@ pub fn loadHeader(stream: *Image.Stream) Image.ReadError!png.HeaderData {
 
     var struct_stream = std.io.fixedBufferStream(&header_data);
 
-    const header = try utils.readStructBig(struct_stream.reader(), png.HeaderData);
+    const header = try utils.readStruct(struct_stream.reader(), png.HeaderData, .big);
     if (!header.isValid()) return Image.ReadError.InvalidData;
 
     const expected_crc = try reader.readInt(u32, .big);
@@ -213,7 +213,7 @@ pub fn loadWithHeader(
     var reader = buffered_stream.reader();
 
     while (true) {
-        const chunk = (try utils.readStructBig(reader, png.ChunkHeader));
+        const chunk = (try utils.readStruct(reader, png.ChunkHeader, .big));
         chunk_process_data.chunk_id = chunk.type;
         chunk_process_data.chunk_length = chunk.length;
 
@@ -689,7 +689,7 @@ pub const TrnsProcessor = struct {
             },
             .rgb24, .rgb48 => {
                 if (data.chunk_length == @sizeOf(color.Rgb48)) {
-                    self.trns_data = .{ .rgb = try utils.readStructBig(reader, color.Rgb48) };
+                    self.trns_data = .{ .rgb = try utils.readStruct(reader, color.Rgb48, .big) };
                     result_format = if (result_format == .rgb48) .rgba64 else .rgba32;
                 } else {
                     try data.stream.seekBy(data.chunk_length); // Skip invalid
