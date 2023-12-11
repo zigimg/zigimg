@@ -186,7 +186,7 @@ const TargaRLEDecoder = struct {
         var read_count: usize = 0;
 
         if (self.state == .read_header) {
-            const packet_header = try utils.readStructLittle(self.source_reader, RLEPacketHeader);
+            const packet_header = try utils.readStruct(self.source_reader, RLEPacketHeader, .little);
 
             if (packet_header.packet_type == .repeated) {
                 self.state = .repeated;
@@ -587,7 +587,7 @@ pub const TGA = struct {
                 const footer_position = end_pos - @sizeOf(TGAFooter);
 
                 try buffered_stream.seekTo(footer_position);
-                const footer = try utils.readStructLittle(buffered_stream.reader(), TGAFooter);
+                const footer = try utils.readStruct(buffered_stream.reader(), TGAFooter, .little);
 
                 if (footer.dot != '.') {
                     break :blk false;
@@ -610,7 +610,7 @@ pub const TGA = struct {
             if (!is_valid_tga_v2 and @sizeOf(TGAHeader) < end_pos) {
                 try buffered_stream.seekTo(0);
 
-                const header = try utils.readStructLittle(buffered_stream.reader(), TGAHeader);
+                const header = try utils.readStruct(buffered_stream.reader(), TGAHeader, .little);
                 break :blk header.isValid();
             }
 
@@ -786,7 +786,7 @@ pub const TGA = struct {
 
         const reader = buffered_stream.reader();
         try buffered_stream.seekTo(end_pos - @sizeOf(TGAFooter));
-        const footer = try utils.readStructLittle(reader, TGAFooter);
+        const footer = try utils.readStruct(reader, TGAFooter, .little);
 
         var is_tga_version2 = true;
 
@@ -798,12 +798,12 @@ pub const TGA = struct {
         if (is_tga_version2 and footer.extension_offset > 0) {
             const extension_pos: u64 = @intCast(footer.extension_offset);
             try buffered_stream.seekTo(extension_pos);
-            self.extension = try utils.readStructLittle(reader, TGAExtension);
+            self.extension = try utils.readStruct(reader, TGAExtension, .little);
         }
 
         // Read header
         try buffered_stream.seekTo(0);
-        self.header = try utils.readStructLittle(reader, TGAHeader);
+        self.header = try utils.readStruct(reader, TGAHeader, .little);
 
         if (!self.header.isValid()) {
             return Image.ReadError.InvalidData;
@@ -954,7 +954,7 @@ pub const TGA = struct {
         const data_end: usize = self.header.color_map_spec.first_entry_index + self.header.color_map_spec.length;
 
         while (data_index < data_end) : (data_index += 1) {
-            const read_color = try utils.readStructLittle(reader, color.Rgb555);
+            const read_color = try utils.readStruct(reader, color.Rgb555, .little);
 
             data.palette[data_index].r = color.scaleToIntColor(u8, read_color.r);
             data.palette[data_index].g = color.scaleToIntColor(u8, read_color.g);
@@ -1077,7 +1077,7 @@ pub const TGA = struct {
         var buffered_stream = buffered_stream_source.bufferedStreamSourceWriter(stream);
         const writer = buffered_stream.writer();
 
-        try utils.writeStructLittle(writer, self.header);
+        try utils.writeStruct(writer, self.header, .little);
 
         if (self.header.id_length > 0) {
             if (self.id.data.len != self.header.id_length) {
@@ -1113,13 +1113,13 @@ pub const TGA = struct {
         if (self.extension) |extension| {
             extension_offset = @truncate(try buffered_stream.getPos());
 
-            try utils.writeStructLittle(writer, extension);
+            try utils.writeStruct(writer, extension, .little);
         }
 
         var footer = TGAFooter{};
         footer.extension_offset = extension_offset;
         std.mem.copyForwards(u8, footer.signature[0..], TGASignature[0..]);
-        try utils.writeStructLittle(writer, footer);
+        try utils.writeStruct(writer, footer, .little);
 
         try buffered_stream.flush();
     }
@@ -1357,7 +1357,7 @@ pub const TGA = struct {
                 .b = indexed.palette[data_index].b,
             };
 
-            try utils.writeStructLittle(writer, converted_color);
+            try utils.writeStruct(writer, converted_color, .little);
         }
     }
 };
