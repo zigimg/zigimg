@@ -35,15 +35,22 @@ pub fn toMagicNumberForeign(magic: []const u8) u32 {
     return result;
 }
 
-pub const toMagicNumberBig = switch (native_endian) {
-    .little => toMagicNumberForeign,
-    .big => toMagicNumberNative,
-};
-
-pub const toMagicNumberLittle = switch (native_endian) {
-    .little => toMagicNumberNative,
-    .big => toMagicNumberForeign,
-};
+pub inline fn toMagicNumber(magic: []const u8, comptime wanted_endian: std.builtin.Endian) u32 {
+      return switch (native_endian) {
+        .little => {
+            return switch (wanted_endian) {
+                .little => toMagicNumberNative(magic),
+                .big => toMagicNumberForeign(magic),
+            };
+        },
+        .big => {
+            return switch (wanted_endian) {
+                .little => toMagicNumberForeign(magic),
+                .big => toMagicNumberNative(magic),
+            };
+        },
+    };
+}
 
 fn checkEnumFields(data: anytype) StructReadError!void {
     const T = @typeInfo(@TypeOf(data)).Pointer.child;

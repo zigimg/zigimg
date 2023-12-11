@@ -30,10 +30,10 @@ pub const CompressionMethod = enum(u32) {
 
 pub const BitmapColorSpace = enum(u32) {
     calibrated_rgb = 0,
-    srgb = utils.toMagicNumberBig("sRGB"),
-    windows_color_space = utils.toMagicNumberBig("Win "),
-    profile_linked = utils.toMagicNumberBig("LINK"),
-    profile_embedded = utils.toMagicNumberBig("MBED"),
+    srgb = utils.toMagicNumber("sRGB", .big),
+    windows_color_space = utils.toMagicNumber("Win ", .big),
+    profile_linked = utils.toMagicNumber("LINK", .big),
+    profile_embedded = utils.toMagicNumber("MBED", .big),
 };
 
 pub const BitmapIntent = enum(u32) {
