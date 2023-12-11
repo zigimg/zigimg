@@ -36,7 +36,7 @@ pub fn toMagicNumberForeign(magic: []const u8) u32 {
 }
 
 pub inline fn toMagicNumber(magic: []const u8, comptime wanted_endian: std.builtin.Endian) u32 {
-      return switch (native_endian) {
+    return switch (native_endian) {
         .little => {
             return switch (wanted_endian) {
                 .little => toMagicNumberNative(magic),
