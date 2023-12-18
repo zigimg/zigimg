@@ -103,21 +103,19 @@ fn byteSwappedIndex(comptime T: type, byte_index: usize) usize {
 
 fn filterChoiceHeuristic(scanline: color.PixelStorage, previous_scanline: ?color.PixelStorage) FilterType {
     const pixel_len = @as(PixelFormat, scanline).pixelStride();
-    var max_score: usize = 0;
-    var best: FilterType = .none;
-    inline for ([_]FilterType{ .none, .sub, .up, .average, .paeth }) |filter_type| {
-        var previous_byte: u8 = 0;
-        var combo: usize = 0;
-        var score: usize = 0;
 
-        for (0..scanline.asBytes().len) |byte_index| {
-            const i = if (builtin.target.cpu.arch.endian() == .little) pixelByteSwappedIndex(scanline, byte_index) else byte_index;
+    const filter_types = [_]FilterType{ .none, .sub, .up, .average, .paeth };
 
-            const sample = scanline.asBytes()[i];
-            const previous: u8 = if (byte_index >= pixel_len) scanline.asBytes()[i - pixel_len] else 0;
-            const above: u8 = if (previous_scanline) |b| b.asBytes()[i] else 0;
-            const above_previous = if (previous_scanline) |b| (if (byte_index >= pixel_len) b.asBytes()[i - pixel_len] else 0) else 0;
+    var previous_bytes: [filter_types.len]u8 = [_]u8{0} ** filter_types.len;
+    var combos: [filter_types.len]usize = [_]usize{0} ** filter_types.len;
+    var scores: [filter_types.len]usize = [_]usize{0} ** filter_types.len;
 
+    for (scanline.asBytes(), 0..) |sample, i| {
+        const previous: u8 = if (i >= pixel_len) scanline.asBytes()[i - pixel_len] else 0;
+        const above: u8 = if (previous_scanline) |b| b.asBytes()[i] else 0;
+        const above_previous = if (previous_scanline) |b| (if (i >= pixel_len) b.asBytes()[i - pixel_len] else 0) else 0;
+
+        inline for (filter_types, &previous_bytes, &combos, &scores) |filter_type, *previous_byte, *combo, *score| {
             const byte: u8 = switch (filter_type) {
                 .none => sample,
                 .sub => sample -% previous,
@@ -126,15 +124,19 @@ fn filterChoiceHeuristic(scanline: color.PixelStorage, previous_scanline: ?color
                 .paeth => sample -% paeth(previous, above, above_previous),
             };
 
-            if (byte == previous_byte) {
-                combo += 1;
+            if (byte == previous_byte.*) {
+                combo.* += 1;
             } else {
-                score += combo * combo;
-                combo = 0;
-                previous_byte = byte;
+                score.* += combo.* * combo.*;
+                combo.* = 0;
+                previous_byte.* = byte;
             }
         }
+    }
 
+    var best: FilterType = .none;
+    var max_score: usize = 0;
+    inline for (filter_types, scores) |filter_type, score| {
         if (score > max_score) {
             max_score = score;
             best = filter_type;
@@ -178,7 +180,8 @@ test "filtering 16-bit grayscale pixels uses correct endianess" {
     });
     defer std.testing.allocator.free(pixels);
 
-    try filter(output_bytes.writer(), .{ .grayscale16 = pixels }, .heuristic, .{
+    // We specify the endianess as none to simplify the test
+    try filter(output_bytes.writer(), .{ .grayscale16 = pixels }, .{ .specified = .none }, .{
         .width = 4,
         .height = 2,
         .bit_depth = 16,
