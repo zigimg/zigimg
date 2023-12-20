@@ -58,6 +58,32 @@ test "GIF test suite" {
     }
 }
 
+test "Rotating Earth GIF" {
+    const gif_input_file = try helpers.testOpenFile(helpers.fixtures_path ++ "gif/rotating_earth.gif");
+    defer gif_input_file.close();
+
+    var stream_source = std.io.StreamSource{ .file = gif_input_file };
+
+    var gif_file = gif.GIF.init(helpers.zigimg_test_allocator);
+    defer gif_file.deinit();
+
+    var frames = try gif_file.read(&stream_source);
+    defer {
+        for (frames.items) |entry| {
+            entry.pixels.deinit(gif_file.allocator);
+        }
+        frames.deinit(gif_file.allocator);
+    }
+
+    try helpers.expectEq(gif_file.header.width, 400);
+    try helpers.expectEq(gif_file.header.height, 400);
+
+    try helpers.expectEq(frames.items.len, 44);
+
+    try helpers.expectEq(frames.items[0].pixels.indexed8.indices[10], 106);
+    try helpers.expectEq(frames.items[0].pixels.indexed8.indices[399 * 400 + 382], 8);
+}
+
 test "Iterate on a single GIF file" {
     if (!SingleGifFileTest) {
         return error.SkipZigTest;
