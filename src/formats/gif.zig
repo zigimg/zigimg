@@ -541,7 +541,7 @@ pub const GIF = struct {
                 }
             }
 
-            sub_image.pixels = try self.allocator.alloc(u8, sub_image.image_descriptor.height * sub_image.image_descriptor.width);
+            sub_image.pixels = try self.allocator.alloc(u8, @as(usize, sub_image.image_descriptor.height) * @as(usize, sub_image.image_descriptor.width));
             var pixels_buffer = std.io.fixedBufferStream(sub_image.pixels);
 
             const lzw_minimum_code_size = try context.reader.readByte();
