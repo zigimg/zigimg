@@ -898,3 +898,150 @@ pub const PixelStorageIterator = struct {
         return result;
     }
 };
+
+// For this point on, we are defining color types that are not used to store pixels but are used for color manipulation on the CPU.
+// Most of them are in the 0.0 to 1.0 range in 32-bit float except for a few exceptions.
+// Also assume that the from and to functions uses linear RGB color space with no gamma correction.
+
+// CIE 1931 XYZ color space, device-independant color space
+pub const CIEXYZ = struct {
+    x: f32 = 0.0,
+    y: f32 = 0.0,
+    z: f32 = 0.0,
+};
+
+// CIE L*a*b* color space, meaning L* for perceptual lightness and a* and b* for the four unique colors of human vision: red, green, blue and yellow.
+pub const CIELab = struct {
+    l: f32 = 0.0,
+    a: f32 = 0.0,
+    b: f32 = 0.0,
+};
+
+// Using CIE 1931 2°
+pub const CIExyY = struct {
+    x: f32 = 0.0,
+    y: f32 = 0.0,
+
+    pub inline fn z(self: CIExyY) f32 {
+        return 1.0 - self.x - self.y;
+    }
+
+    pub fn toXYZ(self: CIExyY, Y: f32) CIEXYZ {
+        return .{
+            .x = (self.x / self.y) * Y,
+            .y = Y,
+            .z = (self.z() / self.y) * Y,
+        };
+    }
+};
+
+pub const ConversionMatrix = [3]@Vector(3, f32);
+
+// Colorspaces are defined in the CIE xyY colorspace, requiring only the x and y value
+pub const Colorspace = struct {
+    red: CIExyY = .{},
+    green: CIExyY = .{},
+    blue: CIExyY = .{},
+    white: CIExyY = .{},
+
+    pub fn toXYZConversionMatrix(self: Colorspace) ConversionMatrix {
+        const D = (self.red.x - self.blue.x) * (self.green.y - self.blue.y) - (self.red.y - self.blue.y) * (self.green.x - self.blue.x);
+        const U = (self.white.x - self.blue.x) * (self.green.y - self.blue.y) - (self.white.y - self.blue.y) * (self.green.x - self.blue.x);
+        const V = (self.red.x - self.blue.x) * (self.white.y - self.blue.y) - (self.red.y - self.blue.y) * (self.white.x - self.blue.x);
+
+        const u = U / D;
+        const v = V / D;
+        const w = 1.0 - u - v;
+
+        return .{
+            u * (self.red.x / self.white.y),   v * (self.green.x / self.white.y),   w * (self.blue.x / self.white.y),
+            u * (self.red.y / self.white.y),   v * (self.green.y / self.white.y),   w * (self.blue.y / self.white.y),
+            u * (self.red.z() / self.white.y), v * (self.green.z() / self.white.y), w * (self.blue.z() / self.white.y),
+        };
+    }
+};
+
+pub const WhitePoints = struct {
+    pub const D50 = CIExyY{ .x = 0.34567, .y = 0.35850 };
+    pub const D65 = CIExyY{ .x = 0.31271, .y = 0.32902 };
+};
+
+// BT.601-6 (NTSC)
+pub const BT601_NTSC = Colorspace{
+    .red = .{ .x = 0.630, .y = 0.340 },
+    .green = .{ .x = 0.310, .y = 0.595 },
+    .blue = .{ .x = 0.155, .y = 0.070 },
+    .white = WhitePoints.D65,
+};
+
+// BT.601-6 (PAL)
+pub const BT601_PAL = Colorspace{
+    .red = .{ .x = 0.640, .y = 0.330 },
+    .green = .{ .x = 0.290, .y = 0.600 },
+    .blue = .{ .x = 0.150, .y = 0.060 },
+    .white = WhitePoints.D65,
+};
+
+// ITU-R BT.709 aka Rec.709
+pub const BT709 = Colorspace{
+    .red = .{ .x = 0.6400, .y = 0.3300 },
+    .green = .{ .x = 0.3000, .y = 0.6000 },
+    .blue = .{ .x = 0.1500, .y = 0.0600 },
+    .white = WhitePoints.D65,
+};
+
+// sRGB is the same as BT.709
+pub const sRGB = BT709;
+
+//  Digital Cinema Initiatives P3 color spaces
+pub const DCIP3 = struct {
+    pub const Display = Colorspace{
+        .red = .{ .x = 0.680, .y = 0.320 },
+        .green = .{ .x = 0.265, .y = 0.690 },
+        .blue = .{ .x = 0.150, .y = 0.060 },
+        .white = WhitePoints.D65,
+    };
+
+    pub const Theater = Colorspace{
+        .red = .{ .x = 0.680, .y = 0.320 },
+        .green = .{ .x = 0.265, .y = 0.690 },
+        .blue = .{ .x = 0.150, .y = 0.060 },
+        .white = .{ .x = 0.314, .y = 0.351 },
+    };
+
+    pub const ACES = Colorspace{
+        .red = .{ .x = 0.680, .y = 0.320 },
+        .green = .{ .x = 0.265, .y = 0.690 },
+        .blue = .{ .x = 0.150, .y = 0.060 },
+        .white = .{ .x = 0.32168, .y = 0.33767 },
+    };
+};
+
+// ITU-R BT.2020 aka Rec.2020, Rec.2100 use the same color space
+pub const BT2020 = Colorspace{
+    .red = .{ .x = 0.708, .y = 0.292 },
+    .green = .{ .x = 0.170, .y = 0.797 },
+    .blue = .{ .x = 0.131, .y = 0.046 },
+    .white = WhitePoints.D65,
+};
+
+pub const AdobeRGB = Colorspace{
+    .red = .{ .x = 0.6400, .y = 0.3300 },
+    .green = .{ .x = 0.2100, .y = 0.7100 },
+    .blue = .{ .x = 0.1500, .y = 0.0600 },
+    .white = WhitePoints.D65,
+};
+
+pub const AdobeWideGamutRGB = Colorspace{
+    .red = .{ .x = 0.7347, .y = 0.2653 },
+    .green = .{ .x = 0.1152, .y = 0.8264 },
+    .blue = .{ .x = 0.1566, .y = 0.0177 },
+    .white = WhitePoints.D50,
+};
+
+pub const ProPhotoRGB = Colorspace{
+    .red = .{ .x = 0.734699, .y = 0.265301 },
+    .green = .{ .x = 0.159597, .y = 0.840403 },
+    .blue = .{ .x = 0.036598, .y = 0.000105 },
+    .white = WhitePoints.D50,
+};
