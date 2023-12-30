@@ -670,7 +670,7 @@ pub const TrnsProcessor = struct {
             return result_format;
         }
         var reader = data.stream.reader();
-        switch (result_format) {
+        switch (data.header.getPixelFormat()) {
             .grayscale1, .grayscale2, .grayscale4, .grayscale8, .grayscale16 => {
                 if (data.chunk_length == 2) {
                     self.trns_data = .{ .gray = try reader.readInt(u16, .big) };
