@@ -171,8 +171,8 @@ pub fn testWithDir(directory: []const u8, testMd5Sig: bool) !void {
             if (testMd5Sig) std.debug.print("OK\n", .{});
 
             // Write Raw bytes
-            // std.mem.copy(u8, tst_data_name[len - 3 .. len + 1], "data");
-            // var rawoutput = try idir.dir.createFile(tst_data_name[0 .. len + 1], .{});
+            // std.mem.copyForwards(u8, tst_data_name[len - 3 .. len + 1], "data");
+            // var rawoutput = try idir.createFile(tst_data_name[0 .. len + 1], .{});
             // defer rawoutput.close();
             // try rawoutput.writeAll(result_bytes);
         }
