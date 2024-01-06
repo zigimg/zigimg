@@ -5,7 +5,7 @@ pub fn build(b: *Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     _ = b.addModule("zigimg", .{
-        .source_file = .{ .path = "zigimg.zig" },
+        .root_source_file = .{ .path = "zigimg.zig" },
     });
 
     const zigimg_build_test = b.addTest(.{
