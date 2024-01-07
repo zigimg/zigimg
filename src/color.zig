@@ -973,18 +973,53 @@ pub const Hsv = struct {
     value: f32 = 0.0, // range from 0 to 1
 
     pub fn fromRgb(rgb: Colorf32) Hsv {
-        _ = rgb;
-        return .{};
+        const maximum = @max(rgb.r, @max(rgb.g, rgb.b)); // V
+        const minimum = @min(rgb.r, @min(rgb.g, rgb.b)); // V - C
+        const range = maximum - minimum; // C := 2(V - L)
+
+        var hue: f32 = 0.0;
+
+        if (range == 0.0) {
+            hue = 0.0;
+        } else if (maximum == rgb.r) {
+            hue = 60 * (@mod((rgb.g - rgb.b) / range, 6));
+        } else if (maximum == rgb.g) {
+            hue = 60 * ((rgb.b - rgb.r) / range + 2);
+        } else if (maximum == rgb.b) {
+            hue = 60 * ((rgb.r - rgb.g) / range + 4);
+        }
+
+        const saturation = if (maximum == 0.0) 0.0 else range / maximum;
+
+        return .{
+            .hue = hue,
+            .saturation = saturation,
+            .value = maximum,
+        };
     }
 
     pub fn toRgb(self: Hsv) Colorf32 {
-        _ = self;
-        return .{};
+        return .{
+            .r = self.getRgbComponent(5),
+            .g = self.getRgbComponent(3),
+            .b = self.getRgbComponent(1),
+            .a = 1.0,
+        };
     }
 
     pub fn toHsl(self: Hsv) Hsl {
-        _ = self;
-        return .{};
+        const luminance = self.value * (1.0 - (self.saturation / 2.0));
+        return .{
+            .hue = self.hue,
+            .saturation = if (luminance == 0.0) 0.0 else (self.value - luminance) / @min(luminance, 1.0 - luminance),
+            .luminance = luminance,
+        };
+    }
+
+    fn getRgbComponent(self: Hsv, n: f32) f32 {
+        const k = @mod(n + (self.hue / 60), 6);
+
+        return self.value - (self.value * self.saturation * @max(0.0, @min(k, @min(4.0 - k, 1))));
     }
 };
 

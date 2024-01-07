@@ -577,3 +577,59 @@ test "HSL to HSV conversion" {
     try helpers.expectApproxEqAbs(converted_hsv.saturation, 0.4140, 0.0001);
     try helpers.expectApproxEqAbs(converted_hsv.value, 0.8449, 0.0001);
 }
+
+const RgbHsvTestDataEntry = struct {
+    rgb: color.Colorf32 = .{},
+    hsv: color.Hsv = .{},
+};
+
+const RgbHsvTestData = [_]RgbHsvTestDataEntry{
+    .{ .rgb = .{ .r = 1.0, .g = 1.0, .b = 1.0 }, .hsv = .{ .hue = 0.0, .saturation = 0.0, .value = 1.0 } },
+    .{ .rgb = .{ .r = 0.5, .g = 0.5, .b = 0.5 }, .hsv = .{ .hue = 0.0, .saturation = 0.0, .value = 0.5 } },
+    .{ .rgb = .{ .r = 0.0, .g = 0.0, .b = 0.0 }, .hsv = .{ .hue = 0.0, .saturation = 0.0, .value = 0.0 } },
+    .{ .rgb = .{ .r = 1.0, .g = 0.0, .b = 0.0 }, .hsv = .{ .hue = 0.0, .saturation = 1.0, .value = 1.0 } },
+    .{ .rgb = .{ .r = 0.750, .g = 0.750, .b = 0.000 }, .hsv = .{ .hue = 60.0, .saturation = 1.000, .value = 0.750 } },
+    .{ .rgb = .{ .r = 0.000, .g = 0.500, .b = 0.000 }, .hsv = .{ .hue = 120.0, .saturation = 1.000, .value = 0.500 } },
+    .{ .rgb = .{ .r = 0.500, .g = 1.000, .b = 1.000 }, .hsv = .{ .hue = 180.0, .saturation = 0.500, .value = 1.00 } },
+    .{ .rgb = .{ .r = 0.500, .g = 0.500, .b = 1.000 }, .hsv = .{ .hue = 240.0, .saturation = 0.500, .value = 1.00 } },
+    .{ .rgb = .{ .r = 0.750, .g = 0.250, .b = 0.750 }, .hsv = .{ .hue = 300.0, .saturation = 0.667, .value = 0.750 } },
+    .{ .rgb = .{ .r = 0.628, .g = 0.643, .b = 0.142 }, .hsv = .{ .hue = 61.8, .saturation = 0.779, .value = 0.643 } },
+    .{ .rgb = .{ .r = 0.255, .g = 0.104, .b = 0.918 }, .hsv = .{ .hue = 251.1, .saturation = 0.887, .value = 0.918 } },
+    .{ .rgb = .{ .r = 0.116, .g = 0.675, .b = 0.255 }, .hsv = .{ .hue = 134.9, .saturation = 0.828, .value = 0.675 } },
+    .{ .rgb = .{ .r = 0.941, .g = 0.785, .b = 0.053 }, .hsv = .{ .hue = 49.5, .saturation = 0.944, .value = 0.941 } },
+    .{ .rgb = .{ .r = 0.704, .g = 0.187, .b = 0.897 }, .hsv = .{ .hue = 283.7, .saturation = 0.792, .value = 0.897 } },
+    .{ .rgb = .{ .r = 0.931, .g = 0.463, .b = 0.316 }, .hsv = .{ .hue = 14.3, .saturation = 0.661, .value = 0.931 } },
+    .{ .rgb = .{ .r = 0.998, .g = 0.974, .b = 0.532 }, .hsv = .{ .hue = 56.9, .saturation = 0.467, .value = 0.998 } },
+    .{ .rgb = .{ .r = 0.099, .g = 0.795, .b = 0.591 }, .hsv = .{ .hue = 162.4, .saturation = 0.875, .value = 0.795 } },
+    .{ .rgb = .{ .r = 0.211, .g = 0.149, .b = 0.597 }, .hsv = .{ .hue = 248.3, .saturation = 0.750, .value = 0.597 } },
+    .{ .rgb = .{ .r = 0.495, .g = 0.493, .b = 0.721 }, .hsv = .{ .hue = 240.5, .saturation = 0.316, .value = 0.721 } },
+};
+
+test "RGB to HSV conversion" {
+    for (RgbHsvTestData) |entry| {
+        const converted_hsv = color.Hsv.fromRgb(entry.rgb);
+
+        try helpers.expectApproxEqAbs(converted_hsv.hue, entry.hsv.hue, 0.1);
+        try helpers.expectApproxEqAbs(converted_hsv.saturation, entry.hsv.saturation, 0.1);
+        try helpers.expectApproxEqAbs(converted_hsv.value, entry.hsv.value, 0.1);
+    }
+}
+
+test "HSV to RGB conversion" {
+    for (RgbHsvTestData) |entry| {
+        const converted_rgb = color.Hsv.toRgb(entry.hsv);
+
+        try helpers.expectApproxEqAbs(converted_rgb.r, entry.rgb.r, 0.1);
+        try helpers.expectApproxEqAbs(converted_rgb.g, entry.rgb.g, 0.1);
+        try helpers.expectApproxEqAbs(converted_rgb.b, entry.rgb.b, 0.1);
+    }
+}
+
+test "HSV to HSL conversion" {
+    const hsv = color.Hsv{ .hue = 300.0, .saturation = 0.4140, .value = 0.8449 };
+    const converted_hsl = hsv.toHsl();
+
+    try helpers.expectApproxEqAbs(converted_hsl.hue, 300.0, 0.0001);
+    try helpers.expectApproxEqAbs(converted_hsl.saturation, 0.53, 0.0001);
+    try helpers.expectApproxEqAbs(converted_hsl.luminance, 0.67, 0.0001);
+}
