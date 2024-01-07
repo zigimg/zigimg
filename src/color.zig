@@ -32,9 +32,9 @@ pub inline fn toF32Color(value: anytype) f32 {
 }
 
 pub const Colorf32 = extern struct {
-    r: f32 align(1),
-    g: f32 align(1),
-    b: f32 align(1),
+    r: f32 align(1) = 0.0,
+    g: f32 align(1) = 0.0,
+    b: f32 align(1) = 0.0,
     a: f32 align(1) = 1.0,
 
     const Self = @This();
@@ -902,6 +902,91 @@ pub const PixelStorageIterator = struct {
 // For this point on, we are defining color types that are not used to store pixels but are used for color manipulation on the CPU.
 // Most of them are in the 0.0 to 1.0 range in 32-bit float except for a few exceptions.
 // Also assume that the from and to functions uses linear RGB color space with no gamma correction.
+
+// HSL (Hue, Saturation, Luminance) is a different representation of the device dependent linear sRGB colorspace
+// where the luminance is pure white and models the way different paints mix together
+// to create color in the real world, with the lightness dimension resembling the varying amounts of black or white paint in the mixture
+pub const Hsl = struct {
+    hue: f32 = 0.0, // angle in degrees (0-360)
+    saturation: f32 = 0.0, // range from 0 to 1
+    luminance: f32 = 0.0, // range from 0 to 1
+
+    pub fn fromRgb(rgb: Colorf32) Hsl {
+        const maximum = @max(rgb.r, @max(rgb.g, rgb.b)); // V
+        const minimum = @min(rgb.r, @min(rgb.g, rgb.b)); // V - C
+        const range = maximum - minimum; // C := 2(V - L)
+        const luminance = (maximum + minimum) / 2.0; // V - C/2
+
+        var hue: f32 = 0.0;
+
+        if (range == 0.0) {
+            hue = 0.0;
+        } else if (maximum == rgb.r) {
+            hue = 60 * (@mod((rgb.g - rgb.b) / range, 6));
+        } else if (maximum == rgb.g) {
+            hue = 60 * ((rgb.b - rgb.r) / range + 2);
+        } else if (maximum == rgb.b) {
+            hue = 60 * ((rgb.r - rgb.g) / range + 4);
+        }
+
+        const saturation = if (luminance == 0.0 or luminance == 1.0) 0.0 else (maximum - luminance) / @min(luminance, 1.0 - luminance);
+
+        return .{
+            .hue = hue,
+            .saturation = saturation,
+            .luminance = luminance,
+        };
+    }
+
+    pub fn toRgb(self: Hsl) Colorf32 {
+        return .{
+            .r = self.getRgbComponent(0),
+            .g = self.getRgbComponent(8),
+            .b = self.getRgbComponent(4),
+            .a = 1.0,
+        };
+    }
+
+    pub fn toHsv(self: Hsl) Hsv {
+        const value = self.luminance + self.saturation * @min(self.luminance, 1.0 - self.luminance);
+
+        return .{
+            .hue = self.hue,
+            .saturation = if (value == 0.0) 0.0 else 2.0 * (1.0 - (self.luminance / value)),
+            .value = value,
+        };
+    }
+
+    fn getRgbComponent(self: Hsl, n: f32) f32 {
+        const a = self.saturation * @min(self.luminance, 1.0 - self.luminance);
+        const k = @mod(n + self.hue / 30, 12);
+
+        return self.luminance - a * @max(-1, @min(k - 3.0, @min(9.0 - k, 1.0)));
+    }
+};
+
+// HSV (Hue, Saturation, Value) or HSB (Hue, Saturation, Brightness) is a different representation of the device dependent linear sRGB colorspace
+// where the value/brightness is the maximum brightnes of a color. It models how colors appear under light.
+pub const Hsv = struct {
+    hue: f32 = 0.0, // angle in degrees(0-360)
+    saturation: f32 = 0.0, // range from 0 to 1
+    value: f32 = 0.0, // range from 0 to 1
+
+    pub fn fromRgb(rgb: Colorf32) Hsv {
+        _ = rgb;
+        return .{};
+    }
+
+    pub fn toRgb(self: Hsv) Colorf32 {
+        _ = self;
+        return .{};
+    }
+
+    pub fn toHsl(self: Hsv) Hsl {
+        _ = self;
+        return .{};
+    }
+};
 
 // CIE 1931 XYZ color space, device-independant color space
 pub const CIEXYZ = struct {

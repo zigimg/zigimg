@@ -11,16 +11,24 @@ pub const TestInput = struct {
     hex: u32 = 0,
 };
 
-pub fn expectEq(actual: anytype, expected: anytype) !void {
+pub inline fn expectEq(actual: anytype, expected: anytype) !void {
     try testing.expectEqual(@as(@TypeOf(actual), expected), actual);
 }
 
-pub fn expectEqSlice(comptime T: type, actual: []const T, expected: []const T) !void {
+pub inline fn expectEqSlice(comptime T: type, actual: []const T, expected: []const T) !void {
     try testing.expectEqualSlices(T, expected, actual);
 }
 
-pub fn expectError(actual: anytype, expected: anyerror) !void {
+pub inline fn expectError(actual: anytype, expected: anyerror) !void {
     try testing.expectError(expected, actual);
+}
+
+pub inline fn expectApproxEqAbs(actual: anytype, expected: anytype, tolerance: anytype) !void {
+    return try testing.expectApproxEqAbs(expected, actual, tolerance);
+}
+
+pub inline fn expectApproxEqRel(actual: anytype, expected: anytype, tolerance: anytype) !void {
+    return try testing.expectApproxEqRel(expected, actual, tolerance);
 }
 
 pub fn testOpenFile(file_path: []const u8) !std.fs.File {

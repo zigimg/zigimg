@@ -521,3 +521,59 @@ test "Non u8 Rgb colors should not have fromHtmlHex" {
     try helpers.expectEq(@hasDecl(color.Rgba64, "fromHtmlHex"), false);
     try helpers.expectEq(@hasDecl(color.Rgb565, "fromHtmlHex"), false);
 }
+
+const RgbHslTestDataEntry = struct {
+    rgb: color.Colorf32 = .{},
+    hsl: color.Hsl = .{},
+};
+
+const RgbHslTestData = [_]RgbHslTestDataEntry{
+    .{ .rgb = .{ .r = 1.0, .g = 1.0, .b = 1.0 }, .hsl = .{ .hue = 0.0, .saturation = 0.0, .luminance = 1.0 } },
+    .{ .rgb = .{ .r = 0.5, .g = 0.5, .b = 0.5 }, .hsl = .{ .hue = 0.0, .saturation = 0.0, .luminance = 0.5 } },
+    .{ .rgb = .{ .r = 0.0, .g = 0.0, .b = 0.0 }, .hsl = .{ .hue = 0.0, .saturation = 0.0, .luminance = 0.0 } },
+    .{ .rgb = .{ .r = 1.0, .g = 0.0, .b = 0.0 }, .hsl = .{ .hue = 0.0, .saturation = 1.0, .luminance = 0.5 } },
+    .{ .rgb = .{ .r = 0.750, .g = 0.750, .b = 0.000 }, .hsl = .{ .hue = 60.0, .saturation = 1.000, .luminance = 0.375 } },
+    .{ .rgb = .{ .r = 0.000, .g = 0.500, .b = 0.000 }, .hsl = .{ .hue = 120.0, .saturation = 1.000, .luminance = 0.250 } },
+    .{ .rgb = .{ .r = 0.500, .g = 1.000, .b = 1.000 }, .hsl = .{ .hue = 180.0, .saturation = 1.000, .luminance = 0.750 } },
+    .{ .rgb = .{ .r = 0.500, .g = 0.500, .b = 1.000 }, .hsl = .{ .hue = 240.0, .saturation = 1.000, .luminance = 0.750 } },
+    .{ .rgb = .{ .r = 0.750, .g = 0.250, .b = 0.750 }, .hsl = .{ .hue = 300.0, .saturation = 0.500, .luminance = 0.500 } },
+    .{ .rgb = .{ .r = 0.628, .g = 0.643, .b = 0.142 }, .hsl = .{ .hue = 61.8, .saturation = 0.638, .luminance = 0.393 } },
+    .{ .rgb = .{ .r = 0.255, .g = 0.104, .b = 0.918 }, .hsl = .{ .hue = 251.1, .saturation = 0.832, .luminance = 0.511 } },
+    .{ .rgb = .{ .r = 0.116, .g = 0.675, .b = 0.255 }, .hsl = .{ .hue = 134.9, .saturation = 0.707, .luminance = 0.396 } },
+    .{ .rgb = .{ .r = 0.941, .g = 0.785, .b = 0.053 }, .hsl = .{ .hue = 49.5, .saturation = 0.893, .luminance = 0.497 } },
+    .{ .rgb = .{ .r = 0.704, .g = 0.187, .b = 0.897 }, .hsl = .{ .hue = 283.7, .saturation = 0.775, .luminance = 0.542 } },
+    .{ .rgb = .{ .r = 0.931, .g = 0.463, .b = 0.316 }, .hsl = .{ .hue = 14.3, .saturation = 0.817, .luminance = 0.624 } },
+    .{ .rgb = .{ .r = 0.998, .g = 0.974, .b = 0.532 }, .hsl = .{ .hue = 56.9, .saturation = 0.991, .luminance = 0.765 } },
+    .{ .rgb = .{ .r = 0.099, .g = 0.795, .b = 0.591 }, .hsl = .{ .hue = 162.4, .saturation = 0.779, .luminance = 0.447 } },
+    .{ .rgb = .{ .r = 0.211, .g = 0.149, .b = 0.597 }, .hsl = .{ .hue = 248.3, .saturation = 0.601, .luminance = 0.373 } },
+    .{ .rgb = .{ .r = 0.495, .g = 0.493, .b = 0.721 }, .hsl = .{ .hue = 240.5, .saturation = 0.290, .luminance = 0.607 } },
+};
+
+test "RGB to HSL conversion" {
+    for (RgbHslTestData) |entry| {
+        const converted_hsl = color.Hsl.fromRgb(entry.rgb);
+
+        try helpers.expectApproxEqAbs(converted_hsl.hue, entry.hsl.hue, 0.1);
+        try helpers.expectApproxEqAbs(converted_hsl.saturation, entry.hsl.saturation, 0.1);
+        try helpers.expectApproxEqAbs(converted_hsl.luminance, entry.hsl.luminance, 0.1);
+    }
+}
+
+test "HSL to RGB conversion" {
+    for (RgbHslTestData) |entry| {
+        const converted_rgb = color.Hsl.toRgb(entry.hsl);
+
+        try helpers.expectApproxEqAbs(converted_rgb.r, entry.rgb.r, 0.1);
+        try helpers.expectApproxEqAbs(converted_rgb.g, entry.rgb.g, 0.1);
+        try helpers.expectApproxEqAbs(converted_rgb.b, entry.rgb.b, 0.1);
+    }
+}
+
+test "HSL to HSV conversion" {
+    const hsl = color.Hsl{ .hue = 300.0, .saturation = 0.53, .luminance = 0.67 };
+    const converted_hsv = hsl.toHsv();
+
+    try helpers.expectApproxEqAbs(converted_hsv.hue, 300.0, 0.0001);
+    try helpers.expectApproxEqAbs(converted_hsv.saturation, 0.4140, 0.0001);
+    try helpers.expectApproxEqAbs(converted_hsv.value, 0.8449, 0.0001);
+}
