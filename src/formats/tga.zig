@@ -333,7 +333,7 @@ fn RunLengthSimpleEncoder(comptime IntType: type) type {
 
 fn RunLengthSIMDEncoder(comptime IntType: type) type {
     return struct {
-        const VectorLength = std.simd.suggestVectorSize(IntType) orelse 4;
+        const VectorLength = std.simd.suggestVectorLength(IntType) orelse 4;
         const VectorType = @Vector(VectorLength, IntType);
         const BytesPerPixels = (@typeInfo(IntType).Int.bits + 7) / 8;
         const IndexStep = VectorLength * BytesPerPixels;
