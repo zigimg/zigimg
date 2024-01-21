@@ -191,10 +191,6 @@ pub fn loadWithHeader(
 ) Image.ReadError!PixelStorage {
     var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
     var options = in_options;
-    var temp_allocator = options.temp_allocator;
-    var fb_allocator = std.heap.FixedBufferAllocator.init(try temp_allocator.alloc(u8, required_temp_bytes));
-    defer temp_allocator.free(fb_allocator.buffer);
-    options.temp_allocator = fb_allocator.allocator();
 
     var palette: []color.Rgb24 = &[_]color.Rgb24{};
     var data_found = false;
