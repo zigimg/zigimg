@@ -286,6 +286,7 @@ fn readAllData(
         error.BadHeader, error.InvalidCompression, error.InvalidWindowSize => return Image.ReadError.InvalidData,
         else => |leftover_err| return leftover_err,
     };
+    defer decompress_stream.deinit();
 
     if (palette.len > 0) {
         var destination_palette = if (result.getPalette()) |result_palette|
