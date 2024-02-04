@@ -929,7 +929,7 @@ else
         }
     };
 
-const NoopAllocator = Allocator.VTable{ .alloc = undefined, .free = undefined, .resize = undefined };
+pub const NoopAllocator = Allocator.VTable{ .alloc = undefined, .free = undefined, .resize = undefined };
 
 /// Applications can override this by defining DefaultPngOptions struct in their root source file.
 /// We would like to use FixedBufferAllocator with memory from stack here since we should be able
