@@ -162,7 +162,7 @@ pub fn loadHeader(stream: *Image.Stream) Image.ReadError!png.HeaderData {
 
 /// Loads the png image using the given allocator and options.
 /// The options allow you to pass in a custom allocator for temporary allocations.
-/// By default it will use a fixed buffer on stack for temporary allocations.
+/// By default it will also use the main allocator for temporary allocations.
 /// You can also pass in an array of chunk processors. You can use def_processors
 /// array if you want to use these default set of processors:
 /// 1. tRNS processor that decodes the tRNS chunk if it exists into an alpha channel
@@ -191,6 +191,14 @@ pub fn loadWithHeader(
 ) Image.ReadError!PixelStorage {
     var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
     var options = in_options;
+    var temp_allocator = options.temp_allocator;
+    if (temp_allocator.vtable == &NoopAllocator) {
+        temp_allocator = allocator;
+    }
+
+    var arena_allocator = std.heap.ArenaAllocator.init(temp_allocator);
+    defer arena_allocator.deinit();
+    options.temp_allocator = arena_allocator.allocator();
 
     var palette: []color.Rgb24 = &[_]color.Rgb24{};
     var data_found = false;
@@ -872,15 +880,14 @@ pub const PlteProcessor = struct {
 };
 
 /// The options you need to pass to PNG reader. If you want default options
-/// with buffer for temporary allocations on the stack and default set of
+/// that use main allocator for temporary allocations and default set of
 /// processors just use this:
 /// var default_options = DefaultOptions{};
 /// png.reader.load(main_allocator, default_options.get());
 /// Note that application can define its own DefaultPngOptions in the root file
 /// and all the code that uses DefaultOptions will actually use that.
 pub const ReaderOptions = struct {
-    /// Allocator for temporary allocations. The constant required_temp_bytes defines
-    /// the maximum bytes that will be allocated from it. Some temp allocations depend
+    /// Allocator for temporary allocations. Some temp allocations depend
     /// on the image size so they will use the main allocator since we can't guarantee
     /// they are bounded. They will be allocated after the destination image to
     /// reduce memory fragmentation and freed internally.
@@ -902,11 +909,6 @@ pub const ReaderOptions = struct {
     }
 };
 
-// decompressor.zig:294 claims to use up to 300KiB from provided allocator but when
-// testing with huge png file it used 760KiB.
-// Original zlib claims it only needs 44KiB so next task is to rewrite zig's zlib :).
-pub const required_temp_bytes = 800 * 1024;
-
 const root = @import("root");
 
 /// Applications can override this by defining DefPngProcessors struct in their root source file.
@@ -927,20 +929,22 @@ else
         }
     };
 
+pub const NoopAllocator = Allocator.VTable{ .alloc = undefined, .free = undefined, .resize = undefined };
+
 /// Applications can override this by defining DefaultPngOptions struct in their root source file.
+/// We would like to use FixedBufferAllocator with memory from stack here since we should be able
+/// to guarantee the max size of temp allocations but zig's std decompressor unlike C zlib doesn't
+/// currently guarantee the max it needs.
 pub const DefaultOptions = if (@hasDecl(root, "DefaultPngOptions"))
     root.DefaultPngOptions
 else
     struct {
         def_processors: DefaultProcessors = .{},
-        tmp_buffer: [required_temp_bytes]u8 = undefined,
-        fb_allocator: std.heap.FixedBufferAllocator = undefined,
 
         const Self = @This();
 
         pub fn get(self: *Self) ReaderOptions {
-            self.fb_allocator = std.heap.FixedBufferAllocator.init(self.tmp_buffer[0..]);
-            return .{ .temp_allocator = self.fb_allocator.allocator(), .processors = self.def_processors.get() };
+            return .{ .temp_allocator = .{ .ptr = undefined, .vtable = &NoopAllocator }, .processors = self.def_processors.get() };
         }
     };
 

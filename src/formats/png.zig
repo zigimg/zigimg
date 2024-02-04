@@ -35,7 +35,6 @@ pub const PlteProcessor = reader.PlteProcessor;
 pub const ReaderOptions = reader.ReaderOptions;
 pub const DefaultProcessors = reader.DefaultProcessors;
 pub const DefaultOptions = reader.DefaultOptions;
-pub const required_temp_bytes = reader.required_temp_bytes;
 
 pub const PNG = struct {
     const Self = @This();
