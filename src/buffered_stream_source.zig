@@ -69,8 +69,9 @@ pub fn BufferedStreamSourceReader(comptime BufferSize: usize) type {
                         }
                     } else if (amt < 0) {
                         const absolute_amt = @abs(amt);
-                        if (absolute_amt <= self.buffered_reader.start) {
-                            self.buffered_reader.start -%= absolute_amt;
+                        const absolute_amt_usize = std.math.cast(usize, absolute_amt) orelse std.math.maxInt(usize);
+                        if (absolute_amt_usize <= self.buffered_reader.start) {
+                            self.buffered_reader.start -%= absolute_amt_usize;
                         } else {
                             try self.buffered_reader.unbuffered_reader.context.seekBy(amt - @as(i64, @intCast(bytes_availables)));
                             self.resetBufferedReader();
