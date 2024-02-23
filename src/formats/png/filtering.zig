@@ -46,7 +46,11 @@ pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: Filter
             .specified => |f| f,
         };
 
-        writer.writeByte(@intFromEnum(filter_type)) catch unreachable;
+        writer.writeByte(@intFromEnum(filter_type)) catch |err| {
+            switch (err) {
+                else => return error.AccessDenied,
+            }
+        };
 
         for (0..scanline.asBytes().len) |byte_index| {
             const i = if (builtin.target.cpu.arch.endian() == .little) pixelByteSwappedIndex(scanline, byte_index) else byte_index;
@@ -64,7 +68,11 @@ pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: Filter
                 .paeth => sample -% paeth(previous, above, above_previous),
             };
 
-            writer.writeByte(byte) catch unreachable;
+            writer.writeByte(byte) catch |err| {
+                switch (err) {
+                    else => return error.AccessDenied,
+                }
+            };
         }
         previous_scanline = scanline;
     }

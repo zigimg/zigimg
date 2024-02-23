@@ -336,7 +336,7 @@ fn readAllData(
     if (header.interlace_method == .none) {
         var i: u32 = 0;
         while (i < height) : (i += 1) {
-            _ = decompressor.read(current_row[filter_stride - 1 ..]) catch |err| switch (err) {
+            decompressor.reader().readNoEof(current_row[filter_stride - 1 ..]) catch |err| switch (err) {
                 error.InvalidCode,
                 error.InvalidMatch,
                 error.InvalidBlockType,
@@ -350,8 +350,9 @@ fn readAllData(
                 error.OversubscribedHuffmanTree,
                 error.IncompleteHuffmanTree,
                 error.MissingEndOfBlockCode,
+                error.InvalidData,
                 => return Image.ReadError.InvalidData,
-                else => |leftover_err| return leftover_err,
+                else => |left_over_error| return left_over_error,
             };
 
             try defilter(current_row, prev_row, filter_stride);
@@ -417,7 +418,7 @@ fn readAllData(
             var desty = start_y[pass];
             var y: u32 = 0;
             while (y < pass_height[pass]) : (y += 1) {
-                _ = decompressor.read(current_row[filter_stride - 1 .. pass_length]) catch |err| switch (err) {
+                decompressor.reader().readNoEof(current_row[filter_stride - 1 .. pass_length]) catch |err| switch (err) {
                     error.InvalidCode,
                     error.InvalidMatch,
                     error.InvalidBlockType,
@@ -431,8 +432,9 @@ fn readAllData(
                     error.OversubscribedHuffmanTree,
                     error.IncompleteHuffmanTree,
                     error.MissingEndOfBlockCode,
+                    error.InvalidData,
                     => return Image.ReadError.InvalidData,
-                    else => |leftover_err| return leftover_err,
+                    else => |left_over_error| return left_over_error,
                 };
 
                 try defilter(current_row[0..pass_length], prev_row[0..pass_length], filter_stride);
@@ -476,7 +478,8 @@ fn readAllData(
 
     // Just make sure zip stream gets to its end
     var buf: [8]u8 = undefined;
-    const shouldBeZero = decompressor.read(buf[0..]) catch |err| switch (err) {
+
+    const shouldBeZero = decompressor.reader().read(buf[0..]) catch |err| switch (err) {
         error.InvalidCode,
         error.InvalidMatch,
         error.InvalidBlockType,
@@ -490,8 +493,11 @@ fn readAllData(
         error.OversubscribedHuffmanTree,
         error.IncompleteHuffmanTree,
         error.MissingEndOfBlockCode,
+        error.InvalidData,
         => return Image.ReadError.InvalidData,
-        else => |leftover_err| return leftover_err,
+        //The only valid case is when the stream has got to its end
+        error.EndOfStream => 0,
+        else => |left_over_error| return left_over_error,
     };
 
     std.debug.assert(shouldBeZero == 0);
