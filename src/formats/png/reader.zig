@@ -290,11 +290,8 @@ fn readAllData(
     errdefer result.deinit(allocator);
     var idat_chunks_reader = IDatChunksReader.init(buffered_stream, options.processors, chunk_process_data);
     const idat_reader: IDATReader = .{ .context = &idat_chunks_reader };
-    var decompress_stream = std.compress.zlib.decompressStream(options.temp_allocator, idat_reader) catch |err| switch (err) {
-        error.BadHeader, error.InvalidCompression, error.InvalidWindowSize => return Image.ReadError.InvalidData,
-        else => |leftover_err| return leftover_err,
-    };
-    defer decompress_stream.deinit();
+
+    var decompressor = std.compress.zlib.decompressor(idat_reader);
 
     if (palette.len > 0) {
         var destination_palette = if (result.getPalette()) |result_palette|
@@ -336,15 +333,27 @@ fn readAllData(
         .temp_allocator = options.temp_allocator,
     };
 
-    var decompress_reader = decompress_stream.reader();
-
     if (header.interlace_method == .none) {
         var i: u32 = 0;
         while (i < height) : (i += 1) {
-            decompress_reader.readNoEof(current_row[filter_stride - 1 ..]) catch |err| switch (err) {
-                error.CorruptInput, error.BadInternalState, error.BadReaderState, error.UnexpectedEndOfStream, error.EndOfStreamWithNoError, error.WrongChecksum => return Image.ReadError.InvalidData,
+            _ = decompressor.read(current_row[filter_stride - 1 ..]) catch |err| switch (err) {
+                error.InvalidCode,
+                error.InvalidMatch,
+                error.InvalidBlockType,
+                error.WrongStoredBlockNlen,
+                error.InvalidDynamicBlockHeader,
+                error.BadGzipHeader,
+                error.BadZlibHeader,
+                error.WrongGzipChecksum,
+                error.WrongGzipSize,
+                error.WrongZlibChecksum,
+                error.OversubscribedHuffmanTree,
+                error.IncompleteHuffmanTree,
+                error.MissingEndOfBlockCode,
+                => return Image.ReadError.InvalidData,
                 else => |leftover_err| return leftover_err,
             };
+
             try defilter(current_row, prev_row, filter_stride);
 
             process_row_data.dest_row = destination[0..result_line_bytes];
@@ -408,10 +417,24 @@ fn readAllData(
             var desty = start_y[pass];
             var y: u32 = 0;
             while (y < pass_height[pass]) : (y += 1) {
-                decompress_reader.readNoEof(current_row[filter_stride - 1 .. pass_length]) catch |err| switch (err) {
-                    error.CorruptInput, error.BadInternalState, error.BadReaderState, error.UnexpectedEndOfStream, error.EndOfStreamWithNoError, error.WrongChecksum => return Image.ReadError.InvalidData,
+                _ = decompressor.read(current_row[filter_stride - 1 .. pass_length]) catch |err| switch (err) {
+                    error.InvalidCode,
+                    error.InvalidMatch,
+                    error.InvalidBlockType,
+                    error.WrongStoredBlockNlen,
+                    error.InvalidDynamicBlockHeader,
+                    error.BadGzipHeader,
+                    error.BadZlibHeader,
+                    error.WrongGzipChecksum,
+                    error.WrongGzipSize,
+                    error.WrongZlibChecksum,
+                    error.OversubscribedHuffmanTree,
+                    error.IncompleteHuffmanTree,
+                    error.MissingEndOfBlockCode,
+                    => return Image.ReadError.InvalidData,
                     else => |leftover_err| return leftover_err,
                 };
+
                 try defilter(current_row[0..pass_length], prev_row[0..pass_length], filter_stride);
 
                 process_row_data.dest_row = dest_row[0..result_pass_line_bytes];
@@ -453,8 +476,21 @@ fn readAllData(
 
     // Just make sure zip stream gets to its end
     var buf: [8]u8 = undefined;
-    const shouldBeZero = decompress_stream.read(buf[0..]) catch |err| switch (err) {
-        error.CorruptInput, error.BadInternalState, error.BadReaderState, error.UnexpectedEndOfStream, error.EndOfStreamWithNoError, error.WrongChecksum => return Image.ReadError.InvalidData,
+    const shouldBeZero = decompressor.read(buf[0..]) catch |err| switch (err) {
+        error.InvalidCode,
+        error.InvalidMatch,
+        error.InvalidBlockType,
+        error.WrongStoredBlockNlen,
+        error.InvalidDynamicBlockHeader,
+        error.BadGzipHeader,
+        error.BadZlibHeader,
+        error.WrongGzipChecksum,
+        error.WrongGzipSize,
+        error.WrongZlibChecksum,
+        error.OversubscribedHuffmanTree,
+        error.IncompleteHuffmanTree,
+        error.MissingEndOfBlockCode,
+        => return Image.ReadError.InvalidData,
         else => |leftover_err| return leftover_err,
     };
 
