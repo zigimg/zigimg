@@ -22,7 +22,7 @@ pub const WriteError = Error ||
     std.io.StreamSource.SeekError ||
     std.io.StreamSource.GetSeekPosError ||
     std.fs.File.OpenError ||
-    error{ EndOfStream, InvalidData };
+    error{ EndOfStream, InvalidData, UnfinishedBits };
 
 pub const Format = enum {
     bmp,
