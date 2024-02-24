@@ -1,0 +1,5 @@
+.{
+    .name = "zigimg",
+    .version = "0.0.0",
+    .paths = .{""},
+}
