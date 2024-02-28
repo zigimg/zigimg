@@ -287,7 +287,7 @@ pub const GIF = struct {
             return Image.ReadError.InvalidData;
         }
 
-        const global_color_table_size = @as(usize, 1) << (@as(u6, @intCast(self.header.flags.global_color_table_size)) + 1);
+        const global_color_table_size = @as(usize, 1) << (@as(if (@sizeOf(usize) == 4) u5 else u6, @intCast(self.header.flags.global_color_table_size)) + 1);
 
         self.global_color_table.resize(global_color_table_size);
 
@@ -529,7 +529,7 @@ pub const GIF = struct {
                 return;
             }
 
-            const local_color_table_size = @as(usize, 1) << (@as(u6, @intCast(sub_image.image_descriptor.flags.local_color_table_size)) + 1);
+            const local_color_table_size = @as(usize, 1) << (@as(if (@sizeOf(usize) == 4) u5 else u6, @intCast(sub_image.image_descriptor.flags.local_color_table_size)) + 1);
 
             sub_image.local_color_table.resize(local_color_table_size);
 
@@ -970,7 +970,7 @@ pub const GIF = struct {
         var total_color_count: usize = 0;
 
         if (self.header.flags.use_global_color_table) {
-            total_color_count = @as(usize, 1) << (@as(u6, @intCast(self.header.flags.global_color_table_size)) + 1);
+            total_color_count = @as(usize, 1) << (@as(if (@sizeOf(usize) == 4) u5 else u6, @intCast(self.header.flags.global_color_table_size)) + 1);
         }
 
         var use_transparency: bool = false;
@@ -988,7 +988,7 @@ pub const GIF = struct {
 
             for (frame.sub_images.items) |sub_image| {
                 if (sub_image.image_descriptor.flags.has_local_color_table) {
-                    color_per_frame += @as(usize, 1) << (@as(u6, @intCast(sub_image.image_descriptor.flags.local_color_table_size)) + 1);
+                    color_per_frame += @as(usize, 1) << (@as(if (@sizeOf(usize) == 4) u5 else u6, @intCast(sub_image.image_descriptor.flags.local_color_table_size)) + 1);
                 }
             }
 
