@@ -450,7 +450,21 @@ fn readAllData(
     // Just make sure zip stream gets to its end
     var buf: [8]u8 = undefined;
     const shouldBeZero = decompress_stream.read(buf[0..]) catch |err| switch (err) {
-        error.BadGzipHeader, error.BadZlibHeader, error.WrongGzipChecksum, error.WrongGzipSize, error.WrongZlibChecksum, error.InvalidCode, error.IncompleteHuffmanTree, error.MissingEndOfBlockCode, error.InvalidMatch, error.InvalidBlockType, error.OversubscribedHuffmanTree, error.WrongStoredBlockNlen, error.InvalidDynamicBlockHeader => return Image.ReadError.InvalidData,
+        error.BadGzipHeader,
+        error.BadZlibHeader,
+        error.WrongGzipChecksum,
+        error.WrongGzipSize,
+        error.WrongZlibChecksum,
+        error.InvalidCode,
+        error.IncompleteHuffmanTree,
+        error.MissingEndOfBlockCode,
+        error.InvalidMatch,
+        error.InvalidBlockType,
+        error.OversubscribedHuffmanTree,
+        error.WrongStoredBlockNlen,
+        error.InvalidDynamicBlockHeader,
+        error.EndOfStream,
+        => return Image.ReadError.InvalidData,
         else => |leftover_err| return leftover_err,
     };
 
