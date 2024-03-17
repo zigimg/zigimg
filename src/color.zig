@@ -1055,7 +1055,7 @@ pub const CIExyY = struct {
     }
 };
 
-pub const ConversionMatrix = [3]@Vector(3, f32);
+pub const ConversionMatrix = [4]@Vector(4, f32);
 
 // Colorspaces are defined in the CIE xyY colorspace, requiring only the x and y value
 pub const Colorspace = struct {
@@ -1074,10 +1074,42 @@ pub const Colorspace = struct {
         const w = 1.0 - u - v;
 
         return .{
-            u * (self.red.x / self.white.y),   v * (self.green.x / self.white.y),   w * (self.blue.x / self.white.y),
-            u * (self.red.y / self.white.y),   v * (self.green.y / self.white.y),   w * (self.blue.y / self.white.y),
-            u * (self.red.z() / self.white.y), v * (self.green.z() / self.white.y), w * (self.blue.z() / self.white.y),
+            u * (self.red.x / self.white.y),   v * (self.green.x / self.white.y),   w * (self.blue.x / self.white.y),   0.0,
+            u * (self.red.y / self.white.y),   v * (self.green.y / self.white.y),   w * (self.blue.y / self.white.y),   0.0,
+            u * (self.red.z() / self.white.y), v * (self.green.z() / self.white.y), w * (self.blue.z() / self.white.y), 0.0,
+            0.0,                               0.0,                                 0.0,                                1.0,
         };
+    }
+
+    pub fn convertToXYZ(self: Colorspace, color: Colorf32) CIEXYZ {
+        const conversion_matrix = self.toXYZConversionMatrix();
+
+        const color_vertex = @as(@Vector(4, f32), @bitCast(color));
+
+        return .{
+            .x = color_vertex * conversion_matrix[0],
+            .y = color_vertex * conversion_matrix[1],
+            .z = color_vertex * conversion_matrix[2],
+        };
+    }
+
+    pub fn convertColor(self: Colorspace, color: Colorf32) Colorf32 {
+        const conversion_matrix = self.toXYZConversionMatrix();
+
+        const color_vertex = @as(@Vector(4, f32), @bitCast(color));
+
+        const xyz_color: @Vector(4, f32) = undefined;
+        xyz_color[0] = color_vertex * conversion_matrix[0];
+        xyz_color[1] = color_vertex * conversion_matrix[1];
+        xyz_color[2] = color_vertex * conversion_matrix[2];
+        xyz_color[3] = color_vertex[3];
+
+        return color;
+    }
+
+    pub fn convertColors(self: Colorspace, colors: []Colorf32) void {
+        _ = colors;
+        _ = self;
     }
 };
 
