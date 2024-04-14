@@ -12,6 +12,19 @@ test "2x2 matrix identity" {
     try helpers.expectEq(identity_matrix.matrix[1][1], 1);
 }
 
+test "load 2x2 matrix from array" {
+    const result = math.float2x2.fromArray(.{
+        1, 2,
+        3, 4,
+    });
+
+    try helpers.expectEq(result.matrix[0][0], 1);
+    try helpers.expectEq(result.matrix[0][1], 2);
+
+    try helpers.expectEq(result.matrix[1][0], 3);
+    try helpers.expectEq(result.matrix[1][1], 4);
+}
+
 test "2x2 matrix determinant" {
     const matrix = math.float2x2.fromArray(.{
         1, 2,
@@ -54,4 +67,120 @@ test "2x2 matrix multiply to matrix" {
     try helpers.expectEq(result.matrix[0][1], 22);
     try helpers.expectEq(result.matrix[1][0], 43);
     try helpers.expectEq(result.matrix[1][1], 50);
+}
+
+test "2x2 matrix transpose" {
+    const matrix = math.float2x2.fromArray(.{
+        1, 2,
+        3, 4,
+    });
+
+    const result = matrix.transpose();
+
+    try helpers.expectEq(result.matrix[0][0], 1);
+    try helpers.expectEq(result.matrix[0][1], 3);
+    try helpers.expectEq(result.matrix[1][0], 2);
+    try helpers.expectEq(result.matrix[1][1], 4);
+}
+
+test "3x3 matrix identity" {
+    const identity_matrix = math.float3x3.identity();
+
+    try helpers.expectEq(identity_matrix.matrix[0][0], 1);
+    try helpers.expectEq(identity_matrix.matrix[0][1], 0);
+    try helpers.expectEq(identity_matrix.matrix[0][2], 0);
+
+    try helpers.expectEq(identity_matrix.matrix[1][0], 0);
+    try helpers.expectEq(identity_matrix.matrix[1][1], 1);
+    try helpers.expectEq(identity_matrix.matrix[1][2], 0);
+
+    try helpers.expectEq(identity_matrix.matrix[2][0], 0);
+    try helpers.expectEq(identity_matrix.matrix[2][1], 0);
+    try helpers.expectEq(identity_matrix.matrix[2][2], 1);
+}
+
+test "load 3x3 matrix from array" {
+    const result = math.float3x3.fromArray(.{
+        1, 2, 3,
+        4, 5, 6,
+        7, 8, 9,
+    });
+
+    try helpers.expectEq(result.matrix[0][0], 1);
+    try helpers.expectEq(result.matrix[0][1], 2);
+    try helpers.expectEq(result.matrix[0][2], 3);
+
+    try helpers.expectEq(result.matrix[1][0], 4);
+    try helpers.expectEq(result.matrix[1][1], 5);
+    try helpers.expectEq(result.matrix[1][2], 6);
+
+    try helpers.expectEq(result.matrix[2][0], 7);
+    try helpers.expectEq(result.matrix[2][1], 8);
+    try helpers.expectEq(result.matrix[2][2], 9);
+}
+
+test "3x3 matrix multiply to vector" {
+    const matrix = math.float3x3.fromArray(.{
+        1, 2, 3,
+        4, 5, 6,
+        7, 8, 9,
+    });
+
+    const vector: math.float3 = .{ 5, 6, 7 };
+
+    const result = matrix.mulVector(vector);
+
+    try helpers.expectEq(result[0], 38);
+    try helpers.expectEq(result[1], 92);
+    try helpers.expectEq(result[2], 146);
+}
+
+test "3x3 matrix multiply to matrix" {
+    const left_matrix = math.float3x3.fromArray(.{
+        1, 2, 3,
+        4, 5, 6,
+        7, 8, 9,
+    });
+
+    const right_matrix = math.float3x3.fromArray(.{
+        9, 8, 7,
+        6, 5, 4,
+        3, 2, 11,
+    });
+
+    const result = left_matrix.mul(right_matrix);
+
+    try helpers.expectEq(result.matrix[0][0], 30);
+    try helpers.expectEq(result.matrix[0][1], 24);
+    try helpers.expectEq(result.matrix[0][2], 48);
+
+    try helpers.expectEq(result.matrix[1][0], 84);
+    try helpers.expectEq(result.matrix[1][1], 69);
+    try helpers.expectEq(result.matrix[1][2], 114);
+
+    try helpers.expectEq(result.matrix[2][0], 138);
+    try helpers.expectEq(result.matrix[2][1], 114);
+    try helpers.expectEq(result.matrix[2][2], 180);
+}
+
+test "3x3 matrix transpose" {
+    const matrix = math.float3x3.fromArray(.{
+        1, 2, 3,
+        4, 5, 6,
+        7, 8, 9,
+    });
+
+    const result = matrix.transpose();
+
+    try helpers.expectEq(result.matrix[0][0], 1);
+    try helpers.expectEq(result.matrix[0][1], 4);
+    try helpers.expectEq(result.matrix[0][2], 7);
+
+    try helpers.expectEq(result.matrix[1][0], 2);
+    try helpers.expectEq(result.matrix[1][1], 5);
+    try helpers.expectEq(result.matrix[1][2], 8);
+
+    try helpers.expectEq(result.matrix[2][0], 3);
+    try helpers.expectEq(result.matrix[2][1], 6);
+    try helpers.expectEq(result.matrix[2][2], 9);
 }

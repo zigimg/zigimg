@@ -32,9 +32,10 @@ pub fn Matrix(comptime T: type) type {
         pub fn fromArray(array: [ComponentSize * ComponentSize]f32) Self {
             var result: Self = undefined;
 
-            inline for (0..ComponentSize) |row| {
-                inline for (0..ComponentSize) |column| {
-                    result.matrix[row][column] = array[row * ComponentSize + column];
+            for (0..ComponentSize) |row| {
+                const stride = row * ComponentSize;
+                for (0..ComponentSize) |column| {
+                    result.matrix[row][column] = array[stride + column];
                 }
             }
 
@@ -66,11 +67,11 @@ pub fn Matrix(comptime T: type) type {
         pub fn mul(self: Self, right: Self) Self {
             var result = std.mem.zeroes(Self);
 
+            const transposed_right = right.transpose();
+
             for (0..ComponentSize) |row| {
                 for (0..ComponentSize) |column| {
-                    for (0..ComponentSize) |i| {
-                        result.matrix[row][column] += self.matrix[row][i] * right.matrix[i][column];
-                    }
+                    result.matrix[row][column] = @reduce(.Add, self.matrix[row] * transposed_right.matrix[column]);
                 }
             }
 
@@ -78,7 +79,15 @@ pub fn Matrix(comptime T: type) type {
         }
 
         pub fn transpose(self: Self) Self {
-            return self;
+            var result = std.mem.zeroes(Self);
+
+            for (0..ComponentSize) |row| {
+                for (0..ComponentSize) |column| {
+                    result.matrix[row][column] = self.matrix[column][row];
+                }
+            }
+
+            return result;
         }
     };
 }
