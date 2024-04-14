@@ -119,6 +119,26 @@ test "load 3x3 matrix from array" {
     try helpers.expectEq(result.matrix[2][2], 9);
 }
 
+test "3x3 matrix determinant" {
+    const matrix = math.float3x3.fromArray(.{
+        2, 3, 4,
+        4, 4, 6,
+        5, 6, 6,
+    });
+
+    const determinant = matrix.determinant();
+    try helpers.expectEq(determinant, 10);
+
+    const non_determinant_matrix = math.float3x3.fromArray(.{
+        1, 2, 3,
+        4, 5, 6,
+        7, 8, 9,
+    });
+
+    const non_determinant = non_determinant_matrix.determinant();
+    try helpers.expectEq(non_determinant, 0);
+}
+
 test "3x3 matrix multiply to vector" {
     const matrix = math.float3x3.fromArray(.{
         1, 2, 3,
@@ -183,4 +203,16 @@ test "3x3 matrix transpose" {
     try helpers.expectEq(result.matrix[2][0], 3);
     try helpers.expectEq(result.matrix[2][1], 6);
     try helpers.expectEq(result.matrix[2][2], 9);
+}
+
+test "4x4 matrix determinant" {
+    const matrix = math.float4x4.fromArray(.{
+        2, 3, 4, 5,
+        4, 4, 6, 7,
+        5, 6, 6, 8,
+        6, 1, 2, 3,
+    });
+
+    const determinant = matrix.determinant();
+    try helpers.expectEq(determinant, 18);
 }

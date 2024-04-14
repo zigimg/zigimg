@@ -21,11 +21,25 @@ pub fn Matrix(comptime T: type) type {
             if (ComponentSize == 2) {
                 return self.matrix[0][0] * self.matrix[1][1] - self.matrix[0][1] * self.matrix[1][0];
             } else {
-                // for(0..ComponentSize) |row| {
-                //     for (0..ComponentSize) |column| {
+                var temp_matrix = self;
 
-                //     }
-                // }
+                for (0..(ComponentSize - 1)) |row| {
+                    for ((row + 1)..ComponentSize) |next_row| {
+                        const factor = temp_matrix.matrix[next_row][row] / temp_matrix.matrix[row][row];
+
+                        for (0..ComponentSize) |column| {
+                            temp_matrix.matrix[next_row][column] = temp_matrix.matrix[next_row][column] - factor * temp_matrix.matrix[row][column];
+                        }
+                    }
+                }
+
+                var result: f32 = temp_matrix.matrix[0][0];
+
+                for (1..ComponentSize) |diagonal| {
+                    result *= temp_matrix.matrix[diagonal][diagonal];
+                }
+
+                return result;
             }
         }
 
