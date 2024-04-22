@@ -102,7 +102,8 @@ const all_interface_funcs = blk: {
         }
     }
 
-    break :blk result[0..index];
+    const const_result = result;
+    break :blk const_result[0..index];
 };
 
 /// Init an empty image with no pixel data
