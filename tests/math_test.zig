@@ -36,6 +36,21 @@ test "2x2 matrix determinant" {
     try helpers.expectEq(determinant, -2);
 }
 
+test "2x2 matrix inverse" {
+    const matrix = math.float2x2.fromArray(.{
+        1, 2,
+        3, 4,
+    });
+
+    const result = matrix.inverse();
+
+    try helpers.expectApproxEqAbs(result.matrix[0][0], -2, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[0][1], 1, 0.1);
+
+    try helpers.expectApproxEqAbs(result.matrix[1][0], 1.5, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[1][1], -0.5, 0.1);
+}
+
 test "2x2 matrix multiply to vector" {
     const matrix = math.float2x2.fromArray(.{
         1, 2,
@@ -227,6 +242,59 @@ test "3x3 matrix transpose" {
     try helpers.expectEq(result.matrix[2][2], 9);
 }
 
+test "4x4 matrix identity" {
+    const identity_matrix = math.float4x4.identity();
+
+    try helpers.expectEq(identity_matrix.matrix[0][0], 1);
+    try helpers.expectEq(identity_matrix.matrix[0][1], 0);
+    try helpers.expectEq(identity_matrix.matrix[0][2], 0);
+    try helpers.expectEq(identity_matrix.matrix[0][3], 0);
+
+    try helpers.expectEq(identity_matrix.matrix[1][0], 0);
+    try helpers.expectEq(identity_matrix.matrix[1][1], 1);
+    try helpers.expectEq(identity_matrix.matrix[1][2], 0);
+    try helpers.expectEq(identity_matrix.matrix[1][3], 0);
+
+    try helpers.expectEq(identity_matrix.matrix[2][0], 0);
+    try helpers.expectEq(identity_matrix.matrix[2][1], 0);
+    try helpers.expectEq(identity_matrix.matrix[2][2], 1);
+    try helpers.expectEq(identity_matrix.matrix[2][3], 0);
+
+    try helpers.expectEq(identity_matrix.matrix[3][0], 0);
+    try helpers.expectEq(identity_matrix.matrix[3][1], 0);
+    try helpers.expectEq(identity_matrix.matrix[3][2], 0);
+    try helpers.expectEq(identity_matrix.matrix[3][3], 1);
+}
+
+test "load 4x4 matrix from array" {
+    const matrix = math.float4x4.fromArray(.{
+        2, 3, 4, 5,
+        4, 4, 6, 7,
+        5, 6, 6, 8,
+        6, 1, 2, 3,
+    });
+
+    try helpers.expectEq(matrix.matrix[0][0], 2);
+    try helpers.expectEq(matrix.matrix[0][1], 3);
+    try helpers.expectEq(matrix.matrix[0][2], 4);
+    try helpers.expectEq(matrix.matrix[0][3], 5);
+
+    try helpers.expectEq(matrix.matrix[1][0], 4);
+    try helpers.expectEq(matrix.matrix[1][1], 4);
+    try helpers.expectEq(matrix.matrix[1][2], 6);
+    try helpers.expectEq(matrix.matrix[1][3], 7);
+
+    try helpers.expectEq(matrix.matrix[2][0], 5);
+    try helpers.expectEq(matrix.matrix[2][1], 6);
+    try helpers.expectEq(matrix.matrix[2][2], 6);
+    try helpers.expectEq(matrix.matrix[2][3], 8);
+
+    try helpers.expectEq(matrix.matrix[3][0], 6);
+    try helpers.expectEq(matrix.matrix[3][1], 1);
+    try helpers.expectEq(matrix.matrix[3][2], 2);
+    try helpers.expectEq(matrix.matrix[3][3], 3);
+}
+
 test "4x4 matrix determinant" {
     const matrix = math.float4x4.fromArray(.{
         2, 3, 4, 5,
@@ -268,4 +336,91 @@ test "4x4 matrix inverse" {
     try helpers.expectApproxEqAbs(result.matrix[3][1], -1.8, 0.1);
     try helpers.expectApproxEqAbs(result.matrix[3][2], -0.4, 0.1);
     try helpers.expectApproxEqAbs(result.matrix[3][3], 0.5, 0.1);
+}
+
+test "4x4 matrix multiply to vector" {
+    const matrix = math.float4x4.fromArray(.{
+        2,  3,  4,  5,
+        6,  7,  8,  9,
+        10, 11, 12, 13,
+        14, 15, 16, 17,
+    });
+
+    const vector: math.float4 = .{ 2, 3, 4, 5 };
+
+    const result = matrix.mulVector(vector);
+
+    try helpers.expectEq(result[0], 54);
+    try helpers.expectEq(result[1], 110);
+    try helpers.expectEq(result[2], 166);
+    try helpers.expectEq(result[3], 222);
+}
+
+test "4x4 matrix multiply to matrix" {
+    const left_matrix = math.float4x4.fromArray(.{
+        2,  3,  4,  5,
+        6,  7,  8,  9,
+        10, 11, 12, 13,
+        14, 15, 16, 17,
+    });
+
+    const right_matrix = math.float4x4.fromArray(.{
+        1, 5, 9,  13,
+        2, 6, 10, 14,
+        3, 7, 11, 15,
+        4, 8, 12, 16,
+    });
+
+    const result = left_matrix.mul(right_matrix);
+
+    try helpers.expectApproxEqAbs(result.matrix[0][0], 40, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[0][1], 96, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[0][2], 152, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[0][3], 208, 0.1);
+
+    try helpers.expectApproxEqAbs(result.matrix[1][0], 80, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[1][1], 200, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[1][2], 320, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[1][3], 440, 0.1);
+
+    try helpers.expectApproxEqAbs(result.matrix[2][0], 120, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[2][1], 304, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[2][2], 488, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[2][3], 672, 0.1);
+
+    try helpers.expectApproxEqAbs(result.matrix[3][0], 160, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[3][1], 408, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[3][2], 656, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[3][3], 904, 0.1);
+}
+
+test "4x4 matrix transpose" {
+    const matrix = math.float4x4.fromArray(.{
+        2,  3,  4,  5,
+        6,  7,  8,  9,
+        10, 11, 12, 13,
+        14, 15, 16, 17,
+    });
+
+    const result = matrix.transpose();
+
+    try helpers.expectApproxEqAbs(result.matrix[0][0], 2, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[0][1], 6, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[0][2], 10, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[0][3], 14, 0.1);
+
+    try helpers.expectApproxEqAbs(result.matrix[1][0], 3, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[1][1], 7, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[1][2], 11, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[1][3], 15, 0.1);
+
+    try helpers.expectApproxEqAbs(result.matrix[2][0], 4, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[2][1], 8, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[2][2], 12, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[2][3], 16, 0.1);
+
+    try helpers.expectApproxEqAbs(result.matrix[3][0], 5, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[3][1], 9, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[3][2], 13, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[3][3], 17, 0.1);
 }
