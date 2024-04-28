@@ -139,6 +139,28 @@ test "3x3 matrix determinant" {
     try helpers.expectEq(non_determinant, 0);
 }
 
+test "3x3 matrix inverse" {
+    const matrix = math.float3x3.fromArray(.{
+        2, 3, 4,
+        4, 4, 6,
+        5, 6, 6,
+    });
+
+    const result = matrix.inverse();
+
+    try helpers.expectApproxEqAbs(result.matrix[0][0], -1.2, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[0][1], 0.6, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[0][2], 0.2, 0.1);
+
+    try helpers.expectApproxEqAbs(result.matrix[1][0], 0.6, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[1][1], -0.8, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[1][2], 0.4, 0.1);
+
+    try helpers.expectApproxEqAbs(result.matrix[2][0], 0.4, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[2][1], 0.3, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[2][2], -0.4, 0.1);
+}
+
 test "3x3 matrix multiply to vector" {
     const matrix = math.float3x3.fromArray(.{
         1, 2, 3,
@@ -215,4 +237,35 @@ test "4x4 matrix determinant" {
 
     const determinant = matrix.determinant();
     try helpers.expectEq(determinant, 18);
+}
+
+test "4x4 matrix inverse" {
+    const matrix = math.float4x4.fromArray(.{
+        2, 3, 4, 5,
+        4, 4, 6, 7,
+        5, 6, 6, 8,
+        6, 1, 2, 3,
+    });
+
+    const result = matrix.inverse();
+
+    try helpers.expectApproxEqAbs(result.matrix[0][0], -0.5, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[0][1], 0.2, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[0][2], 0.1, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[0][3], 0.1, 0.1);
+
+    try helpers.expectApproxEqAbs(result.matrix[1][0], -1.3, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[1][1], 0.3, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[1][2], 0.6, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[1][3], -0.3, 0.1);
+
+    try helpers.expectApproxEqAbs(result.matrix[2][0], -2.5, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[2][1], 2, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[2][2], 0, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[2][3], -0.5, 0.1);
+
+    try helpers.expectApproxEqAbs(result.matrix[3][0], 3.2, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[3][1], -1.8, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[3][2], -0.4, 0.1);
+    try helpers.expectApproxEqAbs(result.matrix[3][3], 0.5, 0.1);
 }

@@ -21,22 +21,24 @@ pub fn Matrix(comptime T: type) type {
             if (ComponentSize == 2) {
                 return self.matrix[0][0] * self.matrix[1][1] - self.matrix[0][1] * self.matrix[1][0];
             } else {
-                var temp_matrix = self;
+                var temp = self;
 
+                // To find the determinant, use a Gaussian elimination to transform the temp matrix into the row echelon form
                 for (0..(ComponentSize - 1)) |row| {
                     for ((row + 1)..ComponentSize) |next_row| {
-                        const factor = temp_matrix.matrix[next_row][row] / temp_matrix.matrix[row][row];
+                        const factor = temp.matrix[next_row][row] / temp.matrix[row][row];
 
                         for (0..ComponentSize) |column| {
-                            temp_matrix.matrix[next_row][column] = temp_matrix.matrix[next_row][column] - factor * temp_matrix.matrix[row][column];
+                            temp.matrix[next_row][column] = temp.matrix[next_row][column] - factor * temp.matrix[row][column];
                         }
                     }
                 }
 
-                var result: f32 = temp_matrix.matrix[0][0];
+                // Once the temp matrix is in row echelon form, multiply the diagonal to find the determinant
+                var result: f32 = temp.matrix[0][0];
 
                 for (1..ComponentSize) |diagonal| {
-                    result *= temp_matrix.matrix[diagonal][diagonal];
+                    result *= temp.matrix[diagonal][diagonal];
                 }
 
                 return result;
@@ -57,11 +59,52 @@ pub fn Matrix(comptime T: type) type {
         }
 
         pub fn identity() Self {
-            var result: Self = undefined;
+            var result: Self = std.mem.zeroes(Self);
 
-            inline for (0..ComponentSize) |row| {
-                inline for (0..ComponentSize) |column| {
-                    result.matrix[row][column] = if (row == column) 1 else 0;
+            inline for (0..ComponentSize) |diagonal| {
+                result.matrix[diagonal][diagonal] = 1;
+            }
+
+            return result;
+        }
+
+        pub fn inverse(self: Self) Self {
+            var temp = self;
+            var result: Self = identity();
+
+            for (0..ComponentSize) |row| {
+                // Transform the pivot to 1 by multiplying the row by its inverse
+                const inverse_pivot = 1.0 / temp.matrix[row][row];
+
+                for (0..ComponentSize) |column| {
+                    temp.matrix[row][column] *= inverse_pivot;
+                    result.matrix[row][column] *= inverse_pivot;
+                }
+
+                // Then do Gaussian elimination from current row to bottom
+                for ((row + 1)..ComponentSize) |next_row| {
+                    const factor = temp.matrix[next_row][row] / temp.matrix[row][row];
+
+                    for (0..ComponentSize) |column| {
+                        temp.matrix[next_row][column] = temp.matrix[next_row][column] - factor * temp.matrix[row][column];
+                        result.matrix[next_row][column] = result.matrix[next_row][column] - factor * result.matrix[row][column];
+                    }
+                }
+            }
+
+            // Then do a Gaussian elimination bottom-up to transform the temp matrix into an identity matrix.
+            // The result will be the inverse of the matrix
+            var row: usize = ComponentSize -% 1;
+            while (row >= 1 and row < ComponentSize) : (row -%= 1) {
+                var previous_row = row -% 1;
+
+                while (previous_row >= 0 and previous_row < ComponentSize) : (previous_row -%= 1) {
+                    const factor = temp.matrix[previous_row][row] / temp.matrix[row][row];
+
+                    for (0..ComponentSize) |column| {
+                        temp.matrix[previous_row][column] = temp.matrix[previous_row][column] - factor * temp.matrix[row][column];
+                        result.matrix[previous_row][column] = result.matrix[previous_row][column] - factor * result.matrix[row][column];
+                    }
                 }
             }
 
