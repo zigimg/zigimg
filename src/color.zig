@@ -37,18 +37,16 @@ pub const Colorf32 = extern struct {
     b: f32 align(1) = 0.0,
     a: f32 align(1) = 1.0,
 
-    const Self = @This();
-
-    pub fn initRgb(r: f32, g: f32, b: f32) Self {
-        return Self{
+    pub fn initRgb(r: f32, g: f32, b: f32) Colorf32 {
+        return .{
             .r = r,
             .g = g,
             .b = b,
         };
     }
 
-    pub fn initRgba(r: f32, g: f32, b: f32, a: f32) Self {
-        return Self{
+    pub fn initRgba(r: f32, g: f32, b: f32, a: f32) Colorf32 {
+        return .{
             .r = r,
             .g = g,
             .b = b,
@@ -56,8 +54,8 @@ pub const Colorf32 = extern struct {
         };
     }
 
-    pub fn fromU32Rgba(value: u32) Self {
-        return Self{
+    pub fn fromU32Rgba(value: u32) Colorf32 {
+        return .{
             .r = toF32Color(@as(u8, @truncate(value >> 24))),
             .g = toF32Color(@as(u8, @truncate(value >> 16))),
             .b = toF32Color(@as(u8, @truncate(value >> 8))),
@@ -65,15 +63,15 @@ pub const Colorf32 = extern struct {
         };
     }
 
-    pub fn toU32Rgba(self: Self) u32 {
+    pub fn toU32Rgba(self: Colorf32) u32 {
         return @as(u32, toIntColor(u8, self.r)) << 24 |
             @as(u32, toIntColor(u8, self.g)) << 16 |
             @as(u32, toIntColor(u8, self.b)) << 8 |
             @as(u32, toIntColor(u8, self.a));
     }
 
-    pub fn fromU64Rgba(value: u64) Self {
-        return Self{
+    pub fn fromU64Rgba(value: u64) Colorf32 {
+        return .{
             .r = toF32Color(@as(u16, @truncate(value >> 48))),
             .g = toF32Color(@as(u16, @truncate(value >> 32))),
             .b = toF32Color(@as(u16, @truncate(value >> 16))),
@@ -81,15 +79,15 @@ pub const Colorf32 = extern struct {
         };
     }
 
-    pub fn toU64Rgba(self: Self) u64 {
+    pub fn toU64Rgba(self: Colorf32) u64 {
         return @as(u64, toIntColor(u16, self.r)) << 48 |
             @as(u64, toIntColor(u16, self.g)) << 32 |
             @as(u64, toIntColor(u16, self.b)) << 16 |
             @as(u64, toIntColor(u16, self.a));
     }
 
-    pub fn toPremultipliedAlpha(self: Self) Self {
-        return Self{
+    pub fn toPremultipliedAlpha(self: Colorf32) Colorf32 {
+        return .{
             .r = self.r * self.a,
             .g = self.g * self.a,
             .b = self.b * self.a,
@@ -97,7 +95,7 @@ pub const Colorf32 = extern struct {
         };
     }
 
-    pub fn toRgba(self: Self, comptime T: type) RgbaColor(T) {
+    pub fn toRgba(self: Colorf32, comptime T: type) RgbaColor(T) {
         return .{
             .r = toIntColor(T, self.r),
             .g = toIntColor(T, self.g),
@@ -106,23 +104,23 @@ pub const Colorf32 = extern struct {
         };
     }
 
-    pub fn toRgba32(self: Self) Rgba32 {
+    pub fn toRgba32(self: Colorf32) Rgba32 {
         return self.toRgba(u8);
     }
 
-    pub fn toRgba64(self: Self) Rgba64 {
+    pub fn toRgba64(self: Colorf32) Rgba64 {
         return self.toRgba(u16);
     }
 
-    pub fn toArray(self: Self) [4]f32 {
+    pub fn toArray(self: Colorf32) [4]f32 {
         return @bitCast(self);
     }
 
-    pub fn fromArray(value: [4]f32) Self {
+    pub fn fromArray(value: [4]f32) Colorf32 {
         return @bitCast(value);
     }
 
-    pub fn toLinear(self: Self) Self {
+    pub fn toLinear(self: Colorf32) Colorf32 {
         return .{
             .r = srgbToLinear(self.r),
             .g = srgbToLinear(self.g),
@@ -131,7 +129,7 @@ pub const Colorf32 = extern struct {
         };
     }
 
-    pub fn toLinearFast(self: Self) Self {
+    pub fn toLinearFast(self: Colorf32) Colorf32 {
         return .{
             .r = srgbToLinearFast(self.r),
             .g = srgbToLinearFast(self.g),
@@ -140,7 +138,7 @@ pub const Colorf32 = extern struct {
         };
     }
 
-    pub fn toSrgb(self: Self) Self {
+    pub fn toSrgb(self: Colorf32) Colorf32 {
         return .{
             .r = linearToSrgb(self.r),
             .g = linearToSrgb(self.g),
@@ -149,7 +147,7 @@ pub const Colorf32 = extern struct {
         };
     }
 
-    pub fn toSrgbFast(self: Self) Self {
+    pub fn toSrgbFast(self: Colorf32) Colorf32 {
         return .{
             .r = linearToSrgbFast(self.r),
             .g = linearToSrgbFast(self.g),
