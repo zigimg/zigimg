@@ -121,6 +121,42 @@ pub const Colorf32 = extern struct {
     pub fn fromArray(value: [4]f32) Self {
         return @bitCast(value);
     }
+
+    pub fn toLinear(self: Self) Self {
+        return .{
+            .r = srgbToLinear(self.r),
+            .g = srgbToLinear(self.g),
+            .b = srgbToLinear(self.b),
+            .a = self.a,
+        };
+    }
+
+    pub fn toLinearFast(self: Self) Self {
+        return .{
+            .r = srgbToLinearFast(self.r),
+            .g = srgbToLinearFast(self.g),
+            .b = srgbToLinearFast(self.b),
+            .a = self.a,
+        };
+    }
+
+    pub fn toSrgb(self: Self) Self {
+        return .{
+            .r = linearToSrgb(self.r),
+            .g = linearToSrgb(self.g),
+            .b = linearToSrgb(self.b),
+            .a = self.a,
+        };
+    }
+
+    pub fn toSrgbFast(self: Self) Self {
+        return .{
+            .r = linearToSrgbFast(self.r),
+            .g = linearToSrgbFast(self.g),
+            .b = linearToSrgbFast(self.b),
+            .a = self.a,
+        };
+    }
 };
 
 fn isAll8BitColor(comptime red_type: type, comptime green_type: type, comptime blue_type: type, comptime alpha_type: type) bool {
@@ -902,6 +938,37 @@ pub const PixelStorageIterator = struct {
 // For this point on, we are defining color types that are not used to store pixels but are used for color manipulation on the CPU.
 // Most of them are in the 0.0 to 1.0 range in 32-bit float except for a few exceptions.
 // Also assume that the from and to functions uses linear RGB color space with no gamma correction.
+pub inline fn applyGamma(value: f32, gamma: f32) f32 {
+    return std.math.pow(f32, value, 1.0 / gamma);
+}
+
+pub inline fn removeGamma(value: f32, gamma: f32) f32 {
+    return std.math.pow(f32, value, gamma);
+}
+
+pub fn linearToSrgb(value: f32) f32 {
+    if (value <= 0.0031308) {
+        return value * 12.92;
+    }
+
+    return 1.055 * std.math.pow(f32, value, 1.0 / 2.4) - 0.055;
+}
+
+pub fn linearToSrgbFast(value: f32) f32 {
+    return applyGamma(value, 2.2);
+}
+
+pub fn srgbToLinear(value: f32) f32 {
+    if (value <= 0.04045) {
+        return value / 12.92;
+    }
+
+    return std.math.pow(f32, (value + 0.055) / 1.055, 2.4);
+}
+
+pub fn srgbToLinearFast(value: f32) f32 {
+    return removeGamma(value, 2.2);
+}
 
 // HSL (Hue, Saturation, Luminance) is a different representation of the device dependent linear sRGB colorspace
 // where the luminance is pure white and models the way different paints mix together
