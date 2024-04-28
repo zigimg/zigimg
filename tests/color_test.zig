@@ -629,7 +629,45 @@ test "HSV to HSL conversion" {
     const hsv = color.Hsv{ .hue = 300.0, .saturation = 0.4140, .value = 0.8449 };
     const converted_hsl = hsv.toHsl();
 
-    try helpers.expectApproxEqAbs(converted_hsl.hue, 300.0, 0.0001);
-    try helpers.expectApproxEqAbs(converted_hsl.saturation, 0.53, 0.0001);
-    try helpers.expectApproxEqAbs(converted_hsl.luminance, 0.67, 0.0001);
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(converted_hsl.hue, 300.0, float_tolerance);
+    try helpers.expectApproxEqAbs(converted_hsl.saturation, 0.53, float_tolerance);
+    try helpers.expectApproxEqAbs(converted_hsl.luminance, 0.67, float_tolerance);
+}
+
+test "Compute Linear sRGB RGB to XYZ matrix" {
+    const result = color.sRGB.toXYZConversionMatrix();
+
+    const float_tolerance = 0.0001;
+
+    try helpers.expectApproxEqAbs(result.matrix[0][0], 0.4124564, float_tolerance);
+    try helpers.expectApproxEqAbs(result.matrix[0][1], 0.3575761, float_tolerance);
+    try helpers.expectApproxEqAbs(result.matrix[0][2], 0.1804375, float_tolerance);
+    try helpers.expectApproxEqAbs(result.matrix[0][3], 0, float_tolerance);
+
+    try helpers.expectApproxEqAbs(result.matrix[1][0], 0.2126729, float_tolerance);
+    try helpers.expectApproxEqAbs(result.matrix[1][1], 0.7151522, float_tolerance);
+    try helpers.expectApproxEqAbs(result.matrix[1][2], 0.0721750, float_tolerance);
+    try helpers.expectApproxEqAbs(result.matrix[1][3], 0, float_tolerance);
+
+    try helpers.expectApproxEqAbs(result.matrix[2][0], 0.0193339, float_tolerance);
+    try helpers.expectApproxEqAbs(result.matrix[2][1], 0.1191920, float_tolerance);
+    try helpers.expectApproxEqAbs(result.matrix[2][2], 0.9503041, float_tolerance);
+    try helpers.expectApproxEqAbs(result.matrix[2][3], 0, float_tolerance);
+
+    try helpers.expectApproxEqAbs(result.matrix[3][0], 0, float_tolerance);
+    try helpers.expectApproxEqAbs(result.matrix[3][1], 0, float_tolerance);
+    try helpers.expectApproxEqAbs(result.matrix[3][2], 0, float_tolerance);
+    try helpers.expectApproxEqAbs(result.matrix[3][3], 1, float_tolerance);
+}
+
+test "Linear sRGB to CIE XYZ" {
+    const color_to_convert = color.Colorf32.initRgb(0.2, 0.1, 0.8);
+
+    const result = color.sRGB.convertToXYZ(color_to_convert);
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.x, 0.262599, float_tolerance);
+    try helpers.expectApproxEqAbs(result.y, 0.171790, float_tolerance);
+    try helpers.expectApproxEqAbs(result.z, 0.776029, float_tolerance);
 }

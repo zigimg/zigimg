@@ -1,12 +1,12 @@
 const std = @import("std");
-const math = std.math;
+const math = @import("math.zig");
 const Allocator = std.mem.Allocator;
 const PixelFormat = @import("pixel_format.zig").PixelFormat;
 const TypeInfo = std.builtin.TypeInfo;
 
 pub inline fn toIntColor(comptime T: type, value: f32) T {
-    const float_value = @round(value * @as(f32, @floatFromInt(math.maxInt(T))));
-    return @as(T, @intFromFloat(math.clamp(float_value, math.minInt(T), math.maxInt(T))));
+    const float_value = @round(value * @as(f32, @floatFromInt(std.math.maxInt(T))));
+    return @as(T, @intFromFloat(std.math.clamp(float_value, std.math.minInt(T), std.math.maxInt(T))));
 }
 
 pub inline fn scaleToIntColor(comptime T: type, value: anytype) T {
@@ -21,14 +21,14 @@ pub inline fn scaleToIntColor(comptime T: type, value: anytype) T {
     if (cur_value_bits > new_value_bits) {
         return @as(T, @truncate(value >> (cur_value_bits - new_value_bits)));
     } else if (cur_value_bits < new_value_bits) {
-        const cur_value_max = math.maxInt(ValueT);
-        const new_value_max = math.maxInt(T);
+        const cur_value_max = std.math.maxInt(ValueT);
+        const new_value_max = std.math.maxInt(T);
         return @as(T, @truncate((@as(u32, value) * new_value_max + cur_value_max / 2) / cur_value_max));
     } else return @as(T, value);
 }
 
 pub inline fn toF32Color(value: anytype) f32 {
-    return @as(f32, @floatFromInt(value)) / @as(f32, @floatFromInt(math.maxInt(@TypeOf(value))));
+    return @as(f32, @floatFromInt(value)) / @as(f32, @floatFromInt(std.math.maxInt(@TypeOf(value))));
 }
 
 pub const Colorf32 = extern struct {
@@ -327,7 +327,7 @@ fn RgbaMethods(comptime Self: type) type {
         }
 
         pub fn toPremultipliedAlpha(self: Self) Self {
-            const max = math.maxInt(T);
+            const max = std.math.maxInt(T);
             return Self{
                 .r = @as(T, @truncate((@as(u32, self.r) * self.a + max / 2) / max)),
                 .g = @as(T, @truncate((@as(u32, self.g) * self.a + max / 2) / max)),
@@ -393,7 +393,7 @@ fn RgbaColor(comptime T: type) type {
         r: T align(1),
         g: T align(1),
         b: T align(1),
-        a: T align(1) = math.maxInt(T),
+        a: T align(1) = std.math.maxInt(T),
 
         pub usingnamespace RgbMethods(@This(), T, T, T, T);
         pub usingnamespace RgbaMethods(@This());
@@ -439,7 +439,7 @@ fn BgraColor(comptime T: type) type {
         b: T align(1),
         g: T align(1),
         r: T align(1),
-        a: T = math.maxInt(T),
+        a: T = std.math.maxInt(T),
 
         pub usingnamespace RgbMethods(@This(), T, T, T, T);
         pub usingnamespace RgbaMethods(@This());
@@ -513,7 +513,7 @@ pub fn Grayscale(comptime T: type) type {
 pub fn GrayscaleAlpha(comptime T: type) type {
     return struct {
         value: T,
-        alpha: T = math.maxInt(T),
+        alpha: T = std.math.maxInt(T),
 
         const Self = @This();
 
@@ -1055,14 +1055,14 @@ pub const CIExyY = struct {
     }
 };
 
-pub const ConversionMatrix = [4]@Vector(4, f32);
-
 // Colorspaces are defined in the CIE xyY colorspace, requiring only the x and y value
 pub const Colorspace = struct {
     red: CIExyY = .{},
     green: CIExyY = .{},
     blue: CIExyY = .{},
     white: CIExyY = .{},
+
+    pub const ConversionMatrix = math.float4x4;
 
     pub fn toXYZConversionMatrix(self: Colorspace) ConversionMatrix {
         const D = (self.red.x - self.blue.x) * (self.green.y - self.blue.y) - (self.red.y - self.blue.y) * (self.green.x - self.blue.x);
@@ -1073,23 +1073,24 @@ pub const Colorspace = struct {
         const v = V / D;
         const w = 1.0 - u - v;
 
-        return .{
+        return ConversionMatrix.fromArray(.{
             u * (self.red.x / self.white.y),   v * (self.green.x / self.white.y),   w * (self.blue.x / self.white.y),   0.0,
             u * (self.red.y / self.white.y),   v * (self.green.y / self.white.y),   w * (self.blue.y / self.white.y),   0.0,
             u * (self.red.z() / self.white.y), v * (self.green.z() / self.white.y), w * (self.blue.z() / self.white.y), 0.0,
             0.0,                               0.0,                                 0.0,                                1.0,
-        };
+        });
     }
 
     pub fn convertToXYZ(self: Colorspace, color: Colorf32) CIEXYZ {
         const conversion_matrix = self.toXYZConversionMatrix();
 
-        const color_vertex = @as(@Vector(4, f32), @bitCast(color));
+        const color_float4 = @as(math.float4, @bitCast(color));
 
+        const result = conversion_matrix.mulVector(color_float4);
         return .{
-            .x = color_vertex * conversion_matrix[0],
-            .y = color_vertex * conversion_matrix[1],
-            .z = color_vertex * conversion_matrix[2],
+            .x = result[0],
+            .y = result[1],
+            .z = result[2],
         };
     }
 
