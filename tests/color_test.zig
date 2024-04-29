@@ -671,3 +671,51 @@ test "Linear sRGB to CIE XYZ" {
     try helpers.expectApproxEqAbs(result.y, 0.171790, float_tolerance);
     try helpers.expectApproxEqAbs(result.z, 0.776029, float_tolerance);
 }
+
+test "Convert Linear sRGB color to AdobeWideGamutRGB" {
+    const color_to_convert = color.Colorf32.initRgb(0.2, 0.1, 0.8);
+
+    const result = color.sRGB.convertColor(color.AdobeWideGamutRGB, color_to_convert);
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.r, 0.161246270, float_tolerance);
+    try helpers.expectApproxEqAbs(result.g, 0.152638555, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, 0.744218409, float_tolerance);
+    try helpers.expectApproxEqAbs(result.a, 1.0, float_tolerance);
+}
+
+test "Convert Linear sRGB to DCI-P3 Display" {
+    const color_to_convert = color.Colorf32.initRgb(0.2, 0.1, 0.8);
+
+    const result = color.sRGB.convertColor(color.DCIP3.Display, color_to_convert);
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.r, 0.182245, float_tolerance);
+    try helpers.expectApproxEqAbs(result.g, 0.103319, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, 0.739062, float_tolerance);
+    try helpers.expectApproxEqAbs(result.a, 1.0, float_tolerance);
+}
+
+test "Convert Linear sRGB to BT709 (sanity check)" {
+    const color_to_convert = color.Colorf32.initRgb(0.2, 0.1, 0.8);
+
+    const result = color.sRGB.convertColor(color.BT709, color_to_convert);
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.r, 0.2, float_tolerance);
+    try helpers.expectApproxEqAbs(result.g, 0.1, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, 0.8, float_tolerance);
+    try helpers.expectApproxEqAbs(result.a, 1.0, float_tolerance);
+}
+
+test "Convert Linear sRGB to BT2020" {
+    const color_to_convert = color.Colorf32.initRgb(0.2, 0.1, 0.8);
+
+    const result = color.sRGB.convertColor(color.BT2020, color_to_convert);
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.r, 0.193054512, float_tolerance); 
+    try helpers.expectApproxEqAbs(result.g, 0.114861697, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, 0.728544116, float_tolerance);
+    try helpers.expectApproxEqAbs(result.a, 1.0, float_tolerance);
+}

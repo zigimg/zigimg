@@ -1118,6 +1118,10 @@ pub const CIExyY = struct {
             .z = (self.z() / self.y) * Y,
         };
     }
+
+    pub fn equals(self: CIExyY, right: CIExyY) bool {
+        return self.x == right.x and self.y == right.y;
+    }
 };
 
 // Colorspaces are defined in the CIE xyY colorspace, requiring only the x and y value
@@ -1159,23 +1163,60 @@ pub const Colorspace = struct {
         };
     }
 
-    pub fn convertColor(self: Colorspace, color: Colorf32) Colorf32 {
-        const conversion_matrix = self.toXYZConversionMatrix();
+    pub fn convertColor(source: Colorspace, target: Colorspace, color: Colorf32) Colorf32 {
+        const conversion_matrix = computeConversionMatrix(source, target);
 
-        const color_vertex = @as(@Vector(4, f32), @bitCast(color));
+        const color_float4: math.float4 = @bitCast(color);
+        const result = conversion_matrix.mulVector(color_float4);
 
-        const xyz_color: @Vector(4, f32) = undefined;
-        xyz_color[0] = color_vertex * conversion_matrix[0];
-        xyz_color[1] = color_vertex * conversion_matrix[1];
-        xyz_color[2] = color_vertex * conversion_matrix[2];
-        xyz_color[3] = color_vertex[3];
-
-        return color;
+        return @bitCast(result);
     }
 
     pub fn convertColors(self: Colorspace, colors: []Colorf32) void {
         _ = colors;
         _ = self;
+    }
+
+    fn computeConversionMatrix(source: Colorspace, target: Colorspace) math.float4x4 {
+        const source_to_xyz_matrix = source.toXYZConversionMatrix();
+        const target_to_rgb_matrix = target.toXYZConversionMatrix().inverse();
+
+        if (source.white.equals(target.white)) {
+            return target_to_rgb_matrix.mul(source_to_xyz_matrix);
+        }
+
+        const bradford_mapping = math.float4x4.fromArray(.{
+            0.8951000,  0.2664000,  -0.1614000, 0.0,
+            -0.7502000, 1.7135000,  0.0367000,  0.0,
+            0.0389000,  -0.0685000, 1.0296000,  0.0,
+            0.0,        0.0,        0.0,        1.0,
+        });
+
+        const bradford_inverse = math.float4x4.fromArray(.{
+            0.9869929,  -0.1470543, 0.1599627, 0.0,
+            0.4323053,  0.5183603,  0.0492912, 0.0,
+            -0.0085287, 0.0400428,  0.9684867, 0.0,
+            0.0,        0.0,        0.0,       1.0,
+        });
+
+        const source_white_xyz = source.white.toXYZ(1.0);
+        const target_white_xyz = target.white.toXYZ(1.0);
+
+        const source_white_float4: math.float4 = .{ source_white_xyz.x, source_white_xyz.y, source_white_xyz.z, 1.0 };
+        const target_white_float4: math.float4 = .{ target_white_xyz.x, target_white_xyz.y, target_white_xyz.z, 1.0 };
+
+        const source_cone_response = bradford_mapping.mulVector(source_white_float4);
+        const target_cone_response = bradford_mapping.mulVector(target_white_float4);
+
+        const scale_matrix = math.float4x4.fromArray(.{
+            target_cone_response[0] / source_cone_response[0], 0.0,                                               0.0,                                               0.0,
+            0.0,                                               target_cone_response[1] / source_cone_response[1], 0.0,                                               0.0,
+            0.0,                                               0.0,                                               target_cone_response[2] / source_cone_response[2], 0.0,
+            0.0,                                               0.0,                                               0.0,                                               1.0,
+        });
+        const chromatic_adaptation_matrix = bradford_inverse.mul(scale_matrix).mul(bradford_mapping);
+
+        return target_to_rgb_matrix.mul(chromatic_adaptation_matrix).mul(source_to_xyz_matrix);
     }
 };
 
