@@ -714,8 +714,37 @@ test "Convert Linear sRGB to BT2020" {
     const result = color.sRGB.convertColor(color.BT2020, color_to_convert);
 
     const float_tolerance = 0.0001;
-    try helpers.expectApproxEqAbs(result.r, 0.193054512, float_tolerance); 
+    try helpers.expectApproxEqAbs(result.r, 0.193054512, float_tolerance);
     try helpers.expectApproxEqAbs(result.g, 0.114861697, float_tolerance);
     try helpers.expectApproxEqAbs(result.b, 0.728544116, float_tolerance);
     try helpers.expectApproxEqAbs(result.a, 1.0, float_tolerance);
+}
+
+test "Convert an array of Linear sRGB to ProPhotoRGB" {
+    var colors = [_]color.Colorf32{
+        color.Colorf32.initRgb(0.2, 0.1, 0.8),
+        color.Colorf32.initRgb(1.0, 1.0, 1.0),
+        color.Colorf32.initRgb(0.5, 0.5, 0.0),
+        color.Colorf32.initRgb(0.0, 0.0, 0.0),
+        color.Colorf32.initRgb(0.0, 0.2, 0.4),
+    };
+
+    const expected_results = [_]color.Colorf32{
+        color.Colorf32.initRgb(0.251338661, 0.129547358, 0.707502544),
+        color.Colorf32.initRgb(1.0, 1.0, 1.0),
+        color.Colorf32.initRgb(0.429706693, 0.485920370, 0.0672753304),
+        color.Colorf32.initRgb(0.0, 0.0, 0.0),
+        color.Colorf32.initRgb(0.122260347, 0.185960293, 0.369714200),
+    };
+
+    color.sRGB.convertColors(color.ProPhotoRGB, colors[0..]);
+
+    const float_tolerance = 0.0001;
+    for (expected_results, 0..) |expected, index| {
+        const result = colors[index];
+        try helpers.expectApproxEqAbs(result.r, expected.r, float_tolerance);
+        try helpers.expectApproxEqAbs(result.g, expected.g, float_tolerance);
+        try helpers.expectApproxEqAbs(result.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(result.a, expected.a, float_tolerance);
+    }
 }

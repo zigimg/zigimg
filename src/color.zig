@@ -1172,9 +1172,13 @@ pub const Colorspace = struct {
         return @bitCast(result);
     }
 
-    pub fn convertColors(self: Colorspace, colors: []Colorf32) void {
-        _ = colors;
-        _ = self;
+    pub fn convertColors(source: Colorspace, target: Colorspace, colors: []Colorf32) void {
+        const conversion_matrix = computeConversionMatrix(source, target);
+
+        for (colors) |*color| {
+            const color_float4: math.float4 = @bitCast(color.*);
+            color.* = @bitCast(conversion_matrix.mulVector(color_float4));
+        }
     }
 
     fn computeConversionMatrix(source: Colorspace, target: Colorspace) math.float4x4 {
