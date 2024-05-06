@@ -664,7 +664,7 @@ test "Compute Linear sRGB RGB to XYZ matrix" {
 test "Linear sRGB to CIE XYZ" {
     const color_to_convert = color.Colorf32.initRgb(0.2, 0.1, 0.8);
 
-    const result = color.sRGB.convertToXYZ(color_to_convert);
+    const result = color.sRGB.toXYZ(color_to_convert);
 
     const float_tolerance = 0.0001;
     try helpers.expectApproxEqAbs(result.x, 0.262599, float_tolerance);
@@ -747,4 +747,27 @@ test "Convert an array of Linear sRGB to ProPhotoRGB" {
         try helpers.expectApproxEqAbs(result.b, expected.b, float_tolerance);
         try helpers.expectApproxEqAbs(result.a, expected.a, float_tolerance);
     }
+}
+
+test "Convert a sRGB color to CIELAB" {
+    const source_color = color.Colorf32.initRgb(0.2, 0.1, 0.8);
+
+    const result = color.sRGB.toLab(source_color);
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.l, 0.48485, float_tolerance);
+    try helpers.expectApproxEqAbs(result.a, 0.47701, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, -0.67469, float_tolerance);
+}
+
+test "Convert a sRGB color to CIELAB with alpha" {
+    const source_color = color.Colorf32.initRgba(0.2, 0.1, 0.8, 0.5);
+
+    const result = color.sRGB.toLabAlpha(source_color);
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.l, 0.48485, float_tolerance);
+    try helpers.expectApproxEqAbs(result.a, 0.47701, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, -0.67469, float_tolerance);
+    try helpers.expectApproxEqAbs(result.alpha, 0.5, float_tolerance);
 }

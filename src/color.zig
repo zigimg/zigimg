@@ -1095,11 +1095,110 @@ pub const CIEXYZ = struct {
     z: f32 = 0.0,
 };
 
+// CIE 1931 XYZ color space, device-independant color space but with alpha component
+pub const CIEXYZAlpha = extern struct {
+    x: f32 = 0.0,
+    y: f32 = 0.0,
+    z: f32 = 0.0,
+    a: f32 = 1.0,
+
+    pub fn fromFloat4(value: math.float4) CIEXYZAlpha {
+        return @bitCast(value);
+    }
+
+    pub fn toFloat4(self: CIEXYZAlpha) math.float4 {
+        return @bitCast(self);
+    }
+};
+
 // CIE L*a*b* color space, meaning L* for perceptual lightness and a* and b* for the four unique colors of human vision: red, green, blue and yellow.
-pub const CIELab = struct {
+// L = 0.0 to 1.0
+// a = -1.0 to 1.0
+// b = -1.0 to 1.0
+pub const CIELab = extern struct {
     l: f32 = 0.0,
     a: f32 = 0.0,
     b: f32 = 0.0,
+
+    const e: f32 = 216.0 / 24389.0;
+    const k: f32 = 24389.0 / 27.0;
+
+    pub fn fromXYZ(xyz: CIEXYZ, white_point: CIExyY) CIELab {
+        const white_point_xyz = white_point.toXYZ(1.0);
+
+        const relative_x = xyz.x / white_point_xyz.x;
+        const relative_y = xyz.y / white_point_xyz.y;
+        const relative_z = xyz.z / white_point_xyz.z;
+
+        const factor_x = factor(relative_x);
+        const factor_y = factor(relative_y);
+        const factor_z = factor(relative_z);
+
+        const l = 116.0 * factor_y - 16.0;
+        const a = 500.0 * (factor_x - factor_y);
+        const b = 200.0 * (factor_y - factor_z);
+
+        // Normalize to 0 to 1 or -1.0 to 1.0
+        return .{
+            .l = l / 100.0,
+            .a = a / 100.0,
+            .b = b / 100.0,
+        };
+    }
+
+    fn factor(t: f32) f32 {
+        if (t > e) {
+            return std.math.cbrt(t);
+        }
+
+        return ((k * t) + 16.0) / 116.0;
+    }
+};
+
+// CIE L*a*b* color space with alpha component
+// L = 0.0 to 1.0
+// a = -1.0 to 1.0
+// b = -1.0 to 1.0
+pub const CIELabAlpha = extern struct {
+    l: f32 = 0.0,
+    a: f32 = 0.0,
+    b: f32 = 0.0,
+    alpha: f32 = 1.0,
+
+    const e: f32 = 216.0 / 24389.0;
+    const k: f32 = 24389.0 / 27.0;
+
+    pub fn fromXYZAlpha(xyza: CIEXYZAlpha, white_point: CIExyY) CIELabAlpha {
+        const white_point_xyz = white_point.toXYZ(1.0);
+
+        const relative_x = xyza.x / white_point_xyz.x;
+        const relative_y = xyza.y / white_point_xyz.y;
+        const relative_z = xyza.z / white_point_xyz.z;
+
+        const factor_x = factor(relative_x);
+        const factor_y = factor(relative_y);
+        const factor_z = factor(relative_z);
+
+        const l = 116.0 * factor_y - 16.0;
+        const a = 500.0 * (factor_x - factor_y);
+        const b = 200.0 * (factor_y - factor_z);
+
+        // Normalize to 0 to 1 or -1.0 to 1.0
+        return .{
+            .l = l / 100.0,
+            .a = a / 100.0,
+            .b = b / 100.0,
+            .alpha = xyza.a,
+        };
+    }
+
+    fn factor(t: f32) f32 {
+        if (t > e) {
+            return std.math.cbrt(t);
+        }
+
+        return ((k * t) + 16.0) / 116.0;
+    }
 };
 
 // Using CIE 1931 2°
@@ -1150,7 +1249,7 @@ pub const Colorspace = struct {
         });
     }
 
-    pub fn convertToXYZ(self: Colorspace, color: Colorf32) CIEXYZ {
+    pub fn toXYZ(self: Colorspace, color: Colorf32) CIEXYZ {
         const conversion_matrix = self.toXYZConversionMatrix();
 
         const color_float4 = @as(math.float4, @bitCast(color));
@@ -1161,6 +1260,24 @@ pub const Colorspace = struct {
             .y = result[1],
             .z = result[2],
         };
+    }
+
+    pub fn toXYZAlpha(self: Colorspace, color: Colorf32) CIEXYZAlpha {
+        const conversion_matrix = self.toXYZConversionMatrix();
+
+        const color_float4 = @as(math.float4, @bitCast(color));
+
+        const result = conversion_matrix.mulVector(color_float4);
+
+        return CIEXYZAlpha.fromFloat4(result);
+    }
+
+    pub fn toLab(self: Colorspace, color: Colorf32) CIELab {
+        return CIELab.fromXYZ(self.toXYZ(color), self.white);
+    }
+
+    pub fn toLabAlpha(self: Colorspace, color: Colorf32) CIELabAlpha {
+        return CIELabAlpha.fromXYZAlpha(self.toXYZAlpha(color), self.white);
     }
 
     pub fn convertColor(source: Colorspace, target: Colorspace, color: Colorf32) Colorf32 {
@@ -1253,7 +1370,7 @@ pub const BT709 = Colorspace{
     .white = WhitePoints.D65,
 };
 
-// sRGB is the same as BT.709
+// sRGB use the same color gamut as BT.709
 pub const sRGB = BT709;
 
 //  Digital Cinema Initiatives P3 color spaces
