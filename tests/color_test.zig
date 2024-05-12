@@ -820,10 +820,10 @@ test "Convert a CIELab color to linear sRGB with alpha" {
     const red_lab = color.CIELabAlpha{ .l = 0.532408, .a = 0.800925, .b = 0.672032, .alpha = 1.0 };
 
     const red_rgba_float = color.sRGB.fromLabAlpha(red_lab);
-    try helpers.expectApproxEqAbs(red_rgba_float.r, 1.0, 0.1);
-    try helpers.expectApproxEqAbs(red_rgba_float.g, 0.0, 0.1);
-    try helpers.expectApproxEqAbs(red_rgba_float.b, 0.0, 0.1);
-    try helpers.expectApproxEqAbs(red_rgba_float.a, 1.0, 0.1);
+    try helpers.expectApproxEqAbs(red_rgba_float.r, 1.0, 0.001);
+    try helpers.expectApproxEqAbs(red_rgba_float.g, 0.0, 0.001);
+    try helpers.expectApproxEqAbs(red_rgba_float.b, 0.0, 0.001);
+    try helpers.expectApproxEqAbs(red_rgba_float.a, 1.0, 0.001);
 
     const red_rgba = red_rgba_float.toRgba32();
     try helpers.expectEq(red_rgba.r, 255);
