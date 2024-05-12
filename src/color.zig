@@ -1120,10 +1120,11 @@ pub const CIELab = extern struct {
     a: f32 = 0.0,
     b: f32 = 0.0,
 
-    const e: f32 = 216.0 / 24389.0;
-    const k: f32 = 24389.0 / 27.0;
+    const epsilon: f32 = 216.0 / 24389.0;
+    const kappa: f32 = 24389.0 / 27.0;
 
     pub fn fromXYZ(xyz: CIEXYZ, white_point: CIExyY) CIELab {
+        // Math from http://www.brucelindbloom.com/Eqn_XYZ_to_Lab.html
         const white_point_xyz = white_point.toXYZ(1.0);
 
         const relative_x = xyz.x / white_point_xyz.x;
@@ -1146,12 +1147,38 @@ pub const CIELab = extern struct {
         };
     }
 
+    pub fn toXYZ(self: CIELab, white_point: CIExyY) CIEXYZ {
+        // Math from http://www.brucelindbloom.com/index.html?Eqn_RGB_to_XYZ.html
+        const white_point_xyz = white_point.toXYZ(1.0);
+
+        const scaled_l = self.l * 100.0;
+        const scaled_a = self.a * 100.0;
+        const scaled_b = self.b * 100.0;
+
+        const factor_y = (scaled_l + 16.0) / 116.0;
+        const factor_z = factor_y - (scaled_b / 200.0);
+        const factor_x = (scaled_a / 500.0) + factor_y;
+
+        const cubic_factor_x = std.math.pow(f32, factor_x, 3.0);
+        const cubic_factor_z = std.math.pow(f32, factor_z, 3.0);
+
+        const result_x = if (cubic_factor_x > epsilon) cubic_factor_x else ((116.0 * factor_x) - 16.0) / kappa;
+        const result_y = if (scaled_l > (kappa * epsilon)) std.math.pow(f32, (scaled_l + 16.0) / 116.0, 3.0) else scaled_l / kappa;
+        const result_z = if (cubic_factor_z > epsilon) cubic_factor_z else ((116.0 * factor_z) - 16.0) / kappa;
+
+        return .{
+            .x = result_x * white_point_xyz.x,
+            .y = result_y * white_point_xyz.y,
+            .z = result_z * white_point_xyz.z,
+        };
+    }
+
     fn factor(t: f32) f32 {
-        if (t > e) {
+        if (t > epsilon) {
             return std.math.cbrt(t);
         }
 
-        return ((k * t) + 16.0) / 116.0;
+        return ((kappa * t) + 16.0) / 116.0;
     }
 };
 
@@ -1165,39 +1192,26 @@ pub const CIELabAlpha = extern struct {
     b: f32 = 0.0,
     alpha: f32 = 1.0,
 
-    const e: f32 = 216.0 / 24389.0;
-    const k: f32 = 24389.0 / 27.0;
-
     pub fn fromXYZAlpha(xyza: CIEXYZAlpha, white_point: CIExyY) CIELabAlpha {
-        const white_point_xyz = white_point.toXYZ(1.0);
+        const lab = CIELab.fromXYZ(.{ .x = xyza.x, .y = xyza.y, .z = xyza.z }, white_point);
 
-        const relative_x = xyza.x / white_point_xyz.x;
-        const relative_y = xyza.y / white_point_xyz.y;
-        const relative_z = xyza.z / white_point_xyz.z;
-
-        const factor_x = factor(relative_x);
-        const factor_y = factor(relative_y);
-        const factor_z = factor(relative_z);
-
-        const l = 116.0 * factor_y - 16.0;
-        const a = 500.0 * (factor_x - factor_y);
-        const b = 200.0 * (factor_y - factor_z);
-
-        // Normalize to 0 to 1 or -1.0 to 1.0
         return .{
-            .l = l / 100.0,
-            .a = a / 100.0,
-            .b = b / 100.0,
+            .l = lab.l,
+            .a = lab.a,
+            .b = lab.b,
             .alpha = xyza.a,
         };
     }
 
-    fn factor(t: f32) f32 {
-        if (t > e) {
-            return std.math.cbrt(t);
-        }
+    pub fn toXYZAlpha(self: CIELabAlpha, white_point: CIExyY) CIEXYZAlpha {
+        const xyz = CIELab.toXYZ(.{ .l = self.l, .a = self.a, .b = self.b }, white_point);
 
-        return ((k * t) + 16.0) / 116.0;
+        return .{
+            .x = xyz.x,
+            .y = xyz.y,
+            .z = xyz.z,
+            .a = self.alpha,
+        };
     }
 };
 
