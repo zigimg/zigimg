@@ -1096,6 +1096,45 @@ pub const Hsv = struct {
     }
 };
 
+// Device-dependent Cyan-Magenta-Yellow-blacK representation of the subtractive color model analogue to Colorf32.
+// When converting from Colorf32, the alpha component is dropped so remember to pre-multiply the alpha.
+// Used for printing mostly.
+pub const Cmykf32 = extern struct {
+    c: f32 align(1) = 0.0,
+    m: f32 align(1) = 0.0,
+    y: f32 align(1) = 0.0,
+    k: f32 align(1) = 0.0,
+
+    pub fn fromColorf32(value: Colorf32) Cmykf32 {
+        const max = @max(value.r, @max(value.g, value.b));
+        const k = 1.0 - max;
+
+        const minus_k = 1.0 - k;
+        if (std.math.approxEqAbs(f32, minus_k, 0.0, std.math.floatEps(f32))) {
+            return .{
+                .k = k,
+            };
+        }
+
+        return .{
+            .c = (1.0 - value.r - k) / minus_k,
+            .m = (1.0 - value.g - k) / minus_k,
+            .y = (1.0 - value.b - k) / minus_k,
+            .k = k,
+        };
+    }
+
+    pub fn toColorF32(self: Cmykf32) Colorf32 {
+        const minus_k = 1.0 - self.k;
+        return .{
+            .r = (1.0 - self.c) * minus_k,
+            .g = (1.0 - self.m) * minus_k,
+            .b = (1.0 - self.y) * minus_k,
+            .a = 1.0,
+        };
+    }
+};
+
 // CIE 1931 XYZ color space, device-independant color space
 pub const CIEXYZ = struct {
     x: f32 = 0.0,

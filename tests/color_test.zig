@@ -1174,3 +1174,79 @@ test "Reduce brightness by 25% of a slice of sRGB RGBA color using CIELab as a i
         try helpers.expectApproxEqAbs(result.a, expected.a, float_tolerance);
     }
 }
+
+test "Convert Colorf32 to Cmykf32" {
+    const colors = [_]color.Colorf32{
+        .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
+        .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
+        .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
+        .{ .r = 1.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Yellow
+        .{ .r = 1.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Magenta
+        .{ .r = 0.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // Cyan
+        .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // White
+        .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
+        .{ .r = 0.2, .g = 0.1, .b = 0.8, .a = 1.0 }, // #3319cc
+    };
+
+    const results = [_]color.Cmykf32{
+        .{ .c = 0.0000, .m = 1.0000, .y = 1.0000, .k = 0.00 }, // Red
+        .{ .c = 1.0000, .m = 0.0000, .y = 1.0000, .k = 0.00 }, // Green
+        .{ .c = 1.0000, .m = 1.0000, .y = 0.0000, .k = 0.00 }, // Blue
+        .{ .c = 0.0000, .m = 0.0000, .y = 1.0000, .k = 0.00 }, // Yellow
+        .{ .c = 0.0000, .m = 1.0000, .y = 0.0000, .k = 0.00 }, // Magenta
+        .{ .c = 1.0000, .m = 0.0000, .y = 0.0000, .k = 0.00 }, // Cyan
+        .{ .c = 0.0000, .m = 0.0000, .y = 0.0000, .k = 0.00 }, // White
+        .{ .c = 0.0000, .m = 0.0000, .y = 0.0000, .k = 1.00 }, // Black
+        .{ .c = 0.7500, .m = 0.8750, .y = 0.0000, .k = 0.20 }, // #3319cc
+    };
+
+    const float_tolerance = 0.0001;
+
+    for (0..results.len) |index| {
+        const result = color.Cmykf32.fromColorf32(colors[index]);
+        const expected = results[index];
+
+        try helpers.expectApproxEqAbs(result.c, expected.c, float_tolerance);
+        try helpers.expectApproxEqAbs(result.m, expected.m, float_tolerance);
+        try helpers.expectApproxEqAbs(result.y, expected.y, float_tolerance);
+        try helpers.expectApproxEqAbs(result.k, expected.k, float_tolerance);
+    }
+}
+
+test "Convert Cmykf32 to Colorf32" {
+    const colors = [_]color.Cmykf32{
+        .{ .c = 0.0000, .m = 1.0000, .y = 1.0000, .k = 0.00 }, // Red
+        .{ .c = 1.0000, .m = 0.0000, .y = 1.0000, .k = 0.00 }, // Green
+        .{ .c = 1.0000, .m = 1.0000, .y = 0.0000, .k = 0.00 }, // Blue
+        .{ .c = 0.0000, .m = 0.0000, .y = 1.0000, .k = 0.00 }, // Yellow
+        .{ .c = 0.0000, .m = 1.0000, .y = 0.0000, .k = 0.00 }, // Magenta
+        .{ .c = 1.0000, .m = 0.0000, .y = 0.0000, .k = 0.00 }, // Cyan
+        .{ .c = 0.0000, .m = 0.0000, .y = 0.0000, .k = 0.00 }, // White
+        .{ .c = 0.0000, .m = 0.0000, .y = 0.0000, .k = 1.00 }, // Black
+        .{ .c = 0.7500, .m = 0.8750, .y = 0.0000, .k = 0.20 }, // #3319cc
+    };
+
+    const results = [_]color.Colorf32{
+        .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
+        .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
+        .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
+        .{ .r = 1.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Yellow
+        .{ .r = 1.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Magenta
+        .{ .r = 0.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // Cyan
+        .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // White
+        .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
+        .{ .r = 0.2, .g = 0.1, .b = 0.8, .a = 1.0 }, // #3319cc
+    };
+
+    const float_tolerance = 0.0001;
+
+    for (0..results.len) |index| {
+        const result = color.Cmykf32.toColorF32(colors[index]);
+        const expected = results[index];
+
+        try helpers.expectApproxEqAbs(result.r, expected.r, float_tolerance);
+        try helpers.expectApproxEqAbs(result.g, expected.g, float_tolerance);
+        try helpers.expectApproxEqAbs(result.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(result.a, expected.a, float_tolerance);
+    }
+}
