@@ -1148,7 +1148,7 @@ pub const CIELab = extern struct {
     }
 
     pub fn toXYZ(self: CIELab, white_point: CIExyY) CIEXYZ {
-        // Math from http://www.brucelindbloom.com/index.html?Eqn_RGB_to_XYZ.html
+        // Math from http://www.brucelindbloom.com/Eqn_Lab_to_XYZ.html
         const white_point_xyz = white_point.toXYZ(1.0);
 
         const scaled_l = self.l * 100.0;
