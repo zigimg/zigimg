@@ -982,7 +982,82 @@ test "Convert a slice of RGBA colors to sRGB CIELab with alpha, copy" {
     }
 }
 
-test "Convert a slice of CIELabAlpha colors to linear sRGB RGBA, In-place" {
+test "Convert a slice of CIEXYZAlpha colors to linear sRGB RGBA, in-place" {
+    var colors = [_]color.CIEXYZAlpha{
+        .{ .x = 0.412456, .y = 0.212673, .z = 0.019334, .a = 1.0 }, // Red
+        .{ .x = 0.357576, .y = 0.715152, .z = 0.119192, .a = 1.0 }, // Green
+        .{ .x = 0.180437, .y = 0.072175, .z = 0.950304, .a = 1.0 }, // Blue
+        .{ .x = 0.770033, .y = 0.927825, .z = 0.138526, .a = 1.0 }, // Yellow
+        .{ .x = 0.592894, .y = 0.284848, .z = 0.969638, .a = 1.0 }, // Magenta
+        .{ .x = 0.538014, .y = 0.787327, .z = 1.069496, .a = 1.0 }, // Cyan
+        .{ .x = 0.950470, .y = 1.000000, .z = 1.088830, .a = 1.0 }, // White
+        .{ .x = 0.000000, .y = 0.000000, .z = 0.000000, .a = 1.0 }, // Black
+    };
+
+    const results = [_]color.Colorf32{
+        .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
+        .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
+        .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
+        .{ .r = 1.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Yellow
+        .{ .r = 1.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Magenta
+        .{ .r = 0.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // Cyan
+        .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // White
+        .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
+    };
+
+    const slice_rgba = color.sRGB.sliceFromXYZAlphaInPlace(colors[0..]);
+
+    const float_tolerance = 0.001;
+    for (0..results.len) |index| {
+        const result = slice_rgba[index];
+        const expected = results[index];
+
+        try helpers.expectApproxEqAbs(result.r, expected.r, float_tolerance);
+        try helpers.expectApproxEqAbs(result.g, expected.g, float_tolerance);
+        try helpers.expectApproxEqAbs(result.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(result.a, expected.a, float_tolerance);
+    }
+}
+
+test "Convert a slice of CIEXYZAlpha colors to linear sRGB RGBA, copy" {
+    const colors = [_]color.CIEXYZAlpha{
+        .{ .x = 0.412456, .y = 0.212673, .z = 0.019334, .a = 1.0 }, // Red
+        .{ .x = 0.357576, .y = 0.715152, .z = 0.119192, .a = 1.0 }, // Green
+        .{ .x = 0.180437, .y = 0.072175, .z = 0.950304, .a = 1.0 }, // Blue
+        .{ .x = 0.770033, .y = 0.927825, .z = 0.138526, .a = 1.0 }, // Yellow
+        .{ .x = 0.592894, .y = 0.284848, .z = 0.969638, .a = 1.0 }, // Magenta
+        .{ .x = 0.538014, .y = 0.787327, .z = 1.069496, .a = 1.0 }, // Cyan
+        .{ .x = 0.950470, .y = 1.000000, .z = 1.088830, .a = 1.0 }, // White
+        .{ .x = 0.000000, .y = 0.000000, .z = 0.000000, .a = 1.0 }, // Black
+    };
+
+    const results = [_]color.Colorf32{
+        .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
+        .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
+        .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
+        .{ .r = 1.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Yellow
+        .{ .r = 1.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Magenta
+        .{ .r = 0.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // Cyan
+        .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // White
+        .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
+    };
+
+    const slice_rgba = try color.sRGB.sliceFromXYZAlphaCopy(helpers.zigimg_test_allocator, colors[0..]);
+    defer helpers.zigimg_test_allocator.free(slice_rgba);
+
+    const float_tolerance = 0.001;
+    for (0..results.len) |index| {
+        const result = slice_rgba[index];
+        const expected = results[index];
+
+        try helpers.expectApproxEqAbs(result.r, expected.r, float_tolerance);
+        try helpers.expectApproxEqAbs(result.g, expected.g, float_tolerance);
+        try helpers.expectApproxEqAbs(result.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(result.a, expected.a, float_tolerance);
+    }
+}
+
+test "Convert a slice of CIELabAlpha colors to linear sRGB RGBA, in-place" {
     var colors = [_]color.CIELabAlpha{
         .{ .l = 0.532408, .a = 0.800925, .b = 0.672032, .alpha = 1.0 }, // Red
         .{ .l = 0.877347, .a = -0.861827, .b = 0.831793, .alpha = 1.0 }, // Green

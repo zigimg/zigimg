@@ -1323,9 +1323,7 @@ pub const Colorspace = struct {
     pub fn toXYZ(self: Colorspace, color: Colorf32) CIEXYZ {
         const conversion_matrix = self.toXYZConversionMatrix();
 
-        const color_float4 = color.toFloat4();
-
-        const result = conversion_matrix.mulVector(color_float4);
+        const result = conversion_matrix.mulVector(color.toFloat4());
         return .{
             .x = result[0],
             .y = result[1],
@@ -1336,9 +1334,7 @@ pub const Colorspace = struct {
     pub fn fromXYZAlpha(self: Colorspace, xyza: CIEXYZAlpha) Colorf32 {
         const conversion_matrix = self.toXYZConversionMatrix().inverse();
 
-        const xyza_float4 = xyza.toFloat4();
-
-        const result = conversion_matrix.mulVector(xyza_float4);
+        const result = conversion_matrix.mulVector(xyza.toFloat4());
 
         return Colorf32.fromFloat4(result);
     }
@@ -1346,9 +1342,7 @@ pub const Colorspace = struct {
     pub fn toXYZAlpha(self: Colorspace, color: Colorf32) CIEXYZAlpha {
         const conversion_matrix = self.toXYZConversionMatrix();
 
-        const color_float4 = color.toFloat4();
-
-        const result = conversion_matrix.mulVector(color_float4);
+        const result = conversion_matrix.mulVector(color.toFloat4());
 
         return CIEXYZAlpha.fromFloat4(result);
     }
@@ -1390,18 +1384,40 @@ pub const Colorspace = struct {
         return CIELabAlpha.fromXYZAlpha(self.toXYZAlpha(color), self.white);
     }
 
+    pub fn sliceFromXYZAlphaInPlace(self: Colorspace, slice_xyza: []CIEXYZAlpha) []Colorf32 {
+        const slice_rgba: []Colorf32 = @ptrCast(slice_xyza);
+
+        const conversion_matrix = self.toXYZConversionMatrix().inverse();
+
+        for (slice_rgba) |*rgba| {
+            rgba.* = Colorf32.fromFloat4(conversion_matrix.mulVector(rgba.toFloat4()));
+        }
+
+        return slice_rgba;
+    }
+
     pub fn sliceToXYZAlphaInPlace(self: Colorspace, colors: []Colorf32) []CIEXYZAlpha {
         const slice_xyza: []CIEXYZAlpha = @ptrCast(colors);
 
         const conversion_matrix = self.toXYZConversionMatrix();
 
         for (slice_xyza) |*xyza| {
-            const as_float4 = xyza.toFloat4();
-
-            xyza.* = CIEXYZAlpha.fromFloat4(conversion_matrix.mulVector(as_float4));
+            xyza.* = CIEXYZAlpha.fromFloat4(conversion_matrix.mulVector(xyza.toFloat4()));
         }
 
         return slice_xyza;
+    }
+
+    pub fn sliceFromXYZAlphaCopy(self: Colorspace, allocator: std.mem.Allocator, slice_xyza: []const CIEXYZAlpha) ![]Colorf32 {
+        const slice_rgba: []Colorf32 = try allocator.alloc(Colorf32, slice_xyza.len);
+
+        const conversion_matrix = self.toXYZConversionMatrix().inverse();
+
+        for (0..slice_xyza.len) |index| {
+            slice_rgba[index] = Colorf32.fromFloat4(conversion_matrix.mulVector(slice_xyza[index].toFloat4()));
+        }
+
+        return slice_rgba;
     }
 
     pub fn sliceToXYZAlphaCopy(self: Colorspace, allocator: std.mem.Allocator, colors: []const Colorf32) ![]CIEXYZAlpha {
@@ -1409,9 +1425,7 @@ pub const Colorspace = struct {
 
         const conversion_matrix = self.toXYZConversionMatrix();
         for (0..colors.len) |index| {
-            const color_float4 = colors[index].toFloat4();
-
-            slice_xyza[index] = CIEXYZAlpha.fromFloat4(conversion_matrix.mulVector(color_float4));
+            slice_xyza[index] = CIEXYZAlpha.fromFloat4(conversion_matrix.mulVector(colors[index].toFloat4()));
         }
 
         return slice_xyza;
@@ -1451,9 +1465,7 @@ pub const Colorspace = struct {
         const white_point_xyz = self.white.toXYZ(1.0);
 
         for (slice_lab) |*lab_alpha| {
-            const as_float4 = lab_alpha.toFloat4();
-
-            const xyza = CIEXYZAlpha.fromFloat4(conversion_matrix.mulVector(as_float4));
+            const xyza = CIEXYZAlpha.fromFloat4(conversion_matrix.mulVector(lab_alpha.toFloat4()));
 
             lab_alpha.* = CIELabAlpha.fromXYZAlphaPrecomputedWhitePoint(xyza, white_point_xyz);
         }
@@ -1493,9 +1505,7 @@ pub const Colorspace = struct {
         const white_point_xyz = self.white.toXYZ(1.0);
 
         for (0..colors.len) |index| {
-            const color_float4 = colors[index].toFloat4();
-
-            const xyza = CIEXYZAlpha.fromFloat4(conversion_matrix.mulVector(color_float4));
+            const xyza = CIEXYZAlpha.fromFloat4(conversion_matrix.mulVector(colors[index].toFloat4()));
 
             slice_lab[index] = CIELabAlpha.fromXYZAlphaPrecomputedWhitePoint(xyza, white_point_xyz);
         }
