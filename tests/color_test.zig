@@ -1250,3 +1250,49 @@ test "Convert Cmykf32 to Colorf32" {
         try helpers.expectApproxEqAbs(result.a, expected.a, float_tolerance);
     }
 }
+
+test "Convert from CIE Lab to CIE LCh" {
+    const lab = color.CIELab{ .l = 0.48485, .a = 0.47701, .b = -0.67469 };
+
+    const result = lab.toLch();
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.l, 0.48485, float_tolerance);
+    try helpers.expectApproxEqAbs(result.c, 0.82628, float_tolerance);
+    try helpers.expectApproxEqAbs(result.h, 5.32780, float_tolerance);
+}
+
+test "Convert from CIE LCh to CIE Lab" {
+    const lch = color.CIELCh{ .l = 0.48485, .c = 0.82628, .h = 5.32780 };
+
+    const result = lch.toLab();
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.l, 0.48485, float_tolerance);
+    try helpers.expectApproxEqAbs(result.a, 0.47701, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, -0.67469, float_tolerance);
+}
+
+test "Convert from CIELabAlpha to CIELChAlpha" {
+    const lab = color.CIELabAlpha{ .l = 0.48485, .a = 0.47701, .b = -0.67469, .alpha = 0.4567 };
+
+    const result = lab.toLchAlpha();
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.l, 0.48485, float_tolerance);
+    try helpers.expectApproxEqAbs(result.c, 0.82628, float_tolerance);
+    try helpers.expectApproxEqAbs(result.h, 5.32780, float_tolerance);
+    try helpers.expectApproxEqAbs(result.alpha, 0.4567, float_tolerance);
+}
+
+test "Convert from CIELChAlpha to CIELabAlpha" {
+    const lch = color.CIELChAlpha{ .l = 0.48485, .c = 0.82628, .h = 5.32780, .alpha = 0.4567 };
+
+    const result = lch.toLabAlpha();
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.l, 0.48485, float_tolerance);
+    try helpers.expectApproxEqAbs(result.a, 0.47701, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, -0.67469, float_tolerance);
+    try helpers.expectApproxEqAbs(result.alpha, 0.4567, float_tolerance);
+}

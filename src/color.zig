@@ -1136,10 +1136,10 @@ pub const Cmykf32 = extern struct {
 };
 
 // CIE 1931 XYZ color space, device-independant color space
-pub const CIEXYZ = struct {
-    x: f32 = 0.0,
-    y: f32 = 0.0,
-    z: f32 = 0.0,
+pub const CIEXYZ = extern struct {
+    x: f32 align(1) = 0.0,
+    y: f32 align(1) = 0.0,
+    z: f32 align(1) = 0.0,
 };
 
 // CIE 1931 XYZ color space, device-independant color space but with alpha component
@@ -1224,6 +1224,14 @@ pub const CIELab = extern struct {
         };
     }
 
+    pub inline fn fromLch(value: CIELCh) CIELab {
+        return value.toLab();
+    }
+
+    pub inline fn toLch(self: CIELab) CIELCh {
+        return CIELCh.fromLab(self);
+    }
+
     fn factor(t: f32) f32 {
         if (t > epsilon) {
             return std.math.cbrt(t);
@@ -1287,12 +1295,83 @@ pub const CIELabAlpha = extern struct {
         };
     }
 
+    pub inline fn fromLchAlpha(value: CIELChAlpha) CIELabAlpha {
+        return value.toLabAlpha();
+    }
+
+    pub inline fn toLchAlpha(self: CIELabAlpha) CIELChAlpha {
+        return CIELChAlpha.fromLabAlpha(self);
+    }
+
     pub inline fn fromFloat4(value: math.float4) CIELabAlpha {
         return @bitCast(value);
     }
 
     pub inline fn toFloat4(self: CIELabAlpha) math.float4 {
         return @bitCast(self);
+    }
+};
+
+// CIE LCh is the cylindrical representation of CIE L*a*b so it is always converted
+// from and to L*a*b. The angle are stored in radians.
+pub const CIELCh = extern struct {
+    l: f32 align(1) = 0.0,
+    c: f32 align(1) = 0.0,
+    h: f32 align(1) = 0.0,
+
+    pub fn fromLab(value: CIELab) CIELCh {
+        const c = std.math.sqrt(value.a * value.a + value.b * value.b);
+        var h = std.math.atan(value.b / value.a);
+        if (h < 0.0) {
+            h += 2.0 * std.math.pi;
+        }
+
+        return .{
+            .l = value.l,
+            .c = c,
+            .h = h,
+        };
+    }
+
+    pub fn toLab(self: CIELCh) CIELab {
+        return .{
+            .l = self.l,
+            .a = self.c * @cos(self.h),
+            .b = self.c * @sin(self.h),
+        };
+    }
+};
+
+// CIE LCh with alpha is the cylindrical representation of CIE L*a*b so it is always converted
+// from and to L*a*b. The angle are stored in radians.
+pub const CIELChAlpha = extern struct {
+    l: f32 align(1) = 0.0,
+    c: f32 align(1) = 0.0,
+    h: f32 align(1) = 0.0,
+    alpha: f32 align(1) = 1.0,
+
+    pub fn fromLabAlpha(value: CIELabAlpha) CIELChAlpha {
+        const c = std.math.sqrt(value.a * value.a + value.b * value.b);
+        var h = std.math.atan(value.b / value.a);
+        if (h < 0.0) {
+            h += 2.0 * std.math.pi;
+        }
+
+        return .{
+            .l = value.l,
+            .c = c,
+            .h = h,
+            .alpha = value.alpha,
+        };
+    }
+
+    pub fn toLabAlpha(self: CIELChAlpha) CIELabAlpha {
+        return .{
+            .l = self.l,
+            .a = self.c * @cos(self.h),
+            .b = self.c * @sin(self.h),
+            .alpha = self.alpha,
+        };
     }
 };
 
