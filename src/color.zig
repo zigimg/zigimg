@@ -1367,6 +1367,33 @@ pub const Colorspace = struct {
         return CIELabAlpha.fromXYZAlpha(self.toXYZAlpha(color), self.white);
     }
 
+    pub fn sliceToXYZAlphaInPlace(self: Colorspace, colors: []Colorf32) []CIEXYZAlpha {
+        const slice_xyza: []CIEXYZAlpha = @ptrCast(colors);
+
+        const conversion_matrix = self.toXYZConversionMatrix();
+
+        for (slice_xyza) |*xyza| {
+            const as_float4 = xyza.toFloat4();
+
+            xyza.* = CIEXYZAlpha.fromFloat4(conversion_matrix.mulVector(as_float4));
+        }
+
+        return slice_xyza;
+    }
+
+    pub fn sliceToXYZAlphaCopy(self: Colorspace, allocator: std.mem.Allocator, colors: []const Colorf32) ![]CIEXYZAlpha {
+        const slice_xyza: []CIEXYZAlpha = try allocator.alloc(CIEXYZAlpha, colors.len);
+
+        const conversion_matrix = self.toXYZConversionMatrix();
+        for (0..colors.len) |index| {
+            const color_float4 = colors[index].toFloat4();
+
+            slice_xyza[index] = CIEXYZAlpha.fromFloat4(conversion_matrix.mulVector(color_float4));
+        }
+
+        return slice_xyza;
+    }
+
     pub fn sliceToLabAlphaInPlace(self: Colorspace, colors: []Colorf32) []CIELabAlpha {
         const slice_lab: []CIELabAlpha = @ptrCast(colors);
 
