@@ -1263,6 +1263,16 @@ pub const Colorspace = struct {
         });
     }
 
+    pub fn fromXYZ(self: Colorspace, xyz: CIEXYZ) Colorf32 {
+        const conversion_matrix = self.toXYZConversionMatrix().inverse();
+
+        const xyz_float4 = math.float4{ xyz.x, xyz.y, xyz.z, 1.0 };
+
+        const result = conversion_matrix.mulVector(xyz_float4);
+
+        return Colorf32.fromArray(result);
+    }
+
     pub fn toXYZ(self: Colorspace, color: Colorf32) CIEXYZ {
         const conversion_matrix = self.toXYZConversionMatrix();
 
@@ -1274,6 +1284,16 @@ pub const Colorspace = struct {
             .y = result[1],
             .z = result[2],
         };
+    }
+
+    pub fn fromXYZAlpha(self: Colorspace, xyza: CIEXYZAlpha) Colorf32 {
+        const conversion_matrix = self.toXYZConversionMatrix().inverse();
+
+        const xyza_float4 = @as(math.float4, @bitCast(xyza));
+
+        const result = conversion_matrix.mulVector(xyza_float4);
+
+        return Colorf32.fromArray(result);
     }
 
     pub fn toXYZAlpha(self: Colorspace, color: Colorf32) CIEXYZAlpha {
@@ -1288,14 +1308,7 @@ pub const Colorspace = struct {
 
     pub fn fromLab(self: Colorspace, lab: CIELab) Colorf32 {
         const xyz = lab.toXYZ(self.white);
-
-        const conversion_matrix = self.toXYZConversionMatrix().inverse();
-
-        const xyz_float4 = math.float4{ xyz.x, xyz.y, xyz.z, 1.0 };
-
-        const result = conversion_matrix.mulVector(xyz_float4);
-
-        return Colorf32.fromArray(result);
+        return self.fromXYZ(xyz);
     }
 
     pub fn toLab(self: Colorspace, color: Colorf32) CIELab {
@@ -1305,13 +1318,7 @@ pub const Colorspace = struct {
     pub fn fromLabAlpha(self: Colorspace, lab: CIELabAlpha) Colorf32 {
         const xyza = lab.toXYZAlpha(self.white);
 
-        const conversion_matrix = self.toXYZConversionMatrix().inverse();
-
-        const xyza_float4 = @as(math.float4, @bitCast(xyza));
-
-        const result = conversion_matrix.mulVector(xyza_float4);
-
-        return Colorf32.fromArray(result);
+        return self.fromXYZAlpha(xyza);
     }
 
     pub fn toLabAlpha(self: Colorspace, color: Colorf32) CIELabAlpha {
