@@ -112,12 +112,20 @@ pub const Colorf32 = extern struct {
         return self.toRgba(u16);
     }
 
+    pub inline fn fromArray(value: [4]f32) Colorf32 {
+        return @bitCast(value);
+    }
+
     pub inline fn toArray(self: Colorf32) [4]f32 {
         return @bitCast(self);
     }
 
-    pub inline fn fromArray(value: [4]f32) Colorf32 {
+    pub inline fn fromFloat4(value: math.float4) Colorf32 {
         return @bitCast(value);
+    }
+
+    pub inline fn toFloat4(self: Colorf32) math.float4 {
+        return @bitCast(self);
     }
 
     pub fn toLinear(self: Colorf32) Colorf32 {
@@ -1239,6 +1247,14 @@ pub const CIELabAlpha = extern struct {
             .a = self.alpha,
         };
     }
+
+    pub inline fn fromFloat4(value: math.float4) CIELabAlpha {
+        return @bitCast(value);
+    }
+
+    pub inline fn toFloat4(self: CIELabAlpha) math.float4 {
+        return @bitCast(self);
+    }
 };
 
 // Using CIE 1931 2°
@@ -1296,13 +1312,13 @@ pub const Colorspace = struct {
 
         const result = conversion_matrix.mulVector(xyz_float4);
 
-        return Colorf32.fromArray(result);
+        return Colorf32.fromFloat4(result);
     }
 
     pub fn toXYZ(self: Colorspace, color: Colorf32) CIEXYZ {
         const conversion_matrix = self.toXYZConversionMatrix();
 
-        const color_float4 = @as(math.float4, @bitCast(color));
+        const color_float4 = color.toFloat4();
 
         const result = conversion_matrix.mulVector(color_float4);
         return .{
@@ -1315,17 +1331,17 @@ pub const Colorspace = struct {
     pub fn fromXYZAlpha(self: Colorspace, xyza: CIEXYZAlpha) Colorf32 {
         const conversion_matrix = self.toXYZConversionMatrix().inverse();
 
-        const xyza_float4 = @as(math.float4, @bitCast(xyza));
+        const xyza_float4 = xyza.toFloat4();
 
         const result = conversion_matrix.mulVector(xyza_float4);
 
-        return Colorf32.fromArray(result);
+        return Colorf32.fromFloat4(result);
     }
 
     pub fn toXYZAlpha(self: Colorspace, color: Colorf32) CIEXYZAlpha {
         const conversion_matrix = self.toXYZConversionMatrix();
 
-        const color_float4 = @as(math.float4, @bitCast(color));
+        const color_float4 = color.toFloat4();
 
         const result = conversion_matrix.mulVector(color_float4);
 
@@ -1358,8 +1374,9 @@ pub const Colorspace = struct {
         const white_point_xyz = self.white.toXYZ(1.0);
 
         for (slice_lab) |*lab_alpha| {
-            const as_float4 = @as(math.float4, @bitCast(lab_alpha.*));
-            const xyza: CIEXYZAlpha = @bitCast(conversion_matrix.mulVector(as_float4));
+            const as_float4 = lab_alpha.toFloat4();
+
+            const xyza = CIEXYZAlpha.fromFloat4(conversion_matrix.mulVector(as_float4));
 
             lab_alpha.* = CIELabAlpha.fromXYZAlphaPrecomputedWhitePoint(xyza, white_point_xyz);
         }
@@ -1374,9 +1391,9 @@ pub const Colorspace = struct {
         const white_point_xyz = self.white.toXYZ(1.0);
 
         for (0..colors.len) |index| {
-            const color_float4: math.float4 = @bitCast(colors[index]);
+            const color_float4 = colors[index].toFloat4();
 
-            const xyza: CIEXYZAlpha = @bitCast(conversion_matrix.mulVector(color_float4));
+            const xyza = CIEXYZAlpha.fromFloat4(conversion_matrix.mulVector(color_float4));
 
             slice_lab[index] = CIELabAlpha.fromXYZAlphaPrecomputedWhitePoint(xyza, white_point_xyz);
         }
@@ -1387,18 +1404,18 @@ pub const Colorspace = struct {
     pub fn convertColor(source: Colorspace, target: Colorspace, color: Colorf32) Colorf32 {
         const conversion_matrix = computeConversionMatrix(source, target);
 
-        const color_float4: math.float4 = @bitCast(color);
+        const color_float4 = color.toFloat4();
         const result = conversion_matrix.mulVector(color_float4);
 
-        return @bitCast(result);
+        return Colorf32.fromFloat4(result);
     }
 
     pub fn convertColors(source: Colorspace, target: Colorspace, colors: []Colorf32) void {
         const conversion_matrix = computeConversionMatrix(source, target);
 
         for (colors) |*color| {
-            const color_float4: math.float4 = @bitCast(color.*);
-            color.* = @bitCast(conversion_matrix.mulVector(color_float4));
+            const color_float4 = color.toFloat4();
+            color.* = Colorf32.fromFloat4(conversion_matrix.mulVector(color_float4));
         }
     }
 
