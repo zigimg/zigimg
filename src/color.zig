@@ -112,11 +112,11 @@ pub const Colorf32 = extern struct {
         return self.toRgba(u16);
     }
 
-    pub fn toArray(self: Colorf32) [4]f32 {
+    pub inline fn toArray(self: Colorf32) [4]f32 {
         return @bitCast(self);
     }
 
-    pub fn fromArray(value: [4]f32) Colorf32 {
+    pub inline fn fromArray(value: [4]f32) Colorf32 {
         return @bitCast(value);
     }
 
@@ -1286,8 +1286,32 @@ pub const Colorspace = struct {
         return CIEXYZAlpha.fromFloat4(result);
     }
 
+    pub fn fromLab(self: Colorspace, lab: CIELab) Colorf32 {
+        const xyz = lab.toXYZ(self.white);
+
+        const conversion_matrix = self.toXYZConversionMatrix().inverse();
+
+        const xyz_float4 = math.float4{ xyz.x, xyz.y, xyz.z, 1.0 };
+
+        const result = conversion_matrix.mulVector(xyz_float4);
+
+        return Colorf32.fromArray(result);
+    }
+
     pub fn toLab(self: Colorspace, color: Colorf32) CIELab {
         return CIELab.fromXYZ(self.toXYZ(color), self.white);
+    }
+
+    pub fn fromLabAlpha(self: Colorspace, lab: CIELabAlpha) Colorf32 {
+        const xyza = lab.toXYZAlpha(self.white);
+
+        const conversion_matrix = self.toXYZConversionMatrix().inverse();
+
+        const xyza_float4 = @as(math.float4, @bitCast(xyza));
+
+        const result = conversion_matrix.mulVector(xyza_float4);
+
+        return Colorf32.fromArray(result);
     }
 
     pub fn toLabAlpha(self: Colorspace, color: Colorf32) CIELabAlpha {

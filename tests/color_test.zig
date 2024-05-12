@@ -749,7 +749,7 @@ test "Convert an array of Linear sRGB to ProPhotoRGB" {
     }
 }
 
-test "Convert a sRGB color to CIELAB" {
+test "Convert a sRGB color to CIELab" {
     const source_color = color.Colorf32.initRgb(0.2, 0.1, 0.8);
 
     const result = color.sRGB.toLab(source_color);
@@ -760,7 +760,7 @@ test "Convert a sRGB color to CIELAB" {
     try helpers.expectApproxEqAbs(result.b, -0.67469, float_tolerance);
 }
 
-test "Convert a sRGB color to CIELAB with alpha" {
+test "Convert a sRGB color to CIELab with alpha" {
     const source_color = color.Colorf32.initRgba(0.2, 0.1, 0.8, 0.5);
 
     const result = color.sRGB.toLabAlpha(source_color);
@@ -772,7 +772,7 @@ test "Convert a sRGB color to CIELAB with alpha" {
     try helpers.expectApproxEqAbs(result.alpha, 0.5, float_tolerance);
 }
 
-test "Convert a LAB color to sRGB XYZ" {
+test "Convert a CIELab color to sRGB XYZ" {
     const source_color = color.CIELab{ .l = 0.48485, .a = 0.47701, .b = -0.67469 };
 
     const result = source_color.toXYZ(color.sRGB.white);
@@ -783,7 +783,7 @@ test "Convert a LAB color to sRGB XYZ" {
     try helpers.expectApproxEqAbs(result.z, 0.776029, float_tolerance);
 }
 
-test "Convert a LAB color to sRGB XYZ with alpha" {
+test "Convert a CIELab color to sRGB XYZ with alpha" {
     const source_color = color.CIELabAlpha{ .l = 0.48485, .a = 0.47701, .b = -0.67469, .alpha = 0.751534 };
 
     const result = source_color.toXYZAlpha(color.sRGB.white);
@@ -792,5 +792,28 @@ test "Convert a LAB color to sRGB XYZ with alpha" {
     try helpers.expectApproxEqAbs(result.x, 0.262599, float_tolerance);
     try helpers.expectApproxEqAbs(result.y, 0.171790, float_tolerance);
     try helpers.expectApproxEqAbs(result.z, 0.776029, float_tolerance);
+    try helpers.expectApproxEqAbs(result.a, 0.751534, float_tolerance);
+}
+
+test "Convert a CIELab color to linear sRGB" {
+    const source_color = color.CIELab{ .l = 0.48485, .a = 0.47701, .b = -0.67469 };
+
+    const result = color.sRGB.fromLab(source_color);
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.r, 0.2, float_tolerance);
+    try helpers.expectApproxEqAbs(result.g, 0.1, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, 0.8, float_tolerance);
+}
+
+test "Convert a CIELab color to linear sRGB with alpha" {
+    const source_color = color.CIELabAlpha{ .l = 0.48485, .a = 0.47701, .b = -0.67469, .alpha = 0.751534 };
+
+    const result = color.sRGB.fromLabAlpha(source_color);
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.r, 0.2, float_tolerance);
+    try helpers.expectApproxEqAbs(result.g, 0.1, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, 0.8, float_tolerance);
     try helpers.expectApproxEqAbs(result.a, 0.751534, float_tolerance);
 }
