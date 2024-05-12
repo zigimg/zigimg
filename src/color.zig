@@ -1097,16 +1097,16 @@ pub const CIEXYZ = struct {
 
 // CIE 1931 XYZ color space, device-independant color space but with alpha component
 pub const CIEXYZAlpha = extern struct {
-    x: f32 = 0.0,
-    y: f32 = 0.0,
-    z: f32 = 0.0,
-    a: f32 = 1.0,
+    x: f32 align(1) = 0.0,
+    y: f32 align(1) = 0.0,
+    z: f32 align(1) = 0.0,
+    a: f32 align(1) = 1.0,
 
-    pub fn fromFloat4(value: math.float4) CIEXYZAlpha {
+    pub inline fn fromFloat4(value: math.float4) CIEXYZAlpha {
         return @bitCast(value);
     }
 
-    pub fn toFloat4(self: CIEXYZAlpha) math.float4 {
+    pub inline fn toFloat4(self: CIEXYZAlpha) math.float4 {
         return @bitCast(self);
     }
 };
@@ -1116,17 +1116,19 @@ pub const CIEXYZAlpha = extern struct {
 // a = -1.0 to 1.0
 // b = -1.0 to 1.0
 pub const CIELab = extern struct {
-    l: f32 = 0.0,
-    a: f32 = 0.0,
-    b: f32 = 0.0,
+    l: f32 align(1) = 0.0,
+    a: f32 align(1) = 0.0,
+    b: f32 align(1) = 0.0,
 
     const epsilon: f32 = 216.0 / 24389.0;
     const kappa: f32 = 24389.0 / 27.0;
 
-    pub fn fromXYZ(xyz: CIEXYZ, white_point: CIExyY) CIELab {
-        // Math from http://www.brucelindbloom.com/Eqn_XYZ_to_Lab.html
-        const white_point_xyz = white_point.toXYZ(1.0);
+    pub inline fn fromXYZ(xyz: CIEXYZ, white_point: CIExyY) CIELab {
+        return CIELab.fromXYZPrecomputedWhitePoint(xyz, white_point.toXYZ(1.0));
+    }
 
+    pub fn fromXYZPrecomputedWhitePoint(xyz: CIEXYZ, white_point_xyz: CIEXYZ) CIELab {
+        // Math from http://www.brucelindbloom.com/Eqn_XYZ_to_Lab.html
         const relative_x = xyz.x / white_point_xyz.x;
         const relative_y = xyz.y / white_point_xyz.y;
         const relative_z = xyz.z / white_point_xyz.z;
@@ -1147,10 +1149,12 @@ pub const CIELab = extern struct {
         };
     }
 
-    pub fn toXYZ(self: CIELab, white_point: CIExyY) CIEXYZ {
-        // Math from http://www.brucelindbloom.com/Eqn_Lab_to_XYZ.html
-        const white_point_xyz = white_point.toXYZ(1.0);
+    pub inline fn toXYZ(self: CIELab, white_point: CIExyY) CIEXYZ {
+        return self.toXYZPrecomputedWhitePoint(white_point.toXYZ(1.0));
+    }
 
+    pub fn toXYZPrecomputedWhitePoint(self: CIELab, white_point_xyz: CIEXYZ) CIEXYZ {
+        // Math from http://www.brucelindbloom.com/Eqn_Lab_to_XYZ.html
         const scaled_l = self.l * 100.0;
         const scaled_a = self.a * 100.0;
         const scaled_b = self.b * 100.0;
@@ -1187,10 +1191,10 @@ pub const CIELab = extern struct {
 // a = -1.0 to 1.0
 // b = -1.0 to 1.0
 pub const CIELabAlpha = extern struct {
-    l: f32 = 0.0,
-    a: f32 = 0.0,
-    b: f32 = 0.0,
-    alpha: f32 = 1.0,
+    l: f32 align(1) = 0.0,
+    a: f32 align(1) = 0.0,
+    b: f32 align(1) = 0.0,
+    alpha: f32 align(1) = 1.0,
 
     pub fn fromXYZAlpha(xyza: CIEXYZAlpha, white_point: CIExyY) CIELabAlpha {
         const lab = CIELab.fromXYZ(.{ .x = xyza.x, .y = xyza.y, .z = xyza.z }, white_point);
@@ -1203,8 +1207,30 @@ pub const CIELabAlpha = extern struct {
         };
     }
 
+    pub fn fromXYZAlphaPrecomputedWhitePoint(xyza: CIEXYZAlpha, white_point_xyz: CIEXYZ) CIELabAlpha {
+        const lab = CIELab.fromXYZPrecomputedWhitePoint(.{ .x = xyza.x, .y = xyza.y, .z = xyza.z }, white_point_xyz);
+
+        return .{
+            .l = lab.l,
+            .a = lab.a,
+            .b = lab.b,
+            .alpha = xyza.a,
+        };
+    }
+
     pub fn toXYZAlpha(self: CIELabAlpha, white_point: CIExyY) CIEXYZAlpha {
         const xyz = CIELab.toXYZ(.{ .l = self.l, .a = self.a, .b = self.b }, white_point);
+
+        return .{
+            .x = xyz.x,
+            .y = xyz.y,
+            .z = xyz.z,
+            .a = self.alpha,
+        };
+    }
+
+    pub fn toXYZAlphaPrecomputedWhitePoint(self: CIELabAlpha, white_point_xyz: CIEXYZ) CIEXYZAlpha {
+        const xyz = CIELab.toXYZPrecomputedWhitePoint(.{ .l = self.l, .a = self.a, .b = self.b }, white_point_xyz);
 
         return .{
             .x = xyz.x,
@@ -1323,6 +1349,39 @@ pub const Colorspace = struct {
 
     pub fn toLabAlpha(self: Colorspace, color: Colorf32) CIELabAlpha {
         return CIELabAlpha.fromXYZAlpha(self.toXYZAlpha(color), self.white);
+    }
+
+    pub fn sliceToLabAlphaInPlace(self: Colorspace, colors: []Colorf32) []CIELabAlpha {
+        const slice_lab: []CIELabAlpha = @ptrCast(colors);
+
+        const conversion_matrix = self.toXYZConversionMatrix();
+        const white_point_xyz = self.white.toXYZ(1.0);
+
+        for (slice_lab) |*lab_alpha| {
+            const as_float4 = @as(math.float4, @bitCast(lab_alpha.*));
+            const xyza: CIEXYZAlpha = @bitCast(conversion_matrix.mulVector(as_float4));
+
+            lab_alpha.* = CIELabAlpha.fromXYZAlphaPrecomputedWhitePoint(xyza, white_point_xyz);
+        }
+
+        return slice_lab;
+    }
+
+    pub fn sliceToLabAlphaCopy(self: Colorspace, allocator: std.mem.Allocator, colors: []const Colorf32) ![]CIELabAlpha {
+        const slice_lab: []CIELabAlpha = try allocator.alloc(CIELabAlpha, colors.len);
+
+        const conversion_matrix = self.toXYZConversionMatrix();
+        const white_point_xyz = self.white.toXYZ(1.0);
+
+        for (0..colors.len) |index| {
+            const color_float4: math.float4 = @bitCast(colors[index]);
+
+            const xyza: CIEXYZAlpha = @bitCast(conversion_matrix.mulVector(color_float4));
+
+            slice_lab[index] = CIELabAlpha.fromXYZAlphaPrecomputedWhitePoint(xyza, white_point_xyz);
+        }
+
+        return slice_lab;
     }
 
     pub fn convertColor(source: Colorspace, target: Colorspace, color: Colorf32) Colorf32 {
