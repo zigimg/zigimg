@@ -148,3 +148,24 @@ pub fn Matrix(comptime T: type) type {
         }
     };
 }
+
+pub fn clamp2(value: float2, min: f32, max: f32) float2 {
+    const all_min: float2 = @splat(min);
+    const all_max: float2 = @splat(max);
+
+    return @min(@max(value, all_min), all_max);
+}
+
+pub fn clamp3(value: float3, min: f32, max: f32) float3 {
+    const all_min: float3 = @splat(min);
+    const all_max: float3 = @splat(max);
+
+    return @min(@max(value, all_min), all_max);
+}
+
+pub fn clamp4(value: float4, min: f32, max: f32) float4 {
+    const all_min: float4 = @splat(min);
+    const all_max: float4 = @splat(max);
+
+    return @min(@max(value, all_min), all_max);
+}

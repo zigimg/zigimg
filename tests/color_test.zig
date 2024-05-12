@@ -798,7 +798,7 @@ test "Convert a CIELab color to sRGB XYZ with alpha" {
 test "Convert a CIELab color to linear sRGB" {
     const source_color = color.CIELab{ .l = 0.48485, .a = 0.47701, .b = -0.67469 };
 
-    const result = color.sRGB.fromLab(source_color);
+    const result = color.sRGB.fromLab(source_color, .none);
 
     const float_tolerance = 0.0001;
     try helpers.expectApproxEqAbs(result.r, 0.2, float_tolerance);
@@ -809,7 +809,7 @@ test "Convert a CIELab color to linear sRGB" {
 test "Convert a CIELab color to linear sRGB with alpha" {
     const source_color = color.CIELabAlpha{ .l = 0.48485, .a = 0.47701, .b = -0.67469, .alpha = 0.751534 };
 
-    const result = color.sRGB.fromLabAlpha(source_color);
+    const result = color.sRGB.fromLabAlpha(source_color, .none);
 
     const float_tolerance = 0.0001;
     try helpers.expectApproxEqAbs(result.r, 0.2, float_tolerance);
@@ -819,7 +819,7 @@ test "Convert a CIELab color to linear sRGB with alpha" {
 
     const red_lab = color.CIELabAlpha{ .l = 0.532408, .a = 0.800925, .b = 0.672032, .alpha = 1.0 };
 
-    const red_rgba_float = color.sRGB.fromLabAlpha(red_lab);
+    const red_rgba_float = color.sRGB.fromLabAlpha(red_lab, .none);
     try helpers.expectApproxEqAbs(red_rgba_float.r, 1.0, 0.001);
     try helpers.expectApproxEqAbs(red_rgba_float.g, 0.0, 0.001);
     try helpers.expectApproxEqAbs(red_rgba_float.b, 0.0, 0.001);
@@ -1005,7 +1005,7 @@ test "Convert a slice of CIELabAlpha colors to linear sRGB RGBA, In-place" {
         .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
     };
 
-    const slice_rgba = color.sRGB.sliceFromLabAlphaInPlace(colors[0..]);
+    const slice_rgba = color.sRGB.sliceFromLabAlphaInPlace(colors[0..], .none);
 
     const float_tolerance = 0.001;
     for (0..results.len) |index| {
@@ -1042,10 +1042,53 @@ test "Convert a slice of CIELabAlpha colors to linear sRGB RGBA, Copy" {
         .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
     };
 
-    const slice_rgba = try color.sRGB.sliceFromLabAlphaCopy(helpers.zigimg_test_allocator, colors[0..]);
+    const slice_rgba = try color.sRGB.sliceFromLabAlphaCopy(helpers.zigimg_test_allocator, colors[0..], .none);
     defer helpers.zigimg_test_allocator.free(slice_rgba);
 
     const float_tolerance = 0.001;
+    for (0..results.len) |index| {
+        const result = slice_rgba[index];
+        const expected = results[index];
+
+        try helpers.expectApproxEqAbs(result.r, expected.r, float_tolerance);
+        try helpers.expectApproxEqAbs(result.g, expected.g, float_tolerance);
+        try helpers.expectApproxEqAbs(result.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(result.a, expected.a, float_tolerance);
+    }
+}
+
+test "Reduce brightness by 25% of a slice of sRGB RGBA color using CIELab as a intermediate" {
+    var colors = [_]color.Colorf32{
+        .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
+        .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
+        .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
+        .{ .r = 1.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Yellow
+        .{ .r = 1.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Magenta
+        .{ .r = 0.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // Cyan
+        .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // White
+        .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
+    };
+
+    const results = [_]color.Colorf32{
+        .{ .r = 0.6434, .g = 0.0000, .b = 0.0000, .a = 1.0 }, // Red
+        .{ .r = 0.0000, .g = 0.5196, .b = 0.0000, .a = 1.0 }, // Green
+        .{ .r = 0.0000, .g = 0.0000, .b = 0.7990, .a = 1.0 }, // Blue
+        .{ .r = 0.4588, .g = 0.4962, .b = 0.0000, .a = 1.0 }, // Yellow
+        .{ .r = 0.6320, .g = 0.0000, .b = 0.6532, .a = 1.0 }, // Magenta
+        .{ .r = 0.0000, .g = 0.5125, .b = 0.5191, .a = 1.0 }, // Cyan
+        .{ .r = 0.4827, .g = 0.4827, .b = 0.4827, .a = 1.0 }, // White
+        .{ .r = 0.0000, .g = 0.0000, .b = 0.0000, .a = 1.0 }, // Black
+    };
+
+    const slice_lab = color.sRGB.sliceToLabAlphaInPlace(colors[0..]);
+
+    for (slice_lab) |*lab| {
+        lab.l *= (1.0 - 0.25);
+    }
+
+    const slice_rgba = color.sRGB.sliceFromLabAlphaInPlace(slice_lab, .clamp);
+
+    const float_tolerance = 0.0001;
     for (0..results.len) |index| {
         const result = slice_rgba[index];
         const expected = results[index];

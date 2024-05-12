@@ -1286,6 +1286,11 @@ pub const Colorspace = struct {
     blue: CIExyY = .{},
     white: CIExyY = .{},
 
+    pub const PostConversionBehavior = enum {
+        none, // Keep value as-is
+        clamp, // Clamp values inside of the color in case of color being outside the colorspace
+    };
+
     pub const ConversionMatrix = math.float4x4;
 
     pub fn toXYZConversionMatrix(self: Colorspace) ConversionMatrix {
@@ -1348,19 +1353,37 @@ pub const Colorspace = struct {
         return CIEXYZAlpha.fromFloat4(result);
     }
 
-    pub fn fromLab(self: Colorspace, lab: CIELab) Colorf32 {
+    pub fn fromLab(self: Colorspace, lab: CIELab, post_conversion_behavior: PostConversionBehavior) Colorf32 {
         const xyz = lab.toXYZ(self.white);
-        return self.fromXYZ(xyz);
+        var result = self.fromXYZ(xyz);
+
+        switch (post_conversion_behavior) {
+            .none => {},
+            .clamp => {
+                result = Colorf32.fromFloat4(math.clamp4(result.toFloat4(), 0.0, 1.0));
+            },
+        }
+
+        return result;
     }
 
     pub fn toLab(self: Colorspace, color: Colorf32) CIELab {
         return CIELab.fromXYZ(self.toXYZ(color), self.white);
     }
 
-    pub fn fromLabAlpha(self: Colorspace, lab: CIELabAlpha) Colorf32 {
+    pub fn fromLabAlpha(self: Colorspace, lab: CIELabAlpha, post_conversion_behavior: PostConversionBehavior) Colorf32 {
         const xyza = lab.toXYZAlpha(self.white);
 
-        return self.fromXYZAlpha(xyza);
+        var result = self.fromXYZAlpha(xyza);
+
+        switch (post_conversion_behavior) {
+            .none => {},
+            .clamp => {
+                result = Colorf32.fromFloat4(math.clamp4(result.toFloat4(), 0.0, 1.0));
+            },
+        }
+
+        return result;
     }
 
     pub fn toLabAlpha(self: Colorspace, color: Colorf32) CIELabAlpha {
@@ -1394,11 +1417,14 @@ pub const Colorspace = struct {
         return slice_xyza;
     }
 
-    pub fn sliceFromLabAlphaInPlace(self: Colorspace, slice_lab: []CIELabAlpha) []Colorf32 {
+    pub fn sliceFromLabAlphaInPlace(self: Colorspace, slice_lab: []CIELabAlpha, post_conversion_behavior: PostConversionBehavior) []Colorf32 {
         const slice_rgba: []Colorf32 = @ptrCast(slice_lab);
 
         const conversion_matrix = self.toXYZConversionMatrix().inverse();
         const white_point_xyz = self.white.toXYZ(1.0);
+
+        const all_zeroes: math.float4 = @splat(0.0);
+        const all_ones: math.float4 = @splat(1.0);
 
         for (slice_rgba) |*rgba| {
             const lab_alpha: CIELabAlpha = @bitCast(rgba.*);
@@ -1406,6 +1432,13 @@ pub const Colorspace = struct {
             const xyza = lab_alpha.toXYZAlphaPrecomputedWhitePoint(white_point_xyz);
 
             rgba.* = Colorf32.fromFloat4(conversion_matrix.mulVector(xyza.toFloat4()));
+
+            switch (post_conversion_behavior) {
+                .none => {},
+                .clamp => {
+                    rgba.* = Colorf32.fromFloat4(@min(@max(rgba.toFloat4(), all_zeroes), all_ones));
+                },
+            }
         }
 
         return slice_rgba;
@@ -1428,16 +1461,26 @@ pub const Colorspace = struct {
         return slice_lab;
     }
 
-    pub fn sliceFromLabAlphaCopy(self: Colorspace, allocator: std.mem.Allocator, slice_lab: []const CIELabAlpha) ![]Colorf32 {
+    pub fn sliceFromLabAlphaCopy(self: Colorspace, allocator: std.mem.Allocator, slice_lab: []const CIELabAlpha, post_conversion_behavior: PostConversionBehavior) ![]Colorf32 {
         const slice_rgba: []Colorf32 = try allocator.alloc(Colorf32, slice_lab.len);
 
         const conversion_matrix = self.toXYZConversionMatrix().inverse();
         const white_point_xyz = self.white.toXYZ(1.0);
 
+        const all_zeroes: math.float4 = @splat(0.0);
+        const all_ones: math.float4 = @splat(1.0);
+
         for (0..slice_lab.len) |index| {
             const xyza = slice_lab[index].toXYZAlphaPrecomputedWhitePoint(white_point_xyz);
 
             slice_rgba[index] = Colorf32.fromFloat4(conversion_matrix.mulVector(xyza.toFloat4()));
+
+            switch (post_conversion_behavior) {
+                .none => {},
+                .clamp => {
+                    slice_rgba[index] = Colorf32.fromFloat4(@min(@max(slice_rgba[index].toFloat4(), all_zeroes), all_ones));
+                },
+            }
         }
 
         return slice_rgba;
