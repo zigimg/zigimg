@@ -844,7 +844,7 @@ test "Convert a slice of RGBA colors to sRGB XYZ with alpha, in-place" {
         .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
     };
 
-    const results = [_]color.CIEXYZAlpha{
+    const expected_results = [_]color.CIEXYZAlpha{
         .{ .x = 0.412456, .y = 0.212673, .z = 0.019334, .a = 1.0 }, // Red
         .{ .x = 0.357576, .y = 0.715152, .z = 0.119192, .a = 1.0 }, // Green
         .{ .x = 0.180437, .y = 0.072175, .z = 0.950304, .a = 1.0 }, // Blue
@@ -858,14 +858,14 @@ test "Convert a slice of RGBA colors to sRGB XYZ with alpha, in-place" {
     const slice_xyza = color.sRGB.sliceToXYZAlphaInPlace(colors[0..]);
 
     const float_tolerance = 0.0001;
-    for (0..results.len) |index| {
-        const result = slice_xyza[index];
-        const expected = results[index];
+    for (0..expected_results.len) |index| {
+        const actual = slice_xyza[index];
+        const expected = expected_results[index];
 
-        try helpers.expectApproxEqAbs(result.x, expected.x, float_tolerance);
-        try helpers.expectApproxEqAbs(result.y, expected.y, float_tolerance);
-        try helpers.expectApproxEqAbs(result.z, expected.z, float_tolerance);
-        try helpers.expectApproxEqAbs(result.a, expected.a, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.x, expected.x, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.y, expected.y, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.z, expected.z, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
     }
 }
 
@@ -881,7 +881,7 @@ test "Convert a slice of RGBA colors to sRGB XYZ with alpha, copy" {
         .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
     };
 
-    const results = [_]color.CIEXYZAlpha{
+    const expected_results = [_]color.CIEXYZAlpha{
         .{ .x = 0.412456, .y = 0.212673, .z = 0.019334, .a = 1.0 }, // Red
         .{ .x = 0.357576, .y = 0.715152, .z = 0.119192, .a = 1.0 }, // Green
         .{ .x = 0.180437, .y = 0.072175, .z = 0.950304, .a = 1.0 }, // Blue
@@ -896,14 +896,14 @@ test "Convert a slice of RGBA colors to sRGB XYZ with alpha, copy" {
     defer helpers.zigimg_test_allocator.free(slice_xyza);
 
     const float_tolerance = 0.0001;
-    for (0..results.len) |index| {
-        const result = slice_xyza[index];
-        const expected = results[index];
+    for (0..expected_results.len) |index| {
+        const actual = slice_xyza[index];
+        const expected = expected_results[index];
 
-        try helpers.expectApproxEqAbs(result.x, expected.x, float_tolerance);
-        try helpers.expectApproxEqAbs(result.y, expected.y, float_tolerance);
-        try helpers.expectApproxEqAbs(result.z, expected.z, float_tolerance);
-        try helpers.expectApproxEqAbs(result.a, expected.a, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.x, expected.x, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.y, expected.y, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.z, expected.z, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
     }
 }
 
@@ -919,7 +919,7 @@ test "Convert a slice of RGBA colors to sRGB CIELab with alpha, in-place" {
         .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
     };
 
-    const results = [_]color.CIELabAlpha{
+    const expected_results = [_]color.CIELabAlpha{
         .{ .l = 0.532408, .a = 0.800925, .b = 0.672032, .alpha = 1.0 }, // Red
         .{ .l = 0.877347, .a = -0.861827, .b = 0.831793, .alpha = 1.0 }, // Green
         .{ .l = 0.322970, .a = 0.791875, .b = -1.078602, .alpha = 1.0 }, // Blue
@@ -933,14 +933,14 @@ test "Convert a slice of RGBA colors to sRGB CIELab with alpha, in-place" {
     const slice_lab = color.sRGB.sliceToLabAlphaInPlace(colors[0..]);
 
     const float_tolerance = 0.0001;
-    for (0..results.len) |index| {
-        const result = slice_lab[index];
-        const expected = results[index];
+    for (0..expected_results.len) |index| {
+        const actual = slice_lab[index];
+        const expected = expected_results[index];
 
-        try helpers.expectApproxEqAbs(result.l, expected.l, float_tolerance);
-        try helpers.expectApproxEqAbs(result.a, expected.a, float_tolerance);
-        try helpers.expectApproxEqAbs(result.b, expected.b, float_tolerance);
-        try helpers.expectApproxEqAbs(result.alpha, expected.alpha, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.l, expected.l, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.alpha, expected.alpha, float_tolerance);
     }
 }
 
@@ -956,7 +956,7 @@ test "Convert a slice of RGBA colors to sRGB CIELab with alpha, copy" {
         .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
     };
 
-    const results = [_]color.CIELabAlpha{
+    const expected_results = [_]color.CIELabAlpha{
         .{ .l = 0.532408, .a = 0.800925, .b = 0.672032, .alpha = 1.0 }, // Red
         .{ .l = 0.877347, .a = -0.861827, .b = 0.831793, .alpha = 1.0 }, // Green
         .{ .l = 0.322970, .a = 0.791875, .b = -1.078602, .alpha = 1.0 }, // Blue
@@ -971,14 +971,14 @@ test "Convert a slice of RGBA colors to sRGB CIELab with alpha, copy" {
     defer helpers.zigimg_test_allocator.free(slice_lab);
 
     const float_tolerance = 0.0001;
-    for (0..results.len) |index| {
-        const result = slice_lab[index];
-        const expected = results[index];
+    for (0..expected_results.len) |index| {
+        const actual = slice_lab[index];
+        const expected = expected_results[index];
 
-        try helpers.expectApproxEqAbs(result.l, expected.l, float_tolerance);
-        try helpers.expectApproxEqAbs(result.a, expected.a, float_tolerance);
-        try helpers.expectApproxEqAbs(result.b, expected.b, float_tolerance);
-        try helpers.expectApproxEqAbs(result.alpha, expected.alpha, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.l, expected.l, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.alpha, expected.alpha, float_tolerance);
     }
 }
 
@@ -994,7 +994,7 @@ test "Convert a slice of CIEXYZAlpha colors to linear sRGB RGBA, in-place" {
         .{ .x = 0.000000, .y = 0.000000, .z = 0.000000, .a = 1.0 }, // Black
     };
 
-    const results = [_]color.Colorf32{
+    const expected_results = [_]color.Colorf32{
         .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
         .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
         .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
@@ -1008,14 +1008,14 @@ test "Convert a slice of CIEXYZAlpha colors to linear sRGB RGBA, in-place" {
     const slice_rgba = color.sRGB.sliceFromXYZAlphaInPlace(colors[0..]);
 
     const float_tolerance = 0.001;
-    for (0..results.len) |index| {
-        const result = slice_rgba[index];
-        const expected = results[index];
+    for (0..expected_results.len) |index| {
+        const actual = slice_rgba[index];
+        const expected = expected_results[index];
 
-        try helpers.expectApproxEqAbs(result.r, expected.r, float_tolerance);
-        try helpers.expectApproxEqAbs(result.g, expected.g, float_tolerance);
-        try helpers.expectApproxEqAbs(result.b, expected.b, float_tolerance);
-        try helpers.expectApproxEqAbs(result.a, expected.a, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.r, expected.r, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.g, expected.g, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
     }
 }
 
@@ -1031,7 +1031,7 @@ test "Convert a slice of CIEXYZAlpha colors to linear sRGB RGBA, copy" {
         .{ .x = 0.000000, .y = 0.000000, .z = 0.000000, .a = 1.0 }, // Black
     };
 
-    const results = [_]color.Colorf32{
+    const expected_results = [_]color.Colorf32{
         .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
         .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
         .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
@@ -1046,14 +1046,14 @@ test "Convert a slice of CIEXYZAlpha colors to linear sRGB RGBA, copy" {
     defer helpers.zigimg_test_allocator.free(slice_rgba);
 
     const float_tolerance = 0.001;
-    for (0..results.len) |index| {
-        const result = slice_rgba[index];
-        const expected = results[index];
+    for (0..expected_results.len) |index| {
+        const actual = slice_rgba[index];
+        const expected = expected_results[index];
 
-        try helpers.expectApproxEqAbs(result.r, expected.r, float_tolerance);
-        try helpers.expectApproxEqAbs(result.g, expected.g, float_tolerance);
-        try helpers.expectApproxEqAbs(result.b, expected.b, float_tolerance);
-        try helpers.expectApproxEqAbs(result.a, expected.a, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.r, expected.r, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.g, expected.g, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
     }
 }
 
@@ -1069,7 +1069,7 @@ test "Convert a slice of CIELabAlpha colors to linear sRGB RGBA, in-place" {
         .{ .l = 0.000000, .a = 0.0, .b = 0.0, .alpha = 1.0 }, // Black
     };
 
-    const results = [_]color.Colorf32{
+    const expected_results = [_]color.Colorf32{
         .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
         .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
         .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
@@ -1083,14 +1083,14 @@ test "Convert a slice of CIELabAlpha colors to linear sRGB RGBA, in-place" {
     const slice_rgba = color.sRGB.sliceFromLabAlphaInPlace(colors[0..], .none);
 
     const float_tolerance = 0.001;
-    for (0..results.len) |index| {
-        const result = slice_rgba[index];
-        const expected = results[index];
+    for (0..expected_results.len) |index| {
+        const actual = slice_rgba[index];
+        const expected = expected_results[index];
 
-        try helpers.expectApproxEqAbs(result.r, expected.r, float_tolerance);
-        try helpers.expectApproxEqAbs(result.g, expected.g, float_tolerance);
-        try helpers.expectApproxEqAbs(result.b, expected.b, float_tolerance);
-        try helpers.expectApproxEqAbs(result.a, expected.a, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.r, expected.r, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.g, expected.g, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
     }
 }
 
@@ -1106,7 +1106,7 @@ test "Convert a slice of CIELabAlpha colors to linear sRGB RGBA, Copy" {
         .{ .l = 0.000000, .a = 0.0, .b = 0.0, .alpha = 1.0 }, // Black
     };
 
-    const results = [_]color.Colorf32{
+    const expected_results = [_]color.Colorf32{
         .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
         .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
         .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
@@ -1121,14 +1121,14 @@ test "Convert a slice of CIELabAlpha colors to linear sRGB RGBA, Copy" {
     defer helpers.zigimg_test_allocator.free(slice_rgba);
 
     const float_tolerance = 0.001;
-    for (0..results.len) |index| {
-        const result = slice_rgba[index];
-        const expected = results[index];
+    for (0..expected_results.len) |index| {
+        const actual = slice_rgba[index];
+        const expected = expected_results[index];
 
-        try helpers.expectApproxEqAbs(result.r, expected.r, float_tolerance);
-        try helpers.expectApproxEqAbs(result.g, expected.g, float_tolerance);
-        try helpers.expectApproxEqAbs(result.b, expected.b, float_tolerance);
-        try helpers.expectApproxEqAbs(result.a, expected.a, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.r, expected.r, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.g, expected.g, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
     }
 }
 
@@ -1144,7 +1144,7 @@ test "Reduce brightness by 25% of a slice of sRGB RGBA color using CIELab as a i
         .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
     };
 
-    const results = [_]color.Colorf32{
+    const expected_results = [_]color.Colorf32{
         .{ .r = 0.6434, .g = 0.0000, .b = 0.0000, .a = 1.0 }, // Red
         .{ .r = 0.0000, .g = 0.5196, .b = 0.0000, .a = 1.0 }, // Green
         .{ .r = 0.0000, .g = 0.0000, .b = 0.7990, .a = 1.0 }, // Blue
@@ -1164,14 +1164,14 @@ test "Reduce brightness by 25% of a slice of sRGB RGBA color using CIELab as a i
     const slice_rgba = color.sRGB.sliceFromLabAlphaInPlace(slice_lab, .clamp);
 
     const float_tolerance = 0.0001;
-    for (0..results.len) |index| {
-        const result = slice_rgba[index];
-        const expected = results[index];
+    for (0..expected_results.len) |index| {
+        const actual = slice_rgba[index];
+        const expected = expected_results[index];
 
-        try helpers.expectApproxEqAbs(result.r, expected.r, float_tolerance);
-        try helpers.expectApproxEqAbs(result.g, expected.g, float_tolerance);
-        try helpers.expectApproxEqAbs(result.b, expected.b, float_tolerance);
-        try helpers.expectApproxEqAbs(result.a, expected.a, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.r, expected.r, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.g, expected.g, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
     }
 }
 
@@ -1188,7 +1188,7 @@ test "Convert Colorf32 to Cmykf32" {
         .{ .r = 0.2, .g = 0.1, .b = 0.8, .a = 1.0 }, // #3319cc
     };
 
-    const results = [_]color.Cmykf32{
+    const expected_results = [_]color.Cmykf32{
         .{ .c = 0.0000, .m = 1.0000, .y = 1.0000, .k = 0.00 }, // Red
         .{ .c = 1.0000, .m = 0.0000, .y = 1.0000, .k = 0.00 }, // Green
         .{ .c = 1.0000, .m = 1.0000, .y = 0.0000, .k = 0.00 }, // Blue
@@ -1202,14 +1202,14 @@ test "Convert Colorf32 to Cmykf32" {
 
     const float_tolerance = 0.0001;
 
-    for (0..results.len) |index| {
-        const result = color.Cmykf32.fromColorf32(colors[index]);
-        const expected = results[index];
+    for (0..expected_results.len) |index| {
+        const actual = color.Cmykf32.fromColorf32(colors[index]);
+        const expected = expected_results[index];
 
-        try helpers.expectApproxEqAbs(result.c, expected.c, float_tolerance);
-        try helpers.expectApproxEqAbs(result.m, expected.m, float_tolerance);
-        try helpers.expectApproxEqAbs(result.y, expected.y, float_tolerance);
-        try helpers.expectApproxEqAbs(result.k, expected.k, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.c, expected.c, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.m, expected.m, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.y, expected.y, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.k, expected.k, float_tolerance);
     }
 }
 
@@ -1226,7 +1226,7 @@ test "Convert Cmykf32 to Colorf32" {
         .{ .c = 0.7500, .m = 0.8750, .y = 0.0000, .k = 0.20 }, // #3319cc
     };
 
-    const results = [_]color.Colorf32{
+    const expected_results = [_]color.Colorf32{
         .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
         .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
         .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
@@ -1240,14 +1240,14 @@ test "Convert Cmykf32 to Colorf32" {
 
     const float_tolerance = 0.0001;
 
-    for (0..results.len) |index| {
-        const result = color.Cmykf32.toColorF32(colors[index]);
-        const expected = results[index];
+    for (0..expected_results.len) |index| {
+        const actual = color.Cmykf32.toColorF32(colors[index]);
+        const expected = expected_results[index];
 
-        try helpers.expectApproxEqAbs(result.r, expected.r, float_tolerance);
-        try helpers.expectApproxEqAbs(result.g, expected.g, float_tolerance);
-        try helpers.expectApproxEqAbs(result.b, expected.b, float_tolerance);
-        try helpers.expectApproxEqAbs(result.a, expected.a, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.r, expected.r, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.g, expected.g, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
     }
 }
 
@@ -1354,7 +1354,7 @@ test "Convert a slice of RGBA colors to sRGB CIELuv with alpha, in-place" {
         .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
     };
 
-    const results = [_]color.CIELuvAlpha{
+    const expected_results = [_]color.CIELuvAlpha{
         .{ .l = 0.532408, .u = 1.75015, .v = 0.377564, .alpha = 1.0 }, // Red
         .{ .l = 0.877347, .u = -0.830776, .v = 1.073985, .alpha = 1.0 }, // Green
         .{ .l = 0.322970, .u = -0.094054, .v = -1.303423, .alpha = 1.0 }, // Blue
@@ -1368,14 +1368,14 @@ test "Convert a slice of RGBA colors to sRGB CIELuv with alpha, in-place" {
     const slice_luv = color.sRGB.sliceToLuvAlphaInPlace(colors[0..]);
 
     const float_tolerance = 0.001;
-    for (0..results.len) |index| {
-        const result = slice_luv[index];
-        const expected = results[index];
+    for (0..expected_results.len) |index| {
+        const actual = slice_luv[index];
+        const expected = expected_results[index];
 
-        try helpers.expectApproxEqAbs(result.l, expected.l, float_tolerance);
-        try helpers.expectApproxEqAbs(result.u, expected.u, float_tolerance);
-        try helpers.expectApproxEqAbs(result.v, expected.v, float_tolerance);
-        try helpers.expectApproxEqAbs(result.alpha, expected.alpha, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.l, expected.l, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.u, expected.u, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.v, expected.v, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.alpha, expected.alpha, float_tolerance);
     }
 }
 
@@ -1391,7 +1391,7 @@ test "Convert a slice of RGBA colors to sRGB CIELuv with alpha, copy" {
         .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
     };
 
-    const results = [_]color.CIELuvAlpha{
+    const expected_results = [_]color.CIELuvAlpha{
         .{ .l = 0.532408, .u = 1.75015, .v = 0.377564, .alpha = 1.0 }, // Red
         .{ .l = 0.877347, .u = -0.830776, .v = 1.073985, .alpha = 1.0 }, // Green
         .{ .l = 0.322970, .u = -0.094054, .v = -1.303423, .alpha = 1.0 }, // Blue
@@ -1406,14 +1406,14 @@ test "Convert a slice of RGBA colors to sRGB CIELuv with alpha, copy" {
     defer helpers.zigimg_test_allocator.free(slice_luv);
 
     const float_tolerance = 0.001;
-    for (0..results.len) |index| {
-        const result = slice_luv[index];
-        const expected = results[index];
+    for (0..expected_results.len) |index| {
+        const actual = slice_luv[index];
+        const expected = expected_results[index];
 
-        try helpers.expectApproxEqAbs(result.l, expected.l, float_tolerance);
-        try helpers.expectApproxEqAbs(result.u, expected.u, float_tolerance);
-        try helpers.expectApproxEqAbs(result.v, expected.v, float_tolerance);
-        try helpers.expectApproxEqAbs(result.alpha, expected.alpha, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.l, expected.l, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.u, expected.u, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.v, expected.v, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.alpha, expected.alpha, float_tolerance);
     }
 }
 
@@ -1429,7 +1429,7 @@ test "Convert a slice of CIELuvAlpha colors to linear sRGB with alpha, in-place"
         .{ .l = 0.000000, .u = 0.0, .v = 0.0, .alpha = 1.0 }, // Black
     };
 
-    const results = [_]color.Colorf32{
+    const expected_results = [_]color.Colorf32{
         .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
         .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
         .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
@@ -1443,14 +1443,14 @@ test "Convert a slice of CIELuvAlpha colors to linear sRGB with alpha, in-place"
     const slice_rgba = color.sRGB.sliceFromLuvAlphaInPlace(colors[0..], .clamp);
 
     const float_tolerance = 0.0001;
-    for (0..results.len) |index| {
-        const result = slice_rgba[index];
-        const expected = results[index];
+    for (0..expected_results.len) |index| {
+        const actual = slice_rgba[index];
+        const expected = expected_results[index];
 
-        try helpers.expectApproxEqAbs(result.r, expected.r, float_tolerance);
-        try helpers.expectApproxEqAbs(result.g, expected.g, float_tolerance);
-        try helpers.expectApproxEqAbs(result.b, expected.b, float_tolerance);
-        try helpers.expectApproxEqAbs(result.a, expected.a, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.r, expected.r, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.g, expected.g, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
     }
 }
 
@@ -1466,7 +1466,7 @@ test "Convert a slice of CIELuvAlpha colors to linear sRGB with alpha, copy" {
         .{ .l = 0.000000, .u = 0.0, .v = 0.0, .alpha = 1.0 }, // Black
     };
 
-    const results = [_]color.Colorf32{
+    const expected_results = [_]color.Colorf32{
         .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
         .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
         .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
@@ -1481,13 +1481,13 @@ test "Convert a slice of CIELuvAlpha colors to linear sRGB with alpha, copy" {
     defer helpers.zigimg_test_allocator.free(slice_rgba);
 
     const float_tolerance = 0.0001;
-    for (0..results.len) |index| {
-        const result = slice_rgba[index];
-        const expected = results[index];
+    for (0..expected_results.len) |index| {
+        const actual = slice_rgba[index];
+        const expected = expected_results[index];
 
-        try helpers.expectApproxEqAbs(result.r, expected.r, float_tolerance);
-        try helpers.expectApproxEqAbs(result.g, expected.g, float_tolerance);
-        try helpers.expectApproxEqAbs(result.b, expected.b, float_tolerance);
-        try helpers.expectApproxEqAbs(result.a, expected.a, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.r, expected.r, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.g, expected.g, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
     }
 }
