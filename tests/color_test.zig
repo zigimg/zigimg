@@ -636,7 +636,7 @@ test "HSV to HSL conversion" {
 }
 
 test "Compute Linear sRGB RGB to XYZ matrix" {
-    const result = color.sRGB.toXYZConversionMatrix();
+    const result = color.sRGB.rgba_to_xyza;
 
     const float_tolerance = 0.0001;
 

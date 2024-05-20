@@ -1794,45 +1794,52 @@ pub const Colorspace = struct {
     green: CIExyY = .{},
     blue: CIExyY = .{},
     white: CIExyY = .{},
+    rgba_to_xyza: math.float4x4,
+    xyza_to_rgba: math.float4x4,
 
     pub const PostConversionBehavior = enum {
         none, // Keep value as-is
         clamp, // Clamp values inside of the color in case of color being outside the colorspace
     };
 
+    pub const InitArgs = struct {
+        red: CIExyY = .{},
+        green: CIExyY = .{},
+        blue: CIExyY = .{},
+        white: CIExyY = .{},
+    };
+
     pub const ConversionMatrix = math.float4x4;
 
-    pub fn toXYZConversionMatrix(self: Colorspace) ConversionMatrix {
-        const D = (self.red.x - self.blue.x) * (self.green.y - self.blue.y) - (self.red.y - self.blue.y) * (self.green.x - self.blue.x);
-        const U = (self.white.x - self.blue.x) * (self.green.y - self.blue.y) - (self.white.y - self.blue.y) * (self.green.x - self.blue.x);
-        const V = (self.red.x - self.blue.x) * (self.white.y - self.blue.y) - (self.red.y - self.blue.y) * (self.white.x - self.blue.x);
+    pub fn init(args: InitArgs) Colorspace {
+        var result = Colorspace{
+            .red = args.red,
+            .green = args.green,
+            .blue = args.blue,
+            .white = args.white,
+            .rgba_to_xyza = undefined,
+            .xyza_to_rgba = undefined,
+        };
 
-        const u = U / D;
-        const v = V / D;
-        const w = 1.0 - u - v;
+        const conversion_matrix = result.toXYZConversionMatrix();
 
-        return ConversionMatrix.fromArray(.{
-            u * (self.red.x / self.white.y),   v * (self.green.x / self.white.y),   w * (self.blue.x / self.white.y),   0.0,
-            u * (self.red.y / self.white.y),   v * (self.green.y / self.white.y),   w * (self.blue.y / self.white.y),   0.0,
-            u * (self.red.z() / self.white.y), v * (self.green.z() / self.white.y), w * (self.blue.z() / self.white.y), 0.0,
-            0.0,                               0.0,                                 0.0,                                1.0,
-        });
+        result.rgba_to_xyza = conversion_matrix;
+        result.xyza_to_rgba = conversion_matrix.inverse();
+
+        return result;
     }
 
     pub fn fromXYZ(self: Colorspace, xyz: CIEXYZ) Colorf32 {
-        const conversion_matrix = self.toXYZConversionMatrix().inverse();
-
         const xyz_float4 = math.float4{ xyz.x, xyz.y, xyz.z, 1.0 };
 
-        const result = conversion_matrix.mulVector(xyz_float4);
+        const result = self.xyza_to_rgba.mulVector(xyz_float4);
 
         return Colorf32.fromFloat4(result);
     }
 
     pub fn toXYZ(self: Colorspace, color: Colorf32) CIEXYZ {
-        const conversion_matrix = self.toXYZConversionMatrix();
+        const result = self.rgba_to_xyza.mulVector(color.toFloat4());
 
-        const result = conversion_matrix.mulVector(color.toFloat4());
         return .{
             .x = result[0],
             .y = result[1],
@@ -1841,17 +1848,13 @@ pub const Colorspace = struct {
     }
 
     pub fn fromXYZAlpha(self: Colorspace, xyza: CIEXYZAlpha) Colorf32 {
-        const conversion_matrix = self.toXYZConversionMatrix().inverse();
-
-        const result = conversion_matrix.mulVector(xyza.toFloat4());
+        const result = self.xyza_to_rgba.mulVector(xyza.toFloat4());
 
         return Colorf32.fromFloat4(result);
     }
 
     pub fn toXYZAlpha(self: Colorspace, color: Colorf32) CIEXYZAlpha {
-        const conversion_matrix = self.toXYZConversionMatrix();
-
-        const result = conversion_matrix.mulVector(color.toFloat4());
+        const result = self.rgba_to_xyza.mulVector(color.toFloat4());
 
         return CIEXYZAlpha.fromFloat4(result);
     }
@@ -1962,9 +1965,7 @@ pub const Colorspace = struct {
     }
 
     pub fn fromHSLuv(self: Colorspace, hsluv: HSLuv, post_conversion_behavior: PostConversionBehavior) Colorf32 {
-        const xyz_to_rgb_matrix = self.toXYZConversionMatrix().inverse();
-
-        const lch = hsluv.toCIELCHuv(xyz_to_rgb_matrix);
+        const lch = hsluv.toCIELCHuv(self.xyza_to_rgba);
 
         return self.fromLCHuv(lch, post_conversion_behavior);
     }
@@ -1972,15 +1973,11 @@ pub const Colorspace = struct {
     pub fn toHSLuv(self: Colorspace, color: Colorf32) HSLuv {
         const lch = self.toLCHuv(color);
 
-        const xyz_to_rgb_matrix = self.toXYZConversionMatrix().inverse();
-
-        return HSLuv.fromCIELChuv(lch, xyz_to_rgb_matrix);
+        return HSLuv.fromCIELChuv(lch, self.xyza_to_rgba);
     }
 
     pub fn fromHSLuvAlpha(self: Colorspace, hsluv: HSLuvAlpha, post_conversion_behavior: PostConversionBehavior) Colorf32 {
-        const xyz_to_rgb_matrix = self.toXYZConversionMatrix().inverse();
-
-        const lch = hsluv.toCIELCHuvAlpha(xyz_to_rgb_matrix);
+        const lch = hsluv.toCIELCHuvAlpha(self.xyza_to_rgba);
 
         return self.fromLCHuvAlpha(lch, post_conversion_behavior);
     }
@@ -1988,18 +1985,14 @@ pub const Colorspace = struct {
     pub fn toHSLuvAlpha(self: Colorspace, color: Colorf32) HSLuvAlpha {
         const lch = self.toLCHuvAlpha(color);
 
-        const xyz_to_rgb_matrix = self.toXYZConversionMatrix().inverse();
-
-        return HSLuvAlpha.fromCIELChuvAlpha(lch, xyz_to_rgb_matrix);
+        return HSLuvAlpha.fromCIELChuvAlpha(lch, self.xyza_to_rgba);
     }
 
     pub fn sliceFromXYZAlphaInPlace(self: Colorspace, slice_xyza: []CIEXYZAlpha) []Colorf32 {
         const slice_rgba: []Colorf32 = @ptrCast(slice_xyza);
 
-        const conversion_matrix = self.toXYZConversionMatrix().inverse();
-
         for (slice_rgba) |*rgba| {
-            rgba.* = Colorf32.fromFloat4(conversion_matrix.mulVector(rgba.toFloat4()));
+            rgba.* = Colorf32.fromFloat4(self.xyza_to_rgba.mulVector(rgba.toFloat4()));
         }
 
         return slice_rgba;
@@ -2008,10 +2001,8 @@ pub const Colorspace = struct {
     pub fn sliceToXYZAlphaInPlace(self: Colorspace, colors: []Colorf32) []CIEXYZAlpha {
         const slice_xyza: []CIEXYZAlpha = @ptrCast(colors);
 
-        const conversion_matrix = self.toXYZConversionMatrix();
-
         for (slice_xyza) |*xyza| {
-            xyza.* = CIEXYZAlpha.fromFloat4(conversion_matrix.mulVector(xyza.toFloat4()));
+            xyza.* = CIEXYZAlpha.fromFloat4(self.rgba_to_xyza.mulVector(xyza.toFloat4()));
         }
 
         return slice_xyza;
@@ -2020,10 +2011,8 @@ pub const Colorspace = struct {
     pub fn sliceFromXYZAlphaCopy(self: Colorspace, allocator: std.mem.Allocator, slice_xyza: []const CIEXYZAlpha) ![]Colorf32 {
         const slice_rgba: []Colorf32 = try allocator.alloc(Colorf32, slice_xyza.len);
 
-        const conversion_matrix = self.toXYZConversionMatrix().inverse();
-
         for (0..slice_xyza.len) |index| {
-            slice_rgba[index] = Colorf32.fromFloat4(conversion_matrix.mulVector(slice_xyza[index].toFloat4()));
+            slice_rgba[index] = Colorf32.fromFloat4(self.xyza_to_rgba.mulVector(slice_xyza[index].toFloat4()));
         }
 
         return slice_rgba;
@@ -2032,9 +2021,8 @@ pub const Colorspace = struct {
     pub fn sliceToXYZAlphaCopy(self: Colorspace, allocator: std.mem.Allocator, colors: []const Colorf32) ![]CIEXYZAlpha {
         const slice_xyza: []CIEXYZAlpha = try allocator.alloc(CIEXYZAlpha, colors.len);
 
-        const conversion_matrix = self.toXYZConversionMatrix();
         for (0..colors.len) |index| {
-            slice_xyza[index] = CIEXYZAlpha.fromFloat4(conversion_matrix.mulVector(colors[index].toFloat4()));
+            slice_xyza[index] = CIEXYZAlpha.fromFloat4(self.rgba_to_xyza.mulVector(colors[index].toFloat4()));
         }
 
         return slice_xyza;
@@ -2043,7 +2031,6 @@ pub const Colorspace = struct {
     pub fn sliceFromLabAlphaInPlace(self: Colorspace, slice_lab: []CIELabAlpha, post_conversion_behavior: PostConversionBehavior) []Colorf32 {
         const slice_rgba: []Colorf32 = @ptrCast(slice_lab);
 
-        const conversion_matrix = self.toXYZConversionMatrix().inverse();
         const white_point_xyz = self.white.toXYZ(1.0);
 
         const all_zeroes: math.float4 = @splat(0.0);
@@ -2054,7 +2041,7 @@ pub const Colorspace = struct {
 
             const xyza = lab_alpha.toXYZAlphaPrecomputedWhitePoint(white_point_xyz);
 
-            rgba.* = Colorf32.fromFloat4(conversion_matrix.mulVector(xyza.toFloat4()));
+            rgba.* = Colorf32.fromFloat4(self.xyza_to_rgba.mulVector(xyza.toFloat4()));
 
             switch (post_conversion_behavior) {
                 .none => {},
@@ -2070,11 +2057,10 @@ pub const Colorspace = struct {
     pub fn sliceToLabAlphaInPlace(self: Colorspace, colors: []Colorf32) []CIELabAlpha {
         const slice_lab: []CIELabAlpha = @ptrCast(colors);
 
-        const conversion_matrix = self.toXYZConversionMatrix();
         const white_point_xyz = self.white.toXYZ(1.0);
 
         for (slice_lab) |*lab_alpha| {
-            const xyza = CIEXYZAlpha.fromFloat4(conversion_matrix.mulVector(lab_alpha.toFloat4()));
+            const xyza = CIEXYZAlpha.fromFloat4(self.rgba_to_xyza.mulVector(lab_alpha.toFloat4()));
 
             lab_alpha.* = CIELabAlpha.fromXYZAlphaPrecomputedWhitePoint(xyza, white_point_xyz);
         }
@@ -2085,7 +2071,6 @@ pub const Colorspace = struct {
     pub fn sliceFromLabAlphaCopy(self: Colorspace, allocator: std.mem.Allocator, slice_lab: []const CIELabAlpha, post_conversion_behavior: PostConversionBehavior) ![]Colorf32 {
         const slice_rgba: []Colorf32 = try allocator.alloc(Colorf32, slice_lab.len);
 
-        const conversion_matrix = self.toXYZConversionMatrix().inverse();
         const white_point_xyz = self.white.toXYZ(1.0);
 
         const all_zeroes: math.float4 = @splat(0.0);
@@ -2094,7 +2079,7 @@ pub const Colorspace = struct {
         for (0..slice_lab.len) |index| {
             const xyza = slice_lab[index].toXYZAlphaPrecomputedWhitePoint(white_point_xyz);
 
-            slice_rgba[index] = Colorf32.fromFloat4(conversion_matrix.mulVector(xyza.toFloat4()));
+            slice_rgba[index] = Colorf32.fromFloat4(self.xyza_to_rgba.mulVector(xyza.toFloat4()));
 
             switch (post_conversion_behavior) {
                 .none => {},
@@ -2110,11 +2095,10 @@ pub const Colorspace = struct {
     pub fn sliceToLabAlphaCopy(self: Colorspace, allocator: std.mem.Allocator, colors: []const Colorf32) ![]CIELabAlpha {
         const slice_lab: []CIELabAlpha = try allocator.alloc(CIELabAlpha, colors.len);
 
-        const conversion_matrix = self.toXYZConversionMatrix();
         const white_point_xyz = self.white.toXYZ(1.0);
 
         for (0..colors.len) |index| {
-            const xyza = CIEXYZAlpha.fromFloat4(conversion_matrix.mulVector(colors[index].toFloat4()));
+            const xyza = CIEXYZAlpha.fromFloat4(self.rgba_to_xyza.mulVector(colors[index].toFloat4()));
 
             slice_lab[index] = CIELabAlpha.fromXYZAlphaPrecomputedWhitePoint(xyza, white_point_xyz);
         }
@@ -2125,7 +2109,6 @@ pub const Colorspace = struct {
     pub fn sliceFromLuvAlphaInPlace(self: Colorspace, slice_luv: []CIELuvAlpha, post_conversion_behavior: PostConversionBehavior) []Colorf32 {
         const slice_rgba: []Colorf32 = @ptrCast(slice_luv);
 
-        const conversion_matrix = self.toXYZConversionMatrix().inverse();
         const white_point_xyz = self.white.toXYZ(1.0);
 
         const all_zeroes: math.float4 = @splat(0.0);
@@ -2136,7 +2119,7 @@ pub const Colorspace = struct {
 
             const xyza = luv_alpha.toXYZAlphaPrecomputedWhitePoint(white_point_xyz);
 
-            rgba.* = Colorf32.fromFloat4(conversion_matrix.mulVector(xyza.toFloat4()));
+            rgba.* = Colorf32.fromFloat4(self.xyza_to_rgba.mulVector(xyza.toFloat4()));
 
             switch (post_conversion_behavior) {
                 .none => {},
@@ -2152,11 +2135,10 @@ pub const Colorspace = struct {
     pub fn sliceToLuvAlphaInPlace(self: Colorspace, colors: []Colorf32) []CIELuvAlpha {
         const slice_luv: []CIELuvAlpha = @ptrCast(colors);
 
-        const conversion_matrix = self.toXYZConversionMatrix();
         const white_point_xyz = self.white.toXYZ(1.0);
 
         for (slice_luv) |*luv_alpha| {
-            const xyza = CIEXYZAlpha.fromFloat4(conversion_matrix.mulVector(luv_alpha.toFloat4()));
+            const xyza = CIEXYZAlpha.fromFloat4(self.rgba_to_xyza.mulVector(luv_alpha.toFloat4()));
 
             luv_alpha.* = CIELuvAlpha.fromXYZAlphaPrecomputedWhitePoint(xyza, white_point_xyz);
         }
@@ -2167,7 +2149,6 @@ pub const Colorspace = struct {
     pub fn sliceFromLuvAlphaCopy(self: Colorspace, allocator: std.mem.Allocator, slice_luv: []const CIELuvAlpha, post_conversion_behavior: PostConversionBehavior) ![]Colorf32 {
         const slice_rgba: []Colorf32 = try allocator.alloc(Colorf32, slice_luv.len);
 
-        const conversion_matrix = self.toXYZConversionMatrix().inverse();
         const white_point_xyz = self.white.toXYZ(1.0);
 
         const all_zeroes: math.float4 = @splat(0.0);
@@ -2178,7 +2159,7 @@ pub const Colorspace = struct {
 
             const xyza = luv_alpha.toXYZAlphaPrecomputedWhitePoint(white_point_xyz);
 
-            slice_rgba[index] = Colorf32.fromFloat4(conversion_matrix.mulVector(xyza.toFloat4()));
+            slice_rgba[index] = Colorf32.fromFloat4(self.xyza_to_rgba.mulVector(xyza.toFloat4()));
 
             switch (post_conversion_behavior) {
                 .none => {},
@@ -2194,11 +2175,10 @@ pub const Colorspace = struct {
     pub fn sliceToLuvAlphaCopy(self: Colorspace, allocator: std.mem.Allocator, colors: []const Colorf32) ![]CIELuvAlpha {
         const slice_luv: []CIELuvAlpha = try allocator.alloc(CIELuvAlpha, colors.len);
 
-        const conversion_matrix = self.toXYZConversionMatrix();
         const white_point_xyz = self.white.toXYZ(1.0);
 
         for (0..colors.len) |index| {
-            const xyza = CIEXYZAlpha.fromFloat4(conversion_matrix.mulVector(colors[index].toFloat4()));
+            const xyza = CIEXYZAlpha.fromFloat4(self.rgba_to_xyza.mulVector(colors[index].toFloat4()));
 
             slice_luv[index] = CIELuvAlpha.fromXYZAlphaPrecomputedWhitePoint(xyza, white_point_xyz);
         }
@@ -2224,9 +2204,26 @@ pub const Colorspace = struct {
         }
     }
 
+    fn toXYZConversionMatrix(self: Colorspace) ConversionMatrix {
+        const D = (self.red.x - self.blue.x) * (self.green.y - self.blue.y) - (self.red.y - self.blue.y) * (self.green.x - self.blue.x);
+        const U = (self.white.x - self.blue.x) * (self.green.y - self.blue.y) - (self.white.y - self.blue.y) * (self.green.x - self.blue.x);
+        const V = (self.red.x - self.blue.x) * (self.white.y - self.blue.y) - (self.red.y - self.blue.y) * (self.white.x - self.blue.x);
+
+        const u = U / D;
+        const v = V / D;
+        const w = 1.0 - u - v;
+
+        return ConversionMatrix.fromArray(.{
+            u * (self.red.x / self.white.y),   v * (self.green.x / self.white.y),   w * (self.blue.x / self.white.y),   0.0,
+            u * (self.red.y / self.white.y),   v * (self.green.y / self.white.y),   w * (self.blue.y / self.white.y),   0.0,
+            u * (self.red.z() / self.white.y), v * (self.green.z() / self.white.y), w * (self.blue.z() / self.white.y), 0.0,
+            0.0,                               0.0,                                 0.0,                                1.0,
+        });
+    }
+
     fn computeConversionMatrix(source: Colorspace, target: Colorspace) math.float4x4 {
-        const source_to_xyz_matrix = source.toXYZConversionMatrix();
-        const target_to_rgb_matrix = target.toXYZConversionMatrix().inverse();
+        const source_to_xyz_matrix = source.rgba_to_xyza;
+        const target_to_rgb_matrix = target.xyza_to_rgba;
 
         if (source.white.equals(target.white)) {
             return target_to_rgb_matrix.mul(source_to_xyz_matrix);
@@ -2273,81 +2270,81 @@ pub const WhitePoints = struct {
 };
 
 // BT.601-6 (NTSC)
-pub const BT601_NTSC = Colorspace{
+pub const BT601_NTSC = Colorspace.init(.{
     .red = .{ .x = 0.630, .y = 0.340 },
     .green = .{ .x = 0.310, .y = 0.595 },
     .blue = .{ .x = 0.155, .y = 0.070 },
     .white = WhitePoints.D65,
-};
+});
 
 // BT.601-6 (PAL)
-pub const BT601_PAL = Colorspace{
+pub const BT601_PAL = Colorspace.init(.{
     .red = .{ .x = 0.640, .y = 0.330 },
     .green = .{ .x = 0.290, .y = 0.600 },
     .blue = .{ .x = 0.150, .y = 0.060 },
     .white = WhitePoints.D65,
-};
+});
 
 // ITU-R BT.709 aka Rec.709
-pub const BT709 = Colorspace{
+pub const BT709 = Colorspace.init(.{
     .red = .{ .x = 0.6400, .y = 0.3300 },
     .green = .{ .x = 0.3000, .y = 0.6000 },
     .blue = .{ .x = 0.1500, .y = 0.0600 },
     .white = WhitePoints.D65,
-};
+});
 
 // sRGB use the same color gamut as BT.709
 pub const sRGB = BT709;
 
 //  Digital Cinema Initiatives P3 color spaces
 pub const DCIP3 = struct {
-    pub const Display = Colorspace{
+    pub const Display = Colorspace.init(.{
         .red = .{ .x = 0.680, .y = 0.320 },
         .green = .{ .x = 0.265, .y = 0.690 },
         .blue = .{ .x = 0.150, .y = 0.060 },
         .white = WhitePoints.D65,
-    };
+    });
 
-    pub const Theater = Colorspace{
+    pub const Theater = Colorspace.init(.{
         .red = .{ .x = 0.680, .y = 0.320 },
         .green = .{ .x = 0.265, .y = 0.690 },
         .blue = .{ .x = 0.150, .y = 0.060 },
         .white = .{ .x = 0.314, .y = 0.351 },
-    };
+    });
 
-    pub const ACES = Colorspace{
+    pub const ACES = Colorspace.init(.{
         .red = .{ .x = 0.680, .y = 0.320 },
         .green = .{ .x = 0.265, .y = 0.690 },
         .blue = .{ .x = 0.150, .y = 0.060 },
         .white = .{ .x = 0.32168, .y = 0.33767 },
-    };
+    });
 };
 
 // ITU-R BT.2020 aka Rec.2020, Rec.2100 use the same color space
-pub const BT2020 = Colorspace{
+pub const BT2020 = Colorspace.init(.{
     .red = .{ .x = 0.708, .y = 0.292 },
     .green = .{ .x = 0.170, .y = 0.797 },
     .blue = .{ .x = 0.131, .y = 0.046 },
     .white = WhitePoints.D65,
-};
+});
 
-pub const AdobeRGB = Colorspace{
+pub const AdobeRGB = Colorspace.init(.{
     .red = .{ .x = 0.6400, .y = 0.3300 },
     .green = .{ .x = 0.2100, .y = 0.7100 },
     .blue = .{ .x = 0.1500, .y = 0.0600 },
     .white = WhitePoints.D65,
-};
+});
 
-pub const AdobeWideGamutRGB = Colorspace{
+pub const AdobeWideGamutRGB = Colorspace.init(.{
     .red = .{ .x = 0.7347, .y = 0.2653 },
     .green = .{ .x = 0.1152, .y = 0.8264 },
     .blue = .{ .x = 0.1566, .y = 0.0177 },
     .white = WhitePoints.D50,
-};
+});
 
-pub const ProPhotoRGB = Colorspace{
+pub const ProPhotoRGB = Colorspace.init(.{
     .red = .{ .x = 0.734699, .y = 0.265301 },
     .green = .{ .x = 0.159597, .y = 0.840403 },
     .blue = .{ .x = 0.036598, .y = 0.000105 },
     .white = WhitePoints.D50,
-};
+});
