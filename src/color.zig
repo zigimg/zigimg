@@ -1325,7 +1325,7 @@ pub const CIELCHab = extern struct {
 
     pub fn fromLab(value: CIELab) CIELCHab {
         const c = std.math.sqrt(value.a * value.a + value.b * value.b);
-        var h = std.math.atan(value.b / value.a);
+        var h = std.math.atan2(value.b, value.a);
         if (h < 0.0) {
             h += 2.0 * std.math.pi;
         }
@@ -1461,6 +1461,14 @@ pub const CIELuv = extern struct {
             .z = z,
         };
     }
+
+    pub inline fn fromLCHuv(value: CIELCHuv) CIELuv {
+        return value.toLuv();
+    }
+
+    pub inline fn toLCHuv(self: CIELuv) CIELCHuv {
+        return CIELCHuv.fromLuv(self);
+    }
 };
 
 // CIE L*u*v* color space with alpha, meaning L* for perceptual lightness, u* and v* are chroma coordinates
@@ -1511,12 +1519,89 @@ pub const CIELuvAlpha = extern struct {
         };
     }
 
+    pub inline fn fromLCHuvAlpha(value: CIELCHuvAlpha) CIELuvAlpha {
+        return value.toLuvAlpha();
+    }
+
+    pub inline fn toLCHuvAlpha(self: CIELuvAlpha) CIELCHuvAlpha {
+        return CIELCHuvAlpha.fromLuvAlpha(self);
+    }
+
     pub inline fn fromFloat4(value: math.float4) CIELuvAlpha {
         return @bitCast(value);
     }
 
     pub inline fn toFloat4(self: CIELuvAlpha) math.float4 {
         return @bitCast(self);
+    }
+};
+
+// CIE LCH(uv) is the cylindrical representation of CIE L*u*v*s so it is always converted
+// from and to L*u*v*. The angle are stored in radians.
+pub const CIELCHuv = extern struct {
+    l: f32 align(1) = 0.0,
+    c: f32 align(1) = 0.0,
+    h: f32 align(1) = 0.0,
+
+    pub fn fromLuv(value: CIELuv) CIELCHuv {
+        const c = std.math.sqrt(value.u * value.u + value.v * value.v);
+        var h = std.math.atan2(value.v, value.u);
+        if (h < 0.0) {
+            h += 2.0 * std.math.pi;
+        }
+
+        return .{
+            .l = value.l,
+            .c = c,
+            .h = h,
+        };
+    }
+
+    pub fn toLuv(self: CIELCHuv) CIELuv {
+        return .{
+            .l = self.l,
+            .u = self.c * @cos(self.h),
+            .v = self.c * @sin(self.h),
+        };
+    }
+};
+
+// CIE LCH(uv) with alpha is the cylindrical representation of CIE L*u*v* so it is always converted
+// from and to L*u*v*. The angle are stored in radians.
+pub const CIELCHuvAlpha = extern struct {
+    l: f32 align(1) = 0.0,
+    c: f32 align(1) = 0.0,
+    h: f32 align(1) = 0.0,
+    alpha: f32 align(1) = 1.0,
+
+    pub fn fromLuvAlpha(luv_alpha: CIELuvAlpha) CIELCHuvAlpha {
+        const lch = CIELCHuv.fromLuv(luv_alpha.toLuv());
+
+        return .{
+            .l = lch.l,
+            .c = lch.c,
+            .h = lch.h,
+            .alpha = luv_alpha.alpha,
+        };
+    }
+
+    pub fn toLuvAlpha(self: CIELCHuvAlpha) CIELuvAlpha {
+        const luv = CIELCHuv.toLuv(self.toLCHuv());
+
+        return .{
+            .l = luv.l,
+            .u = luv.u,
+            .v = luv.v,
+            .alpha = self.alpha,
+        };
+    }
+
+    pub fn toLCHuv(self: CIELCHuvAlpha) CIELCHuv {
+        return .{
+            .l = self.l,
+            .c = self.c,
+            .h = self.h,
+        };
     }
 };
 

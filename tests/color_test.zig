@@ -1251,7 +1251,7 @@ test "Convert Cmykf32 to Colorf32" {
     }
 }
 
-test "Convert from CIE Lab to CIE LCh" {
+test "Convert from CIE Lab to CIE LCh(ab)" {
     const lab = color.CIELab{ .l = 0.48485, .a = 0.47701, .b = -0.67469 };
 
     const result = lab.toLCHab();
@@ -1262,7 +1262,7 @@ test "Convert from CIE Lab to CIE LCh" {
     try helpers.expectApproxEqAbs(result.h, 5.32780, float_tolerance);
 }
 
-test "Convert from CIE LCh to CIE Lab" {
+test "Convert from CIE LCh(ab) to CIE Lab" {
     const lch = color.CIELCHab{ .l = 0.48485, .c = 0.82628, .h = 5.32780 };
 
     const result = lch.toLab();
@@ -1273,7 +1273,7 @@ test "Convert from CIE LCh to CIE Lab" {
     try helpers.expectApproxEqAbs(result.b, -0.67469, float_tolerance);
 }
 
-test "Convert from CIELabAlpha to CIELChAlpha" {
+test "Convert from CIE Lab with alpha to CIELCh(ab) with alpha" {
     const lab = color.CIELabAlpha{ .l = 0.48485, .a = 0.47701, .b = -0.67469, .alpha = 0.4567 };
 
     const result = lab.toLCHabAlpha();
@@ -1285,7 +1285,7 @@ test "Convert from CIELabAlpha to CIELChAlpha" {
     try helpers.expectApproxEqAbs(result.alpha, 0.4567, float_tolerance);
 }
 
-test "Convert from CIELChAlpha to CIELabAlpha" {
+test "Convert from CIELCh(ab) with alpha to CIE Lab with alpha" {
     const lch = color.CIELCHabAlpha{ .l = 0.48485, .c = 0.82628, .h = 5.32780, .alpha = 0.4567 };
 
     const result = lch.toLabAlpha();
@@ -1490,4 +1490,50 @@ test "Convert a slice of CIELuvAlpha colors to linear sRGB with alpha, copy" {
         try helpers.expectApproxEqAbs(actual.b, expected.b, float_tolerance);
         try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
     }
+}
+
+test "Convert from CIE Luv to CIE LCh(uv)" {
+    const luv = color.CIELuv{ .l = 0.48485, .u = 0.034216, .v = -1.066091 };
+
+    const result = luv.toLCHuv();
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.l, 0.48485, float_tolerance);
+    try helpers.expectApproxEqAbs(result.c, 1.066640, float_tolerance);
+    try helpers.expectApproxEqAbs(result.h, 4.744472, float_tolerance);
+}
+
+test "Convert from CIE LCh(uv) to CIE Luv" {
+    const lch = color.CIELCHuv{ .l = 0.48485, .c = 1.066640, .h = 4.744472 };
+
+    const result = lch.toLuv();
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.l, 0.48485, float_tolerance);
+    try helpers.expectApproxEqAbs(result.u, 0.034216, float_tolerance);
+    try helpers.expectApproxEqAbs(result.v, -1.066091, float_tolerance);
+}
+
+test "Convert from CIE Luv with alpha to CIE LCh(uv) with alpha" {
+    const luv = color.CIELuvAlpha{ .l = 0.48485, .u = 0.034216, .v = -1.066091, .alpha = 0.12345 };
+
+    const result = luv.toLCHuvAlpha();
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.l, 0.48485, float_tolerance);
+    try helpers.expectApproxEqAbs(result.c, 1.066640, float_tolerance);
+    try helpers.expectApproxEqAbs(result.h, 4.744472, float_tolerance);
+    try helpers.expectApproxEqAbs(result.alpha, 0.12345, float_tolerance);
+}
+
+test "Convert from CIE LCh(uv) with alpha to CIE Luv with alpha" {
+    const lch = color.CIELCHuvAlpha{ .l = 0.48485, .c = 1.066640, .h = 4.744472, .alpha = 0.12345 };
+
+    const result = lch.toLuvAlpha();
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.l, 0.48485, float_tolerance);
+    try helpers.expectApproxEqAbs(result.u, 0.034216, float_tolerance);
+    try helpers.expectApproxEqAbs(result.v, -1.066091, float_tolerance);
+    try helpers.expectApproxEqAbs(result.alpha, 0.12345, float_tolerance);
 }
