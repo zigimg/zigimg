@@ -1317,7 +1317,7 @@ pub const CIELabAlpha = extern struct {
 };
 
 // CIE LCH(ab) is the cylindrical representation of CIE L*a*b so it is always converted
-// from and to L*a*b. The angle are stored in radians.
+// from and to L*a*b. The angle H is stored in radians.
 pub const CIELCHab = extern struct {
     l: f32 align(1) = 0.0,
     c: f32 align(1) = 0.0,
@@ -1347,7 +1347,7 @@ pub const CIELCHab = extern struct {
 };
 
 // CIE LCH(ab) with alpha is the cylindrical representation of CIE L*a*b so it is always converted
-// from and to L*a*b. The angle are stored in radians.
+// from and to L*a*b. The angle H is stored in radians.
 pub const CIELCHabAlpha = extern struct {
     l: f32 align(1) = 0.0,
     c: f32 align(1) = 0.0,
@@ -1537,7 +1537,7 @@ pub const CIELuvAlpha = extern struct {
 };
 
 // CIE LCH(uv) is the cylindrical representation of CIE L*u*v*s so it is always converted
-// from and to L*u*v*. The angle are stored in radians.
+// from and to L*u*v*. The angle H is stored in radians.
 pub const CIELCHuv = extern struct {
     l: f32 align(1) = 0.0,
     c: f32 align(1) = 0.0,
@@ -1567,7 +1567,7 @@ pub const CIELCHuv = extern struct {
 };
 
 // CIE LCH(uv) with alpha is the cylindrical representation of CIE L*u*v* so it is always converted
-// from and to L*u*v*. The angle are stored in radians.
+// from and to L*u*v*. The angle H is stored in radians.
 pub const CIELCHuvAlpha = extern struct {
     l: f32 align(1) = 0.0,
     c: f32 align(1) = 0.0,
@@ -1602,6 +1602,167 @@ pub const CIELCHuvAlpha = extern struct {
             .c = self.c,
             .h = self.h,
         };
+    }
+};
+
+// HSLuv is a HSL representation of CIE LCH(uv) which is a cylindrical representation of CIE L*u*v* color space
+// Adapted from hsluv-c: https://github.com/hsluv/hsluv-c/blob/master/src/hsluv.c
+// The MIT License (MIT)
+
+// Copyright © 2015 Alexei Boronine (original idea, JavaScript implementation)
+// Copyright © 2015 Roger Tallada (Obj-C implementation)
+// Copyright © 2017 Martin Mitáš (C implementation, based on Obj-C implementation)
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”),
+// to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+// and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+// WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+pub const HSLuv = extern struct {
+    h: f32 align(1), // Hue in radians
+    s: f32 align(1), // Saturation from 0.0 to 1.0
+    l: f32 align(1), // Lightness from 0.0 to 1.0
+
+    const Line = struct {
+        a: f32 = 0.0,
+        b: f32 = 0.0,
+
+        pub fn intersect(left: Line, right: Line) f32 {
+            return (left.b - right.b) / (right.a - left.a);
+        }
+
+        pub fn rayLengthUntilIntersect(self: Line, angle: f32) f32 {
+            return self.b / (@sin(angle) - self.a * @cos(angle));
+        }
+    };
+
+    pub fn fromCIELChuv(lch: CIELCHuv, xyz_to_rgb_matrix: math.float4x4) HSLuv {
+        var s: f32 = 0.0;
+
+        // White and black: disambiguate saturation
+        if (lch.l > 0.99999999999 or lch.l < 0.00000001) {
+            s = 0.0;
+        } else {
+            s = lch.c / (maxChromaForLH(lch.l, lch.h, xyz_to_rgb_matrix) / 100.0);
+        }
+
+        //  Grays: disambiguate hue
+        const h = if (lch.c < 0.00000001) 0.0 else lch.h;
+
+        return .{
+            .h = h,
+            .s = s,
+            .l = lch.l,
+        };
+    }
+
+    pub fn toCIELCHuv(self: HSLuv, xyz_to_rgb_matrix: math.float4x4) CIELCHuv {
+        var c: f32 = 0.0;
+
+        // White and black: disambiguate chroma
+        if (self.l > 0.99999999999 or self.l < 0.00000001) {
+            c = 0.0;
+        } else {
+            c = (maxChromaForLH(self.l, self.h, xyz_to_rgb_matrix) / 100.0) * self.s;
+        }
+
+        //  Grays: disambiguate hue
+        const h = if (self.s < 0.00000001) 0.0 else self.h;
+
+        return .{
+            .l = self.l,
+            .c = c,
+            .h = h,
+        };
+    }
+
+    fn maxChromaForLH(l: f32, h: f32, xyz_to_rgb_matrix: math.float4x4) f32 {
+        var minimum_length = std.math.floatMax(f32);
+        var bounds: [6]Line = undefined;
+
+        getBounds(l, bounds[0..], xyz_to_rgb_matrix);
+
+        for (bounds) |bound| {
+            const length = bound.rayLengthUntilIntersect(h);
+            if (length >= 0 and length < minimum_length) {
+                minimum_length = length;
+            }
+        }
+
+        return minimum_length;
+    }
+
+    fn getBounds(l: f32, bounds: []Line, xyz_to_rgb_matrix: math.float4x4) void {
+        const scaled_l = l * 100.0;
+
+        const tl = scaled_l + 16.0;
+        const sub1 = (tl * tl * tl) / 1560896.0;
+        const sub2 = if (sub1 > CIEConstants.epsilon) sub1 else (1.0 / CIEConstants.kappa);
+
+        for (0..3) |channel| {
+            const m1 = xyz_to_rgb_matrix.matrix[channel][0];
+            const m2 = xyz_to_rgb_matrix.matrix[channel][1];
+            const m3 = xyz_to_rgb_matrix.matrix[channel][2];
+
+            for (0..2) |t| {
+                const top1 = (284517.0 * m1 - 94839.0 * m3) * sub2;
+                const top2 = (838422.0 * m3 + 769860.0 * m2 + 731718.0 * m1) * scaled_l * sub2 - 769860.0 * @as(f32, @floatFromInt(t)) * scaled_l;
+                const bottom = (632260.0 * m3 - 126452.0 * m2) * sub2 + 126452.0 * @as(f32, @floatFromInt(t));
+
+                bounds[channel * 2 + t].a = top1 / bottom;
+                bounds[channel * 2 + t].b = top2 / bottom;
+            }
+        }
+    }
+};
+
+// HSLuvAlpha is a HSL representation of CIE LCH(uv) which is a cylindrical representation of CIE L*u*v* color space with alpha
+pub const HSLuvAlpha = extern struct {
+    h: f32 align(1), // Hue in radians
+    s: f32 align(1), // Saturation from 0.0 to 1.0
+    l: f32 align(1), // Lightness from 0.0 to 1.0
+    alpha: f32 align(1),
+
+    pub fn fromCIELChuvAlpha(lch: CIELCHuvAlpha, xyz_to_rgb_matrix: math.float4x4) HSLuvAlpha {
+        const hsl = HSLuv.fromCIELChuv(lch.toLCHuv(), xyz_to_rgb_matrix);
+
+        return .{
+            .h = hsl.h,
+            .s = hsl.s,
+            .l = hsl.l,
+            .alpha = lch.alpha,
+        };
+    }
+
+    pub fn toCIELCHuvAlpha(self: HSLuvAlpha, xyz_to_rgb_matrix: math.float4x4) CIELCHuvAlpha {
+        const lch = HSLuv.toCIELCHuv(self.toHSLuv(), xyz_to_rgb_matrix);
+
+        return .{
+            .l = lch.l,
+            .c = lch.c,
+            .h = lch.h,
+            .alpha = self.alpha,
+        };
+    }
+
+    pub fn toHSLuv(self: HSLuvAlpha) HSLuv {
+        return .{
+            .h = self.h,
+            .s = self.s,
+            .l = self.l,
+        };
+    }
+
+    pub inline fn fromFloat4(value: math.float4) CIELuvAlpha {
+        return @bitCast(value);
+    }
+
+    pub inline fn toFloat4(self: CIELuvAlpha) math.float4 {
+        return @bitCast(self);
     }
 };
 
@@ -1713,6 +1874,14 @@ pub const Colorspace = struct {
         return CIELab.fromXYZ(self.toXYZ(color), self.white);
     }
 
+    pub inline fn fromLCHab(self: Colorspace, lch_ab: CIELCHab, post_conversion_behavior: PostConversionBehavior) Colorf32 {
+        return self.fromLab(lch_ab.toLab(), post_conversion_behavior);
+    }
+
+    pub inline fn toLCHab(self: Colorspace, color: Colorf32) CIELCHab {
+        return self.toLab(color).toLCHab();
+    }
+
     pub fn fromLabAlpha(self: Colorspace, lab: CIELabAlpha, post_conversion_behavior: PostConversionBehavior) Colorf32 {
         const xyza = lab.toXYZAlpha(self.white);
 
@@ -1730,6 +1899,14 @@ pub const Colorspace = struct {
 
     pub fn toLabAlpha(self: Colorspace, color: Colorf32) CIELabAlpha {
         return CIELabAlpha.fromXYZAlpha(self.toXYZAlpha(color), self.white);
+    }
+
+    pub inline fn fromLCHabAlpha(self: Colorspace, lch_ab_alpha: CIELCHabAlpha, post_conversion_behavior: PostConversionBehavior) Colorf32 {
+        return self.fromLabAlpha(lch_ab_alpha.toLabAlpha(), post_conversion_behavior);
+    }
+
+    pub inline fn toLCHabAlpha(self: Colorspace, color: Colorf32) CIELCHabAlpha {
+        return self.toLabAlpha(color).toLCHabAlpha();
     }
 
     pub fn fromLuv(self: Colorspace, luv: CIELuv, post_conversion_behavior: PostConversionBehavior) Colorf32 {
@@ -1750,6 +1927,14 @@ pub const Colorspace = struct {
         return CIELuv.fromXYZ(self.toXYZ(color), self.white);
     }
 
+    pub inline fn fromLCHuv(self: Colorspace, lch_uv: CIELCHuv, post_conversion_behavior: PostConversionBehavior) Colorf32 {
+        return self.fromLuv(lch_uv.toLuv(), post_conversion_behavior);
+    }
+
+    pub inline fn toLCHuv(self: Colorspace, color: Colorf32) CIELCHuv {
+        return self.toLuv(color).toLCHuv();
+    }
+
     pub fn fromLuvAlpha(self: Colorspace, luv: CIELuvAlpha, post_conversion_behavior: PostConversionBehavior) Colorf32 {
         const xyza = luv.toXYZAlpha(self.white);
         var result = self.fromXYZAlpha(xyza);
@@ -1766,6 +1951,46 @@ pub const Colorspace = struct {
 
     pub fn toLuvAlpha(self: Colorspace, color: Colorf32) CIELuvAlpha {
         return CIELuvAlpha.fromXYZAlpha(self.toXYZAlpha(color), self.white);
+    }
+
+    pub inline fn fromLCHuvAlpha(self: Colorspace, lch_uv: CIELCHuvAlpha, post_conversion_behavior: PostConversionBehavior) Colorf32 {
+        return self.fromLuvAlpha(lch_uv.toLuvAlpha(), post_conversion_behavior);
+    }
+
+    pub inline fn toLCHuvAlpha(self: Colorspace, color: Colorf32) CIELCHuvAlpha {
+        return self.toLuvAlpha(color).toLCHuvAlpha();
+    }
+
+    pub fn fromHSLuv(self: Colorspace, hsluv: HSLuv, post_conversion_behavior: PostConversionBehavior) Colorf32 {
+        const xyz_to_rgb_matrix = self.toXYZConversionMatrix().inverse();
+
+        const lch = hsluv.toCIELCHuv(xyz_to_rgb_matrix);
+
+        return self.fromLCHuv(lch, post_conversion_behavior);
+    }
+
+    pub fn toHSLuv(self: Colorspace, color: Colorf32) HSLuv {
+        const lch = self.toLCHuv(color);
+
+        const xyz_to_rgb_matrix = self.toXYZConversionMatrix().inverse();
+
+        return HSLuv.fromCIELChuv(lch, xyz_to_rgb_matrix);
+    }
+
+    pub fn fromHSLuvAlpha(self: Colorspace, hsluv: HSLuvAlpha, post_conversion_behavior: PostConversionBehavior) Colorf32 {
+        const xyz_to_rgb_matrix = self.toXYZConversionMatrix().inverse();
+
+        const lch = hsluv.toCIELCHuvAlpha(xyz_to_rgb_matrix);
+
+        return self.fromLCHuvAlpha(lch, post_conversion_behavior);
+    }
+
+    pub fn toHSLuvAlpha(self: Colorspace, color: Colorf32) HSLuvAlpha {
+        const lch = self.toLCHuvAlpha(color);
+
+        const xyz_to_rgb_matrix = self.toXYZConversionMatrix().inverse();
+
+        return HSLuvAlpha.fromCIELChuvAlpha(lch, xyz_to_rgb_matrix);
     }
 
     pub fn sliceFromXYZAlphaInPlace(self: Colorspace, slice_xyza: []CIEXYZAlpha) []Colorf32 {

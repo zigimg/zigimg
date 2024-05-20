@@ -1537,3 +1537,72 @@ test "Convert from CIE LCh(uv) with alpha to CIE Luv with alpha" {
     try helpers.expectApproxEqAbs(result.v, -1.066091, float_tolerance);
     try helpers.expectApproxEqAbs(result.alpha, 0.12345, float_tolerance);
 }
+
+test "Convert a HSLuv color to gamma sRGB color" {
+    const hsluv = color.HSLuv{ .h = std.math.degreesToRadians(f32, 243.0), .s = 0.61, .l = 0.51 };
+
+    const linear = color.sRGB.fromHSLuv(hsluv, .none);
+
+    const result = linear.toSrgb();
+
+    // #537da6
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.r, 0.324444026, float_tolerance);
+    try helpers.expectApproxEqAbs(result.g, 0.490519762, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, 0.651108801, float_tolerance);
+    try helpers.expectApproxEqAbs(result.a, 1.0, float_tolerance);
+
+    const rgba = result.toRgba32();
+    try helpers.expectEq(rgba.r, 0x53);
+    try helpers.expectEq(rgba.g, 0x7d);
+    try helpers.expectEq(rgba.b, 0xa6);
+    try helpers.expectEq(rgba.a, 0xFF);
+}
+
+test "Convert a gamma sRGB color to HSLuv" {
+    // #537da6
+    const srgb = color.Colorf32{ .r = 0.32549, .g = 0.4902, .b = 0.65098, .a = 1.0 };
+    const source = srgb.toLinear();
+
+    const result = color.sRGB.toHSLuv(source);
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.h, 4.24362755, float_tolerance);
+    try helpers.expectApproxEqAbs(result.s, 0.607237875, float_tolerance);
+    try helpers.expectApproxEqAbs(result.l, 0.509887099, float_tolerance);
+}
+
+test "Convert a HSLuv with alpha color to gamma sRGB color with alpha" {
+    const hsluv = color.HSLuvAlpha{ .h = std.math.degreesToRadians(f32, 243.0), .s = 0.61, .l = 0.51, .alpha = 0.12345 };
+
+    const linear = color.sRGB.fromHSLuvAlpha(hsluv, .none);
+
+    const result = linear.toSrgb();
+
+    // #537da6
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.r, 0.324444026, float_tolerance);
+    try helpers.expectApproxEqAbs(result.g, 0.490519762, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, 0.651108801, float_tolerance);
+    try helpers.expectApproxEqAbs(result.a, 0.12345, float_tolerance);
+
+    const rgba = result.toRgba32();
+    try helpers.expectEq(rgba.r, 0x53);
+    try helpers.expectEq(rgba.g, 0x7d);
+    try helpers.expectEq(rgba.b, 0xa6);
+    try helpers.expectEq(rgba.a, 0x1f);
+}
+
+test "Convert a gamma sRGB color with alpha to HSLuv with alpha" {
+    // #537da6
+    const srgb = color.Colorf32{ .r = 0.32549, .g = 0.4902, .b = 0.65098, .a = 0.12345 };
+    const source = srgb.toLinear();
+
+    const result = color.sRGB.toHSLuvAlpha(source);
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.h, 4.24362755, float_tolerance);
+    try helpers.expectApproxEqAbs(result.s, 0.607237875, float_tolerance);
+    try helpers.expectApproxEqAbs(result.l, 0.509887099, float_tolerance);
+    try helpers.expectApproxEqAbs(result.alpha, 0.12345, float_tolerance);
+}
