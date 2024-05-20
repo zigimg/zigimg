@@ -1156,6 +1156,19 @@ pub const CIEXYZAlpha = extern struct {
     pub inline fn toFloat4(self: CIEXYZAlpha) math.float4 {
         return @bitCast(self);
     }
+
+    pub fn toXYZ(self: CIEXYZAlpha) CIEXYZ {
+        return .{
+            .x = self.x,
+            .y = self.y,
+            .z = self.z,
+        };
+    }
+};
+
+pub const CIEConstants = struct {
+    const epsilon: f32 = 216.0 / 24389.0;
+    const kappa: f32 = 24389.0 / 27.0;
 };
 
 // CIE L*a*b* color space, meaning L* for perceptual lightness and a* and b* for the four unique colors of human vision: red, green, blue and yellow.
@@ -1166,9 +1179,6 @@ pub const CIELab = extern struct {
     l: f32 align(1) = 0.0,
     a: f32 align(1) = 0.0,
     b: f32 align(1) = 0.0,
-
-    const epsilon: f32 = 216.0 / 24389.0;
-    const kappa: f32 = 24389.0 / 27.0;
 
     pub inline fn fromXYZ(xyz: CIEXYZ, white_point: CIExyY) CIELab {
         return CIELab.fromXYZPrecomputedWhitePoint(xyz, white_point.toXYZ(1.0));
@@ -1213,9 +1223,9 @@ pub const CIELab = extern struct {
         const cubic_factor_x = std.math.pow(f32, factor_x, 3.0);
         const cubic_factor_z = std.math.pow(f32, factor_z, 3.0);
 
-        const result_x = if (cubic_factor_x > epsilon) cubic_factor_x else ((116.0 * factor_x) - 16.0) / kappa;
-        const result_y = if (scaled_l > (kappa * epsilon)) std.math.pow(f32, (scaled_l + 16.0) / 116.0, 3.0) else scaled_l / kappa;
-        const result_z = if (cubic_factor_z > epsilon) cubic_factor_z else ((116.0 * factor_z) - 16.0) / kappa;
+        const result_x = if (cubic_factor_x > CIEConstants.epsilon) cubic_factor_x else ((116.0 * factor_x) - 16.0) / CIEConstants.kappa;
+        const result_y = if (scaled_l > (CIEConstants.kappa * CIEConstants.epsilon)) std.math.pow(f32, (scaled_l + 16.0) / 116.0, 3.0) else scaled_l / CIEConstants.kappa;
+        const result_z = if (cubic_factor_z > CIEConstants.epsilon) cubic_factor_z else ((116.0 * factor_z) - 16.0) / CIEConstants.kappa;
 
         return .{
             .x = result_x * white_point_xyz.x,
@@ -1224,20 +1234,20 @@ pub const CIELab = extern struct {
         };
     }
 
-    pub inline fn fromLch(value: CIELCh) CIELab {
+    pub inline fn fromLCHab(value: CIELCHab) CIELab {
         return value.toLab();
     }
 
-    pub inline fn toLch(self: CIELab) CIELCh {
-        return CIELCh.fromLab(self);
+    pub inline fn toLCHab(self: CIELab) CIELCHab {
+        return CIELCHab.fromLab(self);
     }
 
     fn factor(t: f32) f32 {
-        if (t > epsilon) {
+        if (t > CIEConstants.epsilon) {
             return std.math.cbrt(t);
         }
 
-        return ((kappa * t) + 16.0) / 116.0;
+        return ((CIEConstants.kappa * t) + 16.0) / 116.0;
     }
 };
 
@@ -1251,19 +1261,12 @@ pub const CIELabAlpha = extern struct {
     b: f32 align(1) = 0.0,
     alpha: f32 align(1) = 1.0,
 
-    pub fn fromXYZAlpha(xyza: CIEXYZAlpha, white_point: CIExyY) CIELabAlpha {
-        const lab = CIELab.fromXYZ(.{ .x = xyza.x, .y = xyza.y, .z = xyza.z }, white_point);
-
-        return .{
-            .l = lab.l,
-            .a = lab.a,
-            .b = lab.b,
-            .alpha = xyza.a,
-        };
+    pub inline fn fromXYZAlpha(xyza: CIEXYZAlpha, white_point: CIExyY) CIELabAlpha {
+        return fromXYZAlphaPrecomputedWhitePoint(xyza, white_point.toXYZ(1.0));
     }
 
     pub fn fromXYZAlphaPrecomputedWhitePoint(xyza: CIEXYZAlpha, white_point_xyz: CIEXYZ) CIELabAlpha {
-        const lab = CIELab.fromXYZPrecomputedWhitePoint(.{ .x = xyza.x, .y = xyza.y, .z = xyza.z }, white_point_xyz);
+        const lab = CIELab.fromXYZPrecomputedWhitePoint(xyza.toXYZ(), white_point_xyz);
 
         return .{
             .l = lab.l,
@@ -1273,19 +1276,12 @@ pub const CIELabAlpha = extern struct {
         };
     }
 
-    pub fn toXYZAlpha(self: CIELabAlpha, white_point: CIExyY) CIEXYZAlpha {
-        const xyz = CIELab.toXYZ(.{ .l = self.l, .a = self.a, .b = self.b }, white_point);
-
-        return .{
-            .x = xyz.x,
-            .y = xyz.y,
-            .z = xyz.z,
-            .a = self.alpha,
-        };
+    pub inline fn toXYZAlpha(self: CIELabAlpha, white_point: CIExyY) CIEXYZAlpha {
+        return self.toXYZAlphaPrecomputedWhitePoint(white_point.toXYZ(1.0));
     }
 
     pub fn toXYZAlphaPrecomputedWhitePoint(self: CIELabAlpha, white_point_xyz: CIEXYZ) CIEXYZAlpha {
-        const xyz = CIELab.toXYZPrecomputedWhitePoint(.{ .l = self.l, .a = self.a, .b = self.b }, white_point_xyz);
+        const xyz = CIELab.toXYZPrecomputedWhitePoint(self.toLab(), white_point_xyz);
 
         return .{
             .x = xyz.x,
@@ -1295,12 +1291,20 @@ pub const CIELabAlpha = extern struct {
         };
     }
 
-    pub inline fn fromLchAlpha(value: CIELChAlpha) CIELabAlpha {
+    pub fn toLab(self: CIELabAlpha) CIELab {
+        return .{
+            .l = self.l,
+            .a = self.a,
+            .b = self.b,
+        };
+    }
+
+    pub inline fn fromLCHabAlpha(value: CIELCHabAlpha) CIELabAlpha {
         return value.toLabAlpha();
     }
 
-    pub inline fn toLchAlpha(self: CIELabAlpha) CIELChAlpha {
-        return CIELChAlpha.fromLabAlpha(self);
+    pub inline fn toLCHabAlpha(self: CIELabAlpha) CIELCHabAlpha {
+        return CIELCHabAlpha.fromLabAlpha(self);
     }
 
     pub inline fn fromFloat4(value: math.float4) CIELabAlpha {
@@ -1312,14 +1316,14 @@ pub const CIELabAlpha = extern struct {
     }
 };
 
-// CIE LCh is the cylindrical representation of CIE L*a*b so it is always converted
+// CIE LCH(ab) is the cylindrical representation of CIE L*a*b so it is always converted
 // from and to L*a*b. The angle are stored in radians.
-pub const CIELCh = extern struct {
+pub const CIELCHab = extern struct {
     l: f32 align(1) = 0.0,
     c: f32 align(1) = 0.0,
     h: f32 align(1) = 0.0,
 
-    pub fn fromLab(value: CIELab) CIELCh {
+    pub fn fromLab(value: CIELab) CIELCHab {
         const c = std.math.sqrt(value.a * value.a + value.b * value.b);
         var h = std.math.atan(value.b / value.a);
         if (h < 0.0) {
@@ -1333,7 +1337,7 @@ pub const CIELCh = extern struct {
         };
     }
 
-    pub fn toLab(self: CIELCh) CIELab {
+    pub fn toLab(self: CIELCHab) CIELab {
         return .{
             .l = self.l,
             .a = self.c * @cos(self.h),
@@ -1342,36 +1346,177 @@ pub const CIELCh = extern struct {
     }
 };
 
-// CIE LCh with alpha is the cylindrical representation of CIE L*a*b so it is always converted
+// CIE LCH(ab) with alpha is the cylindrical representation of CIE L*a*b so it is always converted
 // from and to L*a*b. The angle are stored in radians.
-pub const CIELChAlpha = extern struct {
+pub const CIELCHabAlpha = extern struct {
     l: f32 align(1) = 0.0,
     c: f32 align(1) = 0.0,
     h: f32 align(1) = 0.0,
     alpha: f32 align(1) = 1.0,
 
-    pub fn fromLabAlpha(value: CIELabAlpha) CIELChAlpha {
-        const c = std.math.sqrt(value.a * value.a + value.b * value.b);
-        var h = std.math.atan(value.b / value.a);
-        if (h < 0.0) {
-            h += 2.0 * std.math.pi;
-        }
+    pub fn fromLabAlpha(lab_alpha: CIELabAlpha) CIELCHabAlpha {
+        const lch = CIELCHab.fromLab(lab_alpha.toLab());
 
         return .{
-            .l = value.l,
-            .c = c,
-            .h = h,
-            .alpha = value.alpha,
+            .l = lch.l,
+            .c = lch.c,
+            .h = lch.h,
+            .alpha = lab_alpha.alpha,
         };
     }
 
-    pub fn toLabAlpha(self: CIELChAlpha) CIELabAlpha {
+    pub fn toLabAlpha(self: CIELCHabAlpha) CIELabAlpha {
+        const lab = CIELCHab.toLab(self.toLCHab());
+
         return .{
-            .l = self.l,
-            .a = self.c * @cos(self.h),
-            .b = self.c * @sin(self.h),
+            .l = lab.l,
+            .a = lab.a,
+            .b = lab.b,
             .alpha = self.alpha,
         };
+    }
+
+    pub fn toLCHab(self: CIELCHabAlpha) CIELCHab {
+        return .{
+            .l = self.l,
+            .c = self.c,
+            .h = self.h,
+        };
+    }
+};
+
+// CIE L*u*v* color space, meaning L* for perceptual lightness, u* and v* are chroma coordinates
+// L = 0.0 to 1.0
+// u = -1.0 to 1.0
+// v = -1.0 to 1.0
+pub const CIELuv = extern struct {
+    l: f32 align(1) = 0.0,
+    u: f32 align(1) = 0.0,
+    v: f32 align(1) = 0.0,
+
+    pub inline fn fromXYZ(xyz: CIEXYZ, white_point: CIExyY) CIELuv {
+        return fromXYZPrecomputedWhitePoint(xyz, white_point.toXYZ(1.0));
+    }
+
+    pub fn fromXYZPrecomputedWhitePoint(xyz: CIEXYZ, white_point_xyz: CIEXYZ) CIELuv {
+        // Math from: http://www.brucelindbloom.com/index.html?Eqn_XYZ_to_Luv.html
+        const y_relative = xyz.y / white_point_xyz.y;
+
+        const value_denominator = xyz.x + 15.0 * xyz.y + 3.0 * xyz.z;
+        const is_value_zero = std.math.approxEqAbs(f32, value_denominator, 0.0, std.math.floatEps(f32));
+        const u_prime = if (!is_value_zero) (4.0 * xyz.x) / value_denominator else 0.0;
+        const v_prime = if (!is_value_zero) (9.0 * xyz.y) / value_denominator else 0.0;
+
+        const white_denominator = (white_point_xyz.x + 15.0 * white_point_xyz.y + 3.0 * white_point_xyz.z);
+        const white_u_prime = (4.0 * white_point_xyz.x) / white_denominator;
+        const white_v_prime = (9.0 * white_point_xyz.y) / white_denominator;
+
+        const l = if (y_relative > CIEConstants.epsilon) (116.0 * std.math.cbrt(y_relative)) - 16.0 else CIEConstants.kappa * y_relative;
+        const u = 13.0 * l * (u_prime - white_u_prime);
+        const v = 13.0 * l * (v_prime - white_v_prime);
+
+        // Normalize the result
+        return .{
+            .l = l / 100.0,
+            .u = u / 100.0,
+            .v = v / 100.0,
+        };
+    }
+
+    pub inline fn toXYZ(self: CIELuv, white_point: CIExyY) CIEXYZ {
+        return self.toXYZPrecomputedWhitePoint(white_point.toXYZ(1.0));
+    }
+
+    pub fn toXYZPrecomputedWhitePoint(self: CIELuv, white_point_xyz: CIEXYZ) CIEXYZ {
+        // Math from: http://www.brucelindbloom.com/index.html?Eqn_Luv_to_XYZ.html
+        const scaled_l = self.l * 100.0;
+        const scaled_u = self.u * 100.0;
+        const scaled_v = self.v * 100.0;
+
+        if (std.math.approxEqAbs(f32, scaled_l, 0.0, std.math.floatEps(f32))) {
+            return .{
+                .x = 0.0,
+                .y = 0.0,
+                .z = 0.0,
+            };
+        }
+
+        const white_denominator = white_point_xyz.x + 15.0 * white_point_xyz.y + 3.0 * white_point_xyz.z;
+        const white_u_zero = (4.0 * white_point_xyz.x) / white_denominator;
+        const white_v_zero = (9.0 * white_point_xyz.y) / white_denominator;
+
+        const y = if (scaled_l > CIEConstants.kappa * CIEConstants.epsilon) std.math.pow(f32, (scaled_l + 16.0) / 116.0, 3.0) else scaled_l / CIEConstants.kappa;
+
+        const a = (((52.0 * scaled_l) / (scaled_u + 13.0 * scaled_l * white_u_zero)) - 1) * (1.0 / 3.0);
+        const b = -5.0 * y;
+        const c = -1.0 / 3.0;
+        const d = y * (((39.0 * scaled_l) / (scaled_v + 13.0 * scaled_l * white_v_zero)) - 5.0);
+
+        const x = (d - b) / (a - c);
+        const z = x * a + b;
+
+        return .{
+            .x = x,
+            .y = y,
+            .z = z,
+        };
+    }
+};
+
+// CIE L*u*v* color space with alpha, meaning L* for perceptual lightness, u* and v* are chroma coordinates
+// L = 0.0 to 1.0
+// u = -1.0 to 1.0
+// v = -1.0 to 1.0
+pub const CIELuvAlpha = extern struct {
+    l: f32 align(1) = 0.0,
+    u: f32 align(1) = 0.0,
+    v: f32 align(1) = 0.0,
+    alpha: f32 align(1) = 1.0,
+
+    pub inline fn fromXYZAlpha(xyza: CIEXYZAlpha, white_point: CIExyY) CIELuvAlpha {
+        return fromXYZAlphaPrecomputedWhitePoint(xyza, white_point.toXYZ(1.0));
+    }
+
+    pub fn fromXYZAlphaPrecomputedWhitePoint(xyza: CIEXYZAlpha, white_point_xyz: CIEXYZ) CIELuvAlpha {
+        const luv = CIELuv.fromXYZPrecomputedWhitePoint(xyza.toXYZ(), white_point_xyz);
+
+        return .{
+            .l = luv.l,
+            .u = luv.u,
+            .v = luv.v,
+            .alpha = xyza.a,
+        };
+    }
+
+    pub inline fn toXYZAlpha(self: CIELuvAlpha, white_point: CIExyY) CIEXYZAlpha {
+        return self.toXYZAlphaPrecomputedWhitePoint(white_point.toXYZ(1.0));
+    }
+
+    pub fn toXYZAlphaPrecomputedWhitePoint(self: CIELuvAlpha, white_point_xyz: CIEXYZ) CIEXYZAlpha {
+        const xyz = CIELuv.toXYZPrecomputedWhitePoint(self.toLuv(), white_point_xyz);
+
+        return .{
+            .x = xyz.x,
+            .y = xyz.y,
+            .z = xyz.z,
+            .a = self.alpha,
+        };
+    }
+
+    pub fn toLuv(self: CIELuvAlpha) CIELuv {
+        return .{
+            .l = self.l,
+            .u = self.u,
+            .v = self.v,
+        };
+    }
+
+    pub inline fn fromFloat4(value: math.float4) CIELuvAlpha {
+        return @bitCast(value);
+    }
+
+    pub inline fn toFloat4(self: CIELuvAlpha) math.float4 {
+        return @bitCast(self);
     }
 };
 
@@ -1502,6 +1647,42 @@ pub const Colorspace = struct {
         return CIELabAlpha.fromXYZAlpha(self.toXYZAlpha(color), self.white);
     }
 
+    pub fn fromLuv(self: Colorspace, luv: CIELuv, post_conversion_behavior: PostConversionBehavior) Colorf32 {
+        const xyz = luv.toXYZ(self.white);
+        var result = self.fromXYZ(xyz);
+
+        switch (post_conversion_behavior) {
+            .none => {},
+            .clamp => {
+                result = Colorf32.fromFloat4(math.clamp4(result.toFloat4(), 0.0, 1.0));
+            },
+        }
+
+        return result;
+    }
+
+    pub fn toLuv(self: Colorspace, color: Colorf32) CIELuv {
+        return CIELuv.fromXYZ(self.toXYZ(color), self.white);
+    }
+
+    pub fn fromLuvAlpha(self: Colorspace, luv: CIELuvAlpha, post_conversion_behavior: PostConversionBehavior) Colorf32 {
+        const xyza = luv.toXYZAlpha(self.white);
+        var result = self.fromXYZAlpha(xyza);
+
+        switch (post_conversion_behavior) {
+            .none => {},
+            .clamp => {
+                result = Colorf32.fromFloat4(math.clamp4(result.toFloat4(), 0.0, 1.0));
+            },
+        }
+
+        return result;
+    }
+
+    pub fn toLuvAlpha(self: Colorspace, color: Colorf32) CIELuvAlpha {
+        return CIELuvAlpha.fromXYZAlpha(self.toXYZAlpha(color), self.white);
+    }
+
     pub fn sliceFromXYZAlphaInPlace(self: Colorspace, slice_xyza: []CIEXYZAlpha) []Colorf32 {
         const slice_rgba: []Colorf32 = @ptrCast(slice_xyza);
 
@@ -1629,6 +1810,90 @@ pub const Colorspace = struct {
         }
 
         return slice_lab;
+    }
+
+    pub fn sliceFromLuvAlphaInPlace(self: Colorspace, slice_luv: []CIELuvAlpha, post_conversion_behavior: PostConversionBehavior) []Colorf32 {
+        const slice_rgba: []Colorf32 = @ptrCast(slice_luv);
+
+        const conversion_matrix = self.toXYZConversionMatrix().inverse();
+        const white_point_xyz = self.white.toXYZ(1.0);
+
+        const all_zeroes: math.float4 = @splat(0.0);
+        const all_ones: math.float4 = @splat(1.0);
+
+        for (slice_rgba) |*rgba| {
+            const luv_alpha: CIELuvAlpha = @bitCast(rgba.*);
+
+            const xyza = luv_alpha.toXYZAlphaPrecomputedWhitePoint(white_point_xyz);
+
+            rgba.* = Colorf32.fromFloat4(conversion_matrix.mulVector(xyza.toFloat4()));
+
+            switch (post_conversion_behavior) {
+                .none => {},
+                .clamp => {
+                    rgba.* = Colorf32.fromFloat4(@min(@max(rgba.toFloat4(), all_zeroes), all_ones));
+                },
+            }
+        }
+
+        return slice_rgba;
+    }
+
+    pub fn sliceToLuvAlphaInPlace(self: Colorspace, colors: []Colorf32) []CIELuvAlpha {
+        const slice_luv: []CIELuvAlpha = @ptrCast(colors);
+
+        const conversion_matrix = self.toXYZConversionMatrix();
+        const white_point_xyz = self.white.toXYZ(1.0);
+
+        for (slice_luv) |*luv_alpha| {
+            const xyza = CIEXYZAlpha.fromFloat4(conversion_matrix.mulVector(luv_alpha.toFloat4()));
+
+            luv_alpha.* = CIELuvAlpha.fromXYZAlphaPrecomputedWhitePoint(xyza, white_point_xyz);
+        }
+
+        return slice_luv;
+    }
+
+    pub fn sliceFromLuvAlphaCopy(self: Colorspace, allocator: std.mem.Allocator, slice_luv: []const CIELuvAlpha, post_conversion_behavior: PostConversionBehavior) ![]Colorf32 {
+        const slice_rgba: []Colorf32 = try allocator.alloc(Colorf32, slice_luv.len);
+
+        const conversion_matrix = self.toXYZConversionMatrix().inverse();
+        const white_point_xyz = self.white.toXYZ(1.0);
+
+        const all_zeroes: math.float4 = @splat(0.0);
+        const all_ones: math.float4 = @splat(1.0);
+
+        for (0..slice_luv.len) |index| {
+            const luv_alpha = slice_luv[index];
+
+            const xyza = luv_alpha.toXYZAlphaPrecomputedWhitePoint(white_point_xyz);
+
+            slice_rgba[index] = Colorf32.fromFloat4(conversion_matrix.mulVector(xyza.toFloat4()));
+
+            switch (post_conversion_behavior) {
+                .none => {},
+                .clamp => {
+                    slice_rgba[index] = Colorf32.fromFloat4(@min(@max(slice_rgba[index].toFloat4(), all_zeroes), all_ones));
+                },
+            }
+        }
+
+        return slice_rgba;
+    }
+
+    pub fn sliceToLuvAlphaCopy(self: Colorspace, allocator: std.mem.Allocator, colors: []const Colorf32) ![]CIELuvAlpha {
+        const slice_luv: []CIELuvAlpha = try allocator.alloc(CIELuvAlpha, colors.len);
+
+        const conversion_matrix = self.toXYZConversionMatrix();
+        const white_point_xyz = self.white.toXYZ(1.0);
+
+        for (0..colors.len) |index| {
+            const xyza = CIEXYZAlpha.fromFloat4(conversion_matrix.mulVector(colors[index].toFloat4()));
+
+            slice_luv[index] = CIELuvAlpha.fromXYZAlphaPrecomputedWhitePoint(xyza, white_point_xyz);
+        }
+
+        return slice_luv;
     }
 
     pub fn convertColor(source: Colorspace, target: Colorspace, color: Colorf32) Colorf32 {
