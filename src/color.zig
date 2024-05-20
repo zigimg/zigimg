@@ -1766,6 +1766,104 @@ pub const HSLuvAlpha = extern struct {
     }
 };
 
+// Oklab is represented with three coordinates, similar to how CIELAB works, but with better perceptual properties.
+// Oklab uses a D65 whitepoint so make sure to convert your RGBA color to D65 white if you use a different white point.
+// See https://bottosson.github.io/posts/oklab/ for more information.
+pub const Oklab = extern struct {
+    l: f32 align(1) = 0.0,
+    a: f32 align(1) = 0.0,
+    b: f32 align(1) = 0.0,
+
+    pub fn fromXYZ(xyz: CIEXYZ) Oklab {
+        const labAlpha = OklabAlpha.fromXYZAlpha(CIEXYZAlpha{ .x = xyz.x, .y = xyz.y, .z = xyz.z, .a = 1.0 });
+        return labAlpha.toLab();
+    }
+
+    pub fn toXYZ(self: Oklab) CIEXYZ {
+        const xyza = OklabAlpha.toXYZAlpha(self.toLabAlpha());
+        return xyza.toXYZ();
+    }
+
+    pub fn toLabAlpha(self: Oklab) OklabAlpha {
+        return .{
+            .l = self.l,
+            .a = self.a,
+            .b = self.b,
+        };
+    }
+};
+
+// Oklab with alpha is represented with three coordinates, similar to how CIELAB works, but with better perceptual properties.
+// Oklab uses a D65 whitepoint so make sure to convert your RGBA color to D65 white if you use a different white point.
+// See https://bottosson.github.io/posts/oklab/ for more information.
+pub const OklabAlpha = extern struct {
+    l: f32 align(1) = 0.0,
+    a: f32 align(1) = 0.0,
+    b: f32 align(1) = 0.0,
+    alpha: f32 align(1) = 1.0,
+
+    const XYZAtoLMS = math.float4x4.fromArray(.{
+        0.8189330101, 0.3618667424, -0.1288597137, 0.0,
+        0.0329845436, 0.9293118715, 0.0361456387,  0.0,
+        0.0482003018, 0.2643662691, 0.6338517070,  0.0,
+        0.0,          0.0,          0.0,           1.0,
+    });
+
+    const LMSPrimeToLab = math.float4x4.fromArray(.{
+        0.2104542553, 0.7936177850,  -0.0040720468, 0.0,
+        1.9779984951, -2.4285922050, 0.4505937099,  0.0,
+        0.0259040371, 0.7827717662,  -0.8086757660, 0.0,
+        0.0,          0.0,           0.0,           1.0,
+    });
+
+    const LabToLMSPrime = LMSPrimeToLab.inverse();
+    const LMSToXYZA = XYZAtoLMS.inverse();
+
+    pub fn fromXYZAlpha(xyza: CIEXYZAlpha) OklabAlpha {
+        var lmsa = XYZAtoLMS.mulVector(xyza.toFloat4());
+
+        lmsa[0] = std.math.cbrt(lmsa[0]);
+        lmsa[1] = std.math.cbrt(lmsa[1]);
+        lmsa[2] = std.math.cbrt(lmsa[2]);
+
+        const lab_a = LMSPrimeToLab.mulVector(lmsa);
+        return .{
+            .l = lab_a[0],
+            .a = lab_a[1],
+            .b = lab_a[2],
+            .alpha = xyza.a,
+        };
+    }
+
+    pub fn toXYZAlpha(self: OklabAlpha) CIEXYZAlpha {
+        var lmsa_prime = LabToLMSPrime.mulVector(self.toFloat4());
+
+        lmsa_prime[0] = lmsa_prime[0] * lmsa_prime[0] * lmsa_prime[0];
+        lmsa_prime[1] = lmsa_prime[1] * lmsa_prime[1] * lmsa_prime[1];
+        lmsa_prime[2] = lmsa_prime[2] * lmsa_prime[2] * lmsa_prime[2];
+
+        const xyza_float4 = LMSToXYZA.mulVector(lmsa_prime);
+
+        return CIEXYZAlpha.fromFloat4(xyza_float4);
+    }
+
+    pub fn toLab(self: OklabAlpha) Oklab {
+        return .{
+            .l = self.l,
+            .a = self.a,
+            .b = self.b,
+        };
+    }
+
+    pub inline fn fromFloat4(value: math.float4) OklabAlpha {
+        return @bitCast(value);
+    }
+
+    pub inline fn toFloat4(self: OklabAlpha) math.float4 {
+        return @bitCast(self);
+    }
+};
+
 // Using CIE 1931 2°
 pub const CIExyY = struct {
     x: f32 = 0.0,
@@ -1988,6 +2086,42 @@ pub const Colorspace = struct {
         return HSLuvAlpha.fromCIELChuvAlpha(lch, self.xyza_to_rgba);
     }
 
+    pub fn fromOkLab(self: Colorspace, oklab: Oklab, post_conversion_behavior: PostConversionBehavior) Colorf32 {
+        const xyz = oklab.toXYZ();
+        var result = self.fromXYZ(xyz);
+
+        switch (post_conversion_behavior) {
+            .none => {},
+            .clamp => {
+                result = Colorf32.fromFloat4(math.clamp4(result.toFloat4(), 0.0, 1.0));
+            },
+        }
+
+        return result;
+    }
+
+    pub fn toOklab(self: Colorspace, color: Colorf32) Oklab {
+        return Oklab.fromXYZ(self.toXYZ(color));
+    }
+
+    pub fn fromOkLabAlpha(self: Colorspace, oklab: OklabAlpha, post_conversion_behavior: PostConversionBehavior) Colorf32 {
+        const xyza = oklab.toXYZAlpha();
+        var result = self.fromXYZAlpha(xyza);
+
+        switch (post_conversion_behavior) {
+            .none => {},
+            .clamp => {
+                result = Colorf32.fromFloat4(math.clamp4(result.toFloat4(), 0.0, 1.0));
+            },
+        }
+
+        return result;
+    }
+
+    pub fn toOklabAlpha(self: Colorspace, color: Colorf32) OklabAlpha {
+        return OklabAlpha.fromXYZAlpha(self.toXYZAlpha(color));
+    }
+
     pub fn sliceFromXYZAlphaInPlace(self: Colorspace, slice_xyza: []CIEXYZAlpha) []Colorf32 {
         const slice_rgba: []Colorf32 = @ptrCast(slice_xyza);
 
@@ -2184,6 +2318,78 @@ pub const Colorspace = struct {
         }
 
         return slice_luv;
+    }
+
+    pub fn sliceFromOkLabAlphaInPlace(self: Colorspace, slice_lab: []OklabAlpha, post_conversion_behavior: PostConversionBehavior) []Colorf32 {
+        const slice_rgba: []Colorf32 = @ptrCast(slice_lab);
+
+        const all_zeroes: math.float4 = @splat(0.0);
+        const all_ones: math.float4 = @splat(1.0);
+
+        for (slice_rgba) |*rgba| {
+            const lab_alpha: OklabAlpha = @bitCast(rgba.*);
+
+            const xyza = lab_alpha.toXYZAlpha();
+
+            rgba.* = Colorf32.fromFloat4(self.xyza_to_rgba.mulVector(xyza.toFloat4()));
+
+            switch (post_conversion_behavior) {
+                .none => {},
+                .clamp => {
+                    rgba.* = Colorf32.fromFloat4(@min(@max(rgba.toFloat4(), all_zeroes), all_ones));
+                },
+            }
+        }
+
+        return slice_rgba;
+    }
+
+    pub fn sliceToOklabAlphaInPlace(self: Colorspace, colors: []Colorf32) []OklabAlpha {
+        const slice_lab: []OklabAlpha = @ptrCast(colors);
+
+        for (slice_lab) |*lab_alpha| {
+            const xyza = CIEXYZAlpha.fromFloat4(self.rgba_to_xyza.mulVector(lab_alpha.toFloat4()));
+
+            lab_alpha.* = OklabAlpha.fromXYZAlpha(xyza);
+        }
+
+        return slice_lab;
+    }
+
+    pub fn sliceFromOkLabAlphaCopy(self: Colorspace, allocator: std.mem.Allocator, slice_lab: []const OklabAlpha, post_conversion_behavior: PostConversionBehavior) ![]Colorf32 {
+        const slice_rgba: []Colorf32 = try allocator.alloc(Colorf32, slice_lab.len);
+
+        const all_zeroes: math.float4 = @splat(0.0);
+        const all_ones: math.float4 = @splat(1.0);
+
+        for (0..slice_lab.len) |index| {
+            const lab_alpha: OklabAlpha = slice_lab[index];
+
+            const xyza = lab_alpha.toXYZAlpha();
+
+            slice_rgba[index] = Colorf32.fromFloat4(self.xyza_to_rgba.mulVector(xyza.toFloat4()));
+
+            switch (post_conversion_behavior) {
+                .none => {},
+                .clamp => {
+                    slice_rgba[index] = Colorf32.fromFloat4(@min(@max(slice_rgba[index].toFloat4(), all_zeroes), all_ones));
+                },
+            }
+        }
+
+        return slice_rgba;
+    }
+
+    pub fn sliceToOklabAlphaCopy(self: Colorspace, allocator: std.mem.Allocator, colors: []const Colorf32) ![]OklabAlpha {
+        const slice_lab: []OklabAlpha = try allocator.alloc(OklabAlpha, colors.len);
+
+        for (0..colors.len) |index| {
+            const xyza = CIEXYZAlpha.fromFloat4(self.rgba_to_xyza.mulVector(colors[index].toFloat4()));
+
+            slice_lab[index] = OklabAlpha.fromXYZAlpha(xyza);
+        }
+
+        return slice_lab;
     }
 
     pub fn convertColor(source: Colorspace, target: Colorspace, color: Colorf32) Colorf32 {
