@@ -1776,20 +1776,24 @@ pub const Oklab = extern struct {
 
     pub fn fromXYZ(xyz: CIEXYZ) Oklab {
         const labAlpha = OklabAlpha.fromXYZAlpha(CIEXYZAlpha{ .x = xyz.x, .y = xyz.y, .z = xyz.z, .a = 1.0 });
-        return labAlpha.toLab();
+        return labAlpha.toOklab();
     }
 
     pub fn toXYZ(self: Oklab) CIEXYZ {
-        const xyza = OklabAlpha.toXYZAlpha(self.toLabAlpha());
+        const xyza = OklabAlpha.toXYZAlpha(self.toOklabAlpha());
         return xyza.toXYZ();
     }
 
-    pub fn toLabAlpha(self: Oklab) OklabAlpha {
+    pub fn toOklabAlpha(self: Oklab) OklabAlpha {
         return .{
             .l = self.l,
             .a = self.a,
             .b = self.b,
         };
+    }
+
+    pub inline fn toOkLCh(self: Oklab) OkLCh {
+        return OkLCh.fromOklab(self);
     }
 };
 
@@ -1847,12 +1851,16 @@ pub const OklabAlpha = extern struct {
         return CIEXYZAlpha.fromFloat4(xyza_float4);
     }
 
-    pub fn toLab(self: OklabAlpha) Oklab {
+    pub fn toOklab(self: OklabAlpha) Oklab {
         return .{
             .l = self.l,
             .a = self.a,
             .b = self.b,
         };
+    }
+
+    pub inline fn toOkLChAlpha(self: OklabAlpha) OkLChAlpha {
+        return OkLChAlpha.fromOklabAlpha(self);
     }
 
     pub inline fn fromFloat4(value: math.float4) OklabAlpha {
@@ -1861,6 +1869,75 @@ pub const OklabAlpha = extern struct {
 
     pub inline fn toFloat4(self: OklabAlpha) math.float4 {
         return @bitCast(self);
+    }
+};
+
+// OkLCh is the cylindrical representation of CIE L*a*b so it is always converted
+// from and to L*a*b. The angle H is stored in radians.
+pub const OkLCh = extern struct {
+    l: f32 align(1) = 0.0,
+    c: f32 align(1) = 0.0,
+    h: f32 align(1) = 0.0,
+
+    pub fn fromOklab(value: Oklab) OkLCh {
+        const c = std.math.sqrt(value.a * value.a + value.b * value.b);
+        var h = std.math.atan2(value.b, value.a);
+        if (h < 0.0) {
+            h += 2.0 * std.math.pi;
+        }
+
+        return .{
+            .l = value.l,
+            .c = c,
+            .h = h,
+        };
+    }
+
+    pub fn toOklab(self: OkLCh) Oklab {
+        return .{
+            .l = self.l,
+            .a = self.c * @cos(self.h),
+            .b = self.c * @sin(self.h),
+        };
+    }
+};
+
+// OkLCh with alpha is the cylindrical representation of Oklab so it is always converted
+// from and to Oklab. The angle H is stored in radians.
+pub const OkLChAlpha = extern struct {
+    l: f32 align(1) = 0.0,
+    c: f32 align(1) = 0.0,
+    h: f32 align(1) = 0.0,
+    alpha: f32 align(1) = 1.0,
+
+    pub fn fromOklabAlpha(lab_alpha: OklabAlpha) OkLChAlpha {
+        const lch = OkLCh.fromOklab(lab_alpha.toOklab());
+
+        return .{
+            .l = lch.l,
+            .c = lch.c,
+            .h = lch.h,
+            .alpha = lab_alpha.alpha,
+        };
+    }
+
+    pub fn toOkLabAlpha(self: OkLChAlpha) OklabAlpha {
+        const lab = OkLCh.toOklab(self.toOkLCh());
+
+        return .{
+            .l = lab.l,
+            .a = lab.a,
+            .b = lab.b,
+            .alpha = self.alpha,
+        };
+    }
+
+    pub fn toOkLCh(self: OkLChAlpha) OkLCh {
+        return .{
+            .l = self.l,
+            .c = self.c,
+            .h = self.h,
+        };
     }
 };
 
@@ -2120,6 +2197,22 @@ pub const Colorspace = struct {
 
     pub fn toOklabAlpha(self: Colorspace, color: Colorf32) OklabAlpha {
         return OklabAlpha.fromXYZAlpha(self.toXYZAlpha(color));
+    }
+
+    pub inline fn fromOkLCh(self: Colorspace, lch: OkLCh, post_conversion_behavior: PostConversionBehavior) Colorf32 {
+        return self.fromOkLab(lch.toOklab(), post_conversion_behavior);
+    }
+
+    pub inline fn toOkLCh(self: Colorspace, color: Colorf32) OkLCh {
+        return self.toOklab(color).toOkLCh();
+    }
+
+    pub inline fn fromOkLChAlpha(self: Colorspace, lch: OkLChAlpha, post_conversion_behavior: PostConversionBehavior) Colorf32 {
+        return self.fromOkLabAlpha(lch.toOkLabAlpha(), post_conversion_behavior);
+    }
+
+    pub inline fn toOkLChAlpha(self: Colorspace, color: Colorf32) OkLChAlpha {
+        return self.toOklabAlpha(color).toOkLChAlpha();
     }
 
     pub fn sliceFromXYZAlphaInPlace(self: Colorspace, slice_xyza: []CIEXYZAlpha) []Colorf32 {

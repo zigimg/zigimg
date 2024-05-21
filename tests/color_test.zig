@@ -1829,3 +1829,57 @@ test "Convert a slice of Oklab with alph colors to linear sRGB, copy" {
         try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
     }
 }
+
+test "Convert OkLCh to gamma sRGB" {
+    const lch = color.OkLCh{ .l = 0.56, .c = 0.20, .h = 4.502949 };
+
+    const linear = color.sRGB.fromOkLCh(lch, .none);
+
+    const result = linear.toSrgb();
+
+    const float_tolerance = 0.01;
+    try helpers.expectApproxEqAbs(result.r, 0.0549, float_tolerance);
+    try helpers.expectApproxEqAbs(result.g, 0.43137, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, 0.90196, float_tolerance);
+}
+
+test "Convert gamma sRGB to OKLCh" {
+    const srgb = color.Colorf32{ .r = 0.29412, .g = 0.64706, .b = 0.5098, .a = 1.0 };
+
+    const linear = srgb.toLinear();
+
+    const result = color.sRGB.toOkLCh(linear);
+
+    const float_tolerance = 0.01;
+    try helpers.expectApproxEqAbs(result.l, 0.6573, float_tolerance);
+    try helpers.expectApproxEqAbs(result.c, 0.1027, float_tolerance);
+    try helpers.expectApproxEqAbs(result.h, 2.88276, float_tolerance);
+}
+
+test "Convert OkLCh with alpha to gamma sRGB with alpha" {
+    const lch = color.OkLChAlpha{ .l = 0.56, .c = 0.20, .h = 4.502949, .alpha = 0.12345 };
+
+    const linear = color.sRGB.fromOkLChAlpha(lch, .none);
+
+    const result = linear.toSrgb();
+
+    const float_tolerance = 0.01;
+    try helpers.expectApproxEqAbs(result.r, 0.0549, float_tolerance);
+    try helpers.expectApproxEqAbs(result.g, 0.43137, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, 0.90196, float_tolerance);
+    try helpers.expectApproxEqAbs(result.a, 0.12345, float_tolerance);
+}
+
+test "Convert gamma sRGB with alpha to OKLCh with alpha" {
+    const srgb = color.Colorf32{ .r = 0.29412, .g = 0.64706, .b = 0.5098, .a = 0.12345 };
+
+    const linear = srgb.toLinear();
+
+    const result = color.sRGB.toOkLChAlpha(linear);
+
+    const float_tolerance = 0.01;
+    try helpers.expectApproxEqAbs(result.l, 0.6573, float_tolerance);
+    try helpers.expectApproxEqAbs(result.c, 0.1027, float_tolerance);
+    try helpers.expectApproxEqAbs(result.h, 2.88276, float_tolerance);
+    try helpers.expectApproxEqAbs(result.alpha, 0.12345, float_tolerance);
+}
