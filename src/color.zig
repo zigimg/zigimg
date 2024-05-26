@@ -1153,8 +1153,8 @@ pub const CIELab = extern struct {
         const factor_z = factor_y - (scaled_b / 200.0);
         const factor_x = (scaled_a / 500.0) + factor_y;
 
-        const cubic_factor_x = std.math.pow(f32, factor_x, 3.0);
-        const cubic_factor_z = std.math.pow(f32, factor_z, 3.0);
+        const cubic_factor_x = factor_x * factor_x * factor_x;
+        const cubic_factor_z = factor_z * factor_z * factor_z;
 
         const result_x = if (cubic_factor_x > CIEConstants.epsilon) cubic_factor_x else ((116.0 * factor_x) - 16.0) / CIEConstants.kappa;
         const result_y = if (scaled_l > (CIEConstants.kappa * CIEConstants.epsilon)) std.math.pow(f32, (scaled_l + 16.0) / 116.0, 3.0) else scaled_l / CIEConstants.kappa;
