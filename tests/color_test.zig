@@ -521,3 +521,1365 @@ test "Non u8 Rgb colors should not have fromHtmlHex" {
     try helpers.expectEq(@hasDecl(color.Rgba64, "fromHtmlHex"), false);
     try helpers.expectEq(@hasDecl(color.Rgb565, "fromHtmlHex"), false);
 }
+
+const RgbHslTestDataEntry = struct {
+    rgb: color.Colorf32 = .{},
+    hsl: color.Hsl = .{},
+};
+
+const RgbHslTestData = [_]RgbHslTestDataEntry{
+    .{ .rgb = .{ .r = 1.0, .g = 1.0, .b = 1.0 }, .hsl = .{ .hue = 0.0, .saturation = 0.0, .luminance = 1.0 } },
+    .{ .rgb = .{ .r = 0.5, .g = 0.5, .b = 0.5 }, .hsl = .{ .hue = 0.0, .saturation = 0.0, .luminance = 0.5 } },
+    .{ .rgb = .{ .r = 0.0, .g = 0.0, .b = 0.0 }, .hsl = .{ .hue = 0.0, .saturation = 0.0, .luminance = 0.0 } },
+    .{ .rgb = .{ .r = 1.0, .g = 0.0, .b = 0.0 }, .hsl = .{ .hue = 0.0, .saturation = 1.0, .luminance = 0.5 } },
+    .{ .rgb = .{ .r = 0.750, .g = 0.750, .b = 0.000 }, .hsl = .{ .hue = 60.0, .saturation = 1.000, .luminance = 0.375 } },
+    .{ .rgb = .{ .r = 0.000, .g = 0.500, .b = 0.000 }, .hsl = .{ .hue = 120.0, .saturation = 1.000, .luminance = 0.250 } },
+    .{ .rgb = .{ .r = 0.500, .g = 1.000, .b = 1.000 }, .hsl = .{ .hue = 180.0, .saturation = 1.000, .luminance = 0.750 } },
+    .{ .rgb = .{ .r = 0.500, .g = 0.500, .b = 1.000 }, .hsl = .{ .hue = 240.0, .saturation = 1.000, .luminance = 0.750 } },
+    .{ .rgb = .{ .r = 0.750, .g = 0.250, .b = 0.750 }, .hsl = .{ .hue = 300.0, .saturation = 0.500, .luminance = 0.500 } },
+    .{ .rgb = .{ .r = 0.628, .g = 0.643, .b = 0.142 }, .hsl = .{ .hue = 61.8, .saturation = 0.638, .luminance = 0.393 } },
+    .{ .rgb = .{ .r = 0.255, .g = 0.104, .b = 0.918 }, .hsl = .{ .hue = 251.1, .saturation = 0.832, .luminance = 0.511 } },
+    .{ .rgb = .{ .r = 0.116, .g = 0.675, .b = 0.255 }, .hsl = .{ .hue = 134.9, .saturation = 0.707, .luminance = 0.396 } },
+    .{ .rgb = .{ .r = 0.941, .g = 0.785, .b = 0.053 }, .hsl = .{ .hue = 49.5, .saturation = 0.893, .luminance = 0.497 } },
+    .{ .rgb = .{ .r = 0.704, .g = 0.187, .b = 0.897 }, .hsl = .{ .hue = 283.7, .saturation = 0.775, .luminance = 0.542 } },
+    .{ .rgb = .{ .r = 0.931, .g = 0.463, .b = 0.316 }, .hsl = .{ .hue = 14.3, .saturation = 0.817, .luminance = 0.624 } },
+    .{ .rgb = .{ .r = 0.998, .g = 0.974, .b = 0.532 }, .hsl = .{ .hue = 56.9, .saturation = 0.991, .luminance = 0.765 } },
+    .{ .rgb = .{ .r = 0.099, .g = 0.795, .b = 0.591 }, .hsl = .{ .hue = 162.4, .saturation = 0.779, .luminance = 0.447 } },
+    .{ .rgb = .{ .r = 0.211, .g = 0.149, .b = 0.597 }, .hsl = .{ .hue = 248.3, .saturation = 0.601, .luminance = 0.373 } },
+    .{ .rgb = .{ .r = 0.495, .g = 0.493, .b = 0.721 }, .hsl = .{ .hue = 240.5, .saturation = 0.290, .luminance = 0.607 } },
+};
+
+test "RGB to HSL conversion" {
+    for (RgbHslTestData) |entry| {
+        const converted_hsl = color.Hsl.fromRgb(entry.rgb);
+
+        try helpers.expectApproxEqAbs(converted_hsl.hue, entry.hsl.hue, 0.1);
+        try helpers.expectApproxEqAbs(converted_hsl.saturation, entry.hsl.saturation, 0.1);
+        try helpers.expectApproxEqAbs(converted_hsl.luminance, entry.hsl.luminance, 0.1);
+    }
+}
+
+test "HSL to RGB conversion" {
+    for (RgbHslTestData) |entry| {
+        const converted_rgb = color.Hsl.toRgb(entry.hsl);
+
+        try helpers.expectApproxEqAbs(converted_rgb.r, entry.rgb.r, 0.1);
+        try helpers.expectApproxEqAbs(converted_rgb.g, entry.rgb.g, 0.1);
+        try helpers.expectApproxEqAbs(converted_rgb.b, entry.rgb.b, 0.1);
+    }
+}
+
+test "HSL to HSV conversion" {
+    const hsl = color.Hsl{ .hue = 300.0, .saturation = 0.53, .luminance = 0.67 };
+    const converted_hsv = hsl.toHsv();
+
+    try helpers.expectApproxEqAbs(converted_hsv.hue, 300.0, 0.0001);
+    try helpers.expectApproxEqAbs(converted_hsv.saturation, 0.4140, 0.0001);
+    try helpers.expectApproxEqAbs(converted_hsv.value, 0.8449, 0.0001);
+}
+
+const RgbHsvTestDataEntry = struct {
+    rgb: color.Colorf32 = .{},
+    hsv: color.Hsv = .{},
+};
+
+const RgbHsvTestData = [_]RgbHsvTestDataEntry{
+    .{ .rgb = .{ .r = 1.0, .g = 1.0, .b = 1.0 }, .hsv = .{ .hue = 0.0, .saturation = 0.0, .value = 1.0 } },
+    .{ .rgb = .{ .r = 0.5, .g = 0.5, .b = 0.5 }, .hsv = .{ .hue = 0.0, .saturation = 0.0, .value = 0.5 } },
+    .{ .rgb = .{ .r = 0.0, .g = 0.0, .b = 0.0 }, .hsv = .{ .hue = 0.0, .saturation = 0.0, .value = 0.0 } },
+    .{ .rgb = .{ .r = 1.0, .g = 0.0, .b = 0.0 }, .hsv = .{ .hue = 0.0, .saturation = 1.0, .value = 1.0 } },
+    .{ .rgb = .{ .r = 0.750, .g = 0.750, .b = 0.000 }, .hsv = .{ .hue = 60.0, .saturation = 1.000, .value = 0.750 } },
+    .{ .rgb = .{ .r = 0.000, .g = 0.500, .b = 0.000 }, .hsv = .{ .hue = 120.0, .saturation = 1.000, .value = 0.500 } },
+    .{ .rgb = .{ .r = 0.500, .g = 1.000, .b = 1.000 }, .hsv = .{ .hue = 180.0, .saturation = 0.500, .value = 1.00 } },
+    .{ .rgb = .{ .r = 0.500, .g = 0.500, .b = 1.000 }, .hsv = .{ .hue = 240.0, .saturation = 0.500, .value = 1.00 } },
+    .{ .rgb = .{ .r = 0.750, .g = 0.250, .b = 0.750 }, .hsv = .{ .hue = 300.0, .saturation = 0.667, .value = 0.750 } },
+    .{ .rgb = .{ .r = 0.628, .g = 0.643, .b = 0.142 }, .hsv = .{ .hue = 61.8, .saturation = 0.779, .value = 0.643 } },
+    .{ .rgb = .{ .r = 0.255, .g = 0.104, .b = 0.918 }, .hsv = .{ .hue = 251.1, .saturation = 0.887, .value = 0.918 } },
+    .{ .rgb = .{ .r = 0.116, .g = 0.675, .b = 0.255 }, .hsv = .{ .hue = 134.9, .saturation = 0.828, .value = 0.675 } },
+    .{ .rgb = .{ .r = 0.941, .g = 0.785, .b = 0.053 }, .hsv = .{ .hue = 49.5, .saturation = 0.944, .value = 0.941 } },
+    .{ .rgb = .{ .r = 0.704, .g = 0.187, .b = 0.897 }, .hsv = .{ .hue = 283.7, .saturation = 0.792, .value = 0.897 } },
+    .{ .rgb = .{ .r = 0.931, .g = 0.463, .b = 0.316 }, .hsv = .{ .hue = 14.3, .saturation = 0.661, .value = 0.931 } },
+    .{ .rgb = .{ .r = 0.998, .g = 0.974, .b = 0.532 }, .hsv = .{ .hue = 56.9, .saturation = 0.467, .value = 0.998 } },
+    .{ .rgb = .{ .r = 0.099, .g = 0.795, .b = 0.591 }, .hsv = .{ .hue = 162.4, .saturation = 0.875, .value = 0.795 } },
+    .{ .rgb = .{ .r = 0.211, .g = 0.149, .b = 0.597 }, .hsv = .{ .hue = 248.3, .saturation = 0.750, .value = 0.597 } },
+    .{ .rgb = .{ .r = 0.495, .g = 0.493, .b = 0.721 }, .hsv = .{ .hue = 240.5, .saturation = 0.316, .value = 0.721 } },
+};
+
+test "RGB to HSV conversion" {
+    for (RgbHsvTestData) |entry| {
+        const converted_hsv = color.Hsv.fromRgb(entry.rgb);
+
+        try helpers.expectApproxEqAbs(converted_hsv.hue, entry.hsv.hue, 0.1);
+        try helpers.expectApproxEqAbs(converted_hsv.saturation, entry.hsv.saturation, 0.1);
+        try helpers.expectApproxEqAbs(converted_hsv.value, entry.hsv.value, 0.1);
+    }
+}
+
+test "HSV to RGB conversion" {
+    for (RgbHsvTestData) |entry| {
+        const converted_rgb = color.Hsv.toRgb(entry.hsv);
+
+        try helpers.expectApproxEqAbs(converted_rgb.r, entry.rgb.r, 0.1);
+        try helpers.expectApproxEqAbs(converted_rgb.g, entry.rgb.g, 0.1);
+        try helpers.expectApproxEqAbs(converted_rgb.b, entry.rgb.b, 0.1);
+    }
+}
+
+test "HSV to HSL conversion" {
+    const hsv = color.Hsv{ .hue = 300.0, .saturation = 0.4140, .value = 0.8449 };
+    const converted_hsl = hsv.toHsl();
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(converted_hsl.hue, 300.0, float_tolerance);
+    try helpers.expectApproxEqAbs(converted_hsl.saturation, 0.53, float_tolerance);
+    try helpers.expectApproxEqAbs(converted_hsl.luminance, 0.67, float_tolerance);
+}
+
+test "Compute Linear sRGB RGB to XYZ matrix" {
+    const result = color.sRGB.rgba_to_xyza;
+
+    const float_tolerance = 0.0001;
+
+    try helpers.expectApproxEqAbs(result.matrix[0][0], 0.4124564, float_tolerance);
+    try helpers.expectApproxEqAbs(result.matrix[0][1], 0.3575761, float_tolerance);
+    try helpers.expectApproxEqAbs(result.matrix[0][2], 0.1804375, float_tolerance);
+    try helpers.expectApproxEqAbs(result.matrix[0][3], 0, float_tolerance);
+
+    try helpers.expectApproxEqAbs(result.matrix[1][0], 0.2126729, float_tolerance);
+    try helpers.expectApproxEqAbs(result.matrix[1][1], 0.7151522, float_tolerance);
+    try helpers.expectApproxEqAbs(result.matrix[1][2], 0.0721750, float_tolerance);
+    try helpers.expectApproxEqAbs(result.matrix[1][3], 0, float_tolerance);
+
+    try helpers.expectApproxEqAbs(result.matrix[2][0], 0.0193339, float_tolerance);
+    try helpers.expectApproxEqAbs(result.matrix[2][1], 0.1191920, float_tolerance);
+    try helpers.expectApproxEqAbs(result.matrix[2][2], 0.9503041, float_tolerance);
+    try helpers.expectApproxEqAbs(result.matrix[2][3], 0, float_tolerance);
+
+    try helpers.expectApproxEqAbs(result.matrix[3][0], 0, float_tolerance);
+    try helpers.expectApproxEqAbs(result.matrix[3][1], 0, float_tolerance);
+    try helpers.expectApproxEqAbs(result.matrix[3][2], 0, float_tolerance);
+    try helpers.expectApproxEqAbs(result.matrix[3][3], 1, float_tolerance);
+}
+
+test "Linear sRGB to CIE XYZ" {
+    const color_to_convert = color.Colorf32.initRgb(0.2, 0.1, 0.8);
+
+    const result = color.sRGB.toXYZ(color_to_convert);
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.x, 0.262599, float_tolerance);
+    try helpers.expectApproxEqAbs(result.y, 0.171790, float_tolerance);
+    try helpers.expectApproxEqAbs(result.z, 0.776029, float_tolerance);
+}
+
+test "Convert Linear sRGB color to AdobeWideGamutRGB" {
+    const color_to_convert = color.Colorf32.initRgb(0.2, 0.1, 0.8);
+
+    const result = color.sRGB.convertColor(color.AdobeWideGamutRGB, color_to_convert);
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.r, 0.161246270, float_tolerance);
+    try helpers.expectApproxEqAbs(result.g, 0.152638555, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, 0.744218409, float_tolerance);
+    try helpers.expectApproxEqAbs(result.a, 1.0, float_tolerance);
+}
+
+test "Convert Linear sRGB to DCI-P3 Display" {
+    const color_to_convert = color.Colorf32.initRgb(0.2, 0.1, 0.8);
+
+    const result = color.sRGB.convertColor(color.DCIP3.Display, color_to_convert);
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.r, 0.182245, float_tolerance);
+    try helpers.expectApproxEqAbs(result.g, 0.103319, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, 0.739062, float_tolerance);
+    try helpers.expectApproxEqAbs(result.a, 1.0, float_tolerance);
+}
+
+test "Convert Linear sRGB to BT709 (sanity check)" {
+    const color_to_convert = color.Colorf32.initRgb(0.2, 0.1, 0.8);
+
+    const result = color.sRGB.convertColor(color.BT709, color_to_convert);
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.r, 0.2, float_tolerance);
+    try helpers.expectApproxEqAbs(result.g, 0.1, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, 0.8, float_tolerance);
+    try helpers.expectApproxEqAbs(result.a, 1.0, float_tolerance);
+}
+
+test "Convert Linear sRGB to BT2020" {
+    const color_to_convert = color.Colorf32.initRgb(0.2, 0.1, 0.8);
+
+    const result = color.sRGB.convertColor(color.BT2020, color_to_convert);
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.r, 0.193054512, float_tolerance);
+    try helpers.expectApproxEqAbs(result.g, 0.114861697, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, 0.728544116, float_tolerance);
+    try helpers.expectApproxEqAbs(result.a, 1.0, float_tolerance);
+}
+
+test "Convert an array of Linear sRGB to ProPhotoRGB" {
+    var colors = [_]color.Colorf32{
+        color.Colorf32.initRgb(0.2, 0.1, 0.8),
+        color.Colorf32.initRgb(1.0, 1.0, 1.0),
+        color.Colorf32.initRgb(0.5, 0.5, 0.0),
+        color.Colorf32.initRgb(0.0, 0.0, 0.0),
+        color.Colorf32.initRgb(0.0, 0.2, 0.4),
+    };
+
+    const expected_results = [_]color.Colorf32{
+        color.Colorf32.initRgb(0.251338661, 0.129547358, 0.707502544),
+        color.Colorf32.initRgb(1.0, 1.0, 1.0),
+        color.Colorf32.initRgb(0.429706693, 0.485920370, 0.0672753304),
+        color.Colorf32.initRgb(0.0, 0.0, 0.0),
+        color.Colorf32.initRgb(0.122260347, 0.185960293, 0.369714200),
+    };
+
+    color.sRGB.convertColors(color.ProPhotoRGB, colors[0..]);
+
+    const float_tolerance = 0.0001;
+    for (expected_results, 0..) |expected, index| {
+        const result = colors[index];
+        try helpers.expectApproxEqAbs(result.r, expected.r, float_tolerance);
+        try helpers.expectApproxEqAbs(result.g, expected.g, float_tolerance);
+        try helpers.expectApproxEqAbs(result.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(result.a, expected.a, float_tolerance);
+    }
+}
+
+test "Convert a sRGB color to CIELab" {
+    const source_color = color.Colorf32.initRgb(0.2, 0.1, 0.8);
+
+    const result = color.sRGB.toLab(source_color);
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.l, 0.48485, float_tolerance);
+    try helpers.expectApproxEqAbs(result.a, 0.47701, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, -0.67469, float_tolerance);
+}
+
+test "Convert a sRGB color to CIELab with alpha" {
+    const source_color = color.Colorf32.initRgba(0.2, 0.1, 0.8, 0.5);
+
+    const result = color.sRGB.toLabAlpha(source_color);
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.l, 0.48485, float_tolerance);
+    try helpers.expectApproxEqAbs(result.a, 0.47701, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, -0.67469, float_tolerance);
+    try helpers.expectApproxEqAbs(result.alpha, 0.5, float_tolerance);
+}
+
+test "Convert a CIELab color to sRGB XYZ" {
+    const source_color = color.CIELab{ .l = 0.48485, .a = 0.47701, .b = -0.67469 };
+
+    const result = source_color.toXYZ(color.sRGB.white);
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.x, 0.262599, float_tolerance);
+    try helpers.expectApproxEqAbs(result.y, 0.171790, float_tolerance);
+    try helpers.expectApproxEqAbs(result.z, 0.776029, float_tolerance);
+}
+
+test "Convert a CIELab color to sRGB XYZ with alpha" {
+    const source_color = color.CIELabAlpha{ .l = 0.48485, .a = 0.47701, .b = -0.67469, .alpha = 0.751534 };
+
+    const result = source_color.toXYZAlpha(color.sRGB.white);
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.x, 0.262599, float_tolerance);
+    try helpers.expectApproxEqAbs(result.y, 0.171790, float_tolerance);
+    try helpers.expectApproxEqAbs(result.z, 0.776029, float_tolerance);
+    try helpers.expectApproxEqAbs(result.a, 0.751534, float_tolerance);
+}
+
+test "Convert a CIELab color to linear sRGB" {
+    const source_color = color.CIELab{ .l = 0.48485, .a = 0.47701, .b = -0.67469 };
+
+    const result = color.sRGB.fromLab(source_color, .none);
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.r, 0.2, float_tolerance);
+    try helpers.expectApproxEqAbs(result.g, 0.1, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, 0.8, float_tolerance);
+}
+
+test "Convert a CIELab color to linear sRGB with alpha" {
+    const source_color = color.CIELabAlpha{ .l = 0.48485, .a = 0.47701, .b = -0.67469, .alpha = 0.751534 };
+
+    const result = color.sRGB.fromLabAlpha(source_color, .none);
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.r, 0.2, float_tolerance);
+    try helpers.expectApproxEqAbs(result.g, 0.1, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, 0.8, float_tolerance);
+    try helpers.expectApproxEqAbs(result.a, 0.751534, float_tolerance);
+
+    const red_lab = color.CIELabAlpha{ .l = 0.532408, .a = 0.800925, .b = 0.672032, .alpha = 1.0 };
+
+    const red_rgba_float = color.sRGB.fromLabAlpha(red_lab, .none);
+    try helpers.expectApproxEqAbs(red_rgba_float.r, 1.0, 0.001);
+    try helpers.expectApproxEqAbs(red_rgba_float.g, 0.0, 0.001);
+    try helpers.expectApproxEqAbs(red_rgba_float.b, 0.0, 0.001);
+    try helpers.expectApproxEqAbs(red_rgba_float.a, 1.0, 0.001);
+
+    const red_rgba = red_rgba_float.toRgba32();
+    try helpers.expectEq(red_rgba.r, 255);
+    try helpers.expectEq(red_rgba.g, 0);
+    try helpers.expectEq(red_rgba.b, 0);
+    try helpers.expectEq(red_rgba.a, 255);
+}
+
+test "Convert a slice of RGBA colors to sRGB XYZ with alpha, in-place" {
+    var colors = [_]color.Colorf32{
+        .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
+        .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
+        .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
+        .{ .r = 1.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Yellow
+        .{ .r = 1.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Magenta
+        .{ .r = 0.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // Cyan
+        .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // White
+        .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
+    };
+
+    const expected_results = [_]color.CIEXYZAlpha{
+        .{ .x = 0.412456, .y = 0.212673, .z = 0.019334, .a = 1.0 }, // Red
+        .{ .x = 0.357576, .y = 0.715152, .z = 0.119192, .a = 1.0 }, // Green
+        .{ .x = 0.180437, .y = 0.072175, .z = 0.950304, .a = 1.0 }, // Blue
+        .{ .x = 0.770033, .y = 0.927825, .z = 0.138526, .a = 1.0 }, // Yellow
+        .{ .x = 0.592894, .y = 0.284848, .z = 0.969638, .a = 1.0 }, // Magenta
+        .{ .x = 0.538014, .y = 0.787327, .z = 1.069496, .a = 1.0 }, // Cyan
+        .{ .x = 0.950470, .y = 1.000000, .z = 1.088830, .a = 1.0 }, // White
+        .{ .x = 0.000000, .y = 0.000000, .z = 0.000000, .a = 1.0 }, // Black
+    };
+
+    const slice_xyza = color.sRGB.sliceToXYZAlphaInPlace(colors[0..]);
+
+    const float_tolerance = 0.0001;
+    for (0..expected_results.len) |index| {
+        const actual = slice_xyza[index];
+        const expected = expected_results[index];
+
+        try helpers.expectApproxEqAbs(actual.x, expected.x, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.y, expected.y, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.z, expected.z, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
+    }
+}
+
+test "Convert a slice of RGBA colors to sRGB XYZ with alpha, copy" {
+    const colors = [_]color.Colorf32{
+        .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
+        .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
+        .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
+        .{ .r = 1.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Yellow
+        .{ .r = 1.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Magenta
+        .{ .r = 0.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // Cyan
+        .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // White
+        .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
+    };
+
+    const expected_results = [_]color.CIEXYZAlpha{
+        .{ .x = 0.412456, .y = 0.212673, .z = 0.019334, .a = 1.0 }, // Red
+        .{ .x = 0.357576, .y = 0.715152, .z = 0.119192, .a = 1.0 }, // Green
+        .{ .x = 0.180437, .y = 0.072175, .z = 0.950304, .a = 1.0 }, // Blue
+        .{ .x = 0.770033, .y = 0.927825, .z = 0.138526, .a = 1.0 }, // Yellow
+        .{ .x = 0.592894, .y = 0.284848, .z = 0.969638, .a = 1.0 }, // Magenta
+        .{ .x = 0.538014, .y = 0.787327, .z = 1.069496, .a = 1.0 }, // Cyan
+        .{ .x = 0.950470, .y = 1.000000, .z = 1.088830, .a = 1.0 }, // White
+        .{ .x = 0.000000, .y = 0.000000, .z = 0.000000, .a = 1.0 }, // Black
+    };
+
+    const slice_xyza = try color.sRGB.sliceToXYZAlphaCopy(helpers.zigimg_test_allocator, colors[0..]);
+    defer helpers.zigimg_test_allocator.free(slice_xyza);
+
+    const float_tolerance = 0.0001;
+    for (0..expected_results.len) |index| {
+        const actual = slice_xyza[index];
+        const expected = expected_results[index];
+
+        try helpers.expectApproxEqAbs(actual.x, expected.x, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.y, expected.y, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.z, expected.z, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
+    }
+}
+
+test "Convert a slice of RGBA colors to sRGB CIELab with alpha, in-place" {
+    var colors = [_]color.Colorf32{
+        .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
+        .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
+        .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
+        .{ .r = 1.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Yellow
+        .{ .r = 1.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Magenta
+        .{ .r = 0.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // Cyan
+        .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // White
+        .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
+    };
+
+    const expected_results = [_]color.CIELabAlpha{
+        .{ .l = 0.532408, .a = 0.800925, .b = 0.672032, .alpha = 1.0 }, // Red
+        .{ .l = 0.877347, .a = -0.861827, .b = 0.831793, .alpha = 1.0 }, // Green
+        .{ .l = 0.322970, .a = 0.791875, .b = -1.078602, .alpha = 1.0 }, // Blue
+        .{ .l = 0.971393, .a = -0.215537, .b = 0.944780, .alpha = 1.0 }, // Yellow
+        .{ .l = 0.603242, .a = 0.982343, .b = -0.608249, .alpha = 1.0 }, // Magenta
+        .{ .l = 0.911132, .a = -0.480875, .b = -0.141312, .alpha = 1.0 }, // Cyan
+        .{ .l = 1.000000, .a = 0.0, .b = -0.0, .alpha = 1.0 }, // White
+        .{ .l = 0.000000, .a = 0.0, .b = 0.0, .alpha = 1.0 }, // Black
+    };
+
+    const slice_lab = color.sRGB.sliceToLabAlphaInPlace(colors[0..]);
+
+    const float_tolerance = 0.0001;
+    for (0..expected_results.len) |index| {
+        const actual = slice_lab[index];
+        const expected = expected_results[index];
+
+        try helpers.expectApproxEqAbs(actual.l, expected.l, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.alpha, expected.alpha, float_tolerance);
+    }
+}
+
+test "Convert a slice of RGBA colors to sRGB CIELab with alpha, copy" {
+    const colors = [_]color.Colorf32{
+        .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
+        .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
+        .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
+        .{ .r = 1.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Yellow
+        .{ .r = 1.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Magenta
+        .{ .r = 0.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // Cyan
+        .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // White
+        .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
+    };
+
+    const expected_results = [_]color.CIELabAlpha{
+        .{ .l = 0.532408, .a = 0.800925, .b = 0.672032, .alpha = 1.0 }, // Red
+        .{ .l = 0.877347, .a = -0.861827, .b = 0.831793, .alpha = 1.0 }, // Green
+        .{ .l = 0.322970, .a = 0.791875, .b = -1.078602, .alpha = 1.0 }, // Blue
+        .{ .l = 0.971393, .a = -0.215537, .b = 0.944780, .alpha = 1.0 }, // Yellow
+        .{ .l = 0.603242, .a = 0.982343, .b = -0.608249, .alpha = 1.0 }, // Magenta
+        .{ .l = 0.911132, .a = -0.480875, .b = -0.141312, .alpha = 1.0 }, // Cyan
+        .{ .l = 1.000000, .a = 0.0, .b = -0.0, .alpha = 1.0 }, // White
+        .{ .l = 0.000000, .a = 0.0, .b = 0.0, .alpha = 1.0 }, // Black
+    };
+
+    const slice_lab = try color.sRGB.sliceToLabAlphaCopy(helpers.zigimg_test_allocator, colors[0..]);
+    defer helpers.zigimg_test_allocator.free(slice_lab);
+
+    const float_tolerance = 0.0001;
+    for (0..expected_results.len) |index| {
+        const actual = slice_lab[index];
+        const expected = expected_results[index];
+
+        try helpers.expectApproxEqAbs(actual.l, expected.l, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.alpha, expected.alpha, float_tolerance);
+    }
+}
+
+test "Convert a slice of CIEXYZAlpha colors to linear sRGB RGBA, in-place" {
+    var colors = [_]color.CIEXYZAlpha{
+        .{ .x = 0.412456, .y = 0.212673, .z = 0.019334, .a = 1.0 }, // Red
+        .{ .x = 0.357576, .y = 0.715152, .z = 0.119192, .a = 1.0 }, // Green
+        .{ .x = 0.180437, .y = 0.072175, .z = 0.950304, .a = 1.0 }, // Blue
+        .{ .x = 0.770033, .y = 0.927825, .z = 0.138526, .a = 1.0 }, // Yellow
+        .{ .x = 0.592894, .y = 0.284848, .z = 0.969638, .a = 1.0 }, // Magenta
+        .{ .x = 0.538014, .y = 0.787327, .z = 1.069496, .a = 1.0 }, // Cyan
+        .{ .x = 0.950470, .y = 1.000000, .z = 1.088830, .a = 1.0 }, // White
+        .{ .x = 0.000000, .y = 0.000000, .z = 0.000000, .a = 1.0 }, // Black
+    };
+
+    const expected_results = [_]color.Colorf32{
+        .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
+        .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
+        .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
+        .{ .r = 1.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Yellow
+        .{ .r = 1.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Magenta
+        .{ .r = 0.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // Cyan
+        .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // White
+        .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
+    };
+
+    const slice_rgba = color.sRGB.sliceFromXYZAlphaInPlace(colors[0..]);
+
+    const float_tolerance = 0.001;
+    for (0..expected_results.len) |index| {
+        const actual = slice_rgba[index];
+        const expected = expected_results[index];
+
+        try helpers.expectApproxEqAbs(actual.r, expected.r, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.g, expected.g, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
+    }
+}
+
+test "Convert a slice of CIEXYZAlpha colors to linear sRGB RGBA, copy" {
+    const colors = [_]color.CIEXYZAlpha{
+        .{ .x = 0.412456, .y = 0.212673, .z = 0.019334, .a = 1.0 }, // Red
+        .{ .x = 0.357576, .y = 0.715152, .z = 0.119192, .a = 1.0 }, // Green
+        .{ .x = 0.180437, .y = 0.072175, .z = 0.950304, .a = 1.0 }, // Blue
+        .{ .x = 0.770033, .y = 0.927825, .z = 0.138526, .a = 1.0 }, // Yellow
+        .{ .x = 0.592894, .y = 0.284848, .z = 0.969638, .a = 1.0 }, // Magenta
+        .{ .x = 0.538014, .y = 0.787327, .z = 1.069496, .a = 1.0 }, // Cyan
+        .{ .x = 0.950470, .y = 1.000000, .z = 1.088830, .a = 1.0 }, // White
+        .{ .x = 0.000000, .y = 0.000000, .z = 0.000000, .a = 1.0 }, // Black
+    };
+
+    const expected_results = [_]color.Colorf32{
+        .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
+        .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
+        .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
+        .{ .r = 1.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Yellow
+        .{ .r = 1.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Magenta
+        .{ .r = 0.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // Cyan
+        .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // White
+        .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
+    };
+
+    const slice_rgba = try color.sRGB.sliceFromXYZAlphaCopy(helpers.zigimg_test_allocator, colors[0..]);
+    defer helpers.zigimg_test_allocator.free(slice_rgba);
+
+    const float_tolerance = 0.001;
+    for (0..expected_results.len) |index| {
+        const actual = slice_rgba[index];
+        const expected = expected_results[index];
+
+        try helpers.expectApproxEqAbs(actual.r, expected.r, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.g, expected.g, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
+    }
+}
+
+test "Convert a slice of CIELabAlpha colors to linear sRGB RGBA, in-place" {
+    var colors = [_]color.CIELabAlpha{
+        .{ .l = 0.532408, .a = 0.800925, .b = 0.672032, .alpha = 1.0 }, // Red
+        .{ .l = 0.877347, .a = -0.861827, .b = 0.831793, .alpha = 1.0 }, // Green
+        .{ .l = 0.322970, .a = 0.791875, .b = -1.078602, .alpha = 1.0 }, // Blue
+        .{ .l = 0.971393, .a = -0.215537, .b = 0.944780, .alpha = 1.0 }, // Yellow
+        .{ .l = 0.603242, .a = 0.982343, .b = -0.608249, .alpha = 1.0 }, // Magenta
+        .{ .l = 0.911132, .a = -0.480875, .b = -0.141312, .alpha = 1.0 }, // Cyan
+        .{ .l = 1.000000, .a = 0.0, .b = -0.0, .alpha = 1.0 }, // White
+        .{ .l = 0.000000, .a = 0.0, .b = 0.0, .alpha = 1.0 }, // Black
+    };
+
+    const expected_results = [_]color.Colorf32{
+        .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
+        .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
+        .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
+        .{ .r = 1.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Yellow
+        .{ .r = 1.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Magenta
+        .{ .r = 0.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // Cyan
+        .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // White
+        .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
+    };
+
+    const slice_rgba = color.sRGB.sliceFromLabAlphaInPlace(colors[0..], .none);
+
+    const float_tolerance = 0.001;
+    for (0..expected_results.len) |index| {
+        const actual = slice_rgba[index];
+        const expected = expected_results[index];
+
+        try helpers.expectApproxEqAbs(actual.r, expected.r, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.g, expected.g, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
+    }
+}
+
+test "Convert a slice of CIELabAlpha colors to linear sRGB RGBA, Copy" {
+    const colors = [_]color.CIELabAlpha{
+        .{ .l = 0.532408, .a = 0.800925, .b = 0.672032, .alpha = 1.0 }, // Red
+        .{ .l = 0.877347, .a = -0.861827, .b = 0.831793, .alpha = 1.0 }, // Green
+        .{ .l = 0.322970, .a = 0.791875, .b = -1.078602, .alpha = 1.0 }, // Blue
+        .{ .l = 0.971393, .a = -0.215537, .b = 0.944780, .alpha = 1.0 }, // Yellow
+        .{ .l = 0.603242, .a = 0.982343, .b = -0.608249, .alpha = 1.0 }, // Magenta
+        .{ .l = 0.911132, .a = -0.480875, .b = -0.141312, .alpha = 1.0 }, // Cyan
+        .{ .l = 1.000000, .a = 0.0, .b = -0.0, .alpha = 1.0 }, // White
+        .{ .l = 0.000000, .a = 0.0, .b = 0.0, .alpha = 1.0 }, // Black
+    };
+
+    const expected_results = [_]color.Colorf32{
+        .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
+        .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
+        .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
+        .{ .r = 1.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Yellow
+        .{ .r = 1.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Magenta
+        .{ .r = 0.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // Cyan
+        .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // White
+        .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
+    };
+
+    const slice_rgba = try color.sRGB.sliceFromLabAlphaCopy(helpers.zigimg_test_allocator, colors[0..], .none);
+    defer helpers.zigimg_test_allocator.free(slice_rgba);
+
+    const float_tolerance = 0.001;
+    for (0..expected_results.len) |index| {
+        const actual = slice_rgba[index];
+        const expected = expected_results[index];
+
+        try helpers.expectApproxEqAbs(actual.r, expected.r, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.g, expected.g, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
+    }
+}
+
+test "Reduce brightness by 25% of a slice of sRGB RGBA color using CIELab as a intermediate" {
+    var colors = [_]color.Colorf32{
+        .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
+        .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
+        .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
+        .{ .r = 1.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Yellow
+        .{ .r = 1.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Magenta
+        .{ .r = 0.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // Cyan
+        .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // White
+        .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
+    };
+
+    const expected_results = [_]color.Colorf32{
+        .{ .r = 0.6434, .g = 0.0000, .b = 0.0000, .a = 1.0 }, // Red
+        .{ .r = 0.0000, .g = 0.5196, .b = 0.0000, .a = 1.0 }, // Green
+        .{ .r = 0.0000, .g = 0.0000, .b = 0.7990, .a = 1.0 }, // Blue
+        .{ .r = 0.4588, .g = 0.4962, .b = 0.0000, .a = 1.0 }, // Yellow
+        .{ .r = 0.6320, .g = 0.0000, .b = 0.6532, .a = 1.0 }, // Magenta
+        .{ .r = 0.0000, .g = 0.5125, .b = 0.5191, .a = 1.0 }, // Cyan
+        .{ .r = 0.4827, .g = 0.4827, .b = 0.4827, .a = 1.0 }, // White
+        .{ .r = 0.0000, .g = 0.0000, .b = 0.0000, .a = 1.0 }, // Black
+    };
+
+    const slice_lab = color.sRGB.sliceToLabAlphaInPlace(colors[0..]);
+
+    for (slice_lab) |*lab| {
+        lab.l *= (1.0 - 0.25);
+    }
+
+    const slice_rgba = color.sRGB.sliceFromLabAlphaInPlace(slice_lab, .clamp);
+
+    const float_tolerance = 0.0001;
+    for (0..expected_results.len) |index| {
+        const actual = slice_rgba[index];
+        const expected = expected_results[index];
+
+        try helpers.expectApproxEqAbs(actual.r, expected.r, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.g, expected.g, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
+    }
+}
+
+test "Convert Colorf32 to Cmykf32" {
+    const colors = [_]color.Colorf32{
+        .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
+        .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
+        .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
+        .{ .r = 1.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Yellow
+        .{ .r = 1.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Magenta
+        .{ .r = 0.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // Cyan
+        .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // White
+        .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
+        .{ .r = 0.2, .g = 0.1, .b = 0.8, .a = 1.0 }, // #3319cc
+    };
+
+    const expected_results = [_]color.Cmykf32{
+        .{ .c = 0.0000, .m = 1.0000, .y = 1.0000, .k = 0.00 }, // Red
+        .{ .c = 1.0000, .m = 0.0000, .y = 1.0000, .k = 0.00 }, // Green
+        .{ .c = 1.0000, .m = 1.0000, .y = 0.0000, .k = 0.00 }, // Blue
+        .{ .c = 0.0000, .m = 0.0000, .y = 1.0000, .k = 0.00 }, // Yellow
+        .{ .c = 0.0000, .m = 1.0000, .y = 0.0000, .k = 0.00 }, // Magenta
+        .{ .c = 1.0000, .m = 0.0000, .y = 0.0000, .k = 0.00 }, // Cyan
+        .{ .c = 0.0000, .m = 0.0000, .y = 0.0000, .k = 0.00 }, // White
+        .{ .c = 0.0000, .m = 0.0000, .y = 0.0000, .k = 1.00 }, // Black
+        .{ .c = 0.7500, .m = 0.8750, .y = 0.0000, .k = 0.20 }, // #3319cc
+    };
+
+    const float_tolerance = 0.0001;
+
+    for (0..expected_results.len) |index| {
+        const actual = color.Cmykf32.fromColorf32(colors[index]);
+        const expected = expected_results[index];
+
+        try helpers.expectApproxEqAbs(actual.c, expected.c, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.m, expected.m, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.y, expected.y, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.k, expected.k, float_tolerance);
+    }
+}
+
+test "Convert Cmykf32 to Colorf32" {
+    const colors = [_]color.Cmykf32{
+        .{ .c = 0.0000, .m = 1.0000, .y = 1.0000, .k = 0.00 }, // Red
+        .{ .c = 1.0000, .m = 0.0000, .y = 1.0000, .k = 0.00 }, // Green
+        .{ .c = 1.0000, .m = 1.0000, .y = 0.0000, .k = 0.00 }, // Blue
+        .{ .c = 0.0000, .m = 0.0000, .y = 1.0000, .k = 0.00 }, // Yellow
+        .{ .c = 0.0000, .m = 1.0000, .y = 0.0000, .k = 0.00 }, // Magenta
+        .{ .c = 1.0000, .m = 0.0000, .y = 0.0000, .k = 0.00 }, // Cyan
+        .{ .c = 0.0000, .m = 0.0000, .y = 0.0000, .k = 0.00 }, // White
+        .{ .c = 0.0000, .m = 0.0000, .y = 0.0000, .k = 1.00 }, // Black
+        .{ .c = 0.7500, .m = 0.8750, .y = 0.0000, .k = 0.20 }, // #3319cc
+    };
+
+    const expected_results = [_]color.Colorf32{
+        .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
+        .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
+        .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
+        .{ .r = 1.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Yellow
+        .{ .r = 1.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Magenta
+        .{ .r = 0.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // Cyan
+        .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // White
+        .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
+        .{ .r = 0.2, .g = 0.1, .b = 0.8, .a = 1.0 }, // #3319cc
+    };
+
+    const float_tolerance = 0.0001;
+
+    for (0..expected_results.len) |index| {
+        const actual = color.Cmykf32.toColorF32(colors[index]);
+        const expected = expected_results[index];
+
+        try helpers.expectApproxEqAbs(actual.r, expected.r, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.g, expected.g, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
+    }
+}
+
+test "Convert from CIE Lab to CIE LCh(ab)" {
+    const lab = color.CIELab{ .l = 0.48485, .a = 0.47701, .b = -0.67469 };
+
+    const result = lab.toLCHab();
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.l, 0.48485, float_tolerance);
+    try helpers.expectApproxEqAbs(result.c, 0.82628, float_tolerance);
+    try helpers.expectApproxEqAbs(result.h, 5.32780, float_tolerance);
+}
+
+test "Convert from CIE LCh(ab) to CIE Lab" {
+    const lch = color.CIELCHab{ .l = 0.48485, .c = 0.82628, .h = 5.32780 };
+
+    const result = lch.toLab();
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.l, 0.48485, float_tolerance);
+    try helpers.expectApproxEqAbs(result.a, 0.47701, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, -0.67469, float_tolerance);
+}
+
+test "Convert from CIE Lab with alpha to CIELCh(ab) with alpha" {
+    const lab = color.CIELabAlpha{ .l = 0.48485, .a = 0.47701, .b = -0.67469, .alpha = 0.4567 };
+
+    const result = lab.toLCHabAlpha();
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.l, 0.48485, float_tolerance);
+    try helpers.expectApproxEqAbs(result.c, 0.82628, float_tolerance);
+    try helpers.expectApproxEqAbs(result.h, 5.32780, float_tolerance);
+    try helpers.expectApproxEqAbs(result.alpha, 0.4567, float_tolerance);
+}
+
+test "Convert from CIELCh(ab) with alpha to CIE Lab with alpha" {
+    const lch = color.CIELCHabAlpha{ .l = 0.48485, .c = 0.82628, .h = 5.32780, .alpha = 0.4567 };
+
+    const result = lch.toLabAlpha();
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.l, 0.48485, float_tolerance);
+    try helpers.expectApproxEqAbs(result.a, 0.47701, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, -0.67469, float_tolerance);
+    try helpers.expectApproxEqAbs(result.alpha, 0.4567, float_tolerance);
+}
+
+test "Convert a sRGB RGBA to CIELuv" {
+    const rgba = color.Colorf32.initRgb(0.2, 0.1, 0.8);
+
+    const result = color.sRGB.toLuv(rgba);
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.l, 0.48485, float_tolerance);
+    try helpers.expectApproxEqAbs(result.u, 0.03422, float_tolerance);
+    try helpers.expectApproxEqAbs(result.v, -1.06609, float_tolerance);
+}
+
+test "Conveert a CIELuv to linear sRGB RGBA" {
+    const luv = color.CIELuv{ .l = 0.48485, .u = 0.03422, .v = -1.06609 };
+
+    const result = color.sRGB.fromLuv(luv, .none);
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.r, 0.2, float_tolerance);
+    try helpers.expectApproxEqAbs(result.g, 0.1, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, 0.8, float_tolerance);
+}
+
+test "Convert a sRGB RGBA to CIELuvAlpha" {
+    const rgba = color.Colorf32.initRgb(0.2, 0.1, 0.8);
+
+    const result = color.sRGB.toLuvAlpha(rgba);
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.l, 0.48485, float_tolerance);
+    try helpers.expectApproxEqAbs(result.u, 0.03422, float_tolerance);
+    try helpers.expectApproxEqAbs(result.v, -1.06609, float_tolerance);
+}
+
+test "Conveert a CIELuvAlpha to linear sRGB RGBA" {
+    const luv = color.CIELuvAlpha{ .l = 0.48485, .u = 0.03422, .v = -1.06609, .alpha = 0.12345 };
+
+    const result = color.sRGB.fromLuvAlpha(luv, .none);
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.r, 0.2, float_tolerance);
+    try helpers.expectApproxEqAbs(result.g, 0.1, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, 0.8, float_tolerance);
+    try helpers.expectApproxEqAbs(result.a, 0.12345, float_tolerance);
+}
+
+test "Convert a slice of RGBA colors to sRGB CIELuv with alpha, in-place" {
+    var colors = [_]color.Colorf32{
+        .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
+        .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
+        .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
+        .{ .r = 1.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Yellow
+        .{ .r = 1.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Magenta
+        .{ .r = 0.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // Cyan
+        .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // White
+        .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
+    };
+
+    const expected_results = [_]color.CIELuvAlpha{
+        .{ .l = 0.532408, .u = 1.75015, .v = 0.377564, .alpha = 1.0 }, // Red
+        .{ .l = 0.877347, .u = -0.830776, .v = 1.073985, .alpha = 1.0 }, // Green
+        .{ .l = 0.322970, .u = -0.094054, .v = -1.303423, .alpha = 1.0 }, // Blue
+        .{ .l = 0.971393, .u = 0.077056, .v = 1.067866, .alpha = 1.0 }, // Yellow
+        .{ .l = 0.603242, .u = 0.840714, .v = -1.086834, .alpha = 1.0 }, // Magenta
+        .{ .l = 0.911132, .u = -0.704773, .v = -0.152042, .alpha = 1.0 }, // Cyan
+        .{ .l = 1.000000, .u = 0.0, .v = -0.0, .alpha = 1.0 }, // White
+        .{ .l = 0.000000, .u = 0.0, .v = 0.0, .alpha = 1.0 }, // Black
+    };
+
+    const slice_luv = color.sRGB.sliceToLuvAlphaInPlace(colors[0..]);
+
+    const float_tolerance = 0.001;
+    for (0..expected_results.len) |index| {
+        const actual = slice_luv[index];
+        const expected = expected_results[index];
+
+        try helpers.expectApproxEqAbs(actual.l, expected.l, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.u, expected.u, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.v, expected.v, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.alpha, expected.alpha, float_tolerance);
+    }
+}
+
+test "Convert a slice of RGBA colors to sRGB CIELuv with alpha, copy" {
+    const colors = [_]color.Colorf32{
+        .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
+        .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
+        .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
+        .{ .r = 1.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Yellow
+        .{ .r = 1.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Magenta
+        .{ .r = 0.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // Cyan
+        .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // White
+        .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
+    };
+
+    const expected_results = [_]color.CIELuvAlpha{
+        .{ .l = 0.532408, .u = 1.75015, .v = 0.377564, .alpha = 1.0 }, // Red
+        .{ .l = 0.877347, .u = -0.830776, .v = 1.073985, .alpha = 1.0 }, // Green
+        .{ .l = 0.322970, .u = -0.094054, .v = -1.303423, .alpha = 1.0 }, // Blue
+        .{ .l = 0.971393, .u = 0.077056, .v = 1.067866, .alpha = 1.0 }, // Yellow
+        .{ .l = 0.603242, .u = 0.840714, .v = -1.086834, .alpha = 1.0 }, // Magenta
+        .{ .l = 0.911132, .u = -0.704773, .v = -0.152042, .alpha = 1.0 }, // Cyan
+        .{ .l = 1.000000, .u = 0.0, .v = -0.0, .alpha = 1.0 }, // White
+        .{ .l = 0.000000, .u = 0.0, .v = 0.0, .alpha = 1.0 }, // Black
+    };
+
+    const slice_luv = try color.sRGB.sliceToLuvAlphaCopy(helpers.zigimg_test_allocator, colors[0..]);
+    defer helpers.zigimg_test_allocator.free(slice_luv);
+
+    const float_tolerance = 0.001;
+    for (0..expected_results.len) |index| {
+        const actual = slice_luv[index];
+        const expected = expected_results[index];
+
+        try helpers.expectApproxEqAbs(actual.l, expected.l, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.u, expected.u, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.v, expected.v, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.alpha, expected.alpha, float_tolerance);
+    }
+}
+
+test "Convert a slice of CIELuvAlpha colors to linear sRGB with alpha, in-place" {
+    var colors = [_]color.CIELuvAlpha{
+        .{ .l = 0.532408, .u = 1.75015, .v = 0.377564, .alpha = 1.0 }, // Red
+        .{ .l = 0.877347, .u = -0.830776, .v = 1.073985, .alpha = 1.0 }, // Green
+        .{ .l = 0.322970, .u = -0.094054, .v = -1.303423, .alpha = 1.0 }, // Blue
+        .{ .l = 0.971393, .u = 0.077056, .v = 1.067866, .alpha = 1.0 }, // Yellow
+        .{ .l = 0.603242, .u = 0.840714, .v = -1.086834, .alpha = 1.0 }, // Magenta
+        .{ .l = 0.911132, .u = -0.704773, .v = -0.152042, .alpha = 1.0 }, // Cyan
+        .{ .l = 1.000000, .u = 0.0, .v = -0.0, .alpha = 1.0 }, // White
+        .{ .l = 0.000000, .u = 0.0, .v = 0.0, .alpha = 1.0 }, // Black
+    };
+
+    const expected_results = [_]color.Colorf32{
+        .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
+        .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
+        .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
+        .{ .r = 1.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Yellow
+        .{ .r = 1.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Magenta
+        .{ .r = 0.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // Cyan
+        .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // White
+        .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
+    };
+
+    const slice_rgba = color.sRGB.sliceFromLuvAlphaInPlace(colors[0..], .clamp);
+
+    const float_tolerance = 0.0001;
+    for (0..expected_results.len) |index| {
+        const actual = slice_rgba[index];
+        const expected = expected_results[index];
+
+        try helpers.expectApproxEqAbs(actual.r, expected.r, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.g, expected.g, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
+    }
+}
+
+test "Convert a slice of CIELuvAlpha colors to linear sRGB with alpha, copy" {
+    const colors = [_]color.CIELuvAlpha{
+        .{ .l = 0.532408, .u = 1.75015, .v = 0.377564, .alpha = 1.0 }, // Red
+        .{ .l = 0.877347, .u = -0.830776, .v = 1.073985, .alpha = 1.0 }, // Green
+        .{ .l = 0.322970, .u = -0.094054, .v = -1.303423, .alpha = 1.0 }, // Blue
+        .{ .l = 0.971393, .u = 0.077056, .v = 1.067866, .alpha = 1.0 }, // Yellow
+        .{ .l = 0.603242, .u = 0.840714, .v = -1.086834, .alpha = 1.0 }, // Magenta
+        .{ .l = 0.911132, .u = -0.704773, .v = -0.152042, .alpha = 1.0 }, // Cyan
+        .{ .l = 1.000000, .u = 0.0, .v = -0.0, .alpha = 1.0 }, // White
+        .{ .l = 0.000000, .u = 0.0, .v = 0.0, .alpha = 1.0 }, // Black
+    };
+
+    const expected_results = [_]color.Colorf32{
+        .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
+        .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
+        .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
+        .{ .r = 1.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Yellow
+        .{ .r = 1.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Magenta
+        .{ .r = 0.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // Cyan
+        .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // White
+        .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
+    };
+
+    const slice_rgba = try color.sRGB.sliceFromLuvAlphaCopy(helpers.zigimg_test_allocator, colors[0..], .clamp);
+    defer helpers.zigimg_test_allocator.free(slice_rgba);
+
+    const float_tolerance = 0.0001;
+    for (0..expected_results.len) |index| {
+        const actual = slice_rgba[index];
+        const expected = expected_results[index];
+
+        try helpers.expectApproxEqAbs(actual.r, expected.r, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.g, expected.g, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
+    }
+}
+
+test "Convert from CIE Luv to CIE LCh(uv)" {
+    const luv = color.CIELuv{ .l = 0.48485, .u = 0.034216, .v = -1.066091 };
+
+    const result = luv.toLCHuv();
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.l, 0.48485, float_tolerance);
+    try helpers.expectApproxEqAbs(result.c, 1.066640, float_tolerance);
+    try helpers.expectApproxEqAbs(result.h, 4.744472, float_tolerance);
+}
+
+test "Convert from CIE LCh(uv) to CIE Luv" {
+    const lch = color.CIELCHuv{ .l = 0.48485, .c = 1.066640, .h = 4.744472 };
+
+    const result = lch.toLuv();
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.l, 0.48485, float_tolerance);
+    try helpers.expectApproxEqAbs(result.u, 0.034216, float_tolerance);
+    try helpers.expectApproxEqAbs(result.v, -1.066091, float_tolerance);
+}
+
+test "Convert from CIE Luv with alpha to CIE LCh(uv) with alpha" {
+    const luv = color.CIELuvAlpha{ .l = 0.48485, .u = 0.034216, .v = -1.066091, .alpha = 0.12345 };
+
+    const result = luv.toLCHuvAlpha();
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.l, 0.48485, float_tolerance);
+    try helpers.expectApproxEqAbs(result.c, 1.066640, float_tolerance);
+    try helpers.expectApproxEqAbs(result.h, 4.744472, float_tolerance);
+    try helpers.expectApproxEqAbs(result.alpha, 0.12345, float_tolerance);
+}
+
+test "Convert from CIE LCh(uv) with alpha to CIE Luv with alpha" {
+    const lch = color.CIELCHuvAlpha{ .l = 0.48485, .c = 1.066640, .h = 4.744472, .alpha = 0.12345 };
+
+    const result = lch.toLuvAlpha();
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.l, 0.48485, float_tolerance);
+    try helpers.expectApproxEqAbs(result.u, 0.034216, float_tolerance);
+    try helpers.expectApproxEqAbs(result.v, -1.066091, float_tolerance);
+    try helpers.expectApproxEqAbs(result.alpha, 0.12345, float_tolerance);
+}
+
+test "Convert a HSLuv color to gamma sRGB color" {
+    const hsluv = color.HSLuv{ .h = std.math.degreesToRadians(f32, 243.0), .s = 0.61, .l = 0.51 };
+
+    const linear = color.sRGB.fromHSLuv(hsluv, .none);
+
+    const result = color.sRGB.toGamma(linear);
+
+    // #537da6
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.r, 0.324444026, float_tolerance);
+    try helpers.expectApproxEqAbs(result.g, 0.490519762, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, 0.651108801, float_tolerance);
+    try helpers.expectApproxEqAbs(result.a, 1.0, float_tolerance);
+
+    const rgba = result.toRgba32();
+    try helpers.expectEq(rgba.r, 0x53);
+    try helpers.expectEq(rgba.g, 0x7d);
+    try helpers.expectEq(rgba.b, 0xa6);
+    try helpers.expectEq(rgba.a, 0xFF);
+}
+
+test "Convert a gamma sRGB color to HSLuv" {
+    // #537da6
+    const srgb = color.Colorf32{ .r = 0.32549, .g = 0.4902, .b = 0.65098, .a = 1.0 };
+    const source = color.sRGB.toLinear(srgb);
+
+    const result = color.sRGB.toHSLuv(source);
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.h, 4.24362755, float_tolerance);
+    try helpers.expectApproxEqAbs(result.s, 0.607237875, float_tolerance);
+    try helpers.expectApproxEqAbs(result.l, 0.509887099, float_tolerance);
+}
+
+test "Convert a HSLuv with alpha color to gamma sRGB color with alpha" {
+    const hsluv = color.HSLuvAlpha{ .h = std.math.degreesToRadians(f32, 243.0), .s = 0.61, .l = 0.51, .alpha = 0.12345 };
+
+    const linear = color.sRGB.fromHSLuvAlpha(hsluv, .none);
+
+    const result = color.sRGB.toGamma(linear);
+
+    // #537da6
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.r, 0.324444026, float_tolerance);
+    try helpers.expectApproxEqAbs(result.g, 0.490519762, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, 0.651108801, float_tolerance);
+    try helpers.expectApproxEqAbs(result.a, 0.12345, float_tolerance);
+
+    const rgba = result.toRgba32();
+    try helpers.expectEq(rgba.r, 0x53);
+    try helpers.expectEq(rgba.g, 0x7d);
+    try helpers.expectEq(rgba.b, 0xa6);
+    try helpers.expectEq(rgba.a, 0x1f);
+}
+
+test "Convert a gamma sRGB color with alpha to HSLuv with alpha" {
+    // #537da6
+    const srgb = color.Colorf32{ .r = 0.32549, .g = 0.4902, .b = 0.65098, .a = 0.12345 };
+    const source = color.sRGB.toLinear(srgb);
+
+    const result = color.sRGB.toHSLuvAlpha(source);
+
+    const float_tolerance = 0.0001;
+    try helpers.expectApproxEqAbs(result.h, 4.24362755, float_tolerance);
+    try helpers.expectApproxEqAbs(result.s, 0.607237875, float_tolerance);
+    try helpers.expectApproxEqAbs(result.l, 0.509887099, float_tolerance);
+    try helpers.expectApproxEqAbs(result.alpha, 0.12345, float_tolerance);
+}
+
+test "Convert CIE XYZA to Oklab Alpha" {
+    const xyza = [_]color.CIEXYZAlpha{
+        .{ .x = 0.950, .y = 1.000, .z = 1.089, .a = 1.0 },
+        .{ .x = 1.000, .y = 0.000, .z = 0.000, .a = 1.0 },
+        .{ .x = 0.000, .y = 1.000, .z = 0.000, .a = 1.0 },
+        .{ .x = 0.000, .y = 0.000, .z = 1.000, .a = 1.0 },
+    };
+
+    const lab = [_]color.OklabAlpha{
+        .{ .l = 1.000, .a = 0.000, .b = 0.000, .alpha = 1.0 },
+        .{ .l = 0.450, .a = 1.236, .b = -0.019, .alpha = 1.0 },
+        .{ .l = 0.922, .a = -0.671, .b = 0.263, .alpha = 1.0 },
+        .{ .l = 0.153, .a = -1.415, .b = -0.449, .alpha = 1.0 },
+    };
+
+    for (0..lab.len) |index| {
+        const actual = color.OklabAlpha.fromXYZAlpha(xyza[index]);
+        const expected = lab[index];
+
+        const float_tolerance = 0.001;
+        try helpers.expectApproxEqAbs(actual.l, expected.l, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.alpha, expected.alpha, float_tolerance);
+    }
+}
+
+test "Convert linear sRGB to Oklab" {
+    const rgba = color.Colorf32{ .r = 0.2, .g = 0.1, .b = 0.8, .a = 1.0 };
+
+    const result = color.sRGB.toOklab(rgba);
+
+    const float_tolerance = 0.00001;
+    try helpers.expectApproxEqAbs(result.l, 0.576150835, float_tolerance);
+    try helpers.expectApproxEqAbs(result.a, 0.0686165094, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, -0.193039685, float_tolerance);
+}
+
+test "Convert Oklab to linear sRGB" {
+    const lab = color.Oklab{ .l = 0.576150835, .a = 0.0686165094, .b = -0.193039685 };
+
+    const result = color.sRGB.fromOkLab(lab, .none);
+
+    const float_tolerance = 0.00001;
+    try helpers.expectApproxEqAbs(result.r, 0.2, float_tolerance);
+    try helpers.expectApproxEqAbs(result.g, 0.1, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, 0.8, float_tolerance);
+}
+//
+test "Convert linear sRGB with alpha to Oklab with alpha" {
+    const rgba = color.Colorf32{ .r = 0.2, .g = 0.1, .b = 0.8, .a = 0.12345 };
+
+    const result = color.sRGB.toOklabAlpha(rgba);
+
+    const float_tolerance = 0.00001;
+    try helpers.expectApproxEqAbs(result.l, 0.576150835, float_tolerance);
+    try helpers.expectApproxEqAbs(result.a, 0.0686165094, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, -0.193039685, float_tolerance);
+    try helpers.expectApproxEqAbs(result.alpha, 0.12345, float_tolerance);
+}
+
+test "Convert Oklab with alpha to linear sRGB with alpha" {
+    const lab = color.OklabAlpha{ .l = 0.576150835, .a = 0.0686165094, .b = -0.193039685, .alpha = 0.12345 };
+
+    const result = color.sRGB.fromOkLabAlpha(lab, .none);
+
+    const float_tolerance = 0.00001;
+    try helpers.expectApproxEqAbs(result.r, 0.2, float_tolerance);
+    try helpers.expectApproxEqAbs(result.g, 0.1, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, 0.8, float_tolerance);
+    try helpers.expectApproxEqAbs(result.a, 0.12345, float_tolerance);
+}
+
+test "Convert a slice of sRGB RGBA colors to OklabAlpha, in-place" {
+    var colors = [_]color.Colorf32{
+        .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
+        .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
+        .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
+        .{ .r = 1.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Yellow
+        .{ .r = 1.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Magenta
+        .{ .r = 0.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // Cyan
+        .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // White
+        .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
+    };
+
+    const expected_results = [_]color.OklabAlpha{
+        .{ .l = 0.627951443, .a = 0.224827796, .b = 0.125791788, .alpha = 1.0 }, // Red
+        .{ .l = 0.866444945, .a = -0.233919501, .b = 0.179420292, .alpha = 1.0 }, // Green
+        .{ .l = 0.451988429, .a = -0.0324304998, .b = -0.311618537, .alpha = 1.0 }, // Blue
+        .{ .l = 0.967985213, .a = -0.0714131594, .b = 0.198483586, .alpha = 1.0 }, // Yellow
+        .{ .l = 0.701659441, .a = 0.274561018, .b = -0.169243395, .alpha = 1.0 }, // Magenta
+        .{ .l = 0.905397713, .a = -0.149464428, .b = -0.0394904613, .alpha = 1.0 }, // Cyan
+        .{ .l = 1.000000, .a = 0.0, .b = -0.0, .alpha = 1.0 }, // White
+        .{ .l = 0.000000, .a = 0.0, .b = 0.0, .alpha = 1.0 }, // Black
+    };
+
+    const slice_lab = color.sRGB.sliceToOklabAlphaInPlace(colors[0..]);
+
+    const float_tolerance = 0.001;
+    for (0..expected_results.len) |index| {
+        const actual = slice_lab[index];
+        const expected = expected_results[index];
+
+        try helpers.expectApproxEqAbs(actual.l, expected.l, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.alpha, expected.alpha, float_tolerance);
+    }
+}
+
+test "Convert a slice of sRGB RGBA colors to OklabAlpha, copy" {
+    const colors = [_]color.Colorf32{
+        .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
+        .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
+        .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
+        .{ .r = 1.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Yellow
+        .{ .r = 1.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Magenta
+        .{ .r = 0.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // Cyan
+        .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // White
+        .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
+    };
+
+    const expected_results = [_]color.OklabAlpha{
+        .{ .l = 0.627951443, .a = 0.224827796, .b = 0.125791788, .alpha = 1.0 }, // Red
+        .{ .l = 0.866444945, .a = -0.233919501, .b = 0.179420292, .alpha = 1.0 }, // Green
+        .{ .l = 0.451988429, .a = -0.0324304998, .b = -0.311618537, .alpha = 1.0 }, // Blue
+        .{ .l = 0.967985213, .a = -0.0714131594, .b = 0.198483586, .alpha = 1.0 }, // Yellow
+        .{ .l = 0.701659441, .a = 0.274561018, .b = -0.169243395, .alpha = 1.0 }, // Magenta
+        .{ .l = 0.905397713, .a = -0.149464428, .b = -0.0394904613, .alpha = 1.0 }, // Cyan
+        .{ .l = 1.000000, .a = 0.0, .b = -0.0, .alpha = 1.0 }, // White
+        .{ .l = 0.000000, .a = 0.0, .b = 0.0, .alpha = 1.0 }, // Black
+    };
+
+    const slice_lab = try color.sRGB.sliceToOklabAlphaCopy(helpers.zigimg_test_allocator, colors[0..]);
+    defer helpers.zigimg_test_allocator.free(slice_lab);
+
+    const float_tolerance = 0.001;
+    for (0..expected_results.len) |index| {
+        const actual = slice_lab[index];
+        const expected = expected_results[index];
+
+        try helpers.expectApproxEqAbs(actual.l, expected.l, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.alpha, expected.alpha, float_tolerance);
+    }
+}
+
+test "Convert a slice of Oklab with alph colors to linear sRGB, in-place" {
+    var colors = [_]color.OklabAlpha{
+        .{ .l = 0.627951443, .a = 0.224827796, .b = 0.125791788, .alpha = 1.0 }, // Red
+        .{ .l = 0.866444945, .a = -0.233919501, .b = 0.179420292, .alpha = 1.0 }, // Green
+        .{ .l = 0.451988429, .a = -0.0324304998, .b = -0.311618537, .alpha = 1.0 }, // Blue
+        .{ .l = 0.967985213, .a = -0.0714131594, .b = 0.198483586, .alpha = 1.0 }, // Yellow
+        .{ .l = 0.701659441, .a = 0.274561018, .b = -0.169243395, .alpha = 1.0 }, // Magenta
+        .{ .l = 0.905397713, .a = -0.149464428, .b = -0.0394904613, .alpha = 1.0 }, // Cyan
+        .{ .l = 1.000000, .a = 0.0, .b = -0.0, .alpha = 1.0 }, // White
+        .{ .l = 0.000000, .a = 0.0, .b = 0.0, .alpha = 1.0 }, // Black
+    };
+
+    const expected_results = [_]color.Colorf32{
+        .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
+        .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
+        .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
+        .{ .r = 1.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Yellow
+        .{ .r = 1.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Magenta
+        .{ .r = 0.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // Cyan
+        .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // White
+        .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
+    };
+
+    const slice_rgba = color.sRGB.sliceFromOkLabAlphaInPlace(colors[0..], .none);
+
+    const float_tolerance = 0.001;
+    for (0..expected_results.len) |index| {
+        const actual = slice_rgba[index];
+        const expected = expected_results[index];
+
+        try helpers.expectApproxEqAbs(actual.r, expected.r, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.g, expected.g, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
+    }
+}
+
+test "Convert a slice of Oklab with alph colors to linear sRGB, copy" {
+    const colors = [_]color.OklabAlpha{
+        .{ .l = 0.627951443, .a = 0.224827796, .b = 0.125791788, .alpha = 1.0 }, // Red
+        .{ .l = 0.866444945, .a = -0.233919501, .b = 0.179420292, .alpha = 1.0 }, // Green
+        .{ .l = 0.451988429, .a = -0.0324304998, .b = -0.311618537, .alpha = 1.0 }, // Blue
+        .{ .l = 0.967985213, .a = -0.0714131594, .b = 0.198483586, .alpha = 1.0 }, // Yellow
+        .{ .l = 0.701659441, .a = 0.274561018, .b = -0.169243395, .alpha = 1.0 }, // Magenta
+        .{ .l = 0.905397713, .a = -0.149464428, .b = -0.0394904613, .alpha = 1.0 }, // Cyan
+        .{ .l = 1.000000, .a = 0.0, .b = -0.0, .alpha = 1.0 }, // White
+        .{ .l = 0.000000, .a = 0.0, .b = 0.0, .alpha = 1.0 }, // Black
+    };
+
+    const expected_results = [_]color.Colorf32{
+        .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Red
+        .{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Green
+        .{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Blue
+        .{ .r = 1.0, .g = 1.0, .b = 0.0, .a = 1.0 }, // Yellow
+        .{ .r = 1.0, .g = 0.0, .b = 1.0, .a = 1.0 }, // Magenta
+        .{ .r = 0.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // Cyan
+        .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 }, // White
+        .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }, // Black
+    };
+
+    const slice_rgba = try color.sRGB.sliceFromOkLabAlphaCopy(helpers.zigimg_test_allocator, colors[0..], .none);
+    defer helpers.zigimg_test_allocator.free(slice_rgba);
+
+    const float_tolerance = 0.001;
+    for (0..expected_results.len) |index| {
+        const actual = slice_rgba[index];
+        const expected = expected_results[index];
+
+        try helpers.expectApproxEqAbs(actual.r, expected.r, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.g, expected.g, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.b, expected.b, float_tolerance);
+        try helpers.expectApproxEqAbs(actual.a, expected.a, float_tolerance);
+    }
+}
+
+test "Convert OkLCh to gamma sRGB" {
+    const lch = color.OkLCh{ .l = 0.56, .c = 0.20, .h = 4.502949 };
+
+    const linear = color.sRGB.fromOkLCh(lch, .none);
+
+    const result = color.sRGB.toGamma(linear);
+
+    const float_tolerance = 0.01;
+    try helpers.expectApproxEqAbs(result.r, 0.0549, float_tolerance);
+    try helpers.expectApproxEqAbs(result.g, 0.43137, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, 0.90196, float_tolerance);
+}
+
+test "Convert gamma sRGB to OKLCh" {
+    const srgb = color.Colorf32{ .r = 0.29412, .g = 0.64706, .b = 0.5098, .a = 1.0 };
+
+    const linear = color.sRGB.toLinear(srgb);
+
+    const result = color.sRGB.toOkLCh(linear);
+
+    const float_tolerance = 0.01;
+    try helpers.expectApproxEqAbs(result.l, 0.6573, float_tolerance);
+    try helpers.expectApproxEqAbs(result.c, 0.1027, float_tolerance);
+    try helpers.expectApproxEqAbs(result.h, 2.88276, float_tolerance);
+}
+
+test "Convert OkLCh with alpha to gamma sRGB with alpha" {
+    const lch = color.OkLChAlpha{ .l = 0.56, .c = 0.20, .h = 4.502949, .alpha = 0.12345 };
+
+    const linear = color.sRGB.fromOkLChAlpha(lch, .none);
+
+    const result = color.sRGB.toGamma(linear);
+
+    const float_tolerance = 0.01;
+    try helpers.expectApproxEqAbs(result.r, 0.0549, float_tolerance);
+    try helpers.expectApproxEqAbs(result.g, 0.43137, float_tolerance);
+    try helpers.expectApproxEqAbs(result.b, 0.90196, float_tolerance);
+    try helpers.expectApproxEqAbs(result.a, 0.12345, float_tolerance);
+}
+
+test "Convert gamma sRGB with alpha to OKLCh with alpha" {
+    const srgb = color.Colorf32{ .r = 0.29412, .g = 0.64706, .b = 0.5098, .a = 0.12345 };
+
+    const linear = color.sRGB.toLinear(srgb);
+
+    const result = color.sRGB.toOkLChAlpha(linear);
+
+    const float_tolerance = 0.01;
+    try helpers.expectApproxEqAbs(result.l, 0.6573, float_tolerance);
+    try helpers.expectApproxEqAbs(result.c, 0.1027, float_tolerance);
+    try helpers.expectApproxEqAbs(result.h, 2.88276, float_tolerance);
+    try helpers.expectApproxEqAbs(result.alpha, 0.12345, float_tolerance);
+}
