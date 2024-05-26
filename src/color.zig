@@ -1896,10 +1896,6 @@ pub const CIExyY = struct {
     }
 };
 
-pub fn gammaNoTransfer(value: f32) f32 {
-    return value;
-}
-
 // Colorspaces are defined in the CIE xyY colorspace, requiring only the x and y value
 pub const Colorspace = struct {
     red: CIExyY,
@@ -2495,6 +2491,7 @@ pub const Colorspace = struct {
     }
 
     fn toXYZConversionMatrix(self: Colorspace) ConversionMatrix {
+        // Adapted from http://docs-hoffmann.de/ciexyz29082000.pdf
         const D = (self.red.x - self.blue.x) * (self.green.y - self.blue.y) - (self.red.y - self.blue.y) * (self.green.x - self.blue.x);
         const U = (self.white.x - self.blue.x) * (self.green.y - self.blue.y) - (self.white.y - self.blue.y) * (self.green.x - self.blue.x);
         const V = (self.red.x - self.blue.x) * (self.white.y - self.blue.y) - (self.red.y - self.blue.y) * (self.white.x - self.blue.x);
@@ -2552,6 +2549,10 @@ pub const Colorspace = struct {
 
         return target_to_rgb_matrix.mul(chromatic_adaptation_matrix).mul(source_to_xyz_matrix);
     }
+
+    fn gammaNoTransfer(value: f32) f32 {
+        return value;
+    }
 };
 
 pub inline fn applyGamma(value: f32, gamma: f32) f32 {
@@ -2601,7 +2602,7 @@ pub fn NonLinearGammaTransferFunctions(comptime params: GammaFunctionsParameters
     };
 }
 
-pub fn GammaTransferFunctions(comptime gamma: f32) type {
+pub fn CurveGammaTransferFunctions(comptime gamma: f32) type {
     return struct {
         pub fn toGamma(value: f32) f32 {
             return applyGamma(value, gamma);
@@ -2666,8 +2667,8 @@ pub const ProPhotoRGB_TransferFunctions = NonLinearGammaTransferFunctions(.{
     .display_gamma = 1.8,
 });
 
-pub const DCIP3_TransferFuntions = GammaTransferFunctions(13.0 / 5.0);
-pub const AdobeRGB_TransferFunctions = GammaTransferFunctions(563.0 / 256.0);
+pub const DCIP3_TransferFuntions = CurveGammaTransferFunctions(13.0 / 5.0);
+pub const AdobeRGB_TransferFunctions = CurveGammaTransferFunctions(563.0 / 256.0);
 
 pub const WhitePoints = struct {
     pub const D50 = CIExyY{ .x = 0.34567, .y = 0.35850 };
