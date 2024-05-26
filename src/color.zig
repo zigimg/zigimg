@@ -2670,9 +2670,38 @@ pub const ProPhotoRGB_TransferFunctions = NonLinearGammaTransferFunctions(.{
 pub const DCIP3_TransferFuntions = CurveGammaTransferFunctions(13.0 / 5.0);
 pub const AdobeRGB_TransferFunctions = CurveGammaTransferFunctions(563.0 / 256.0);
 
+// All white points are defined with the CIE 1931 2 degrees
 pub const WhitePoints = struct {
+    pub const A = CIExyY{ .x = 0.44758, .y = 0.40745 };
+    pub const B = CIExyY{ .x = 0.34842, .y = 0.35161 };
+    pub const C = CIExyY{ .x = 0.31006, .y = 0.31616 };
     pub const D50 = CIExyY{ .x = 0.34567, .y = 0.35850 };
+    pub const D55 = CIExyY{ .x = 0.33242, .y = 0.34743 };
     pub const D65 = CIExyY{ .x = 0.31271, .y = 0.32902 };
+    pub const D75 = CIExyY{ .x = 0.29902, .y = 0.31485 };
+    pub const D93 = CIExyY{ .x = 0.28315, .y = 0.29711 };
+    pub const E = CIExyY{ .x = 0.33333, .y = 0.33333 };
+    pub const F1 = CIExyY{ .x = 0.31310, .y = 0.33727 };
+    pub const F2 = CIExyY{ .x = 0.37208, .y = 0.37529 };
+    pub const F3 = CIExyY{ .x = 0.40910, .y = 0.39430 };
+    pub const F4 = CIExyY{ .x = 0.44018, .y = 0.40329 };
+    pub const F5 = CIExyY{ .x = 0.31379, .y = 0.34531 };
+    pub const F6 = CIExyY{ .x = 0.37790, .y = 0.38835 };
+    pub const F7 = CIExyY{ .x = 0.31292, .y = 0.32933 };
+    pub const F8 = CIExyY{ .x = 0.34588, .y = 0.35875 };
+    pub const F9 = CIExyY{ .x = 0.37417, .y = 0.37281 };
+    pub const F10 = CIExyY{ .x = 0.34609, .y = 0.35986 };
+    pub const F11 = CIExyY{ .x = 0.38052, .y = 0.37713 };
+    pub const F12 = CIExyY{ .x = 0.43695, .y = 0.40441 };
+    pub const LED_B1 = CIExyY{ .x = 0.4560, .y = 0.4078 };
+    pub const LED_B2 = CIExyY{ .x = 0.4357, .y = 0.4012 };
+    pub const LED_B3 = CIExyY{ .x = 0.3756, .y = 0.3723 };
+    pub const LED_B4 = CIExyY{ .x = 0.3422, .y = 0.3502 };
+    pub const LED_B5 = CIExyY{ .x = 0.3118, .y = 0.3236 };
+    pub const LED_BH1 = CIExyY{ .x = 0.4474, .y = 0.4066 };
+    pub const LED_RGB1 = CIExyY{ .x = 0.4557, .y = 0.4211 };
+    pub const LED_V1 = CIExyY{ .x = 0.4560, .y = 0.4548 };
+    pub const LED_V2 = CIExyY{ .x = 0.3781, .y = 0.3781 };
 };
 
 // BT.601-6 (NTSC)
