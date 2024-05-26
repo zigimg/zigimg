@@ -127,42 +127,6 @@ pub const Colorf32 = extern struct {
     pub inline fn toFloat4(self: Colorf32) math.float4 {
         return @bitCast(self);
     }
-
-    pub fn toLinear(self: Colorf32) Colorf32 {
-        return .{
-            .r = srgbToLinear(self.r),
-            .g = srgbToLinear(self.g),
-            .b = srgbToLinear(self.b),
-            .a = self.a,
-        };
-    }
-
-    pub fn toLinearFast(self: Colorf32) Colorf32 {
-        return .{
-            .r = srgbToLinearFast(self.r),
-            .g = srgbToLinearFast(self.g),
-            .b = srgbToLinearFast(self.b),
-            .a = self.a,
-        };
-    }
-
-    pub fn toSrgb(self: Colorf32) Colorf32 {
-        return .{
-            .r = linearToSrgb(self.r),
-            .g = linearToSrgb(self.g),
-            .b = linearToSrgb(self.b),
-            .a = self.a,
-        };
-    }
-
-    pub fn toSrgbFast(self: Colorf32) Colorf32 {
-        return .{
-            .r = linearToSrgbFast(self.r),
-            .g = linearToSrgbFast(self.g),
-            .b = linearToSrgbFast(self.b),
-            .a = self.a,
-        };
-    }
 };
 
 fn isAll8BitColor(comptime red_type: type, comptime green_type: type, comptime blue_type: type, comptime alpha_type: type) bool {
@@ -944,37 +908,6 @@ pub const PixelStorageIterator = struct {
 // For this point on, we are defining color types that are not used to store pixels but are used for color manipulation on the CPU.
 // Most of them are in the 0.0 to 1.0 range in 32-bit float except for a few exceptions.
 // Also assume that the from and to functions uses linear RGB color space with no gamma correction.
-pub inline fn applyGamma(value: f32, gamma: f32) f32 {
-    return std.math.pow(f32, value, 1.0 / gamma);
-}
-
-pub inline fn removeGamma(value: f32, gamma: f32) f32 {
-    return std.math.pow(f32, value, gamma);
-}
-
-pub fn linearToSrgb(value: f32) f32 {
-    if (value <= 0.0031308) {
-        return value * 12.92;
-    }
-
-    return 1.055 * std.math.pow(f32, value, 1.0 / 2.4) - 0.055;
-}
-
-pub fn linearToSrgbFast(value: f32) f32 {
-    return applyGamma(value, 2.2);
-}
-
-pub fn srgbToLinear(value: f32) f32 {
-    if (value <= 0.04045) {
-        return value / 12.92;
-    }
-
-    return std.math.pow(f32, (value + 0.055) / 1.055, 2.4);
-}
-
-pub fn srgbToLinearFast(value: f32) f32 {
-    return removeGamma(value, 2.2);
-}
 
 // HSL (Hue, Saturation, Luminance) is a different representation of the device dependent linear sRGB colorspace
 // where the luminance is pure white and models the way different paints mix together
@@ -1963,14 +1896,22 @@ pub const CIExyY = struct {
     }
 };
 
+pub fn gammaNoTransfer(value: f32) f32 {
+    return value;
+}
+
 // Colorspaces are defined in the CIE xyY colorspace, requiring only the x and y value
 pub const Colorspace = struct {
-    red: CIExyY = .{},
-    green: CIExyY = .{},
-    blue: CIExyY = .{},
-    white: CIExyY = .{},
+    red: CIExyY,
+    green: CIExyY,
+    blue: CIExyY,
+    white: CIExyY,
     rgba_to_xyza: math.float4x4,
     xyza_to_rgba: math.float4x4,
+    to_gamma: *const fn (f32) f32,
+    to_gamma_fast: *const fn (f32) f32,
+    to_linear: *const fn (f32) f32,
+    to_linear_fast: *const fn (f32) f32,
 
     pub const PostConversionBehavior = enum {
         none, // Keep value as-is
@@ -1982,6 +1923,10 @@ pub const Colorspace = struct {
         green: CIExyY = .{},
         blue: CIExyY = .{},
         white: CIExyY = .{},
+        to_gamma: *const fn (f32) f32 = gammaNoTransfer,
+        to_gamma_fast: *const fn (f32) f32 = gammaNoTransfer,
+        to_linear: *const fn (f32) f32 = gammaNoTransfer,
+        to_linear_fast: *const fn (f32) f32 = gammaNoTransfer,
     };
 
     pub const ConversionMatrix = math.float4x4;
@@ -1994,6 +1939,10 @@ pub const Colorspace = struct {
             .white = args.white,
             .rgba_to_xyza = undefined,
             .xyza_to_rgba = undefined,
+            .to_gamma = args.to_gamma,
+            .to_gamma_fast = args.to_gamma_fast,
+            .to_linear = args.to_linear,
+            .to_linear_fast = args.to_linear_fast,
         };
 
         const conversion_matrix = result.toXYZConversionMatrix();
@@ -2002,6 +1951,48 @@ pub const Colorspace = struct {
         result.xyza_to_rgba = conversion_matrix.inverse();
 
         return result;
+    }
+
+    /// Return a gamma-corrected version of the color
+    pub fn toGamma(self: Colorspace, color: Colorf32) Colorf32 {
+        return .{
+            .r = self.to_gamma(color.r),
+            .g = self.to_gamma(color.g),
+            .b = self.to_gamma(color.b),
+            .a = color.a,
+        };
+    }
+
+    /// Return a gamma-corrected version of the color using a fast approximation
+    /// of the transfer function
+    pub fn toGammaFast(self: Colorspace, color: Colorf32) Colorf32 {
+        return .{
+            .r = self.to_gamma_fast(color.r),
+            .g = self.to_gamma_fast(color.g),
+            .b = self.to_gamma_fast(color.b),
+            .a = color.a,
+        };
+    }
+
+    /// Return a linear version of the color from a gamma-corrected color
+    pub fn toLinear(self: Colorspace, color: Colorf32) Colorf32 {
+        return .{
+            .r = self.to_linear(color.r),
+            .g = self.to_linear(color.g),
+            .b = self.to_linear(color.b),
+            .a = color.a,
+        };
+    }
+
+    /// Return a linear version of the color from a gamma-corrected color using a fast approximation
+    /// of the transfer function
+    pub fn toLinearFast(self: Colorspace, color: Colorf32) Colorf32 {
+        return .{
+            .r = self.to_linear_fast(color.r),
+            .g = self.to_linear_fast(color.g),
+            .b = self.to_linear_fast(color.b),
+            .a = color.a,
+        };
     }
 
     pub fn fromXYZ(self: Colorspace, xyz: CIEXYZ) Colorf32 {
@@ -2563,6 +2554,121 @@ pub const Colorspace = struct {
     }
 };
 
+pub inline fn applyGamma(value: f32, gamma: f32) f32 {
+    return std.math.pow(f32, value, 1.0 / gamma);
+}
+
+pub inline fn removeGamma(value: f32, gamma: f32) f32 {
+    return std.math.pow(f32, value, gamma);
+}
+
+pub const GammaFunctionsParameters = struct {
+    alpha: f32 = 0.0,
+    beta: f32 = 0.0,
+    delta: f32 = 0.0,
+    gamma: f32 = 1.0,
+    transition_point: f32 = 0.0,
+    display_gamma: f32 = 1.0,
+};
+
+pub fn NonLinearGammaTransferFunctions(comptime params: GammaFunctionsParameters) type {
+    return struct {
+        const alpha_minus_1 = params.alpha - 1.0;
+
+        pub fn toGamma(value: f32) f32 {
+            if (value <= params.beta) {
+                return value * params.delta;
+            }
+
+            return params.alpha * std.math.pow(f32, value, 1.0 / params.gamma) - alpha_minus_1;
+        }
+
+        pub fn toGammaFast(value: f32) f32 {
+            return applyGamma(value, params.display_gamma);
+        }
+
+        pub fn toLinear(value: f32) f32 {
+            if (value <= params.transition_point) {
+                return value / params.delta;
+            }
+
+            return std.math.pow(f32, (value + alpha_minus_1) / params.alpha, params.gamma);
+        }
+
+        pub fn toLinearFast(value: f32) f32 {
+            return removeGamma(value, params.display_gamma);
+        }
+    };
+}
+
+pub fn GammaTransferFunctions(comptime gamma: f32) type {
+    return struct {
+        pub fn toGamma(value: f32) f32 {
+            return applyGamma(value, gamma);
+        }
+
+        pub fn toGammaFast(value: f32) f32 {
+            return applyGamma(value, gamma);
+        }
+
+        pub fn toLinear(value: f32) f32 {
+            return removeGamma(value, gamma);
+        }
+
+        pub fn toLinearFast(value: f32) f32 {
+            return removeGamma(value, gamma);
+        }
+    };
+}
+
+pub const sRGB_TransferFunctions = NonLinearGammaTransferFunctions(.{
+    .alpha = 1.055,
+    .beta = 0.0031308,
+    .delta = 12.92,
+    .gamma = 12.0 / 5.0,
+    .transition_point = 0.04045,
+    .display_gamma = 2.2,
+});
+
+pub const Rec601_TransferFunctions = NonLinearGammaTransferFunctions(.{
+    .alpha = 1.099,
+    .beta = 0.004,
+    .delta = 4.5,
+    .gamma = 20.0 / 9.0,
+    .transition_point = 0.018,
+    .display_gamma = 2.2,
+});
+
+pub const Rec709_TransferFunctions = NonLinearGammaTransferFunctions(.{
+    .alpha = 1.099,
+    .beta = 0.004,
+    .delta = 4.5,
+    .gamma = 20.0 / 9.0,
+    .transition_point = 0.018,
+    .display_gamma = 2.2,
+});
+
+pub const BT2020_TransferFunctions = NonLinearGammaTransferFunctions(.{
+    .alpha = 1.0993,
+    .beta = 0.004,
+    .delta = 4.5,
+    .gamma = 20.0 / 9.0,
+    .transition_point = 0.0181,
+    .display_gamma = 2.2,
+});
+
+pub const ProPhotoRGB_TransferFunctions = NonLinearGammaTransferFunctions(.{
+    .alpha = 1,
+    .beta = 0.001953125,
+    .delta = 16,
+    .gamma = 9.0 / 5.0,
+    .transition_point = 0.031248,
+    .display_gamma = 1.8,
+});
+
+pub const DCIP3_TransferFuntions = GammaTransferFunctions(13.0 / 5.0);
+pub const AdobeRGB_TransferFunctions = GammaTransferFunctions(563.0 / 256.0);
+
 pub const WhitePoints = struct {
     pub const D50 = CIExyY{ .x = 0.34567, .y = 0.35850 };
     pub const D65 = CIExyY{ .x = 0.31271, .y = 0.32902 };
@@ -2574,6 +2680,10 @@ pub const BT601_NTSC = Colorspace.init(.{
     .green = .{ .x = 0.310, .y = 0.595 },
     .blue = .{ .x = 0.155, .y = 0.070 },
     .white = WhitePoints.D65,
+    .to_gamma = Rec601_TransferFunctions.toGamma,
+    .to_gamma_fast = Rec601_TransferFunctions.toGammaFast,
+    .to_linear = Rec601_TransferFunctions.toLinear,
+    .to_linear_fast = Rec601_TransferFunctions.toLinearFast,
 });
 
 // BT.601-6 (PAL)
@@ -2582,6 +2692,10 @@ pub const BT601_PAL = Colorspace.init(.{
     .green = .{ .x = 0.290, .y = 0.600 },
     .blue = .{ .x = 0.150, .y = 0.060 },
     .white = WhitePoints.D65,
+    .to_gamma = Rec601_TransferFunctions.toGamma,
+    .to_gamma_fast = Rec601_TransferFunctions.toGammaFast,
+    .to_linear = Rec601_TransferFunctions.toLinear,
+    .to_linear_fast = Rec601_TransferFunctions.toLinearFast,
 });
 
 // ITU-R BT.709 aka Rec.709
@@ -2590,18 +2704,36 @@ pub const BT709 = Colorspace.init(.{
     .green = .{ .x = 0.3000, .y = 0.6000 },
     .blue = .{ .x = 0.1500, .y = 0.0600 },
     .white = WhitePoints.D65,
+    .to_gamma = Rec709_TransferFunctions.toGamma,
+    .to_gamma_fast = Rec709_TransferFunctions.toGammaFast,
+    .to_linear = Rec709_TransferFunctions.toLinear,
+    .to_linear_fast = Rec709_TransferFunctions.toLinearFast,
 });
 
-// sRGB use the same color gamut as BT.709
-pub const sRGB = BT709;
+// sRGB use the same color gamut as BT.709 but have a different transfer function
+pub const sRGB = Colorspace.init(.{
+    .red = .{ .x = 0.6400, .y = 0.3300 },
+    .green = .{ .x = 0.3000, .y = 0.6000 },
+    .blue = .{ .x = 0.1500, .y = 0.0600 },
+    .white = WhitePoints.D65,
+    .to_gamma = sRGB_TransferFunctions.toGamma,
+    .to_gamma_fast = sRGB_TransferFunctions.toGammaFast,
+    .to_linear = sRGB_TransferFunctions.toLinear,
+    .to_linear_fast = sRGB_TransferFunctions.toLinearFast,
+});
 
 //  Digital Cinema Initiatives P3 color spaces
 pub const DCIP3 = struct {
+    // Display P3 usee the same transfer function as sRGB
     pub const Display = Colorspace.init(.{
         .red = .{ .x = 0.680, .y = 0.320 },
         .green = .{ .x = 0.265, .y = 0.690 },
         .blue = .{ .x = 0.150, .y = 0.060 },
         .white = WhitePoints.D65,
+        .to_gamma = sRGB_TransferFunctions.toGamma,
+        .to_gamma_fast = sRGB_TransferFunctions.toGammaFast,
+        .to_linear = sRGB_TransferFunctions.toLinear,
+        .to_linear_fast = sRGB_TransferFunctions.toLinearFast,
     });
 
     pub const Theater = Colorspace.init(.{
@@ -2609,6 +2741,10 @@ pub const DCIP3 = struct {
         .green = .{ .x = 0.265, .y = 0.690 },
         .blue = .{ .x = 0.150, .y = 0.060 },
         .white = .{ .x = 0.314, .y = 0.351 },
+        .to_gamma = DCIP3_TransferFuntions.toGamma,
+        .to_gamma_fast = DCIP3_TransferFuntions.toGammaFast,
+        .to_linear = DCIP3_TransferFuntions.toLinear,
+        .to_linear_fast = DCIP3_TransferFuntions.toLinearFast,
     });
 
     pub const ACES = Colorspace.init(.{
@@ -2616,6 +2752,10 @@ pub const DCIP3 = struct {
         .green = .{ .x = 0.265, .y = 0.690 },
         .blue = .{ .x = 0.150, .y = 0.060 },
         .white = .{ .x = 0.32168, .y = 0.33767 },
+        .to_gamma = DCIP3_TransferFuntions.toGamma,
+        .to_gamma_fast = DCIP3_TransferFuntions.toGammaFast,
+        .to_linear = DCIP3_TransferFuntions.toLinear,
+        .to_linear_fast = DCIP3_TransferFuntions.toLinearFast,
     });
 };
 
@@ -2625,6 +2765,10 @@ pub const BT2020 = Colorspace.init(.{
     .green = .{ .x = 0.170, .y = 0.797 },
     .blue = .{ .x = 0.131, .y = 0.046 },
     .white = WhitePoints.D65,
+    .to_gamma = BT2020_TransferFunctions.toGamma,
+    .to_gamma_fast = BT2020_TransferFunctions.toGammaFast,
+    .to_linear = BT2020_TransferFunctions.toLinear,
+    .to_linear_fast = BT2020_TransferFunctions.toLinearFast,
 });
 
 pub const AdobeRGB = Colorspace.init(.{
@@ -2632,6 +2776,10 @@ pub const AdobeRGB = Colorspace.init(.{
     .green = .{ .x = 0.2100, .y = 0.7100 },
     .blue = .{ .x = 0.1500, .y = 0.0600 },
     .white = WhitePoints.D65,
+    .to_gamma = AdobeRGB_TransferFunctions.toGamma,
+    .to_gamma_fast = AdobeRGB_TransferFunctions.toGammaFast,
+    .to_linear = AdobeRGB_TransferFunctions.toLinear,
+    .to_linear_fast = AdobeRGB_TransferFunctions.toLinearFast,
 });
 
 pub const AdobeWideGamutRGB = Colorspace.init(.{
@@ -2639,6 +2787,10 @@ pub const AdobeWideGamutRGB = Colorspace.init(.{
     .green = .{ .x = 0.1152, .y = 0.8264 },
     .blue = .{ .x = 0.1566, .y = 0.0177 },
     .white = WhitePoints.D50,
+    .to_gamma = AdobeRGB_TransferFunctions.toGamma,
+    .to_gamma_fast = AdobeRGB_TransferFunctions.toGammaFast,
+    .to_linear = AdobeRGB_TransferFunctions.toLinear,
+    .to_linear_fast = AdobeRGB_TransferFunctions.toLinearFast,
 });
 
 pub const ProPhotoRGB = Colorspace.init(.{
@@ -2646,4 +2798,8 @@ pub const ProPhotoRGB = Colorspace.init(.{
     .green = .{ .x = 0.159597, .y = 0.840403 },
     .blue = .{ .x = 0.036598, .y = 0.000105 },
     .white = WhitePoints.D50,
+    .to_gamma = ProPhotoRGB_TransferFunctions.toGamma,
+    .to_gamma_fast = ProPhotoRGB_TransferFunctions.toGammaFast,
+    .to_linear = ProPhotoRGB_TransferFunctions.toLinear,
+    .to_linear_fast = ProPhotoRGB_TransferFunctions.toLinearFast,
 });

@@ -1543,7 +1543,7 @@ test "Convert a HSLuv color to gamma sRGB color" {
 
     const linear = color.sRGB.fromHSLuv(hsluv, .none);
 
-    const result = linear.toSrgb();
+    const result = color.sRGB.toGamma(linear);
 
     // #537da6
     const float_tolerance = 0.0001;
@@ -1562,7 +1562,7 @@ test "Convert a HSLuv color to gamma sRGB color" {
 test "Convert a gamma sRGB color to HSLuv" {
     // #537da6
     const srgb = color.Colorf32{ .r = 0.32549, .g = 0.4902, .b = 0.65098, .a = 1.0 };
-    const source = srgb.toLinear();
+    const source = color.sRGB.toLinear(srgb);
 
     const result = color.sRGB.toHSLuv(source);
 
@@ -1577,7 +1577,7 @@ test "Convert a HSLuv with alpha color to gamma sRGB color with alpha" {
 
     const linear = color.sRGB.fromHSLuvAlpha(hsluv, .none);
 
-    const result = linear.toSrgb();
+    const result = color.sRGB.toGamma(linear);
 
     // #537da6
     const float_tolerance = 0.0001;
@@ -1596,7 +1596,7 @@ test "Convert a HSLuv with alpha color to gamma sRGB color with alpha" {
 test "Convert a gamma sRGB color with alpha to HSLuv with alpha" {
     // #537da6
     const srgb = color.Colorf32{ .r = 0.32549, .g = 0.4902, .b = 0.65098, .a = 0.12345 };
-    const source = srgb.toLinear();
+    const source = color.sRGB.toLinear(srgb);
 
     const result = color.sRGB.toHSLuvAlpha(source);
 
@@ -1835,7 +1835,7 @@ test "Convert OkLCh to gamma sRGB" {
 
     const linear = color.sRGB.fromOkLCh(lch, .none);
 
-    const result = linear.toSrgb();
+    const result = color.sRGB.toGamma(linear);
 
     const float_tolerance = 0.01;
     try helpers.expectApproxEqAbs(result.r, 0.0549, float_tolerance);
@@ -1846,7 +1846,7 @@ test "Convert OkLCh to gamma sRGB" {
 test "Convert gamma sRGB to OKLCh" {
     const srgb = color.Colorf32{ .r = 0.29412, .g = 0.64706, .b = 0.5098, .a = 1.0 };
 
-    const linear = srgb.toLinear();
+    const linear = color.sRGB.toLinear(srgb);
 
     const result = color.sRGB.toOkLCh(linear);
 
@@ -1861,7 +1861,7 @@ test "Convert OkLCh with alpha to gamma sRGB with alpha" {
 
     const linear = color.sRGB.fromOkLChAlpha(lch, .none);
 
-    const result = linear.toSrgb();
+    const result = color.sRGB.toGamma(linear);
 
     const float_tolerance = 0.01;
     try helpers.expectApproxEqAbs(result.r, 0.0549, float_tolerance);
@@ -1873,7 +1873,7 @@ test "Convert OkLCh with alpha to gamma sRGB with alpha" {
 test "Convert gamma sRGB with alpha to OKLCh with alpha" {
     const srgb = color.Colorf32{ .r = 0.29412, .g = 0.64706, .b = 0.5098, .a = 0.12345 };
 
-    const linear = srgb.toLinear();
+    const linear = color.sRGB.toLinear(srgb);
 
     const result = color.sRGB.toOkLChAlpha(linear);
 
