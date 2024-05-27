@@ -97,6 +97,62 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.indexed8, .float32) => indexedToColorf32(.indexed8, source, &destination),
         conversionId(.indexed16, .float32) => indexedToColorf32(.indexed16, source, &destination),
 
+        // Grayscale small -> large
+        conversionId(.grayscale1, .grayscale2) => GreyscaleToGrayscale(.grayscale1, .grayscale2).convert(source, &destination),
+        conversionId(.grayscale1, .grayscale4) => GreyscaleToGrayscale(.grayscale1, .grayscale4).convert(source, &destination),
+        conversionId(.grayscale1, .grayscale8) => GreyscaleToGrayscale(.grayscale1, .grayscale8).convert(source, &destination),
+        conversionId(.grayscale1, .grayscale16) => GreyscaleToGrayscale(.grayscale1, .grayscale16).convert(source, &destination),
+        conversionId(.grayscale1, .grayscale8Alpha) => GreyscaleToGrayscale(.grayscale1, .grayscale8Alpha).convert(source, &destination),
+        conversionId(.grayscale1, .grayscale16Alpha) => GreyscaleToGrayscale(.grayscale1, .grayscale16Alpha).convert(source, &destination),
+
+        conversionId(.grayscale2, .grayscale4) => GreyscaleToGrayscale(.grayscale2, .grayscale4).convert(source, &destination),
+        conversionId(.grayscale2, .grayscale8) => GreyscaleToGrayscale(.grayscale2, .grayscale8).convert(source, &destination),
+        conversionId(.grayscale2, .grayscale16) => GreyscaleToGrayscale(.grayscale2, .grayscale16).convert(source, &destination),
+        conversionId(.grayscale2, .grayscale8Alpha) => GreyscaleToGrayscale(.grayscale2, .grayscale8Alpha).convert(source, &destination),
+        conversionId(.grayscale2, .grayscale16Alpha) => GreyscaleToGrayscale(.grayscale2, .grayscale16Alpha).convert(source, &destination),
+
+        conversionId(.grayscale4, .grayscale8) => GreyscaleToGrayscale(.grayscale4, .grayscale8).convert(source, &destination),
+        conversionId(.grayscale4, .grayscale16) => GreyscaleToGrayscale(.grayscale4, .grayscale16).convert(source, &destination),
+        conversionId(.grayscale4, .grayscale8Alpha) => GreyscaleToGrayscale(.grayscale4, .grayscale8Alpha).convert(source, &destination),
+        conversionId(.grayscale4, .grayscale16Alpha) => GreyscaleToGrayscale(.grayscale4, .grayscale16Alpha).convert(source, &destination),
+
+        conversionId(.grayscale8, .grayscale16) => GreyscaleToGrayscale(.grayscale8, .grayscale16).convert(source, &destination),
+        conversionId(.grayscale8, .grayscale8Alpha) => GreyscaleToGrayscale(.grayscale8, .grayscale8Alpha).convert(source, &destination),
+        conversionId(.grayscale8, .grayscale16Alpha) => GreyscaleToGrayscale(.grayscale8, .grayscale16Alpha).convert(source, &destination),
+
+        conversionId(.grayscale16, .grayscale16Alpha) => GreyscaleToGrayscale(.grayscale16, .grayscale16Alpha).convert(source, &destination),
+
+        conversionId(.grayscale8Alpha, .grayscale16Alpha) => GreyscaleAlphaToGrayscaleAlpha(.grayscale8Alpha, .grayscale16Alpha).convert(source, &destination),
+
+        // Greyscale large -> small
+        conversionId(.grayscale16Alpha, .grayscale8Alpha) => GreyscaleAlphaToGrayscaleAlpha(.grayscale16Alpha, .grayscale8Alpha).convert(source, &destination),
+        conversionId(.grayscale16Alpha, .grayscale16) => GreyscaleAlphaToGrayscale(.grayscale16Alpha, .grayscale16).convert(source, &destination),
+        conversionId(.grayscale16Alpha, .grayscale8) => GreyscaleAlphaToGrayscale(.grayscale16Alpha, .grayscale8).convert(source, &destination),
+        conversionId(.grayscale16Alpha, .grayscale4) => GreyscaleAlphaToGrayscale(.grayscale16Alpha, .grayscale4).convert(source, &destination),
+        conversionId(.grayscale16Alpha, .grayscale2) => GreyscaleAlphaToGrayscale(.grayscale16Alpha, .grayscale2).convert(source, &destination),
+        conversionId(.grayscale16Alpha, .grayscale1) => GreyscaleAlphaToGrayscale(.grayscale16Alpha, .grayscale1).convert(source, &destination),
+
+        conversionId(.grayscale8Alpha, .grayscale16) => GreyscaleAlphaToGrayscale(.grayscale8Alpha, .grayscale16).convert(source, &destination),
+        conversionId(.grayscale8Alpha, .grayscale8) => GreyscaleAlphaToGrayscale(.grayscale8Alpha, .grayscale8).convert(source, &destination),
+        conversionId(.grayscale8Alpha, .grayscale4) => GreyscaleAlphaToGrayscale(.grayscale8Alpha, .grayscale4).convert(source, &destination),
+        conversionId(.grayscale8Alpha, .grayscale2) => GreyscaleAlphaToGrayscale(.grayscale8Alpha, .grayscale2).convert(source, &destination),
+        conversionId(.grayscale8Alpha, .grayscale1) => GreyscaleAlphaToGrayscale(.grayscale8Alpha, .grayscale1).convert(source, &destination),
+
+        conversionId(.grayscale16, .grayscale8Alpha) => GreyscaleToGrayscale(.grayscale16, .grayscale8Alpha).convert(source, &destination),
+        conversionId(.grayscale16, .grayscale8) => GreyscaleToGrayscale(.grayscale16, .grayscale8).convert(source, &destination),
+        conversionId(.grayscale16, .grayscale4) => GreyscaleToGrayscale(.grayscale16, .grayscale4).convert(source, &destination),
+        conversionId(.grayscale16, .grayscale2) => GreyscaleToGrayscale(.grayscale16, .grayscale2).convert(source, &destination),
+        conversionId(.grayscale16, .grayscale1) => GreyscaleToGrayscale(.grayscale16, .grayscale1).convert(source, &destination),
+
+        conversionId(.grayscale8, .grayscale4) => GreyscaleToGrayscale(.grayscale8, .grayscale4).convert(source, &destination),
+        conversionId(.grayscale8, .grayscale2) => GreyscaleToGrayscale(.grayscale8, .grayscale2).convert(source, &destination),
+        conversionId(.grayscale8, .grayscale1) => GreyscaleToGrayscale(.grayscale8, .grayscale1).convert(source, &destination),
+
+        conversionId(.grayscale4, .grayscale2) => GreyscaleToGrayscale(.grayscale4, .grayscale2).convert(source, &destination),
+        conversionId(.grayscale4, .grayscale1) => GreyscaleToGrayscale(.grayscale4, .grayscale1).convert(source, &destination),
+
+        conversionId(.grayscale2, .grayscale1) => GreyscaleToGrayscale(.grayscale2, .grayscale1).convert(source, &destination),
+
         // Grayscale -> RGB555
         conversionId(.grayscale1, .rgb555) => GreyscaleToRgbColor(.grayscale1, .rgb555).convert(source, &destination),
         conversionId(.grayscale2, .rgb555) => GreyscaleToRgbColor(.grayscale2, .rgb555).convert(source, &destination),
@@ -261,6 +317,26 @@ fn rgbaToRgba(comptime T: type, rgba: anytype) T {
     };
 }
 
+fn grayscaleToGrayscale(comptime T: type, grey: anytype) T {
+    return T{
+        .value = color.scaleToIntColor(std.meta.fieldInfo(T, .value).type, grey.value),
+    };
+}
+
+fn grayscaleAlphaToGrayscale(comptime T: type, grey: anytype) T {
+    const alpha = color.toF32Color(grey.alpha);
+    return T{
+        .value = color.toIntColor(std.meta.fieldInfo(T, .value).type, color.toF32Color(grey.value) * alpha),
+    };
+}
+
+fn grayscaleAlphaToGrayscaleAlpha(comptime T: type, grey: anytype) T {
+    return T{
+        .value = color.scaleToIntColor(std.meta.fieldInfo(T, .value).type, grey.value),
+        .alpha = color.scaleToIntColor(std.meta.fieldInfo(T, .alpha).type, grey.alpha),
+    };
+}
+
 fn grayscaleToRgb(comptime T: type, grey: anytype) T {
     const grey_value = grey.value;
 
@@ -346,6 +422,48 @@ fn indexedToColorf32(comptime source_format: PixelFormat, source: *const color.P
     for (0..source_indexed.indices.len) |index| {
         destination.float32[index] = source_indexed.palette[source_indexed.indices[index]].toColorf32();
     }
+}
+
+fn GreyscaleToGrayscale(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
+    return struct {
+        pub fn convert(source: *const color.PixelStorage, destination: *color.PixelStorage) void {
+            const source_greyscale = @field(source, getFieldNameFromPixelFormat(source_format));
+            var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+            const destination_type = @TypeOf(destination_pixels[0]);
+
+            for (0..source_greyscale.len) |index| {
+                destination_pixels[index] = grayscaleToGrayscale(destination_type, source_greyscale[index]);
+            }
+        }
+    };
+}
+
+fn GreyscaleAlphaToGrayscale(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
+    return struct {
+        pub fn convert(source: *const color.PixelStorage, destination: *color.PixelStorage) void {
+            const source_greyscale = @field(source, getFieldNameFromPixelFormat(source_format));
+            var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+            const destination_type = @TypeOf(destination_pixels[0]);
+
+            for (0..source_greyscale.len) |index| {
+                destination_pixels[index] = grayscaleAlphaToGrayscale(destination_type, source_greyscale[index]);
+            }
+        }
+    };
+}
+
+fn GreyscaleAlphaToGrayscaleAlpha(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
+    return struct {
+        pub fn convert(source: *const color.PixelStorage, destination: *color.PixelStorage) void {
+            const source_greyscale = @field(source, getFieldNameFromPixelFormat(source_format));
+            var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+            const destination_type = @TypeOf(destination_pixels[0]);
+
+            for (0..source_greyscale.len) |index| {
+                destination_pixels[index] = grayscaleAlphaToGrayscaleAlpha(destination_type, source_greyscale[index]);
+            }
+        }
+    };
 }
 
 fn GreyscaleToRgbColor(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {

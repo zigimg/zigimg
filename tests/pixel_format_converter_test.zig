@@ -306,6 +306,124 @@ test "PixelFormatConverter: convert from indexed2 to Colorf32" {
     try helpers.expectEq(float32_pixels.float32[3], Colorsf32.white);
 }
 
+test "PixelFormatConverter: convert from grayscale16Alpha to grayscale8" {
+    const grayscale16_alpha_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .grayscale16Alpha, 4);
+    defer grayscale16_alpha_pixels.deinit(helpers.zigimg_test_allocator);
+
+    grayscale16_alpha_pixels.grayscale16Alpha[0].value = 0;
+    grayscale16_alpha_pixels.grayscale16Alpha[0].alpha = 0;
+
+    grayscale16_alpha_pixels.grayscale16Alpha[1].value = 10000;
+    grayscale16_alpha_pixels.grayscale16Alpha[1].alpha = 65535;
+
+    grayscale16_alpha_pixels.grayscale16Alpha[2].value = 20000;
+    grayscale16_alpha_pixels.grayscale16Alpha[2].alpha = 13107;
+
+    grayscale16_alpha_pixels.grayscale16Alpha[3].value = 65535;
+    grayscale16_alpha_pixels.grayscale16Alpha[3].alpha = 10000;
+
+    const grayscale8_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &grayscale16_alpha_pixels, .grayscale8);
+    defer grayscale8_pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(grayscale8_pixels.grayscale8[0].value, 0);
+    try helpers.expectEq(grayscale8_pixels.grayscale8[1].value, 39);
+    try helpers.expectEq(grayscale8_pixels.grayscale8[2].value, 16);
+    try helpers.expectEq(grayscale8_pixels.grayscale8[3].value, 39);
+}
+
+test "PixelFormatConverter: convert from grayscale8Alpha to grayscale16Alpha" {
+    const grayscale8_alpha_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .grayscale8Alpha, 4);
+    defer grayscale8_alpha_pixels.deinit(helpers.zigimg_test_allocator);
+
+    grayscale8_alpha_pixels.grayscale8Alpha[0].value = 0;
+    grayscale8_alpha_pixels.grayscale8Alpha[0].alpha = 0;
+
+    grayscale8_alpha_pixels.grayscale8Alpha[1].value = 100;
+    grayscale8_alpha_pixels.grayscale8Alpha[1].alpha = 255;
+
+    grayscale8_alpha_pixels.grayscale8Alpha[2].value = 200;
+    grayscale8_alpha_pixels.grayscale8Alpha[2].alpha = 20;
+
+    grayscale8_alpha_pixels.grayscale8Alpha[3].value = 255;
+    grayscale8_alpha_pixels.grayscale8Alpha[3].alpha = 100;
+
+    const grayscale16_alpha_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &grayscale8_alpha_pixels, .grayscale16Alpha);
+    defer grayscale16_alpha_pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(grayscale16_alpha_pixels.grayscale16Alpha[0].value, 0);
+    try helpers.expectEq(grayscale16_alpha_pixels.grayscale16Alpha[0].alpha, 0);
+
+    try helpers.expectEq(grayscale16_alpha_pixels.grayscale16Alpha[1].value, 25700);
+    try helpers.expectEq(grayscale16_alpha_pixels.grayscale16Alpha[1].alpha, 65535);
+
+    try helpers.expectEq(grayscale16_alpha_pixels.grayscale16Alpha[2].value, 51400);
+    try helpers.expectEq(grayscale16_alpha_pixels.grayscale16Alpha[2].alpha, 5140);
+
+    try helpers.expectEq(grayscale16_alpha_pixels.grayscale16Alpha[3].value, 65535);
+    try helpers.expectEq(grayscale16_alpha_pixels.grayscale16Alpha[3].alpha, 25700);
+}
+
+test "PixelFormatConverter: convert from grayscale2 to grayscale8" {
+    const grayscale2_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .grayscale2, 4);
+    defer grayscale2_pixels.deinit(helpers.zigimg_test_allocator);
+
+    grayscale2_pixels.grayscale2[0].value = 0;
+    grayscale2_pixels.grayscale2[1].value = 1;
+    grayscale2_pixels.grayscale2[2].value = 2;
+    grayscale2_pixels.grayscale2[3].value = 3;
+
+    const grayscale8_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &grayscale2_pixels, .grayscale8);
+    defer grayscale8_pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(grayscale8_pixels.grayscale8[0].value, 0);
+    try helpers.expectEq(grayscale8_pixels.grayscale8[1].value, 85);
+    try helpers.expectEq(grayscale8_pixels.grayscale8[2].value, 170);
+    try helpers.expectEq(grayscale8_pixels.grayscale8[3].value, 255);
+}
+
+test "PixelFormatConverter: convert from grayscale2 to grayscale8Alpha" {
+    const grayscale2_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .grayscale2, 4);
+    defer grayscale2_pixels.deinit(helpers.zigimg_test_allocator);
+
+    grayscale2_pixels.grayscale2[0].value = 0;
+    grayscale2_pixels.grayscale2[1].value = 1;
+    grayscale2_pixels.grayscale2[2].value = 2;
+    grayscale2_pixels.grayscale2[3].value = 3;
+
+    const grayscale8_alpha_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &grayscale2_pixels, .grayscale8Alpha);
+    defer grayscale8_alpha_pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(grayscale8_alpha_pixels.grayscale8Alpha[0].value, 0);
+    try helpers.expectEq(grayscale8_alpha_pixels.grayscale8Alpha[0].alpha, 255);
+
+    try helpers.expectEq(grayscale8_alpha_pixels.grayscale8Alpha[1].value, 85);
+    try helpers.expectEq(grayscale8_alpha_pixels.grayscale8Alpha[1].alpha, 255);
+
+    try helpers.expectEq(grayscale8_alpha_pixels.grayscale8Alpha[2].value, 170);
+    try helpers.expectEq(grayscale8_alpha_pixels.grayscale8Alpha[2].alpha, 255);
+
+    try helpers.expectEq(grayscale8_alpha_pixels.grayscale8Alpha[3].value, 255);
+    try helpers.expectEq(grayscale8_alpha_pixels.grayscale8Alpha[3].alpha, 255);
+}
+
+test "PixelFormatConvertere: convert from grayscale8 to grayscale2" {
+    const grayscale8_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .grayscale8, 4);
+    defer grayscale8_pixels.deinit(helpers.zigimg_test_allocator);
+
+    grayscale8_pixels.grayscale8[0].value = 0;
+    grayscale8_pixels.grayscale8[1].value = 64;
+    grayscale8_pixels.grayscale8[2].value = 128;
+    grayscale8_pixels.grayscale8[3].value = 255;
+
+    const grayscale2_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &grayscale8_pixels, .grayscale2);
+    defer grayscale2_pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(grayscale2_pixels.grayscale2[0].value, 0);
+    try helpers.expectEq(grayscale2_pixels.grayscale2[1].value, 1);
+    try helpers.expectEq(grayscale2_pixels.grayscale2[2].value, 2);
+    try helpers.expectEq(grayscale2_pixels.grayscale2[3].value, 3);
+}
+
 test "PixelFormatConverter: convert from grayscale2 to rgb555" {
     const grayscale2_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .grayscale2, 4);
     defer grayscale2_pixels.deinit(helpers.zigimg_test_allocator);
