@@ -244,7 +244,7 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.grayscale8Alpha, .float32) => grayscaleToColorf32(.grayscale8Alpha, source, &destination),
         conversionId(.grayscale16Alpha, .float32) => grayscaleToColorf32(.grayscale16Alpha, source, &destination),
 
-        // rgb555
+        // rgb555 -> RGB + Colorf32
         conversionId(.rgb555, .rgb565) => RgbColorToRgbColor(.rgb555, .rgb565).convert(source, &destination),
         conversionId(.rgb555, .rgb24) => RgbColorToRgbColor(.rgb555, .rgb24).convert(source, &destination),
         conversionId(.rgb555, .rgba32) => RgbColorToRgbaColor(.rgb555, .rgba32).convert(source, &destination),
@@ -255,7 +255,7 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.rgb555, .rgba64) => RgbColorToRgbaColor(.rgb555, .rgba64).convert(source, &destination),
         conversionId(.rgb555, .float32) => rgbColorToColorf32(.rgb555, source, &destination),
 
-        // rgb565
+        // rgb565 -> RGB + Colorf32
         conversionId(.rgb565, .rgb555) => RgbColorToRgbColor(.rgb565, .rgb555).convert(source, &destination),
         conversionId(.rgb565, .rgb24) => RgbColorToRgbColor(.rgb565, .rgb24).convert(source, &destination),
         conversionId(.rgb565, .rgba32) => RgbColorToRgbaColor(.rgb565, .rgba32).convert(source, &destination),
@@ -266,7 +266,7 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.rgb565, .rgba64) => RgbColorToRgbaColor(.rgb565, .rgba64).convert(source, &destination),
         conversionId(.rgb565, .float32) => rgbColorToColorf32(.rgb565, source, &destination),
 
-        // rgb24
+        // rgb24 -> RGB + Colorf32
         conversionId(.rgb24, .rgb555) => RgbColorToRgbColor(.rgb24, .rgb555).convert(source, &destination),
         conversionId(.rgb24, .rgb565) => RgbColorToRgbColor(.rgb24, .rgb565).convert(source, &destination),
         conversionId(.rgb24, .rgba32) => RgbColorToRgbaColor(.rgb24, .rgba32).convert(source, &destination),
@@ -277,7 +277,7 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.rgb24, .rgba64) => RgbColorToRgbaColor(.rgb24, .rgba64).convert(source, &destination),
         conversionId(.rgb24, .float32) => rgbColorToColorf32(.rgb24, source, &destination),
 
-        // rgba32
+        // rgba32 -> RGB + Colorf32
         conversionId(.rgba32, .rgb555) => RgbaColorToRgbColor(.rgba32, .rgb555).convert(source, &destination),
         conversionId(.rgba32, .rgb565) => RgbaColorToRgbColor(.rgba32, .rgb565).convert(source, &destination),
         conversionId(.rgba32, .rgb24) => RgbaColorToRgbColor(.rgba32, .rgb24).convert(source, &destination),
@@ -286,9 +286,9 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.rgba32, .bgra32) => FastRgba32Shuffle(.rgba32, .bgra32).convert(source, &destination),
         conversionId(.rgba32, .rgb48) => RgbaColorToRgbColor(.rgba32, .rgb48).convert(source, &destination),
         conversionId(.rgba32, .rgba64) => RgbaColorToRgbaColor(.rgba32, .rgba64).convert(source, &destination),
-        conversionId(.rgba32, .float32) => rgbaColorToColorf32Fast(.rgba32, source, &destination),
+        conversionId(.rgba32, .float32) => rgba32ToColorf32(.rgba32, source, &destination),
 
-        // bgra32
+        // bgra32 -> RGB + Colorf32
         conversionId(.bgra32, .rgb555) => RgbaColorToRgbColor(.bgra32, .rgb555).convert(source, &destination),
         conversionId(.bgra32, .rgb565) => RgbaColorToRgbColor(.bgra32, .rgb565).convert(source, &destination),
         conversionId(.bgra32, .rgb24) => RgbaColorToRgbColor(.bgra32, .rgb24).convert(source, &destination),
@@ -297,9 +297,9 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.bgra32, .bgr24) => RgbaColorToRgbColor(.bgra32, .bgr24).convert(source, &destination),
         conversionId(.bgra32, .rgb48) => RgbaColorToRgbColor(.bgra32, .rgb48).convert(source, &destination),
         conversionId(.bgra32, .rgba64) => RgbaColorToRgbaColor(.bgra32, .rgba64).convert(source, &destination),
-        conversionId(.bgra32, .float32) => rgbaColorToColorf32Fast(.bgra32, source, &destination),
+        conversionId(.bgra32, .float32) => bgra32ToColorf32(.bgra32, source, &destination),
 
-        // rgb48
+        // rgb48 -> RGB + Colorf32
         conversionId(.rgb48, .rgb555) => RgbColorToRgbColor(.rgb48, .rgb555).convert(source, &destination),
         conversionId(.rgb48, .rgb565) => RgbColorToRgbColor(.rgb48, .rgb565).convert(source, &destination),
         conversionId(.rgb48, .rgb24) => RgbColorToRgbColor(.rgb48, .rgb24).convert(source, &destination),
@@ -310,7 +310,7 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.rgb48, .rgba64) => RgbColorToRgbaColor(.rgb48, .rgba64).convert(source, &destination),
         conversionId(.rgb48, .float32) => rgbColorToColorf32(.rgb48, source, &destination),
 
-        // rgba64
+        // rgba64 -> RGB + Colorf32
         conversionId(.rgba64, .rgb555) => RgbaColorToRgbColor(.rgba64, .rgb555).convert(source, &destination),
         conversionId(.rgba64, .rgb565) => RgbaColorToRgbColor(.rgba64, .rgb565).convert(source, &destination),
         conversionId(.rgba64, .rgb24) => RgbaColorToRgbColor(.rgba64, .rgb24).convert(source, &destination),
@@ -320,6 +320,17 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.rgba64, .bgra32) => RgbaColorToRgbColor(.rgba64, .bgra32).convert(source, &destination),
         conversionId(.rgba64, .rgb48) => RgbaColorToRgbColor(.rgba64, .rgb48).convert(source, &destination),
         conversionId(.rgba64, .float32) => rgbColorToColorf32(.rgba64, source, &destination),
+
+        // Colorf32(float32) -> RGB
+        conversionId(.float32, .rgb555) => colorf32ToRgbColor(.rgb555, source, &destination),
+        conversionId(.float32, .rgb565) => colorf32ToRgbColor(.rgb565, source, &destination),
+        conversionId(.float32, .rgb24) => colorf32ToRgbColor(.rgb24, source, &destination),
+        conversionId(.float32, .rgba32) => colorf32ToRgba32(.rgba32, source, &destination),
+        conversionId(.float32, .bgr555) => colorf32ToRgbColor(.bgr555, source, &destination),
+        conversionId(.float32, .bgr24) => colorf32ToRgbColor(.bgr24, source, &destination),
+        conversionId(.float32, .bgra32) => colorf32ToBgra32(.bgra32, source, &destination),
+        conversionId(.float32, .rgb48) => colorf32ToRgbColor(.rgb48, source, &destination),
+        conversionId(.float32, .rgba64) => colorf32ToRgbaColor(.rgba64, source, &destination),
 
         else => return error.NoConversionAvailable,
     }
@@ -718,7 +729,7 @@ fn FastRgba32Shuffle(comptime source_format: PixelFormat, comptime destination_f
     };
 }
 
-fn rgbaColorToColorf32Fast(comptime source_format: PixelFormat, source: *const color.PixelStorage, destination: *color.PixelStorage) void {
+fn rgba32ToColorf32(comptime source_format: PixelFormat, source: *const color.PixelStorage, destination: *color.PixelStorage) void {
     const source_pixels = @field(source, getFieldNameFromPixelFormat(source_format));
     var destination_pixels = destination.float32;
     var destination_f32: [*]f32 = @alignCast(@ptrCast(destination_pixels.ptr));
@@ -731,9 +742,9 @@ fn rgbaColorToColorf32Fast(comptime source_format: PixelFormat, source: *const c
     var index: usize = 0;
     // Process with SIMD as much as possible
     while (index < source_pixels.len and ((index + color_count) <= source_pixels.len)) {
-        const vector_source = simd.loadBytes(std.mem.sliceAsBytes(source_pixels[index..]), ByteVectorType, vector_length);
+        const source_vector = simd.loadBytes(std.mem.sliceAsBytes(source_pixels[index..]), ByteVectorType, vector_length);
 
-        const float_vector = simd.intToFloat(f32, vector_source, vector_length);
+        const float_vector = simd.intToFloat(f32, source_vector, vector_length);
         const conversion_vector: FloatVectorType = @splat(255.0);
 
         const destination_vector = float_vector / conversion_vector;
@@ -746,5 +757,171 @@ fn rgbaColorToColorf32Fast(comptime source_format: PixelFormat, source: *const c
     // Process the rest sequentially
     while (index < source_pixels.len) {
         destination_pixels[index] = source_pixels[index].toColorf32();
+    }
+}
+
+fn bgra32ToColorf32(comptime source_format: PixelFormat, source: *const color.PixelStorage, destination: *color.PixelStorage) void {
+    const source_pixels = @field(source, getFieldNameFromPixelFormat(source_format));
+    var destination_pixels = destination.float32;
+    var destination_f32: [*]f32 = @alignCast(@ptrCast(destination_pixels.ptr));
+
+    const vector_length = std.simd.suggestVectorLength(u8) orelse 4;
+    const color_count = vector_length / 4;
+    const ByteVectorType = @Vector(vector_length, u8);
+    const FloatVectorType = @Vector(vector_length, f32);
+
+    const shuffle_mask: @Vector(vector_length, i32) = comptime blk: {
+        var result: @Vector(vector_length, i32) = @splat(0);
+
+        for (0..color_count) |i| {
+            const stride = i * 4;
+            result[stride + 0] = stride + 2;
+            result[stride + 1] = stride + 1;
+            result[stride + 2] = stride + 0;
+            result[stride + 3] = stride + 3;
+        }
+
+        break :blk result;
+    };
+
+    var index: usize = 0;
+    // Process with SIMD as much as possible
+    while (index < source_pixels.len and ((index + color_count) <= source_pixels.len)) {
+        const source_vector = simd.loadBytes(std.mem.sliceAsBytes(source_pixels[index..]), ByteVectorType, vector_length);
+
+        const shuffled = @shuffle(u8, source_vector, undefined, shuffle_mask);
+
+        const float_vector = simd.intToFloat(f32, shuffled, vector_length);
+        const conversion_vector: FloatVectorType = @splat(255.0);
+
+        const destination_vector = float_vector / conversion_vector;
+
+        simd.store(f32, destination_f32[(index * 4)..(index * 4 + color_count * 4)], destination_vector, vector_length);
+
+        index += color_count;
+    }
+
+    // Process the rest sequentially
+    while (index < source_pixels.len) {
+        destination_pixels[index] = source_pixels[index].toColorf32();
+    }
+}
+
+fn colorf32ToRgb(comptime T: type, source: color.Colorf32) T {
+    return T{
+        .r = color.toIntColor(std.meta.fieldInfo(T, .r).type, source.r),
+        .g = color.toIntColor(std.meta.fieldInfo(T, .g).type, source.g),
+        .b = color.toIntColor(std.meta.fieldInfo(T, .b).type, source.b),
+    };
+}
+
+fn colorf32ToRgba(comptime T: type, source: color.Colorf32) T {
+    return T{
+        .r = color.toIntColor(std.meta.fieldInfo(T, .r).type, source.r),
+        .g = color.toIntColor(std.meta.fieldInfo(T, .g).type, source.g),
+        .b = color.toIntColor(std.meta.fieldInfo(T, .b).type, source.b),
+        .a = color.toIntColor(std.meta.fieldInfo(T, .a).type, source.a),
+    };
+}
+
+fn colorf32ToRgbColor(comptime destination_format: PixelFormat, source: *const color.PixelStorage, destination: *color.PixelStorage) void {
+    const source_pixels = source.float32;
+
+    var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+    const destination_type = @TypeOf(destination_pixels[0]);
+
+    for (0..source_pixels.len) |index| {
+        destination_pixels[index] = colorf32ToRgb(destination_type, source_pixels[index]);
+    }
+}
+
+fn colorf32ToRgbaColor(comptime destination_format: PixelFormat, source: *const color.PixelStorage, destination: *color.PixelStorage) void {
+    const source_pixels = source.float32;
+
+    var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+    const destination_type = @TypeOf(destination_pixels[0]);
+
+    for (0..source_pixels.len) |index| {
+        destination_pixels[index] = colorf32ToRgba(destination_type, source_pixels[index]);
+    }
+}
+
+fn colorf32ToRgba32(comptime destination_format: PixelFormat, source: *const color.PixelStorage, destination: *color.PixelStorage) void {
+    const source_pixels = source.float32;
+    var source_f32: [*]f32 = @alignCast(@ptrCast(source_pixels.ptr));
+
+    var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+    const destination_type = @TypeOf(destination_pixels[0]);
+
+    const vector_length = std.simd.suggestVectorLength(u8) orelse 4;
+    const color_count = vector_length / 4;
+    const FloatVectorType = @Vector(vector_length, f32);
+
+    var index: usize = 0;
+    // Process with SIMD as much as possible
+    while (index < source_pixels.len and ((index + color_count) <= source_pixels.len)) {
+        const source_vector = simd.load(f32, source_f32[(index * 4)..(index * 4 + color_count * 4)], FloatVectorType, vector_length);
+
+        const conversion_vector: FloatVectorType = @splat(255.0);
+        const converted_vector = source_vector * conversion_vector;
+
+        const destination_vector = simd.floatToInt(u8, converted_vector, vector_length);
+
+        simd.store(u8, std.mem.sliceAsBytes(destination_pixels[index..]), destination_vector, vector_length);
+
+        index += color_count;
+    }
+
+    // Process the rest sequentially
+    while (index < source_pixels.len) {
+        destination_pixels[index] = colorf32ToRgba(destination_type, source_pixels[index]);
+    }
+}
+
+fn colorf32ToBgra32(comptime destination_format: PixelFormat, source: *const color.PixelStorage, destination: *color.PixelStorage) void {
+    const source_pixels = source.float32;
+    var source_f32: [*]f32 = @alignCast(@ptrCast(source_pixels.ptr));
+
+    var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+    const destination_type = @TypeOf(destination_pixels[0]);
+
+    const vector_length = std.simd.suggestVectorLength(u8) orelse 4;
+    const color_count = vector_length / 4;
+    const FloatVectorType = @Vector(vector_length, f32);
+
+    const shuffle_mask: @Vector(vector_length, i32) = comptime blk: {
+        var result: @Vector(vector_length, i32) = @splat(0);
+
+        for (0..color_count) |i| {
+            const stride = i * 4;
+            result[stride + 0] = stride + 2;
+            result[stride + 1] = stride + 1;
+            result[stride + 2] = stride + 0;
+            result[stride + 3] = stride + 3;
+        }
+
+        break :blk result;
+    };
+
+    var index: usize = 0;
+    // Process with SIMD as much as possible
+    while (index < source_pixels.len and ((index + color_count) <= source_pixels.len)) {
+        const source_vector = simd.load(f32, source_f32[(index * 4)..(index * 4 + color_count * 4)], FloatVectorType, vector_length);
+
+        const shuffled = @shuffle(f32, source_vector, undefined, shuffle_mask);
+
+        const conversion_vector: FloatVectorType = @splat(255.0);
+        const converted_vector = shuffled * conversion_vector;
+
+        const destination_vector = simd.floatToInt(u8, converted_vector, vector_length);
+
+        simd.store(u8, std.mem.sliceAsBytes(destination_pixels[index..]), destination_vector, vector_length);
+
+        index += color_count;
+    }
+
+    // Process the rest sequentially
+    while (index < source_pixels.len) {
+        destination_pixels[index] = colorf32ToRgba(destination_type, source_pixels[index]);
     }
 }

@@ -1,5 +1,15 @@
 const std = @import("std");
 
+pub fn load(comptime SourceType: type, source: []const SourceType, comptime VectorType: type, comptime length: u32) VectorType {
+    var result: VectorType = @splat(@as(vectorInnerType(VectorType), 0));
+    const vector_len = if (length == 0) vectorLength(VectorType) else length;
+    comptime var index: u32 = 0;
+    inline while (index < vector_len) : (index += 1) {
+        result[index] = source[index];
+    }
+    return result;
+}
+
 pub fn loadBytes(source: []const u8, comptime VectorType: type, comptime length: u32) VectorType {
     const mem = std.mem.bytesAsSlice(vectorInnerType(VectorType), source);
     var result: VectorType = @splat(@as(vectorInnerType(VectorType), 0));
