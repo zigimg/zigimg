@@ -712,7 +712,7 @@ fn FastRgba32Shuffle(comptime source_format: PixelFormat, comptime destination_f
 
             // Process with SIMD as much as possible
             while (index < source_pixels.len and ((index + color_count) <= source_pixels.len)) {
-                const vector_source = simd.loadBytes(std.mem.sliceAsBytes(source_pixels[index..]), VectorType, vector_length);
+                const vector_source = simd.load(u8, std.mem.sliceAsBytes(source_pixels[index..]), VectorType, vector_length);
 
                 const shuffled = @shuffle(u8, vector_source, undefined, shuffle_mask);
 
@@ -742,7 +742,7 @@ fn rgba32ToColorf32(comptime source_format: PixelFormat, source: *const color.Pi
     var index: usize = 0;
     // Process with SIMD as much as possible
     while (index < source_pixels.len and ((index + color_count) <= source_pixels.len)) {
-        const source_vector = simd.loadBytes(std.mem.sliceAsBytes(source_pixels[index..]), ByteVectorType, vector_length);
+        const source_vector = simd.load(u8, std.mem.sliceAsBytes(source_pixels[index..]), ByteVectorType, vector_length);
 
         const float_vector = simd.intToFloat(f32, source_vector, vector_length);
         const conversion_vector: FloatVectorType = @splat(255.0);
@@ -787,7 +787,7 @@ fn bgra32ToColorf32(comptime source_format: PixelFormat, source: *const color.Pi
     var index: usize = 0;
     // Process with SIMD as much as possible
     while (index < source_pixels.len and ((index + color_count) <= source_pixels.len)) {
-        const source_vector = simd.loadBytes(std.mem.sliceAsBytes(source_pixels[index..]), ByteVectorType, vector_length);
+        const source_vector = simd.load(u8, std.mem.sliceAsBytes(source_pixels[index..]), ByteVectorType, vector_length);
 
         const shuffled = @shuffle(u8, source_vector, undefined, shuffle_mask);
 
