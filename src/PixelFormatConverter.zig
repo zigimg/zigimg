@@ -1,8 +1,12 @@
 const color = @import("color.zig");
+const math = @import("math.zig");
 const simd = @import("simd.zig");
 const std = @import("std");
 
 const PixelFormat = @import("pixel_format.zig").PixelFormat;
+
+// The RGB to Grayscale factors are those for Rec. 709/sRGB assuming linear RGB
+const GrayscaleFactors: math.float4 = .{ 0.2125, 0.7154, 0.0721, 1.0 };
 
 pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, destination_format: PixelFormat) !color.PixelStorage {
     const pixel_count = source.len();
@@ -320,6 +324,14 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.rgba64, .bgra32) => RgbaColorToRgbColor(.rgba64, .bgra32).convert(source, &destination),
         conversionId(.rgba64, .rgb48) => RgbaColorToRgbColor(.rgba64, .rgb48).convert(source, &destination),
         conversionId(.rgba64, .float32) => rgbColorToColorf32(.rgba64, source, &destination),
+
+        // Colorf32(float32) -> grayscale
+        conversionId(.float32, .grayscale1) => colorf32ToGrayscale(.grayscale1, source, &destination),
+        conversionId(.float32, .grayscale2) => colorf32ToGrayscale(.grayscale2, source, &destination),
+        conversionId(.float32, .grayscale4) => colorf32ToGrayscale(.grayscale4, source, &destination),
+        conversionId(.float32, .grayscale8) => colorf32ToGrayscale(.grayscale8, source, &destination),
+        conversionId(.float32, .grayscale8Alpha) => colorf32ToGrayscaleAlpha(.grayscale8Alpha, source, &destination),
+        conversionId(.float32, .grayscale16Alpha) => colorf32ToGrayscaleAlpha(.grayscale16Alpha, source, &destination),
 
         // Colorf32(float32) -> RGB
         conversionId(.float32, .rgb555) => colorf32ToRgbColor(.rgb555, source, &destination),
@@ -923,5 +935,45 @@ fn colorf32ToBgra32(comptime destination_format: PixelFormat, source: *const col
     // Process the rest sequentially
     while (index < source_pixels.len) {
         destination_pixels[index] = colorf32ToRgba(destination_type, source_pixels[index]);
+    }
+}
+
+fn colorf32ToGrayscale(comptime destination_format: PixelFormat, source: *const color.PixelStorage, destination: *color.PixelStorage) void {
+    const source_pixels = source.float32;
+
+    var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+    const DestinationType = @TypeOf(destination_pixels[0]);
+
+    for (0..source_pixels.len) |index| {
+        const source_float4 = source_pixels[index].toFloat4();
+
+        const converted_float4 = GrayscaleFactors * source_float4;
+
+        const grayscale = color.toIntColor(
+            std.meta.fieldInfo(DestinationType, .value).type,
+            (converted_float4[0] + converted_float4[1] + converted_float4[2]) * converted_float4[3],
+        );
+
+        destination_pixels[index] = DestinationType{ .value = grayscale };
+    }
+}
+
+fn colorf32ToGrayscaleAlpha(comptime destination_format: PixelFormat, source: *const color.PixelStorage, destination: *color.PixelStorage) void {
+    const source_pixels = source.float32;
+
+    var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+    const DestinationType = @TypeOf(destination_pixels[0]);
+
+    for (0..source_pixels.len) |index| {
+        const source_float4 = source_pixels[index].toFloat4();
+
+        const converted_float4 = GrayscaleFactors * source_float4;
+
+        const grayscale = color.toIntColor(std.meta.fieldInfo(DestinationType, .value).type, converted_float4[0] + converted_float4[1] + converted_float4[2]);
+
+        destination_pixels[index] = DestinationType{
+            .value = grayscale,
+            .alpha = color.toIntColor(std.meta.fieldInfo(DestinationType, .alpha).type, converted_float4[3]),
+        };
     }
 }

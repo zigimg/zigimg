@@ -1268,3 +1268,90 @@ test "PixelFormatConverter: convert float32 to rgb565" {
         try helpers.expectEq(rgb565_pixels.rgb565[index].b, color.toIntColor(u5, float32_pixels.float32[index].b));
     }
 }
+
+test "PixelFormatConverter: convert float32 to grayscale16Alpha" {
+    const float32_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .float32, 9);
+    defer float32_pixels.deinit(helpers.zigimg_test_allocator);
+
+    float32_pixels.float32[0] = color.Colorf32.initRgb(1.0, 0.0, 0.0);
+    float32_pixels.float32[1] = color.Colorf32.initRgb(0.0, 1.0, 0.0);
+    float32_pixels.float32[2] = color.Colorf32.initRgb(0.0, 0.0, 1.0);
+
+    float32_pixels.float32[3] = color.Colorf32.initRgb(1.0, 0.0, 1.0);
+    float32_pixels.float32[4] = color.Colorf32.initRgb(1.0, 1.0, 0.0);
+    float32_pixels.float32[5] = color.Colorf32.initRgb(0.0, 1.0, 1.0);
+
+    float32_pixels.float32[6] = color.Colorf32.initRgb(1.0, 1.0, 1.0);
+    float32_pixels.float32[7] = color.Colorf32.initRgb(0.0, 0.0, 0.0);
+
+    float32_pixels.float32[8] = color.Colorf32.initRgba(0.2, 0.1, 0.8, 0.4);
+
+    const grayscale16_alpha_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &float32_pixels, .grayscale16Alpha);
+    defer grayscale16_alpha_pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(grayscale16_alpha_pixels.grayscale16Alpha[0].value, 13926);
+    try helpers.expectEq(grayscale16_alpha_pixels.grayscale16Alpha[0].alpha, 65535);
+
+    try helpers.expectEq(grayscale16_alpha_pixels.grayscale16Alpha[1].value, 46884);
+    try helpers.expectEq(grayscale16_alpha_pixels.grayscale16Alpha[1].alpha, 65535);
+
+    try helpers.expectEq(grayscale16_alpha_pixels.grayscale16Alpha[2].value, 4725);
+    try helpers.expectEq(grayscale16_alpha_pixels.grayscale16Alpha[2].alpha, 65535);
+
+    try helpers.expectEq(grayscale16_alpha_pixels.grayscale16Alpha[3].value, 18651);
+    try helpers.expectEq(grayscale16_alpha_pixels.grayscale16Alpha[3].alpha, 65535);
+
+    try helpers.expectEq(grayscale16_alpha_pixels.grayscale16Alpha[4].value, 60810);
+    try helpers.expectEq(grayscale16_alpha_pixels.grayscale16Alpha[4].alpha, 65535);
+
+    try helpers.expectEq(grayscale16_alpha_pixels.grayscale16Alpha[5].value, 51609);
+    try helpers.expectEq(grayscale16_alpha_pixels.grayscale16Alpha[5].alpha, 65535);
+
+    try helpers.expectEq(grayscale16_alpha_pixels.grayscale16Alpha[6].value, 65535);
+    try helpers.expectEq(grayscale16_alpha_pixels.grayscale16Alpha[6].alpha, 65535);
+
+    try helpers.expectEq(grayscale16_alpha_pixels.grayscale16Alpha[7].value, 0);
+    try helpers.expectEq(grayscale16_alpha_pixels.grayscale16Alpha[7].alpha, 65535);
+
+    try helpers.expectEq(grayscale16_alpha_pixels.grayscale16Alpha[8].value, 11254);
+    try helpers.expectEq(grayscale16_alpha_pixels.grayscale16Alpha[8].alpha, 26214);
+}
+
+test "PixelFormatConverter: convert float32 to grayscale8" {
+    const float32_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .float32, 9);
+    defer float32_pixels.deinit(helpers.zigimg_test_allocator);
+
+    float32_pixels.float32[0] = color.Colorf32.initRgb(1.0, 0.0, 0.0);
+    float32_pixels.float32[1] = color.Colorf32.initRgb(0.0, 1.0, 0.0);
+    float32_pixels.float32[2] = color.Colorf32.initRgb(0.0, 0.0, 1.0);
+
+    float32_pixels.float32[3] = color.Colorf32.initRgb(1.0, 0.0, 1.0);
+    float32_pixels.float32[4] = color.Colorf32.initRgb(1.0, 1.0, 0.0);
+    float32_pixels.float32[5] = color.Colorf32.initRgb(0.0, 1.0, 1.0);
+
+    float32_pixels.float32[6] = color.Colorf32.initRgb(1.0, 1.0, 1.0);
+    float32_pixels.float32[7] = color.Colorf32.initRgb(0.0, 0.0, 0.0);
+
+    float32_pixels.float32[8] = color.Colorf32.initRgba(0.2, 0.1, 0.8, 0.4);
+
+    const grayscale8_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &float32_pixels, .grayscale8);
+    defer grayscale8_pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(grayscale8_pixels.grayscale8[0].value, 54);
+
+    try helpers.expectEq(grayscale8_pixels.grayscale8[1].value, 182);
+
+    try helpers.expectEq(grayscale8_pixels.grayscale8[2].value, 18);
+
+    try helpers.expectEq(grayscale8_pixels.grayscale8[3].value, 73);
+
+    try helpers.expectEq(grayscale8_pixels.grayscale8[4].value, 237);
+
+    try helpers.expectEq(grayscale8_pixels.grayscale8[5].value, 201);
+
+    try helpers.expectEq(grayscale8_pixels.grayscale8[6].value, 255);
+
+    try helpers.expectEq(grayscale8_pixels.grayscale8[7].value, 0);
+
+    try helpers.expectEq(grayscale8_pixels.grayscale8[8].value, 18);
+}
