@@ -1539,7 +1539,7 @@ test "Convert from CIE LCh(uv) with alpha to CIE Luv with alpha" {
 }
 
 test "Convert a HSLuv color to gamma sRGB color" {
-    const hsluv = color.HSLuv{ .h = std.math.degreesToRadians(f32, 243.0), .s = 0.61, .l = 0.51 };
+    const hsluv = color.HSLuv{ .h = std.math.degreesToRadians(243.0), .s = 0.61, .l = 0.51 };
 
     const linear = color.sRGB.fromHSLuv(hsluv, .none);
 
@@ -1573,7 +1573,7 @@ test "Convert a gamma sRGB color to HSLuv" {
 }
 
 test "Convert a HSLuv with alpha color to gamma sRGB color with alpha" {
-    const hsluv = color.HSLuvAlpha{ .h = std.math.degreesToRadians(f32, 243.0), .s = 0.61, .l = 0.51, .alpha = 0.12345 };
+    const hsluv = color.HSLuvAlpha{ .h = std.math.degreesToRadians(243.0), .s = 0.61, .l = 0.51, .alpha = 0.12345 };
 
     const linear = color.sRGB.fromHSLuvAlpha(hsluv, .none);
 
