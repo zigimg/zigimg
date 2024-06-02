@@ -364,7 +364,7 @@ fn RunLengthSIMDEncoder(comptime IntType: type) type {
                 const read_value = try reader.readInt(IntType, .little);
 
                 const current_byte_splatted: VectorType = @splat(read_value);
-                const compare_chunk = simd.load(source_data[index..], VectorType, 0);
+                const compare_chunk = simd.loadBytes(source_data[index..], VectorType, 0);
 
                 const compare_mask = (current_byte_splatted == compare_chunk);
                 const inverted_mask = ~@as(MaskType, @bitCast(compare_mask));

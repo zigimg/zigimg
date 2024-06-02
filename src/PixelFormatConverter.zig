@@ -1,4 +1,5 @@
 const color = @import("color.zig");
+const simd = @import("simd.zig");
 const std = @import("std");
 
 const PixelFormat = @import("pixel_format.zig").PixelFormat;
@@ -242,6 +243,83 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.grayscale16, .float32) => grayscaleToColorf32(.grayscale16, source, &destination),
         conversionId(.grayscale8Alpha, .float32) => grayscaleToColorf32(.grayscale8Alpha, source, &destination),
         conversionId(.grayscale16Alpha, .float32) => grayscaleToColorf32(.grayscale16Alpha, source, &destination),
+
+        // rgb555
+        conversionId(.rgb555, .rgb565) => RgbColorToRgbColor(.rgb555, .rgb565).convert(source, &destination),
+        conversionId(.rgb555, .rgb24) => RgbColorToRgbColor(.rgb555, .rgb24).convert(source, &destination),
+        conversionId(.rgb555, .rgba32) => RgbColorToRgbaColor(.rgb555, .rgba32).convert(source, &destination),
+        conversionId(.rgb555, .bgr555) => RgbColorToRgbColor(.rgb555, .bgr555).convert(source, &destination),
+        conversionId(.rgb555, .bgr24) => RgbColorToRgbColor(.rgb555, .bgr24).convert(source, &destination),
+        conversionId(.rgb555, .bgra32) => RgbColorToRgbaColor(.rgb555, .bgra32).convert(source, &destination),
+        conversionId(.rgb555, .rgb48) => RgbColorToRgbColor(.rgb555, .rgb48).convert(source, &destination),
+        conversionId(.rgb555, .rgba64) => RgbColorToRgbaColor(.rgb555, .rgba64).convert(source, &destination),
+        conversionId(.rgb555, .float32) => rgbColorToColorf32(.rgb555, source, &destination),
+
+        // rgb565
+        conversionId(.rgb565, .rgb555) => RgbColorToRgbColor(.rgb565, .rgb555).convert(source, &destination),
+        conversionId(.rgb565, .rgb24) => RgbColorToRgbColor(.rgb565, .rgb24).convert(source, &destination),
+        conversionId(.rgb565, .rgba32) => RgbColorToRgbaColor(.rgb565, .rgba32).convert(source, &destination),
+        conversionId(.rgb565, .bgr555) => RgbColorToRgbColor(.rgb565, .bgr555).convert(source, &destination),
+        conversionId(.rgb565, .bgr24) => RgbColorToRgbColor(.rgb565, .bgr24).convert(source, &destination),
+        conversionId(.rgb565, .bgra32) => RgbColorToRgbaColor(.rgb565, .bgra32).convert(source, &destination),
+        conversionId(.rgb565, .rgb48) => RgbColorToRgbColor(.rgb565, .rgb48).convert(source, &destination),
+        conversionId(.rgb565, .rgba64) => RgbColorToRgbaColor(.rgb565, .rgba64).convert(source, &destination),
+        conversionId(.rgb565, .float32) => rgbColorToColorf32(.rgb565, source, &destination),
+
+        // rgb24
+        conversionId(.rgb24, .rgb555) => RgbColorToRgbColor(.rgb24, .rgb555).convert(source, &destination),
+        conversionId(.rgb24, .rgb565) => RgbColorToRgbColor(.rgb24, .rgb565).convert(source, &destination),
+        conversionId(.rgb24, .rgba32) => RgbColorToRgbaColor(.rgb24, .rgba32).convert(source, &destination),
+        conversionId(.rgb24, .bgr555) => RgbColorToRgbColor(.rgb24, .bgr555).convert(source, &destination),
+        conversionId(.rgb24, .bgr24) => RgbColorToRgbColor(.rgb24, .bgr24).convert(source, &destination),
+        conversionId(.rgb24, .bgra32) => RgbColorToRgbaColor(.rgb24, .bgra32).convert(source, &destination),
+        conversionId(.rgb24, .rgb48) => RgbColorToRgbColor(.rgb24, .rgb48).convert(source, &destination),
+        conversionId(.rgb24, .rgba64) => RgbColorToRgbaColor(.rgb24, .rgba64).convert(source, &destination),
+        conversionId(.rgb24, .float32) => rgbColorToColorf32(.rgb24, source, &destination),
+
+        // rgba32
+        conversionId(.rgba32, .rgb555) => RgbaColorToRgbColor(.rgba32, .rgb555).convert(source, &destination),
+        conversionId(.rgba32, .rgb565) => RgbaColorToRgbColor(.rgba32, .rgb565).convert(source, &destination),
+        conversionId(.rgba32, .rgb24) => RgbaColorToRgbColor(.rgba32, .rgb24).convert(source, &destination),
+        conversionId(.rgba32, .bgr555) => RgbaColorToRgbColor(.rgba32, .bgr555).convert(source, &destination),
+        conversionId(.rgba32, .bgr24) => RgbaColorToRgbColor(.rgba32, .bgr24).convert(source, &destination),
+        conversionId(.rgba32, .bgra32) => FastRgba32Shuffle(.rgba32, .bgra32).convert(source, &destination),
+        conversionId(.rgba32, .rgb48) => RgbaColorToRgbColor(.rgba32, .rgb48).convert(source, &destination),
+        conversionId(.rgba32, .rgba64) => RgbaColorToRgbaColor(.rgba32, .rgba64).convert(source, &destination),
+        conversionId(.rgba32, .float32) => rgbaColorToColorf32Fast(.rgba32, source, &destination),
+
+        // bgra32
+        conversionId(.bgra32, .rgb555) => RgbaColorToRgbColor(.bgra32, .rgb555).convert(source, &destination),
+        conversionId(.bgra32, .rgb565) => RgbaColorToRgbColor(.bgra32, .rgb565).convert(source, &destination),
+        conversionId(.bgra32, .rgb24) => RgbaColorToRgbColor(.bgra32, .rgb24).convert(source, &destination),
+        conversionId(.bgra32, .rgba32) => FastRgba32Shuffle(.bgra32, .rgba32).convert(source, &destination),
+        conversionId(.bgra32, .bgr555) => RgbaColorToRgbColor(.bgra32, .bgr555).convert(source, &destination),
+        conversionId(.bgra32, .bgr24) => RgbaColorToRgbColor(.bgra32, .bgr24).convert(source, &destination),
+        conversionId(.bgra32, .rgb48) => RgbaColorToRgbColor(.bgra32, .rgb48).convert(source, &destination),
+        conversionId(.bgra32, .rgba64) => RgbaColorToRgbaColor(.bgra32, .rgba64).convert(source, &destination),
+        conversionId(.bgra32, .float32) => rgbaColorToColorf32Fast(.bgra32, source, &destination),
+
+        // rgb48
+        conversionId(.rgb48, .rgb555) => RgbColorToRgbColor(.rgb48, .rgb555).convert(source, &destination),
+        conversionId(.rgb48, .rgb565) => RgbColorToRgbColor(.rgb48, .rgb565).convert(source, &destination),
+        conversionId(.rgb48, .rgb24) => RgbColorToRgbColor(.rgb48, .rgb24).convert(source, &destination),
+        conversionId(.rgb48, .rgba32) => RgbColorToRgbaColor(.rgb48, .rgba32).convert(source, &destination),
+        conversionId(.rgb48, .bgr555) => RgbColorToRgbColor(.rgb48, .bgr555).convert(source, &destination),
+        conversionId(.rgb48, .bgr24) => RgbColorToRgbColor(.rgb48, .bgr24).convert(source, &destination),
+        conversionId(.rgb48, .bgra32) => RgbColorToRgbaColor(.rgb48, .bgra32).convert(source, &destination),
+        conversionId(.rgb48, .rgba64) => RgbColorToRgbaColor(.rgb48, .rgba64).convert(source, &destination),
+        conversionId(.rgb48, .float32) => rgbColorToColorf32(.rgb48, source, &destination),
+
+        // rgba64
+        conversionId(.rgba64, .rgb555) => RgbaColorToRgbColor(.rgba64, .rgb555).convert(source, &destination),
+        conversionId(.rgba64, .rgb565) => RgbaColorToRgbColor(.rgba64, .rgb565).convert(source, &destination),
+        conversionId(.rgba64, .rgb24) => RgbaColorToRgbColor(.rgba64, .rgb24).convert(source, &destination),
+        conversionId(.rgba64, .rgba32) => RgbaColorToRgbaColor(.rgba64, .rgba32).convert(source, &destination),
+        conversionId(.rgba64, .bgr555) => RgbaColorToRgbColor(.rgba64, .bgr555).convert(source, &destination),
+        conversionId(.rgba64, .bgr24) => RgbaColorToRgbColor(.rgba64, .bgr24).convert(source, &destination),
+        conversionId(.rgba64, .bgra32) => RgbaColorToRgbColor(.rgba64, .bgra32).convert(source, &destination),
+        conversionId(.rgba64, .rgb48) => RgbaColorToRgbColor(.rgba64, .rgb48).convert(source, &destination),
+        conversionId(.rgba64, .float32) => rgbColorToColorf32(.rgba64, source, &destination),
 
         else => return error.NoConversionAvailable,
     }
@@ -527,5 +605,146 @@ fn grayscaleToColorf32(comptime source_format: PixelFormat, source: *const color
 
     for (0..source_grayscale.len) |index| {
         destination.float32[index] = source_grayscale[index].toColorf32();
+    }
+}
+
+fn RgbColorToRgbColor(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
+    return struct {
+        pub fn convert(source: *const color.PixelStorage, destination: *color.PixelStorage) void {
+            const source_rgb = @field(source, getFieldNameFromPixelFormat(source_format));
+            var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+            const destination_type = @TypeOf(destination_pixels[0]);
+
+            for (0..source_rgb.len) |index| {
+                destination_pixels[index] = rgbToRgb(destination_type, source_rgb[index]);
+            }
+        }
+    };
+}
+
+fn RgbColorToRgbaColor(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
+    return struct {
+        pub fn convert(source: *const color.PixelStorage, destination: *color.PixelStorage) void {
+            const source_rgb = @field(source, getFieldNameFromPixelFormat(source_format));
+            var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+            const destination_type = @TypeOf(destination_pixels[0]);
+
+            for (0..source_rgb.len) |index| {
+                destination_pixels[index] = rgbToRgba(destination_type, source_rgb[index]);
+            }
+        }
+    };
+}
+
+fn RgbaColorToRgbColor(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
+    return struct {
+        pub fn convert(source: *const color.PixelStorage, destination: *color.PixelStorage) void {
+            const source_rgb = @field(source, getFieldNameFromPixelFormat(source_format));
+            var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+            const destination_type = @TypeOf(destination_pixels[0]);
+
+            for (0..source_rgb.len) |index| {
+                destination_pixels[index] = rgbaToRgb(destination_type, source_rgb[index]);
+            }
+        }
+    };
+}
+
+fn RgbaColorToRgbaColor(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
+    return struct {
+        pub fn convert(source: *const color.PixelStorage, destination: *color.PixelStorage) void {
+            const source_rgb = @field(source, getFieldNameFromPixelFormat(source_format));
+            var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+            const destination_type = @TypeOf(destination_pixels[0]);
+
+            for (0..source_rgb.len) |index| {
+                destination_pixels[index] = rgbaToRgba(destination_type, source_rgb[index]);
+            }
+        }
+    };
+}
+
+fn rgbColorToColorf32(comptime source_format: PixelFormat, source: *const color.PixelStorage, destination: *color.PixelStorage) void {
+    const source_rgb = @field(source, getFieldNameFromPixelFormat(source_format));
+
+    for (0..source_rgb.len) |index| {
+        destination.float32[index] = source_rgb[index].toColorf32();
+    }
+}
+
+fn FastRgba32Shuffle(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
+    return struct {
+        pub fn convert(source: *const color.PixelStorage, destination: *color.PixelStorage) void {
+            const source_pixels = @field(source, getFieldNameFromPixelFormat(source_format));
+            var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+            const destination_type = @TypeOf(destination_pixels[0]);
+
+            const vector_length = std.simd.suggestVectorLength(u8) orelse 4;
+            const color_count = vector_length / 4;
+            const VectorType = @Vector(vector_length, u8);
+
+            var index: usize = 0;
+
+            const shuffle_mask: @Vector(vector_length, i32) = comptime blk: {
+                var result: @Vector(vector_length, i32) = @splat(0);
+
+                for (0..color_count) |i| {
+                    const stride = i * 4;
+                    result[stride + 0] = stride + 2;
+                    result[stride + 1] = stride + 1;
+                    result[stride + 2] = stride + 0;
+                    result[stride + 3] = stride + 3;
+                }
+
+                break :blk result;
+            };
+
+            // Process with SIMD as much as possible
+            while (index < source_pixels.len and ((index + color_count) <= source_pixels.len)) {
+                const vector_source = simd.loadBytes(std.mem.sliceAsBytes(source_pixels[index..]), VectorType, vector_length);
+
+                const shuffled = @shuffle(u8, vector_source, undefined, shuffle_mask);
+
+                simd.store(u8, std.mem.sliceAsBytes(destination_pixels[index..]), shuffled, vector_length);
+
+                index += color_count;
+            }
+
+            // Process the rest sequentially
+            while (index < source_pixels.len) {
+                destination_pixels[index] = rgbaToRgba(destination_type, source_pixels[index]);
+            }
+        }
+    };
+}
+
+fn rgbaColorToColorf32Fast(comptime source_format: PixelFormat, source: *const color.PixelStorage, destination: *color.PixelStorage) void {
+    const source_pixels = @field(source, getFieldNameFromPixelFormat(source_format));
+    var destination_pixels = destination.float32;
+    var destination_f32: [*]f32 = @alignCast(@ptrCast(destination_pixels.ptr));
+
+    const vector_length = std.simd.suggestVectorLength(u8) orelse 4;
+    const color_count = vector_length / 4;
+    const ByteVectorType = @Vector(vector_length, u8);
+    const FloatVectorType = @Vector(vector_length, f32);
+
+    var index: usize = 0;
+    // Process with SIMD as much as possible
+    while (index < source_pixels.len and ((index + color_count) <= source_pixels.len)) {
+        const vector_source = simd.loadBytes(std.mem.sliceAsBytes(source_pixels[index..]), ByteVectorType, vector_length);
+
+        const float_vector = simd.intToFloat(f32, vector_source, vector_length);
+        const conversion_vector: FloatVectorType = @splat(255.0);
+
+        const destination_vector = float_vector / conversion_vector;
+
+        simd.store(f32, destination_f32[(index * 4)..(index * 4 + color_count * 4)], destination_vector, vector_length);
+
+        index += color_count;
+    }
+
+    // Process the rest sequentially
+    while (index < source_pixels.len) {
+        destination_pixels[index] = source_pixels[index].toColorf32();
     }
 }

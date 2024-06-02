@@ -1,13 +1,44 @@
 const std = @import("std");
 
-pub fn load(bytes: []const u8, comptime T: type, comptime len: u32) T {
-    const mem = std.mem.bytesAsSlice(vectorInnerType(T), bytes);
-    var result: T = @splat(@as(vectorInnerType(T), 0));
-    const vector_len = if (len == 0) vectorLength(T) else len;
-    comptime var i: u32 = 0;
-    inline while (i < vector_len) : (i += 1) {
-        result[i] = mem[i];
+pub fn loadBytes(source: []const u8, comptime VectorType: type, comptime length: u32) VectorType {
+    const mem = std.mem.bytesAsSlice(vectorInnerType(VectorType), source);
+    var result: VectorType = @splat(@as(vectorInnerType(VectorType), 0));
+    const vector_len = if (length == 0) vectorLength(VectorType) else length;
+    comptime var index: u32 = 0;
+    inline while (index < vector_len) : (index += 1) {
+        result[index] = mem[index];
     }
+    return result;
+}
+
+pub fn store(comptime DestinationType: type, destination: []DestinationType, vector: anytype, comptime length: u32) void {
+    const VectorType = @TypeOf(vector);
+    const vector_length = if (length == 0) vectorLength(VectorType) else length;
+
+    comptime var index: u32 = 0;
+    inline while (index < vector_length) : (index += 1) {
+        destination[index] = vector[index];
+    }
+}
+
+pub fn intToFloat(comptime DestinationType: type, source: anytype, comptime length: u32) @Vector(length, DestinationType) {
+    var result: @Vector(length, DestinationType) = @splat(@as(DestinationType, 0));
+
+    comptime var index: u32 = 0;
+    inline while (index < length) : (index += 1) {
+        result[index] = @floatFromInt(source[index]);
+    }
+    return result;
+}
+
+pub fn floatToInt(comptime DestinationType: type, source: anytype, comptime length: u32) @Vector(length, DestinationType) {
+    var result: @Vector(length, DestinationType) = @splat(@as(DestinationType, 0));
+
+    comptime var index: u32 = 0;
+    inline while (index < length) : (index += 1) {
+        result[index] = @intFromFloat(source[index]);
+    }
+
     return result;
 }
 
