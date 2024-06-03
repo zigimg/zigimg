@@ -3,12 +3,17 @@ const math = @import("math.zig");
 const simd = @import("simd.zig");
 const std = @import("std");
 
+const Image = @import("Image.zig");
 const PixelFormat = @import("pixel_format.zig").PixelFormat;
 
 // The RGB to Grayscale factors are those for Rec. 709/sRGB assuming linear RGB
 const GrayscaleFactors: math.float4 = .{ 0.2125, 0.7154, 0.0721, 1.0 };
 
-pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, destination_format: PixelFormat) !color.PixelStorage {
+pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, destination_format: PixelFormat) Image.ConvertError!color.PixelStorage {
+    if (std.meta.activeTag(source.*) == destination_format) {
+        return Image.ConvertError.NoConversionNeeded;
+    }
+
     const pixel_count = source.len();
 
     var destination = try color.PixelStorage.init(allocator, destination_format, pixel_count);
@@ -438,7 +443,7 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.float32, .rgb48) => colorf32ToRgbColor(.rgb48, source, &destination),
         conversionId(.float32, .rgba64) => colorf32ToRgbaColor(.rgba64, source, &destination),
 
-        else => return error.NoConversionAvailable,
+        else => return Image.ConvertError.NoConversionAvailable,
     }
 
     return destination;

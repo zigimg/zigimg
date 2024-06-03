@@ -4,6 +4,7 @@ const PixelFormat = @import("pixel_format.zig").PixelFormat;
 const color = @import("color.zig");
 const std = @import("std");
 const utils = @import("utils.zig");
+const PixelFormatConverter = @import("PixelFormatConverter.zig");
 
 pub const Error = error{
     Unsupported,
@@ -23,6 +24,10 @@ pub const WriteError = Error ||
     std.io.StreamSource.GetSeekPosError ||
     std.fs.File.OpenError ||
     error{ EndOfStream, InvalidData, UnfinishedBits };
+
+pub const ConvertError = Error ||
+    std.mem.Allocator.Error ||
+    error{ NoConversionAvailable, NoConversionNeeded };
 
 pub const Format = enum {
     bmp,
@@ -197,6 +202,22 @@ pub fn writeToMemory(self: Image, write_buffer: []u8, encoder_options: EncoderOp
     try self.internalWrite(&stream_source, encoder_options);
 
     return stream_source.buffer.getWritten();
+}
+
+/// Convert the pixel format of the Image into another format.
+/// It will allocate another pixel storage for the destination and free the old one
+pub fn convert(self: *Image, destination_format: PixelFormat) ConvertError!void {
+    // Do nothing if the format is the same
+    if (std.meta.activeTag(self.pixels) == destination_format) {
+        return;
+    }
+
+    const new_pixels = try PixelFormatConverter.convert(self.allocator, &self.pixels, destination_format);
+    errdefer new_pixels.deinit(self.allocator);
+
+    self.pixels.deinit(self.allocator);
+
+    self.pixels = new_pixels;
 }
 
 /// Iterate the pixel in pixel-format agnostic way. In the case of an animation, it returns an iterator for the first frame. The iterator is read-only.

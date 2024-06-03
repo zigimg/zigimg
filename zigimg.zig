@@ -11,6 +11,7 @@ pub const OctTreeQuantizer = @import("src/octree_quantizer.zig").OctTreeQuantize
 pub const pam = @import("src/formats/pam.zig");
 pub const pcx = @import("src/formats/pcx.zig");
 pub const PixelFormat = @import("src/pixel_format.zig").PixelFormat;
+pub const PixelFormatConverter = @import("src/PixelFormatConverter.zig");
 pub const png = @import("src/formats/png.zig");
 pub const qoi = @import("src/formats/qoi.zig");
 pub const tga = @import("src/formats/tga.zig");
