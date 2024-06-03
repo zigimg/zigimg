@@ -1,24 +1,24 @@
-const ArrayList = std.ArrayList;
-const HeapAllocator = std.heap.HeapAllocator;
 const Image = @import("../src/Image.zig");
-const OctTreeQuantizer = @import("../src/octree_quantizer.zig").OctTreeQuantizer;
-const assert = std.debug.assert;
+const OctTreeQuantizer = @import("../src/OctTreeQuantizer.zig");
 const color = @import("../src/color.zig");
 const std = @import("std");
-const testing = std.testing;
 const helpers = @import("helpers.zig");
 
 test "Build the oct tree with 3 colors" {
     var quantizer = OctTreeQuantizer.init(helpers.zigimg_test_allocator);
     defer quantizer.deinit();
+
     const red = color.Rgba32.initRgb(0xFF, 0, 0);
     const green = color.Rgba32.initRgb(0, 0xFF, 0);
     const blue = color.Rgba32.initRgb(0, 0, 0xFF);
+
     try quantizer.addColor(red);
     try quantizer.addColor(green);
     try quantizer.addColor(blue);
-    var paletteStorage: [256]color.Rgba32 = undefined;
-    const palette = try quantizer.makePalette(256, paletteStorage[0..]);
+
+    var palette_storage: [256]color.Rgba32 = undefined;
+    const palette = try quantizer.makePalette(256, palette_storage[0..]);
+
     try helpers.expectEq(palette.len, 3);
 
     try helpers.expectEq(try quantizer.getPaletteIndex(red), 2);
@@ -31,8 +31,8 @@ test "Build the oct tree with 3 colors" {
 }
 
 test "Build a oct tree with 32-bit RGBA bitmap" {
-    var MemoryRGBABitmap: [200 * 1024]u8 = undefined;
-    const buffer = try helpers.testReadFile(helpers.fixtures_path ++ "bmp/windows_rgba_v5.bmp", MemoryRGBABitmap[0..]);
+    var memory_rgba_bitmap: [200 * 1024]u8 = undefined;
+    const buffer = try helpers.testReadFile(helpers.fixtures_path ++ "bmp/windows_rgba_v5.bmp", memory_rgba_bitmap[0..]);
 
     var image = try Image.fromMemory(helpers.zigimg_test_allocator, buffer);
     defer image.deinit();
@@ -40,25 +40,26 @@ test "Build a oct tree with 32-bit RGBA bitmap" {
     var quantizer = OctTreeQuantizer.init(helpers.zigimg_test_allocator);
     defer quantizer.deinit();
 
-    var colorIt = image.iterator();
+    var color_it = image.iterator();
 
-    while (colorIt.next()) |pixel| {
+    while (color_it.next()) |pixel| {
         try quantizer.addColor(pixel.toPremultipliedAlpha().toRgba32());
     }
 
-    var paletteStorage: [256]color.Rgba32 = undefined;
-    const palette = try quantizer.makePalette(255, paletteStorage[0..]);
+    var palette_storage: [256]color.Rgba32 = undefined;
+    const palette = try quantizer.makePalette(255, palette_storage[0..]);
+
     try helpers.expectEq(palette.len, 255);
 
-    const paletteIndex = try quantizer.getPaletteIndex(color.Rgba32.initRgba(110, 0, 0, 255));
-    try helpers.expectEq(paletteIndex, 93);
+    const palette_index = try quantizer.getPaletteIndex(color.Rgba32.initRgba(110, 0, 0, 255));
+    try helpers.expectEq(palette_index, 93);
     try helpers.expectEq(palette[93].r, 110);
     try helpers.expectEq(palette[93].g, 2);
     try helpers.expectEq(palette[93].b, 2);
     try helpers.expectEq(palette[93].a, 255);
 
-    const secondPaletteIndex = try quantizer.getPaletteIndex(color.Rgba32.initRgba(0, 0, 119, 255));
-    try helpers.expectEq(secondPaletteIndex, 53);
+    const second_palette_index = try quantizer.getPaletteIndex(color.Rgba32.initRgba(0, 0, 119, 255));
+    try helpers.expectEq(second_palette_index, 53);
     try helpers.expectEq(palette[53].r, 0);
     try helpers.expectEq(palette[53].g, 0);
     try helpers.expectEq(palette[53].b, 117);
