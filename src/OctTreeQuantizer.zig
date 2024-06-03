@@ -17,9 +17,8 @@ pub fn init(allocator: std.mem.Allocator) OctTreeQuantizer {
         .area_allocator = std.heap.ArenaAllocator.init(allocator),
         .levels = undefined,
     };
-    var i: usize = 0;
-    while (i < result.levels.len) : (i += 1) {
-        result.levels[i] = NodeArrayList.init(allocator);
+    for (0..result.levels.len) |index| {
+        result.levels[index] = NodeArrayList.init(allocator);
     }
     result.root_node.init(0, &result) catch unreachable;
     return result;
@@ -27,9 +26,8 @@ pub fn init(allocator: std.mem.Allocator) OctTreeQuantizer {
 
 pub fn deinit(self: *OctTreeQuantizer) void {
     self.area_allocator.deinit();
-    var i: usize = 0;
-    while (i < self.levels.len) : (i += 1) {
-        self.levels[i].deinit();
+    for (0..self.levels.len) |index| {
+        self.levels[index].deinit();
     }
 }
 
@@ -102,9 +100,8 @@ const Node = struct {
         self.reference_count = 0;
         self.palette_index = 0;
 
-        var i: usize = 0;
-        while (i < self.children.len) : (i += 1) {
-            self.children[i] = null;
+        for (0..self.children.len) |index| {
+            self.children[index] = null;
         }
 
         if (level < (MaxDepth - 1)) {
