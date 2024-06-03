@@ -83,8 +83,7 @@ const Image = @This();
 const FormatInteraceFnType = *const fn () FormatInterface;
 const all_interface_funcs = blk: {
     const allFormatDecls = std.meta.declarations(AllImageFormats);
-    var result: [allFormatDecls.len]FormatInteraceFnType = undefined;
-    var index: usize = 0;
+    var result: []const FormatInteraceFnType = &[0]FormatInteraceFnType{};
     for (allFormatDecls) |decl| {
         const decl_value = @field(AllImageFormats, decl.name);
         const entry_type = @TypeOf(decl_value);
@@ -93,17 +92,16 @@ const all_interface_funcs = blk: {
             if (entryTypeInfo == .Struct) {
                 for (entryTypeInfo.Struct.decls) |structEntry| {
                     if (std.mem.eql(u8, structEntry.name, "formatInterface")) {
-                        result[index] = @field(decl_value, structEntry.name);
-                        index += 1;
+                        result = result ++ [_]FormatInteraceFnType{
+                            @field(decl_value, structEntry.name),
+                        };
                         break;
                     }
                 }
             }
         }
     }
-
-    const const_result = result;
-    break :blk const_result[0..index];
+    break :blk result[0..];
 };
 
 /// Init an empty image with no pixel data
