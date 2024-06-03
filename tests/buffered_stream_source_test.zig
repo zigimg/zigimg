@@ -10,7 +10,7 @@ test "BufferedStreamReader should read and seek properly with a file" {
     var temp_folder = std.testing.tmpDir(.{});
     defer temp_folder.cleanup();
 
-    try temp_folder.dir.writeFile(TestFilename, TestFileContents);
+    try temp_folder.dir.writeFile(.{ .sub_path = TestFilename, .data = TestFileContents });
 
     var read_file = try temp_folder.dir.openFile(TestFilename, .{});
     defer read_file.close();
