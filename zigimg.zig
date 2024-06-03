@@ -1,6 +1,7 @@
 pub const AllFormats = @import("src/formats/all.zig");
 pub const bmp = @import("src/formats/bmp.zig");
 pub const color = @import("src/color.zig");
+pub const Colors = @import("src/predefined_colors.zig").Colors;
 pub const FormatInterface = @import("src/FormatInterface.zig");
 pub const gif = @import("src/formats/gif.zig");
 pub const Image = @import("src/Image.zig");
