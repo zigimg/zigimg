@@ -48,11 +48,7 @@ pub fn getPaletteIndex(self: OctTreeQuantizer, color_value: color.Rgba32) !usize
 }
 
 pub fn makePalette(self: *OctTreeQuantizer, color_count: usize, palette: []color.Rgba32) anyerror![]color.Rgba32 {
-    var palette_index: usize = 0;
-
-    var root_leaf_nodes = try self.root_node.getLeafNodes(self.area_allocator.child_allocator);
-    defer root_leaf_nodes.deinit();
-    var leaf_count = root_leaf_nodes.items.len;
+    var leaf_count = self.root_node.countLeafNodes();
 
     var level: usize = MaxDepth - 1;
     while (level >= 0) : (level -= 1) {
@@ -68,22 +64,17 @@ pub fn makePalette(self: *OctTreeQuantizer, color_count: usize, palette: []color
         try self.levels[level].resize(0);
     }
 
-    var processed_root_leaf_nodes = try self.root_node.getLeafNodes(self.area_allocator.child_allocator);
-    defer processed_root_leaf_nodes.deinit();
+    var make_palette_context = MakePaletteContext{ .palette = palette, .color_count = color_count };
+    self.root_node.makePalette(&make_palette_context);
 
-    for (processed_root_leaf_nodes.items) |node| {
-        if (palette_index >= color_count) {
-            break;
-        }
-        if (node.isLeaf()) {
-            palette[palette_index] = node.getColor();
-            node.palette_index = palette_index;
-            palette_index += 1;
-        }
-    }
-
-    return palette[0..palette_index];
+    return palette[0..make_palette_context.palette_index];
 }
+
+const MakePaletteContext = struct {
+    palette: []color.Rgba32,
+    palette_index: usize = 0,
+    color_count: usize = 0,
+};
 
 const Node = struct {
     red: u32 = 0,
@@ -149,8 +140,8 @@ const Node = struct {
         if (self.children[index]) |child| {
             return try child.getPaletteIndex(color_value, level + 1);
         } else {
-            for (self.children) |childOptional| {
-                if (childOptional) |child| {
+            for (self.children) |child_opt| {
+                if (child_opt) |child| {
                     return try child.getPaletteIndex(color_value, level + 1);
                 }
             }
@@ -159,36 +150,49 @@ const Node = struct {
         return error.ColorNotFound;
     }
 
-    pub fn getLeafNodes(self: Node, allocator: std.mem.Allocator) anyerror!NodeArrayList {
-        var leaf_nodes = NodeArrayList.init(allocator);
+    pub fn countLeafNodes(self: Node) usize {
+        if (self.isLeaf()) {
+            return 1;
+        }
 
+        var count: usize = 0;
         for (self.children) |child_opt| {
             if (child_opt) |child| {
-                if (child.isLeaf()) {
-                    try leaf_nodes.append(child);
-                } else {
-                    var child_nodes = try child.getLeafNodes(allocator);
-                    defer child_nodes.deinit();
-                    for (child_nodes.items) |child_node| {
-                        try leaf_nodes.append(child_node);
-                    }
-                }
+                count += child.countLeafNodes();
             }
         }
 
-        return leaf_nodes;
+        return count;
+    }
+
+    pub fn makePalette(self: *Node, context: *MakePaletteContext) void {
+        if (self.isLeaf()) {
+            if (context.palette_index >= context.color_count) {
+                return;
+            }
+
+            context.palette[context.palette_index] = self.getColor();
+            self.palette_index = context.palette_index;
+            context.palette_index += 1;
+        }
+
+        for (self.children) |child_opt| {
+            if (child_opt) |child| {
+                child.makePalette(context);
+            }
+        }
     }
 
     pub fn removeLeaves(self: *Node) i32 {
         var result: i32 = 0;
-        for (self.children, 0..) |child_opt, i| {
+        for (self.children, 0..) |child_opt, index| {
             if (child_opt) |child| {
                 self.red += child.red;
                 self.green += child.green;
                 self.blue += child.blue;
                 self.reference_count += child.reference_count;
                 result += 1;
-                self.children[i] = null;
+                self.children[index] = null;
             }
         }
         return result - 1;
