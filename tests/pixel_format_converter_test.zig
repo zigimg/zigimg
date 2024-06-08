@@ -1417,3 +1417,163 @@ test "PixelFormatConverter: convert rgba32 to grayscale8" {
 
     try helpers.expectEq(grayscale8_pixels.grayscale8[8].value, 17);
 }
+
+test "PixelFormatConverter: convert float32 to indexed16" {
+    const float32_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .float32, 32 * 8);
+    defer float32_pixels.deinit(helpers.zigimg_test_allocator);
+
+    for (0..float32_pixels.float32.len) |index| {
+        const row: u8 = @truncate(index / 32);
+
+        switch (row) {
+            0 => float32_pixels.float32[index] = color.Colorf32.initRgb(1.0, 0.0, 0.0),
+            1 => float32_pixels.float32[index] = color.Colorf32.initRgb(0.0, 1.0, 0),
+            2 => float32_pixels.float32[index] = color.Colorf32.initRgb(0.0, 0.0, 1.0),
+            3 => float32_pixels.float32[index] = color.Colorf32.initRgb(1.0, 1.0, 0.0),
+            4 => float32_pixels.float32[index] = color.Colorf32.initRgb(1.0, 0.0, 1.0),
+            5 => float32_pixels.float32[index] = color.Colorf32.initRgb(0.0, 1.0, 1.0),
+            6 => float32_pixels.float32[index] = color.Colorf32.initRgb(1.0, 1.0, 1.0),
+            7 => float32_pixels.float32[index] = color.Colorf32.initRgb(0.0, 0.0, 0.0),
+            else => {},
+        }
+    }
+
+    const indexed16_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &float32_pixels, .indexed16);
+    defer indexed16_pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[0].r, 0);
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[0].g, 0);
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[0].b, 0);
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[0].a, 255);
+
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[1].r, 0);
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[1].g, 0);
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[1].b, 255);
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[1].a, 255);
+
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[2].r, 0);
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[2].g, 255);
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[2].b, 0);
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[2].a, 255);
+
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[3].r, 0);
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[3].g, 255);
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[3].b, 255);
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[3].a, 255);
+
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[4].r, 255);
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[4].g, 0);
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[4].b, 0);
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[4].a, 255);
+
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[5].r, 255);
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[5].g, 0);
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[5].b, 255);
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[5].a, 255);
+
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[6].r, 255);
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[6].g, 255);
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[6].b, 0);
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[6].a, 255);
+
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[7].r, 255);
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[7].g, 255);
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[7].b, 255);
+    try helpers.expectEq(indexed16_pixels.indexed16.palette[7].a, 255);
+
+    for (0..indexed16_pixels.indexed16.indices.len) |index| {
+        const row: u8 = @truncate(index / 32);
+
+        switch (row) {
+            0 => try helpers.expectEq(indexed16_pixels.indexed16.indices[index], 4),
+            1 => try helpers.expectEq(indexed16_pixels.indexed16.indices[index], 2),
+            2 => try helpers.expectEq(indexed16_pixels.indexed16.indices[index], 1),
+            3 => try helpers.expectEq(indexed16_pixels.indexed16.indices[index], 6),
+            4 => try helpers.expectEq(indexed16_pixels.indexed16.indices[index], 5),
+            5 => try helpers.expectEq(indexed16_pixels.indexed16.indices[index], 3),
+            6 => try helpers.expectEq(indexed16_pixels.indexed16.indices[index], 7),
+            7 => try helpers.expectEq(indexed16_pixels.indexed16.indices[index], 0),
+            else => {},
+        }
+    }
+}
+
+test "PixelFormatConverter: convert float32 to indexed4" {
+    const float32_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .float32, 32 * 8);
+    defer float32_pixels.deinit(helpers.zigimg_test_allocator);
+
+    for (0..float32_pixels.float32.len) |index| {
+        const row: u8 = @truncate(index / 32);
+
+        switch (row) {
+            0 => float32_pixels.float32[index] = color.Colorf32.initRgb(1.0, 0.0, 0.0),
+            1 => float32_pixels.float32[index] = color.Colorf32.initRgb(0.0, 1.0, 0),
+            2 => float32_pixels.float32[index] = color.Colorf32.initRgb(0.0, 0.0, 1.0),
+            3 => float32_pixels.float32[index] = color.Colorf32.initRgb(1.0, 1.0, 0.0),
+            4 => float32_pixels.float32[index] = color.Colorf32.initRgb(1.0, 0.0, 1.0),
+            5 => float32_pixels.float32[index] = color.Colorf32.initRgb(0.0, 1.0, 1.0),
+            6 => float32_pixels.float32[index] = color.Colorf32.initRgb(1.0, 1.0, 1.0),
+            7 => float32_pixels.float32[index] = color.Colorf32.initRgb(0.0, 0.0, 0.0),
+            else => {},
+        }
+    }
+
+    const indexed4_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &float32_pixels, .indexed4);
+    defer indexed4_pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[0].r, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[0].g, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[0].b, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[0].a, 255);
+
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[1].r, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[1].g, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[1].b, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[1].a, 255);
+
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[2].r, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[2].g, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[2].b, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[2].a, 255);
+
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[3].r, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[3].g, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[3].b, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[3].a, 255);
+
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[4].r, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[4].g, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[4].b, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[4].a, 255);
+
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[5].r, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[5].g, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[5].b, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[5].a, 255);
+
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[6].r, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[6].g, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[6].b, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[6].a, 255);
+
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[7].r, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[7].g, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[7].b, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[7].a, 255);
+
+    for (0..indexed4_pixels.indexed4.indices.len) |index| {
+        const row: u8 = @truncate(index / 32);
+
+        switch (row) {
+            0 => try helpers.expectEq(indexed4_pixels.indexed4.indices[index], 4),
+            1 => try helpers.expectEq(indexed4_pixels.indexed4.indices[index], 2),
+            2 => try helpers.expectEq(indexed4_pixels.indexed4.indices[index], 1),
+            3 => try helpers.expectEq(indexed4_pixels.indexed4.indices[index], 6),
+            4 => try helpers.expectEq(indexed4_pixels.indexed4.indices[index], 5),
+            5 => try helpers.expectEq(indexed4_pixels.indexed4.indices[index], 3),
+            6 => try helpers.expectEq(indexed4_pixels.indexed4.indices[index], 7),
+            7 => try helpers.expectEq(indexed4_pixels.indexed4.indices[index], 0),
+            else => {},
+        }
+    }
+}

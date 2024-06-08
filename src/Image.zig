@@ -27,7 +27,7 @@ pub const WriteError = Error ||
 
 pub const ConvertError = Error ||
     std.mem.Allocator.Error ||
-    error{ NoConversionAvailable, NoConversionNeeded };
+    error{ NoConversionAvailable, NoConversionNeeded, QuantizeError };
 
 pub const Format = enum {
     bmp,

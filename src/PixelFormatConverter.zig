@@ -5,6 +5,7 @@ const std = @import("std");
 
 const Image = @import("Image.zig");
 const PixelFormat = @import("pixel_format.zig").PixelFormat;
+const OctTreeQuantizer = @import("OctTreeQuantizer.zig");
 
 // The RGB to Grayscale factors are those for Rec. 709/sRGB assuming linear RGB
 const GrayscaleFactors: math.float4 = .{ 0.2125, 0.7154, 0.0721, 1.0 };
@@ -423,6 +424,13 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.rgba64, .bgra32) => RgbaColorToRgbColor(.rgba64, .bgra32).convert(source, &destination),
         conversionId(.rgba64, .rgb48) => RgbaColorToRgbColor(.rgba64, .rgb48).convert(source, &destination),
         conversionId(.rgba64, .float32) => rgbColorToColorf32(.rgba64, source, &destination),
+
+        // Colorf32(float32) -> Indexed
+        conversionId(.float32, .indexed1) => try colorf32ToIndexed(allocator, .indexed1, source, &destination),
+        conversionId(.float32, .indexed2) => try colorf32ToIndexed(allocator, .indexed2, source, &destination),
+        conversionId(.float32, .indexed4) => try colorf32ToIndexed(allocator, .indexed4, source, &destination),
+        conversionId(.float32, .indexed8) => try colorf32ToIndexed(allocator, .indexed8, source, &destination),
+        conversionId(.float32, .indexed16) => try colorf32ToIndexed(allocator, .indexed16, source, &destination),
 
         // Colorf32(float32) -> Grayscale
         conversionId(.float32, .grayscale1) => colorf32ToGrayscale(.grayscale1, source, &destination),
@@ -1120,5 +1128,37 @@ fn colorf32ToGrayscaleAlpha(comptime destination_format: PixelFormat, source: *c
             .value = grayscale,
             .alpha = color.toIntColor(std.meta.fieldInfo(DestinationType, .alpha).type, converted_float4[3]),
         };
+    }
+}
+
+fn colorf32ToIndexed(allocator: std.mem.Allocator, comptime destination_format: PixelFormat, source: *const color.PixelStorage, destination: *color.PixelStorage) Image.ConvertError!void {
+    const source_pixels = source.float32;
+
+    var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+
+    var quantizer = OctTreeQuantizer.init(allocator);
+    defer quantizer.deinit();
+
+    // First pass: read all pixels and fill in the quantizer
+    for (source_pixels) |pixel| {
+        const premultiplied_rgba = pixel.toPremultipliedAlpha().toRgba32();
+
+        quantizer.addColor(premultiplied_rgba) catch |err| {
+            return switch (err) {
+                std.mem.Allocator.Error.OutOfMemory => std.mem.Allocator.Error.OutOfMemory,
+                else => Image.ConvertError.QuantizeError,
+            };
+        };
+    }
+
+    // Make the palette
+    const color_count: u32 = (@as(u32, 1) << @as(u5, @truncate(destination_format.bitsPerChannel()))) - 1;
+    destination_pixels.palette = quantizer.makePalette(color_count, destination_pixels.palette);
+
+    // Second pass: assign indices
+    for (0..source_pixels.len) |index| {
+        const premultiplied_rgba = source_pixels[index].toPremultipliedAlpha().toRgba32();
+
+        destination_pixels.indices[index] = @truncate(quantizer.getPaletteIndex(premultiplied_rgba) catch return Image.ConvertError.QuantizeError);
     }
 }
