@@ -45,7 +45,7 @@ pub fn makePalette(self: *OctTreeQuantizer, color_count: u32, palette: []color.R
     var leaf_count = self.root_node.countLeafNodes();
 
     var level: u8 = MaxDepth - 1;
-    while (level >= 0) : (level -= 1) {
+    while (level > 0) : (level -= 1) {
         var node_it = self.levels[level];
 
         while (node_it) |node| {
@@ -198,10 +198,10 @@ const Node = struct {
         var result: i32 = 0;
         for (self.children, 0..) |child_opt, index| {
             if (child_opt) |child| {
-                self.red += child.red;
-                self.green += child.green;
-                self.blue += child.blue;
-                self.reference_count += child.reference_count;
+                self.red +%= child.red;
+                self.green +%= child.green;
+                self.blue +%= child.blue;
+                self.reference_count +%= child.reference_count;
                 result += 1;
                 self.children[index] = null;
             }

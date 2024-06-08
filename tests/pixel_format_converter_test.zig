@@ -54,6 +54,39 @@ test "PixelFormatConverter: convert from indexed1 to indexed16" {
     try helpers.expectEq(indexed16_pixels.indexed16.indices[3], 0);
 }
 
+test "PixelFormatConverter: convert from indexed2 to indexed1" {
+    const indexed2_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .indexed2, 4);
+    defer indexed2_pixels.deinit(helpers.zigimg_test_allocator);
+
+    indexed2_pixels.indexed2.palette[0] = Colors(color.Rgba32).Red;
+    indexed2_pixels.indexed2.palette[1] = Colors(color.Rgba32).Green;
+    indexed2_pixels.indexed2.palette[2] = Colors(color.Rgba32).Blue;
+    indexed2_pixels.indexed2.palette[3] = Colors(color.Rgba32).White;
+
+    indexed2_pixels.indexed2.indices[0] = 0;
+    indexed2_pixels.indexed2.indices[1] = 1;
+    indexed2_pixels.indexed2.indices[2] = 2;
+    indexed2_pixels.indexed2.indices[3] = 3;
+
+    const indexed1_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &indexed2_pixels, .indexed1);
+    defer indexed1_pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(indexed1_pixels.indexed1.palette[0].r, 0);
+    try helpers.expectEq(indexed1_pixels.indexed1.palette[0].g, 0);
+    try helpers.expectEq(indexed1_pixels.indexed1.palette[0].b, 255);
+    try helpers.expectEq(indexed1_pixels.indexed1.palette[0].a, 255);
+
+    try helpers.expectEq(indexed1_pixels.indexed1.palette[1].r, 0);
+    try helpers.expectEq(indexed1_pixels.indexed1.palette[1].g, 255);
+    try helpers.expectEq(indexed1_pixels.indexed1.palette[1].b, 0);
+    try helpers.expectEq(indexed1_pixels.indexed1.palette[1].a, 255);
+
+    try helpers.expectEq(indexed1_pixels.indexed1.indices[0], 0);
+    try helpers.expectEq(indexed1_pixels.indexed1.indices[1], 1);
+    try helpers.expectEq(indexed1_pixels.indexed1.indices[2], 0);
+    try helpers.expectEq(indexed1_pixels.indexed1.indices[3], 0);
+}
+
 test "PixelFormatConverter: convert from indexed2 to rgb555" {
     const indexed2_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .indexed2, 4);
     defer indexed2_pixels.deinit(helpers.zigimg_test_allocator);

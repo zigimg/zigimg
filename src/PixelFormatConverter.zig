@@ -38,6 +38,21 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
 
         conversionId(.indexed8, .indexed16) => IndexedSmallToLarge(.indexed8, .indexed16).convert(source, &destination),
 
+        // Indexed large -> small
+        conversionId(.indexed2, .indexed1) => try IndexedLargeToSmall(.indexed2, .indexed1).convert(allocator, source, &destination),
+
+        conversionId(.indexed4, .indexed1) => try IndexedLargeToSmall(.indexed4, .indexed1).convert(allocator, source, &destination),
+        conversionId(.indexed4, .indexed2) => try IndexedLargeToSmall(.indexed4, .indexed2).convert(allocator, source, &destination),
+
+        conversionId(.indexed8, .indexed1) => try IndexedLargeToSmall(.indexed8, .indexed1).convert(allocator, source, &destination),
+        conversionId(.indexed8, .indexed2) => try IndexedLargeToSmall(.indexed8, .indexed2).convert(allocator, source, &destination),
+        conversionId(.indexed8, .indexed4) => try IndexedLargeToSmall(.indexed8, .indexed4).convert(allocator, source, &destination),
+
+        conversionId(.indexed16, .indexed1) => try IndexedLargeToSmall(.indexed16, .indexed1).convert(allocator, source, &destination),
+        conversionId(.indexed16, .indexed2) => try IndexedLargeToSmall(.indexed16, .indexed2).convert(allocator, source, &destination),
+        conversionId(.indexed16, .indexed4) => try IndexedLargeToSmall(.indexed16, .indexed4).convert(allocator, source, &destination),
+        conversionId(.indexed16, .indexed8) => try IndexedLargeToSmall(.indexed16, .indexed8).convert(allocator, source, &destination),
+
         // Indexed -> RGB555
         conversionId(.indexed1, .rgb555) => IndexedToRgbColor(.indexed1, .rgb555).convert(source, &destination),
         conversionId(.indexed2, .rgb555) => IndexedToRgbColor(.indexed2, .rgb555).convert(source, &destination),
@@ -700,6 +715,37 @@ fn IndexedSmallToLarge(comptime source_format: PixelFormat, comptime destination
     };
 }
 
+fn IndexedLargeToSmall(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
+    return struct {
+        pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, destination: *color.PixelStorage) Image.ConvertError!void {
+            const source_indexed = @field(source, getFieldNameFromPixelFormat(source_format));
+            var destination_indexed = @field(destination, getFieldNameFromPixelFormat(destination_format));
+
+            var quantizer = OctTreeQuantizer.init(allocator);
+            defer quantizer.deinit();
+
+            // First pass: read all color in the palette and fill in the quantizer
+            for (source_indexed.palette) |entry| {
+                quantizer.addColor(entry) catch |err| {
+                    return switch (err) {
+                        std.mem.Allocator.Error.OutOfMemory => std.mem.Allocator.Error.OutOfMemory,
+                        else => Image.ConvertError.QuantizeError,
+                    };
+                };
+            }
+
+            // Make the palette
+            const color_count: u32 = @as(u32, 1) << @as(u5, @truncate(destination_format.bitsPerChannel()));
+            destination_indexed.palette = quantizer.makePalette(color_count, destination_indexed.palette);
+
+            // Second pass: assign indices
+            for (0..source_indexed.indices.len) |index| {
+                destination_indexed.indices[index] = @truncate(quantizer.getPaletteIndex(source_indexed.palette[source_indexed.indices[index]]) catch return Image.ConvertError.QuantizeError);
+            }
+        }
+    };
+}
+
 fn IndexedToRgbColor(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
     return struct {
         pub fn convert(source: *const color.PixelStorage, destination: *color.PixelStorage) void {
@@ -875,7 +921,7 @@ fn GrayscaleToIndexed(comptime source_format: PixelFormat, comptime destination_
             }
 
             // Make the palette
-            const color_count: u32 = (@as(u32, 1) << @as(u5, @truncate(destination_format.bitsPerChannel()))) - 1;
+            const color_count: u32 = @as(u32, 1) << @as(u5, @truncate(destination_format.bitsPerChannel()));
             destination_pixels.palette = quantizer.makePalette(color_count, destination_pixels.palette);
 
             // Second pass: assign indices
@@ -910,7 +956,7 @@ fn GrayscaleAlphaToIndexed(comptime source_format: PixelFormat, comptime destina
             }
 
             // Make the palette
-            const color_count: u32 = (@as(u32, 1) << @as(u5, @truncate(destination_format.bitsPerChannel()))) - 1;
+            const color_count: u32 = @as(u32, 1) << @as(u5, @truncate(destination_format.bitsPerChannel()));
             destination_pixels.palette = quantizer.makePalette(color_count, destination_pixels.palette);
 
             // Second pass: assign indices
@@ -1180,7 +1226,7 @@ fn RgbColorToIndexed(comptime source_format: PixelFormat, comptime destination_f
             }
 
             // Make the palette
-            const color_count: u32 = (@as(u32, 1) << @as(u5, @truncate(destination_format.bitsPerChannel()))) - 1;
+            const color_count: u32 = @as(u32, 1) << @as(u5, @truncate(destination_format.bitsPerChannel()));
             destination_pixels.palette = quantizer.makePalette(color_count, destination_pixels.palette);
 
             // Second pass: assign indices
