@@ -4,10 +4,10 @@ const Allocator = std.mem.Allocator;
 const buffered_stream_source = @import("../buffered_stream_source.zig");
 const color = @import("../color.zig");
 const FormatInterface = @import("../FormatInterface.zig");
-const Image = @import("../Image.zig");
-const ImageError = Image.Error;
-const ImageReadError = Image.ReadError;
-const ImageWriteError = Image.WriteError;
+const ImageUnmanaged = @import("../ImageUnmanaged.zig");
+const ImageError = ImageUnmanaged.Error;
+const ImageReadError = ImageUnmanaged.ReadError;
+const ImageWriteError = ImageUnmanaged.WriteError;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const std = @import("std");
 const utils = @import("../utils.zig");
@@ -232,7 +232,7 @@ fn loadAsciiRgbmap(header: Header, data: []color.Rgb24, reader: buffered_stream_
     }
 }
 
-fn Netpbm(comptime image_format: Image.Format, comptime header_numbers: []const u8) type {
+fn Netpbm(comptime image_format: ImageUnmanaged.Format, comptime header_numbers: []const u8) type {
     return struct {
         header: Header = undefined,
 
@@ -251,11 +251,11 @@ fn Netpbm(comptime image_format: Image.Format, comptime header_numbers: []const 
             };
         }
 
-        pub fn format() Image.Format {
+        pub fn format() ImageUnmanaged.Format {
             return image_format;
         }
 
-        pub fn formatDetect(stream: *Image.Stream) ImageReadError!bool {
+        pub fn formatDetect(stream: *ImageUnmanaged.Stream) ImageReadError!bool {
             var magic_number_buffer: [2]u8 = undefined;
             _ = try stream.read(magic_number_buffer[0..]);
 
@@ -275,9 +275,10 @@ fn Netpbm(comptime image_format: Image.Format, comptime header_numbers: []const 
             return found;
         }
 
-        pub fn readImage(allocator: Allocator, stream: *Image.Stream) ImageReadError!Image {
-            var result = Image.init(allocator);
-            errdefer result.deinit();
+        pub fn readImage(allocator: Allocator, stream: *ImageUnmanaged.Stream) ImageReadError!ImageUnmanaged {
+            var result = ImageUnmanaged{};
+            errdefer result.deinit(allocator);
+
             var netpbm_file = Self{};
 
             const pixels = try netpbm_file.read(allocator, stream);
@@ -289,7 +290,7 @@ fn Netpbm(comptime image_format: Image.Format, comptime header_numbers: []const 
             return result;
         }
 
-        pub fn writeImage(allocator: Allocator, write_stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) ImageWriteError!void {
+        pub fn writeImage(allocator: Allocator, write_stream: *ImageUnmanaged.Stream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageWriteError!void {
             _ = allocator;
 
             var netpbm_file = Self{};
@@ -329,7 +330,7 @@ fn Netpbm(comptime image_format: Image.Format, comptime header_numbers: []const 
             };
         }
 
-        pub fn read(self: *Self, allocator: Allocator, stream: *Image.Stream) ImageReadError!color.PixelStorage {
+        pub fn read(self: *Self, allocator: Allocator, stream: *ImageUnmanaged.Stream) ImageReadError!color.PixelStorage {
             var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
             const reader = buffered_stream.reader();
             self.header = try parseHeader(reader);
@@ -366,7 +367,7 @@ fn Netpbm(comptime image_format: Image.Format, comptime header_numbers: []const 
             return pixels;
         }
 
-        pub fn write(self: *Self, write_stream: *Image.Stream, pixels: color.PixelStorage) ImageWriteError!void {
+        pub fn write(self: *Self, write_stream: *ImageUnmanaged.Stream, pixels: color.PixelStorage) ImageWriteError!void {
             var buffered_stream = buffered_stream_source.bufferedStreamSourceWriter(write_stream);
 
             const image_type = if (self.header.binary) header_numbers[1] else header_numbers[0];
@@ -496,6 +497,6 @@ fn Netpbm(comptime image_format: Image.Format, comptime header_numbers: []const 
     };
 }
 
-pub const PBM = Netpbm(Image.Format.pbm, &[_]u8{ '1', '4' });
-pub const PGM = Netpbm(Image.Format.pgm, &[_]u8{ '2', '5' });
-pub const PPM = Netpbm(Image.Format.ppm, &[_]u8{ '3', '6' });
+pub const PBM = Netpbm(ImageUnmanaged.Format.pbm, &[_]u8{ '1', '4' });
+pub const PGM = Netpbm(ImageUnmanaged.Format.pgm, &[_]u8{ '2', '5' });
+pub const PPM = Netpbm(ImageUnmanaged.Format.ppm, &[_]u8{ '3', '6' });

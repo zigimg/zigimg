@@ -1,5 +1,5 @@
 const std = @import("std");
-const Image = @import("Image.zig");
+const ImageUnmanaged = @import("ImageUnmanaged.zig");
 const color = @import("color.zig");
 
 // mlarouche: Because this is a interface, I use Zig function naming convention instead of the variable naming convention
@@ -8,7 +8,7 @@ formatDetect: *const FormatDetectFn,
 readImage: *const ReadImageFn,
 writeImage: *const WriteImageFn,
 
-pub const FormatFn = fn () Image.Format;
-pub const FormatDetectFn = fn (stream: *Image.Stream) Image.ReadError!bool;
-pub const ReadImageFn = fn (allocator: std.mem.Allocator, stream: *Image.Stream) Image.ReadError!Image;
-pub const WriteImageFn = fn (allocator: std.mem.Allocator, write_stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) Image.WriteError!void;
+pub const FormatFn = fn () ImageUnmanaged.Format;
+pub const FormatDetectFn = fn (stream: *ImageUnmanaged.Stream) ImageUnmanaged.ReadError!bool;
+pub const ReadImageFn = fn (allocator: std.mem.Allocator, stream: *ImageUnmanaged.Stream) ImageUnmanaged.ReadError!ImageUnmanaged;
+pub const WriteImageFn = fn (allocator: std.mem.Allocator, write_stream: *ImageUnmanaged.Stream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageUnmanaged.WriteError!void;

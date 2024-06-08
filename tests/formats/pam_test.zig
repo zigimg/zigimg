@@ -87,7 +87,7 @@ test "accepts comments" {
     var stream_source = std.io.StreamSource{ .file = file };
 
     var image = try pam.PAM.readImage(helpers.zigimg_test_allocator, &stream_source);
-    defer image.deinit();
+    defer image.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expectEqual(@as(usize, 4), image.height);
     try std.testing.expectEqual(@as(usize, 4), image.width);
@@ -107,7 +107,7 @@ test "reads blackandwhite pam" {
     var stream_source = std.io.StreamSource{ .file = file };
 
     var image = try pam.PAM.readImage(helpers.zigimg_test_allocator, &stream_source);
-    defer image.deinit();
+    defer image.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expectEqual(@as(usize, 4), image.height);
     try std.testing.expectEqual(@as(usize, 4), image.width);
@@ -127,7 +127,7 @@ test "reads blackandwhite_alpha pam" {
     var stream_source = std.io.StreamSource{ .file = file };
 
     var image = try pam.PAM.readImage(helpers.zigimg_test_allocator, &stream_source);
-    defer image.deinit();
+    defer image.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expectEqual(@as(usize, 4), image.height);
     try std.testing.expectEqual(@as(usize, 4), image.width);
@@ -147,7 +147,7 @@ test "reads grayscale pam with maxval 255" {
     var stream_source = std.io.StreamSource{ .file = file };
 
     var image = try pam.PAM.readImage(helpers.zigimg_test_allocator, &stream_source);
-    defer image.deinit();
+    defer image.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expectEqual(@as(usize, 4), image.height);
     try std.testing.expectEqual(@as(usize, 4), image.width);
@@ -167,7 +167,7 @@ test "reads grayscale alpha pam with maxval 255" {
     var stream_source = std.io.StreamSource{ .file = file };
 
     var image = try pam.PAM.readImage(helpers.zigimg_test_allocator, &stream_source);
-    defer image.deinit();
+    defer image.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expectEqual(@as(usize, 4), image.height);
     try std.testing.expectEqual(@as(usize, 4), image.width);
@@ -187,7 +187,7 @@ test "read of rgb pam with maxval 255" {
     var stream_source = std.io.StreamSource{ .file = file };
 
     var image = try pam.PAM.readImage(helpers.zigimg_test_allocator, &stream_source);
-    defer image.deinit();
+    defer image.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expectEqual(@as(usize, 843750), image.pixels.len());
 }
@@ -198,7 +198,7 @@ test "basic read-write-read produces same result" {
     var stream_source = std.io.StreamSource{ .file = file };
 
     var image = try pam.PAM.readImage(helpers.zigimg_test_allocator, &stream_source);
-    defer image.deinit();
+    defer image.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expectEqual(@as(usize, 4), image.height);
     try std.testing.expectEqual(@as(usize, 4), image.width);
@@ -220,7 +220,8 @@ test "basic read-write-read produces same result" {
     s.buffer = std.io.fixedBufferStream(s.buffer.getWritten());
 
     var decoded_image = try pam.PAM.readImage(helpers.zigimg_test_allocator, &s);
-    defer decoded_image.deinit();
+    defer decoded_image.deinit(helpers.zigimg_test_allocator);
+    
     try std.testing.expectEqual(@as(usize, 4), decoded_image.height);
     try std.testing.expectEqual(@as(usize, 4), decoded_image.width);
     try helpers.expectEqSlice(color.Grayscale8Alpha, decoded_image.pixels.grayscale8Alpha, &[16]color.Grayscale8Alpha{
@@ -240,7 +241,7 @@ test "reads rgba pam with maxval 255" {
     var stream_source = std.io.StreamSource{ .file = file };
 
     var image = try pam.PAM.readImage(helpers.zigimg_test_allocator, &stream_source);
-    defer image.deinit();
+    defer image.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expectEqual(@as(usize, 4), image.pixels.len());
     try helpers.expectEqSlice(color.Rgba32, image.pixels.rgba32, &[4]color.Rgba32{
@@ -257,7 +258,7 @@ test "reads rgba pam with maxval 65535" {
     var stream_source = std.io.StreamSource{ .file = file };
 
     var image = try pam.PAM.readImage(helpers.zigimg_test_allocator, &stream_source);
-    defer image.deinit();
+    defer image.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expectEqual(@as(usize, 4), image.pixels.len());
     try helpers.expectEqSlice(color.Rgba64, image.pixels.rgba64, &[4]color.Rgba64{

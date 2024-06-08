@@ -2,7 +2,7 @@ const FormatInterface = @import("../FormatInterface.zig");
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const buffered_stream_source = @import("../buffered_stream_source.zig");
 const color = @import("../color.zig");
-const Image = @import("../Image.zig");
+const ImageUnmanaged = @import("../ImageUnmanaged.zig");
 const std = @import("std");
 const simd = @import("../simd.zig");
 const utils = @import("../utils.zig");
@@ -158,7 +158,7 @@ const TargaRLEDecoder = struct {
     repeat_data: []u8 = undefined,
     data_stream: std.io.FixedBufferStream([]u8) = undefined,
 
-    pub const Reader = std.io.Reader(*TargaRLEDecoder, Image.ReadError, read);
+    pub const Reader = std.io.Reader(*TargaRLEDecoder, ImageUnmanaged.ReadError, read);
 
     const State = enum {
         read_header,
@@ -182,7 +182,7 @@ const TargaRLEDecoder = struct {
         self.allocator.free(self.repeat_data);
     }
 
-    pub fn read(self: *TargaRLEDecoder, dest: []u8) Image.ReadError!usize {
+    pub fn read(self: *TargaRLEDecoder, dest: []u8) ImageUnmanaged.ReadError!usize {
         var read_count: usize = 0;
 
         if (self.state == .read_header) {
@@ -224,7 +224,7 @@ const TargaRLEDecoder = struct {
                 read_count = read_bytes;
             },
             else => {
-                return Image.ReadError.InvalidData;
+                return ImageUnmanaged.ReadError.InvalidData;
             },
         }
 
@@ -244,9 +244,9 @@ pub const TargaStream = union(enum) {
     image: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader,
     rle: TargaRLEDecoder,
 
-    pub const Reader = std.io.Reader(*TargaStream, Image.ReadError, read);
+    pub const Reader = std.io.Reader(*TargaStream, ImageUnmanaged.ReadError, read);
 
-    pub fn read(self: *TargaStream, dest: []u8) Image.ReadError!usize {
+    pub fn read(self: *TargaStream, dest: []u8) ImageUnmanaged.ReadError!usize {
         switch (self.*) {
             .image => |*x| return x.read(dest),
             .rle => |*x| return x.read(dest),
@@ -573,11 +573,11 @@ pub const TGA = struct {
         };
     }
 
-    pub fn format() Image.Format {
-        return Image.Format.tga;
+    pub fn format() ImageUnmanaged.Format {
+        return ImageUnmanaged.Format.tga;
     }
 
-    pub fn formatDetect(stream: *Image.Stream) Image.ReadError!bool {
+    pub fn formatDetect(stream: *ImageUnmanaged.Stream) ImageUnmanaged.ReadError!bool {
         var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
 
         const end_pos = try buffered_stream.getEndPos();
@@ -620,9 +620,10 @@ pub const TGA = struct {
         return is_valid_tga_v2 or is_valid_tga_v1;
     }
 
-    pub fn readImage(allocator: std.mem.Allocator, stream: *Image.Stream) Image.ReadError!Image {
-        var result = Image.init(allocator);
-        errdefer result.deinit();
+    pub fn readImage(allocator: std.mem.Allocator, stream: *ImageUnmanaged.Stream) ImageUnmanaged.ReadError!ImageUnmanaged {
+        var result = ImageUnmanaged{};
+        errdefer result.deinit(allocator);
+
         var tga = TGA{};
 
         const pixels = try tga.read(allocator, stream);
@@ -634,7 +635,7 @@ pub const TGA = struct {
         return result;
     }
 
-    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) Image.WriteError!void {
+    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *ImageUnmanaged.Stream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageUnmanaged.WriteError!void {
         _ = allocator;
 
         const tga_encoder_options = encoder_options.tga;
@@ -643,15 +644,15 @@ pub const TGA = struct {
         const image_height = image.height;
 
         if (image_width > std.math.maxInt(u16)) {
-            return Image.WriteError.Unsupported;
+            return ImageUnmanaged.WriteError.Unsupported;
         }
 
         if (image_height > std.math.maxInt(u16)) {
-            return Image.WriteError.Unsupported;
+            return ImageUnmanaged.WriteError.Unsupported;
         }
 
         if (!(tga_encoder_options.color_map_depth == 16 or tga_encoder_options.color_map_depth == 24)) {
-            return Image.WriteError.Unsupported;
+            return ImageUnmanaged.WriteError.Unsupported;
         }
 
         var tga = TGA{};
@@ -668,7 +669,7 @@ pub const TGA = struct {
 
         if (tga_encoder_options.image_id.len > 0) {
             if (tga_encoder_options.image_id.len > tga.id.storage.len) {
-                return Image.WriteError.Unsupported;
+                return ImageUnmanaged.WriteError.Unsupported;
             }
 
             tga.header.id_length = @truncate(tga_encoder_options.image_id.len);
@@ -679,13 +680,13 @@ pub const TGA = struct {
 
         if (tga.extension) |*extension| {
             if (tga_encoder_options.author_name.len >= extension.author_name.len) {
-                return Image.WriteError.Unsupported;
+                return ImageUnmanaged.WriteError.Unsupported;
             }
             if (tga_encoder_options.job_id.len >= extension.job_id.len) {
-                return Image.WriteError.Unsupported;
+                return ImageUnmanaged.WriteError.Unsupported;
             }
             if (tga_encoder_options.software_id.len >= extension.software_id.len) {
-                return Image.WriteError.Unsupported;
+                return ImageUnmanaged.WriteError.Unsupported;
             }
 
             std.mem.copyForwards(u8, extension.author_name[0..], tga_encoder_options.author_name[0..]);
@@ -740,7 +741,7 @@ pub const TGA = struct {
                 tga.extension.?.attributes = .useful_alpha_channel;
             },
             else => {
-                return Image.WriteError.Unsupported;
+                return ImageUnmanaged.WriteError.Unsupported;
             },
         }
 
@@ -755,7 +756,7 @@ pub const TGA = struct {
         return self.header.image_spec.height;
     }
 
-    pub fn pixelFormat(self: TGA) Image.ReadError!PixelFormat {
+    pub fn pixelFormat(self: TGA) ImageUnmanaged.ReadError!PixelFormat {
         if (self.header.image_type.indexed) {
             if (self.header.image_type.truecolor) {
                 return PixelFormat.grayscale8;
@@ -771,17 +772,17 @@ pub const TGA = struct {
             }
         }
 
-        return Image.Error.Unsupported;
+        return ImageUnmanaged.Error.Unsupported;
     }
 
-    pub fn read(self: *TGA, allocator: std.mem.Allocator, stream: *Image.Stream) !color.PixelStorage {
+    pub fn read(self: *TGA, allocator: std.mem.Allocator, stream: *ImageUnmanaged.Stream) !color.PixelStorage {
         var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
 
         // Read footage
         const end_pos = try buffered_stream.getEndPos();
 
         if (@sizeOf(TGAFooter) > end_pos) {
-            return Image.ReadError.InvalidData;
+            return ImageUnmanaged.ReadError.InvalidData;
         }
 
         const reader = buffered_stream.reader();
@@ -806,7 +807,7 @@ pub const TGA = struct {
         self.header = try utils.readStruct(reader, TGAHeader, .little);
 
         if (!self.header.isValid()) {
-            return Image.ReadError.InvalidData;
+            return ImageUnmanaged.ReadError.InvalidData;
         }
 
         // Read ID
@@ -816,7 +817,7 @@ pub const TGA = struct {
             const read_id_size = try buffered_stream.read(self.id.data[0..]);
 
             if (read_id_size != self.header.id_length) {
-                return Image.ReadError.InvalidData;
+                return ImageUnmanaged.ReadError.InvalidData;
             }
         }
 
@@ -865,7 +866,7 @@ pub const TGA = struct {
                         try self.readColorMap24(pixels.indexed8, reader);
                     },
                     else => {
-                        return Image.Error.Unsupported;
+                        return ImageUnmanaged.Error.Unsupported;
                     },
                 }
 
@@ -898,14 +899,14 @@ pub const TGA = struct {
                 }
             },
             else => {
-                return Image.Error.Unsupported;
+                return ImageUnmanaged.Error.Unsupported;
             },
         }
 
         return pixels;
     }
 
-    fn readGrayscale8TopToBottom(self: *TGA, data: []color.Grayscale8, stream: TargaStream.Reader) Image.ReadError!void {
+    fn readGrayscale8TopToBottom(self: *TGA, data: []color.Grayscale8, stream: TargaStream.Reader) ImageUnmanaged.ReadError!void {
         var data_index: usize = 0;
         const data_end: usize = self.width() * self.height();
 
@@ -914,7 +915,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readGrayscale8BottomToTop(self: *TGA, data: []color.Grayscale8, stream: TargaStream.Reader) Image.ReadError!void {
+    fn readGrayscale8BottomToTop(self: *TGA, data: []color.Grayscale8, stream: TargaStream.Reader) ImageUnmanaged.ReadError!void {
         for (0..self.height()) |y| {
             const inverted_y = self.height() - y - 1;
 
@@ -927,7 +928,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readIndexed8TopToBottom(self: *TGA, data: color.IndexedStorage8, stream: TargaStream.Reader) Image.ReadError!void {
+    fn readIndexed8TopToBottom(self: *TGA, data: color.IndexedStorage8, stream: TargaStream.Reader) ImageUnmanaged.ReadError!void {
         var data_index: usize = 0;
         const data_end: usize = self.width() * self.height();
 
@@ -936,7 +937,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readIndexed8BottomToTop(self: *TGA, data: color.IndexedStorage8, stream: TargaStream.Reader) Image.ReadError!void {
+    fn readIndexed8BottomToTop(self: *TGA, data: color.IndexedStorage8, stream: TargaStream.Reader) ImageUnmanaged.ReadError!void {
         for (0..self.height()) |y| {
             const inverted_y = self.height() - y - 1;
 
@@ -949,7 +950,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readColorMap16(self: *TGA, data: color.IndexedStorage8, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) Image.ReadError!void {
+    fn readColorMap16(self: *TGA, data: color.IndexedStorage8, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageUnmanaged.ReadError!void {
         var data_index: usize = self.header.color_map_spec.first_entry_index;
         const data_end: usize = self.header.color_map_spec.first_entry_index + self.header.color_map_spec.length;
 
@@ -963,7 +964,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readColorMap24(self: *TGA, data: color.IndexedStorage8, stream: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) Image.ReadError!void {
+    fn readColorMap24(self: *TGA, data: color.IndexedStorage8, stream: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageUnmanaged.ReadError!void {
         var data_index: usize = self.header.color_map_spec.first_entry_index;
         const data_end: usize = self.header.color_map_spec.first_entry_index + self.header.color_map_spec.length;
 
@@ -975,7 +976,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readTruecolor16TopToBottom(self: *TGA, data: []color.Rgb555, stream: TargaStream.Reader) Image.ReadError!void {
+    fn readTruecolor16TopToBottom(self: *TGA, data: []color.Rgb555, stream: TargaStream.Reader) ImageUnmanaged.ReadError!void {
         var data_index: usize = 0;
         const data_end: usize = self.width() * self.height();
 
@@ -988,7 +989,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readTruecolor16BottomToTop(self: *TGA, data: []color.Rgb555, stream: TargaStream.Reader) Image.ReadError!void {
+    fn readTruecolor16BottomToTop(self: *TGA, data: []color.Rgb555, stream: TargaStream.Reader) ImageUnmanaged.ReadError!void {
         for (0..self.height()) |y| {
             const inverted_y = self.height() - y - 1;
 
@@ -1006,7 +1007,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readTruecolor24TopToBottom(self: *TGA, data: []color.Bgr24, stream: TargaStream.Reader) Image.ReadError!void {
+    fn readTruecolor24TopToBottom(self: *TGA, data: []color.Bgr24, stream: TargaStream.Reader) ImageUnmanaged.ReadError!void {
         var data_index: usize = 0;
         const data_end: usize = self.width() * self.height();
 
@@ -1017,7 +1018,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readTruecolor24BottomTopTop(self: *TGA, data: []color.Bgr24, stream: TargaStream.Reader) Image.ReadError!void {
+    fn readTruecolor24BottomTopTop(self: *TGA, data: []color.Bgr24, stream: TargaStream.Reader) ImageUnmanaged.ReadError!void {
         for (0..self.height()) |y| {
             const inverted_y = self.height() - y - 1;
 
@@ -1032,7 +1033,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readTruecolor32TopToBottom(self: *TGA, data: []color.Bgra32, stream: TargaStream.Reader) Image.ReadError!void {
+    fn readTruecolor32TopToBottom(self: *TGA, data: []color.Bgra32, stream: TargaStream.Reader) ImageUnmanaged.ReadError!void {
         var data_index: usize = 0;
         const data_end: usize = self.width() * self.height();
 
@@ -1050,7 +1051,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readTruecolor32BottomToTop(self: *TGA, data: []color.Bgra32, stream: TargaStream.Reader) Image.ReadError!void {
+    fn readTruecolor32BottomToTop(self: *TGA, data: []color.Bgra32, stream: TargaStream.Reader) ImageUnmanaged.ReadError!void {
         for (0..self.height()) |y| {
             const inverted_y = self.height() - y - 1;
 
@@ -1073,7 +1074,7 @@ pub const TGA = struct {
         }
     }
 
-    pub fn write(self: TGA, stream: *Image.Stream, pixels: color.PixelStorage) Image.WriteError!void {
+    pub fn write(self: TGA, stream: *ImageUnmanaged.Stream, pixels: color.PixelStorage) ImageUnmanaged.WriteError!void {
         var buffered_stream = buffered_stream_source.bufferedStreamSourceWriter(stream);
         const writer = buffered_stream.writer();
 
@@ -1081,7 +1082,7 @@ pub const TGA = struct {
 
         if (self.header.id_length > 0) {
             if (self.id.data.len != self.header.id_length) {
-                return Image.WriteError.Unsupported;
+                return ImageUnmanaged.WriteError.Unsupported;
             }
 
             _ = try writer.write(self.id.data);
@@ -1105,7 +1106,7 @@ pub const TGA = struct {
                 try self.writeRgba32(writer, pixels);
             },
             else => {
-                return Image.WriteError.Unsupported;
+                return ImageUnmanaged.WriteError.Unsupported;
             },
         }
 
@@ -1124,7 +1125,7 @@ pub const TGA = struct {
         try buffered_stream.flush();
     }
 
-    fn writePixels(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, pixels: color.PixelStorage) Image.WriteError!void {
+    fn writePixels(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, pixels: color.PixelStorage) ImageUnmanaged.WriteError!void {
         const bytes = pixels.asConstBytes();
 
         const effective_height = self.height();
@@ -1185,7 +1186,7 @@ pub const TGA = struct {
         }
     }
 
-    fn writeRgb24(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, pixels: color.PixelStorage) Image.WriteError!void {
+    fn writeRgb24(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, pixels: color.PixelStorage) ImageUnmanaged.WriteError!void {
         const image_width = self.width();
         const image_height = self.height();
 
@@ -1248,7 +1249,7 @@ pub const TGA = struct {
         }
     }
 
-    fn writeRgba32(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, pixels: color.PixelStorage) Image.WriteError!void {
+    fn writeRgba32(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, pixels: color.PixelStorage) ImageUnmanaged.WriteError!void {
         const image_width = self.width();
         const image_height = self.height();
 
@@ -1313,7 +1314,7 @@ pub const TGA = struct {
         }
     }
 
-    fn writeIndexed8(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, pixels: color.PixelStorage) Image.WriteError!void {
+    fn writeIndexed8(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, pixels: color.PixelStorage) ImageUnmanaged.WriteError!void {
         // First write color map, the color map needs to be written uncompressed
         switch (self.header.color_map_spec.bit_depth) {
             15, 16 => {
@@ -1323,7 +1324,7 @@ pub const TGA = struct {
                 try self.writeColorMap24(writer, pixels.indexed8);
             },
             else => {
-                return Image.Error.Unsupported;
+                return ImageUnmanaged.Error.Unsupported;
             },
         }
 
@@ -1331,7 +1332,7 @@ pub const TGA = struct {
         try self.writePixels(writer, pixels);
     }
 
-    fn writeColorMap16(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: color.IndexedStorage8) Image.WriteError!void {
+    fn writeColorMap16(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: color.IndexedStorage8) ImageUnmanaged.WriteError!void {
         var data_index: usize = self.header.color_map_spec.first_entry_index;
         const data_end: usize = self.header.color_map_spec.first_entry_index + self.header.color_map_spec.length;
 
@@ -1346,7 +1347,7 @@ pub const TGA = struct {
         }
     }
 
-    fn writeColorMap24(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: color.IndexedStorage8) Image.WriteError!void {
+    fn writeColorMap24(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: color.IndexedStorage8) ImageUnmanaged.WriteError!void {
         var data_index: usize = self.header.color_map_spec.first_entry_index;
         const data_end: usize = self.header.color_map_spec.first_entry_index + self.header.color_map_spec.length;
 

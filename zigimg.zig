@@ -5,6 +5,7 @@ pub const Colors = @import("src/predefined_colors.zig").Colors;
 pub const FormatInterface = @import("src/FormatInterface.zig");
 pub const gif = @import("src/formats/gif.zig");
 pub const Image = @import("src/Image.zig");
+pub const ImageUnmanaged = @import("src/ImageUnmanaged.zig");
 pub const jpeg = @import("src/formats/jpeg.zig");
 pub const math = @import("src/math.zig");
 pub const netpbm = @import("src/formats/netpbm.zig");

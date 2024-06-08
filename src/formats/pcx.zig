@@ -4,10 +4,10 @@ const Allocator = std.mem.Allocator;
 const buffered_stream_source = @import("../buffered_stream_source.zig");
 const color = @import("../color.zig");
 const FormatInterface = @import("../FormatInterface.zig");
-const Image = @import("../Image.zig");
-const ImageError = Image.Error;
-const ImageReadError = Image.ReadError;
-const ImageWriteError = Image.WriteError;
+const ImageUnmanaged = @import("../ImageUnmanaged.zig");
+const ImageError = ImageUnmanaged.Error;
+const ImageReadError = ImageUnmanaged.ReadError;
+const ImageWriteError = ImageUnmanaged.WriteError;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const std = @import("std");
 const utils = @import("../utils.zig");
@@ -306,11 +306,11 @@ pub const PCX = struct {
         };
     }
 
-    pub fn format() Image.Format {
-        return Image.Format.pcx;
+    pub fn format() ImageUnmanaged.Format {
+        return ImageUnmanaged.Format.pcx;
     }
 
-    pub fn formatDetect(stream: *Image.Stream) ImageReadError!bool {
+    pub fn formatDetect(stream: *ImageUnmanaged.Stream) ImageReadError!bool {
         var magic_number_bufffer: [2]u8 = undefined;
         _ = try stream.read(magic_number_bufffer[0..]);
 
@@ -325,9 +325,10 @@ pub const PCX = struct {
         return true;
     }
 
-    pub fn readImage(allocator: Allocator, stream: *Image.Stream) ImageReadError!Image {
-        var result = Image.init(allocator);
-        errdefer result.deinit();
+    pub fn readImage(allocator: Allocator, stream: *ImageUnmanaged.Stream) ImageReadError!ImageUnmanaged {
+        var result = ImageUnmanaged{};
+        errdefer result.deinit(allocator);
+
         var pcx = PCX{};
 
         const pixels = try pcx.read(allocator, stream);
@@ -339,7 +340,7 @@ pub const PCX = struct {
         return result;
     }
 
-    pub fn writeImage(allocator: Allocator, stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) ImageWriteError!void {
+    pub fn writeImage(allocator: Allocator, stream: *ImageUnmanaged.Stream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageWriteError!void {
         _ = allocator;
         _ = encoder_options;
 
@@ -412,7 +413,7 @@ pub const PCX = struct {
         return self.header.ymax - self.header.ymin + 1;
     }
 
-    pub fn read(self: *PCX, allocator: Allocator, stream: *Image.Stream) ImageReadError!color.PixelStorage {
+    pub fn read(self: *PCX, allocator: Allocator, stream: *ImageUnmanaged.Stream) ImageReadError!color.PixelStorage {
         var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
         const reader = buffered_stream.reader();
         self.header = try utils.readStruct(reader, PCXHeader, .little);
@@ -547,7 +548,7 @@ pub const PCX = struct {
         return pixels;
     }
 
-    pub fn write(self: PCX, stream: *Image.Stream, pixels: color.PixelStorage) Image.WriteError!void {
+    pub fn write(self: PCX, stream: *ImageUnmanaged.Stream, pixels: color.PixelStorage) ImageUnmanaged.WriteError!void {
         switch (pixels) {
             .indexed1,
             .indexed4,
@@ -611,7 +612,7 @@ pub const PCX = struct {
         }
     }
 
-    fn writeIndexed1(self: *const PCX, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: color.IndexedStorage1) Image.WriteError!void {
+    fn writeIndexed1(self: *const PCX, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: color.IndexedStorage1) ImageUnmanaged.WriteError!void {
         var rle_encoder = RLEStreamEncoder{};
 
         const image_width = self.width();
@@ -644,7 +645,7 @@ pub const PCX = struct {
         try rle_encoder.flush(writer);
     }
 
-    fn writeIndexed4(self: *const PCX, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: color.IndexedStorage4) Image.WriteError!void {
+    fn writeIndexed4(self: *const PCX, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: color.IndexedStorage4) ImageUnmanaged.WriteError!void {
         var rle_encoder = RLEStreamEncoder{};
 
         const image_width = self.width();
@@ -676,11 +677,11 @@ pub const PCX = struct {
         try rle_encoder.flush(writer);
     }
 
-    fn writeIndexed8Even(writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: color.IndexedStorage8) Image.WriteError!void {
+    fn writeIndexed8Even(writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: color.IndexedStorage8) ImageUnmanaged.WriteError!void {
         try RLEFastEncoder.encode(indexed.indices, writer);
     }
 
-    fn writeIndexed8Odd(self: *const PCX, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: color.IndexedStorage8) Image.WriteError!void {
+    fn writeIndexed8Odd(self: *const PCX, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: color.IndexedStorage8) ImageUnmanaged.WriteError!void {
         var rle_encoder = RLEStreamEncoder{};
 
         const image_width = self.width();
@@ -697,7 +698,7 @@ pub const PCX = struct {
         try rle_encoder.flush(writer);
     }
 
-    fn writeRgb24(self: *const PCX, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, pixels: []const color.Rgb24) Image.WriteError!void {
+    fn writeRgb24(self: *const PCX, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, pixels: []const color.Rgb24) ImageUnmanaged.WriteError!void {
         var rle_encoder = RLEStreamEncoder{};
 
         const image_width = self.width();

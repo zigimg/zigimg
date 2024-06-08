@@ -3,7 +3,7 @@ const buffered_stream_source = @import("../../buffered_stream_source.zig");
 const color = @import("../../color.zig");
 const Crc32 = std.hash.Crc32;
 const File = std.fs.File;
-const Image = @import("../../Image.zig");
+const ImageUnmanaged = @import("../../ImageUnmanaged.zig");
 const mem = std.mem;
 const PixelFormat = @import("../../pixel_format.zig").PixelFormat;
 const PixelStorage = color.PixelStorage;
@@ -17,7 +17,7 @@ pub fn isChunkCritical(id: u32) bool {
     return (id & 0x20000000) == 0;
 }
 
-fn callChunkProcessors(processors: []ReaderProcessor, chunk_process_data: *ChunkProcessData) Image.ReadError!void {
+fn callChunkProcessors(processors: []ReaderProcessor, chunk_process_data: *ChunkProcessData) ImageUnmanaged.ReadError!void {
     const id = chunk_process_data.chunk_id;
     // Critical chunks are already processed but we can still notify any number of processors about them
     var processed = isChunkCritical(id);
@@ -72,7 +72,7 @@ const IDatChunksReader = struct {
         };
     }
 
-    fn fillBuffer(self: *Self, to_read: usize) Image.ReadError!usize {
+    fn fillBuffer(self: *Self, to_read: usize) ImageUnmanaged.ReadError!usize {
         @memcpy(self.buffer[0..self.data.len], self.data);
         const new_start = self.data.len;
         var max = self.buffer.len;
@@ -85,7 +85,7 @@ const IDatChunksReader = struct {
         return if (len < to_read) len else to_read;
     }
 
-    fn read(self: *Self, dest: []u8) Image.ReadError!usize {
+    fn read(self: *Self, dest: []u8) ImageUnmanaged.ReadError!usize {
         if (self.remaining_chunk_length == 0) return 0;
         const new_dest = dest;
 
@@ -106,7 +106,7 @@ const IDatChunksReader = struct {
             const expected_crc = try reader.readInt(u32, .big);
             const actual_crc = self.crc.final();
             if (actual_crc != expected_crc) {
-                return Image.ReadError.InvalidData;
+                return ImageUnmanaged.ReadError.InvalidData;
             }
 
             try callChunkProcessors(self.processors, self.chunk_process_data);
@@ -128,19 +128,19 @@ const IDatChunksReader = struct {
     }
 };
 
-const IDATReader = std.io.Reader(*IDatChunksReader, Image.ReadError, IDatChunksReader.read);
+const IDATReader = std.io.Reader(*IDatChunksReader, ImageUnmanaged.ReadError, IDatChunksReader.read);
 
-pub fn loadHeader(stream: *Image.Stream) Image.ReadError!png.HeaderData {
+pub fn loadHeader(stream: *ImageUnmanaged.Stream) ImageUnmanaged.ReadError!png.HeaderData {
     var reader = stream.reader();
     var signature: [png.magic_header.len]u8 = undefined;
     try reader.readNoEof(signature[0..]);
     if (!mem.eql(u8, signature[0..], png.magic_header)) {
-        return Image.ReadError.InvalidData;
+        return ImageUnmanaged.ReadError.InvalidData;
     }
 
     const chunk = try utils.readStruct(reader, png.ChunkHeader, .big);
-    if (chunk.type != png.Chunks.IHDR.id) return Image.ReadError.InvalidData;
-    if (chunk.length != @sizeOf(png.HeaderData)) return Image.ReadError.InvalidData;
+    if (chunk.type != png.Chunks.IHDR.id) return ImageUnmanaged.ReadError.InvalidData;
+    if (chunk.length != @sizeOf(png.HeaderData)) return ImageUnmanaged.ReadError.InvalidData;
 
     var header_data: [@sizeOf(png.HeaderData)]u8 = undefined;
     try reader.readNoEof(&header_data);
@@ -148,14 +148,14 @@ pub fn loadHeader(stream: *Image.Stream) Image.ReadError!png.HeaderData {
     var struct_stream = std.io.fixedBufferStream(&header_data);
 
     const header = try utils.readStruct(struct_stream.reader(), png.HeaderData, .big);
-    if (!header.isValid()) return Image.ReadError.InvalidData;
+    if (!header.isValid()) return ImageUnmanaged.ReadError.InvalidData;
 
     const expected_crc = try reader.readInt(u32, .big);
     var crc = Crc32.init();
     crc.update(png.Chunks.IHDR.name);
     crc.update(&header_data);
     const actual_crc = crc.final();
-    if (expected_crc != actual_crc) return Image.ReadError.InvalidData;
+    if (expected_crc != actual_crc) return ImageUnmanaged.ReadError.InvalidData;
 
     return header;
 }
@@ -169,10 +169,10 @@ pub fn loadHeader(stream: *Image.Stream) Image.ReadError!png.HeaderData {
 /// 2. PLTE processor that decodes the indexed image with a palette into a RGB image.
 /// If you want default processors with default temp allocator you can just pass
 /// predefined default_options. If you just pass .{} no processors will be used.
-pub fn load(stream: *Image.Stream, allocator: Allocator, options: ReaderOptions) Image.ReadError!Image {
+pub fn load(stream: *ImageUnmanaged.Stream, allocator: Allocator, options: ReaderOptions) ImageUnmanaged.ReadError!ImageUnmanaged {
     const header = try loadHeader(stream);
-    var result = Image.init(allocator);
-    errdefer result.deinit();
+    var result = ImageUnmanaged{};
+    errdefer result.deinit(allocator);
 
     result.width = header.width;
     result.height = header.height;
@@ -184,11 +184,11 @@ pub fn load(stream: *Image.Stream, allocator: Allocator, options: ReaderOptions)
 /// Loads the png image for which the header has already been loaded.
 /// For options param description look at the load method docs.
 pub fn loadWithHeader(
-    stream: *Image.Stream,
+    stream: *ImageUnmanaged.Stream,
     header: *const png.HeaderData,
     allocator: Allocator,
     in_options: ReaderOptions,
-) Image.ReadError!PixelStorage {
+) ImageUnmanaged.ReadError!PixelStorage {
     var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
     var options = in_options;
     var temp_allocator = options.temp_allocator;
@@ -223,34 +223,34 @@ pub fn loadWithHeader(
 
         switch (chunk.type) {
             png.Chunks.IHDR.id => {
-                return Image.ReadError.InvalidData; // We already processed IHDR so another one is an error
+                return ImageUnmanaged.ReadError.InvalidData; // We already processed IHDR so another one is an error
             },
             png.Chunks.IEND.id => {
-                if (!data_found) return Image.ReadError.InvalidData;
+                if (!data_found) return ImageUnmanaged.ReadError.InvalidData;
                 _ = try reader.readInt(u32, .big); // Read and ignore the crc
                 try callChunkProcessors(options.processors, &chunk_process_data);
                 return result;
             },
             png.Chunks.IDAT.id => {
-                if (data_found) return Image.ReadError.InvalidData;
+                if (data_found) return ImageUnmanaged.ReadError.InvalidData;
                 if (header.color_type == .indexed and palette.len == 0) {
-                    return Image.ReadError.InvalidData;
+                    return ImageUnmanaged.ReadError.InvalidData;
                 }
                 result = try readAllData(&buffered_stream, header, palette, allocator, &options, &chunk_process_data);
                 data_found = true;
             },
             png.Chunks.PLTE.id => {
-                if (!header.allowsPalette()) return Image.ReadError.InvalidData;
-                if (palette.len > 0) return Image.ReadError.InvalidData;
+                if (!header.allowsPalette()) return ImageUnmanaged.ReadError.InvalidData;
+                if (palette.len > 0) return ImageUnmanaged.ReadError.InvalidData;
                 // We ignore if tRNS is already found
                 if (data_found) {
                     // If IDAT was already processed we skip and ignore this palette
                     try buffered_stream.seekBy(chunk.length + @sizeOf(u32));
                 } else {
-                    if (chunk.length % 3 != 0) return Image.ReadError.InvalidData;
+                    if (chunk.length % 3 != 0) return ImageUnmanaged.ReadError.InvalidData;
                     const palette_entries = chunk.length / 3;
                     if (palette_entries > header.maxPaletteSize()) {
-                        return Image.ReadError.InvalidData;
+                        return ImageUnmanaged.ReadError.InvalidData;
                     }
                     palette = try options.temp_allocator.alloc(color.Rgb24, palette_entries);
                     const palette_bytes = mem.sliceAsBytes(palette);
@@ -261,7 +261,7 @@ pub fn loadWithHeader(
                     crc.update(png.Chunks.PLTE.name);
                     crc.update(palette_bytes);
                     const actual_crc = crc.final();
-                    if (expected_crc != actual_crc) return Image.ReadError.InvalidData;
+                    if (expected_crc != actual_crc) return ImageUnmanaged.ReadError.InvalidData;
                     try callChunkProcessors(options.processors, &chunk_process_data);
                 }
             },
@@ -279,7 +279,7 @@ fn readAllData(
     allocator: Allocator,
     options: *const ReaderOptions,
     chunk_process_data: *ChunkProcessData,
-) Image.ReadError!PixelStorage {
+) ImageUnmanaged.ReadError!PixelStorage {
     const native_endian = comptime @import("builtin").cpu.arch.endian();
     const is_little_endian = native_endian == .little;
     const width = header.width;
@@ -338,7 +338,7 @@ fn readAllData(
         var i: u32 = 0;
         while (i < height) : (i += 1) {
             decompress_reader.readNoEof(current_row[filter_stride - 1 ..]) catch |err| switch (err) {
-                error.BadGzipHeader, error.BadZlibHeader, error.WrongGzipChecksum, error.WrongGzipSize, error.WrongZlibChecksum, error.InvalidCode, error.IncompleteHuffmanTree, error.MissingEndOfBlockCode, error.InvalidMatch, error.InvalidBlockType, error.OversubscribedHuffmanTree, error.WrongStoredBlockNlen, error.InvalidDynamicBlockHeader => return Image.ReadError.InvalidData,
+                error.BadGzipHeader, error.BadZlibHeader, error.WrongGzipChecksum, error.WrongGzipSize, error.WrongZlibChecksum, error.InvalidCode, error.IncompleteHuffmanTree, error.MissingEndOfBlockCode, error.InvalidMatch, error.InvalidBlockType, error.OversubscribedHuffmanTree, error.WrongStoredBlockNlen, error.InvalidDynamicBlockHeader => return ImageUnmanaged.ReadError.InvalidData,
                 else => |leftover_err| return leftover_err,
             };
             try defilter(current_row, prev_row, filter_stride);
@@ -357,7 +357,7 @@ fn readAllData(
             );
 
             const result_format = try callRowProcessors(options.processors, &process_row_data);
-            if (result_format != dest_format) return Image.ReadError.InvalidData;
+            if (result_format != dest_format) return ImageUnmanaged.ReadError.InvalidData;
 
             const tmp = prev_row;
             prev_row = current_row;
@@ -405,7 +405,7 @@ fn readAllData(
             var y: u32 = 0;
             while (y < pass_height[pass]) : (y += 1) {
                 decompress_reader.readNoEof(current_row[filter_stride - 1 .. pass_length]) catch |err| switch (err) {
-                    error.BadGzipHeader, error.BadZlibHeader, error.WrongGzipChecksum, error.WrongGzipSize, error.WrongZlibChecksum, error.InvalidCode, error.IncompleteHuffmanTree, error.MissingEndOfBlockCode, error.InvalidMatch, error.InvalidBlockType, error.OversubscribedHuffmanTree, error.WrongStoredBlockNlen, error.InvalidDynamicBlockHeader => return Image.ReadError.InvalidData,
+                    error.BadGzipHeader, error.BadZlibHeader, error.WrongGzipChecksum, error.WrongGzipSize, error.WrongZlibChecksum, error.InvalidCode, error.IncompleteHuffmanTree, error.MissingEndOfBlockCode, error.InvalidMatch, error.InvalidBlockType, error.OversubscribedHuffmanTree, error.WrongStoredBlockNlen, error.InvalidDynamicBlockHeader => return ImageUnmanaged.ReadError.InvalidData,
                     else => |leftover_err| return leftover_err,
                 };
                 try defilter(current_row[0..pass_length], prev_row[0..pass_length], filter_stride);
@@ -423,7 +423,7 @@ fn readAllData(
                 );
 
                 const result_format = try callRowProcessors(options.processors, &process_row_data);
-                if (result_format != dest_format) return Image.ReadError.InvalidData;
+                if (result_format != dest_format) return ImageUnmanaged.ReadError.InvalidData;
 
                 const line_start_index = desty * result_line_bytes;
                 const start_byte = line_start_index + destx;
@@ -464,7 +464,7 @@ fn readAllData(
         error.WrongStoredBlockNlen,
         error.InvalidDynamicBlockHeader,
         error.EndOfStream,
-        => return Image.ReadError.InvalidData,
+        => return ImageUnmanaged.ReadError.InvalidData,
         else => |leftover_err| return leftover_err,
     };
 
@@ -473,17 +473,17 @@ fn readAllData(
     return result;
 }
 
-fn callPaletteProcessors(options: *const ReaderOptions, palette: []color.Rgba32) Image.ReadError!void {
+fn callPaletteProcessors(options: *const ReaderOptions, palette: []color.Rgba32) ImageUnmanaged.ReadError!void {
     var process_data = PaletteProcessData{ .palette = palette, .temp_allocator = options.temp_allocator };
     for (options.processors) |*processor| {
         try processor.processPalette(&process_data);
     }
 }
 
-fn defilter(current_row: []u8, prev_row: []u8, filter_stride: u8) Image.ReadError!void {
+fn defilter(current_row: []u8, prev_row: []u8, filter_stride: u8) ImageUnmanaged.ReadError!void {
     const filter_byte = current_row[filter_stride - 1];
     if (filter_byte > @intFromEnum(png.FilterType.paeth)) {
-        return Image.ReadError.InvalidData;
+        return ImageUnmanaged.ReadError.InvalidData;
     }
     const filter: png.FilterType = @enumFromInt(filter_byte);
     current_row[filter_stride - 1] = 0;
@@ -571,7 +571,7 @@ fn spreadRowData(
     }
 }
 
-fn callRowProcessors(processors: []ReaderProcessor, process_data: *RowProcessData) Image.ReadError!PixelFormat {
+fn callRowProcessors(processors: []ReaderProcessor, process_data: *RowProcessData) ImageUnmanaged.ReadError!PixelFormat {
     const starting_format = process_data.src_format;
     var result_format = starting_format;
     for (processors) |*processor| {
@@ -610,31 +610,31 @@ pub const ReaderProcessor = struct {
     vtable: *const VTable,
 
     const VTable = struct {
-        chunk_processor: ?*const fn (context: *anyopaque, data: *ChunkProcessData) Image.ReadError!PixelFormat,
-        palette_processor: ?*const fn (context: *anyopaque, data: *PaletteProcessData) Image.ReadError!void,
-        data_row_processor: ?*const fn (context: *anyopaque, data: *RowProcessData) Image.ReadError!PixelFormat,
+        chunk_processor: ?*const fn (context: *anyopaque, data: *ChunkProcessData) ImageUnmanaged.ReadError!PixelFormat,
+        palette_processor: ?*const fn (context: *anyopaque, data: *PaletteProcessData) ImageUnmanaged.ReadError!void,
+        data_row_processor: ?*const fn (context: *anyopaque, data: *RowProcessData) ImageUnmanaged.ReadError!PixelFormat,
     };
 
     const Self = @This();
 
-    pub inline fn processChunk(self: *Self, data: *ChunkProcessData) Image.ReadError!PixelFormat {
+    pub inline fn processChunk(self: *Self, data: *ChunkProcessData) ImageUnmanaged.ReadError!PixelFormat {
         return if (self.vtable.chunk_processor) |cp| cp(self.context, data) else data.current_format;
     }
 
-    pub inline fn processPalette(self: *Self, data: *PaletteProcessData) Image.ReadError!void {
+    pub inline fn processPalette(self: *Self, data: *PaletteProcessData) ImageUnmanaged.ReadError!void {
         if (self.vtable.palette_processor) |pp| try pp(self.context, data);
     }
 
-    pub inline fn processDataRow(self: *Self, data: *RowProcessData) Image.ReadError!PixelFormat {
+    pub inline fn processDataRow(self: *Self, data: *RowProcessData) ImageUnmanaged.ReadError!PixelFormat {
         return if (self.vtable.data_row_processor) |drp| drp(self.context, data) else data.dest_format;
     }
 
     pub fn init(
         id: u32,
         context: anytype,
-        comptime chunkProcessorFn: ?fn (ptr: @TypeOf(context), data: *ChunkProcessData) Image.ReadError!PixelFormat,
-        comptime paletteProcessorFn: ?fn (ptr: @TypeOf(context), data: *PaletteProcessData) Image.ReadError!void,
-        comptime dataRowProcessorFn: ?fn (ptr: @TypeOf(context), data: *RowProcessData) Image.ReadError!PixelFormat,
+        comptime chunkProcessorFn: ?fn (ptr: @TypeOf(context), data: *ChunkProcessData) ImageUnmanaged.ReadError!PixelFormat,
+        comptime paletteProcessorFn: ?fn (ptr: @TypeOf(context), data: *PaletteProcessData) ImageUnmanaged.ReadError!void,
+        comptime dataRowProcessorFn: ?fn (ptr: @TypeOf(context), data: *RowProcessData) ImageUnmanaged.ReadError!PixelFormat,
     ) Self {
         const Ptr = @TypeOf(context);
         const ptr_info = @typeInfo(Ptr);
@@ -643,15 +643,15 @@ pub const ReaderProcessor = struct {
         std.debug.assert(ptr_info.Pointer.size == .One); // Must be a single-item pointer
 
         const gen = struct {
-            fn chunkProcessor(ptr: *anyopaque, data: *ChunkProcessData) Image.ReadError!PixelFormat {
+            fn chunkProcessor(ptr: *anyopaque, data: *ChunkProcessData) ImageUnmanaged.ReadError!PixelFormat {
                 const self: Ptr = @ptrCast(@alignCast(ptr));
                 return @call(.always_inline, chunkProcessorFn.?, .{ self, data });
             }
-            fn paletteProcessor(ptr: *anyopaque, data: *PaletteProcessData) Image.ReadError!void {
+            fn paletteProcessor(ptr: *anyopaque, data: *PaletteProcessData) ImageUnmanaged.ReadError!void {
                 const self: Ptr = @ptrCast(@alignCast(ptr));
                 return @call(.always_inline, paletteProcessorFn.?, .{ self, data });
             }
-            fn dataRowProcessor(ptr: *anyopaque, data: *RowProcessData) Image.ReadError!PixelFormat {
+            fn dataRowProcessor(ptr: *anyopaque, data: *RowProcessData) ImageUnmanaged.ReadError!PixelFormat {
                 const self: Ptr = @ptrCast(@alignCast(ptr));
                 return @call(.always_inline, dataRowProcessorFn.?, .{ self, data });
             }
@@ -688,7 +688,7 @@ pub const TrnsProcessor = struct {
         );
     }
 
-    pub fn processChunk(self: *Self, data: *ChunkProcessData) Image.ReadError!PixelFormat {
+    pub fn processChunk(self: *Self, data: *ChunkProcessData) ImageUnmanaged.ReadError!PixelFormat {
         // We will allow multiple tRNS chunks and load the first one
         // We ignore if we encounter this chunk with color_type that already has alpha
         var result_format = data.current_format;
@@ -729,7 +729,7 @@ pub const TrnsProcessor = struct {
         return result_format;
     }
 
-    pub fn processPalette(self: *Self, data: *PaletteProcessData) Image.ReadError!void {
+    pub fn processPalette(self: *Self, data: *PaletteProcessData) ImageUnmanaged.ReadError!void {
         self.processed = true;
         switch (self.trns_data) {
             .index_alpha => |index_alpha| {
@@ -738,11 +738,11 @@ pub const TrnsProcessor = struct {
                 }
             },
             .unset => return,
-            else => return Image.ReadError.InvalidData,
+            else => return ImageUnmanaged.ReadError.InvalidData,
         }
     }
 
-    pub fn processDataRow(self: *Self, data: *RowProcessData) Image.ReadError!PixelFormat {
+    pub fn processDataRow(self: *Self, data: *RowProcessData) ImageUnmanaged.ReadError!PixelFormat {
         self.processed = true;
         if (data.src_format.isIndexed() or self.trns_data == .unset) {
             return data.src_format;
@@ -831,7 +831,7 @@ pub const PlteProcessor = struct {
         );
     }
 
-    pub fn processChunk(self: *Self, data: *ChunkProcessData) Image.ReadError!PixelFormat {
+    pub fn processChunk(self: *Self, data: *ChunkProcessData) ImageUnmanaged.ReadError!PixelFormat {
         // This is critical chunk so it is already read and there is no need to read it here
         var result_format = data.current_format;
         if (self.processed or !result_format.isIndexed()) {
@@ -842,12 +842,12 @@ pub const PlteProcessor = struct {
         return .rgba32;
     }
 
-    pub fn processPalette(self: *Self, data: *PaletteProcessData) Image.ReadError!void {
+    pub fn processPalette(self: *Self, data: *PaletteProcessData) ImageUnmanaged.ReadError!void {
         self.processed = true;
         self.palette = data.palette;
     }
 
-    pub fn processDataRow(self: *Self, data: *RowProcessData) Image.ReadError!PixelFormat {
+    pub fn processDataRow(self: *Self, data: *RowProcessData) ImageUnmanaged.ReadError!PixelFormat {
         self.processed = true;
 
         if (!data.src_format.isIndexed() or self.palette.len == 0) {

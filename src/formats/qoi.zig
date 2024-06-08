@@ -5,10 +5,10 @@ const buffered_stream_source = @import("../buffered_stream_source.zig");
 const color = @import("../color.zig");
 const FormatInterface = @import("../FormatInterface.zig");
 const fs = std.fs;
-const Image = @import("../Image.zig");
-const ImageError = Image.Error;
-const ImageReadError = Image.ReadError;
-const ImageWriteError = Image.WriteError;
+const ImageUnmanaged = @import("../ImageUnmanaged.zig");
+const ImageError = ImageUnmanaged.Error;
+const ImageReadError = ImageUnmanaged.ReadError;
+const ImageWriteError = ImageUnmanaged.WriteError;
 const io = std.io;
 const mem = std.mem;
 const path = std.fs.path;
@@ -122,11 +122,11 @@ pub const QOI = struct {
         };
     }
 
-    pub fn format() Image.Format {
-        return Image.Format.qoi;
+    pub fn format() ImageUnmanaged.Format {
+        return ImageUnmanaged.Format.qoi;
     }
 
-    pub fn formatDetect(stream: *Image.Stream) ImageReadError!bool {
+    pub fn formatDetect(stream: *ImageUnmanaged.Stream) ImageReadError!bool {
         var magic_buffer: [Header.correct_magic.len]u8 = undefined;
 
         _ = try stream.read(magic_buffer[0..]);
@@ -134,9 +134,10 @@ pub const QOI = struct {
         return std.mem.eql(u8, magic_buffer[0..], Header.correct_magic[0..]);
     }
 
-    pub fn readImage(allocator: Allocator, stream: *Image.Stream) ImageReadError!Image {
-        var result = Image.init(allocator);
-        errdefer result.deinit();
+    pub fn readImage(allocator: Allocator, stream: *ImageUnmanaged.Stream) ImageReadError!ImageUnmanaged {
+        var result = ImageUnmanaged{};
+        errdefer result.deinit(allocator);
+
         var qoi = Self{};
 
         const pixels = try qoi.read(allocator, stream);
@@ -148,7 +149,7 @@ pub const QOI = struct {
         return result;
     }
 
-    pub fn writeImage(allocator: Allocator, write_stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) ImageWriteError!void {
+    pub fn writeImage(allocator: Allocator, write_stream: *ImageUnmanaged.Stream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageWriteError!void {
         _ = allocator;
 
         var qoi = Self{};
@@ -186,7 +187,7 @@ pub const QOI = struct {
         };
     }
 
-    pub fn read(self: *Self, allocator: Allocator, stream: *Image.Stream) ImageReadError!color.PixelStorage {
+    pub fn read(self: *Self, allocator: Allocator, stream: *ImageUnmanaged.Stream) ImageReadError!color.PixelStorage {
         var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
 
         var magic_buffer: [Header.correct_magic.len]u8 = undefined;
@@ -287,7 +288,7 @@ pub const QOI = struct {
         return pixels;
     }
 
-    pub fn write(self: Self, stream: *Image.Stream, pixels: color.PixelStorage) ImageWriteError!void {
+    pub fn write(self: Self, stream: *ImageUnmanaged.Stream, pixels: color.PixelStorage) ImageWriteError!void {
         var buffered_stream = buffered_stream_source.bufferedStreamSourceWriter(stream);
         const writer = buffered_stream.writer();
         try writer.writeAll(&self.header.encode());
