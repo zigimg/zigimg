@@ -1,16 +1,18 @@
 pub const AllFormats = @import("src/formats/all.zig");
 pub const bmp = @import("src/formats/bmp.zig");
 pub const color = @import("src/color.zig");
+pub const Colors = @import("src/predefined_colors.zig").Colors;
 pub const FormatInterface = @import("src/FormatInterface.zig");
 pub const gif = @import("src/formats/gif.zig");
 pub const Image = @import("src/Image.zig");
 pub const jpeg = @import("src/formats/jpeg.zig");
 pub const math = @import("src/math.zig");
 pub const netpbm = @import("src/formats/netpbm.zig");
-pub const OctTreeQuantizer = @import("src/octree_quantizer.zig").OctTreeQuantizer;
+pub const OctTreeQuantizer = @import("src/OctTreeQuantizer.zig");
 pub const pam = @import("src/formats/pam.zig");
 pub const pcx = @import("src/formats/pcx.zig");
 pub const PixelFormat = @import("src/pixel_format.zig").PixelFormat;
+pub const PixelFormatConverter = @import("src/PixelFormatConverter.zig");
 pub const png = @import("src/formats/png.zig");
 pub const qoi = @import("src/formats/qoi.zig");
 pub const tga = @import("src/formats/tga.zig");
@@ -36,6 +38,7 @@ test {
         @import("tests/image_test.zig"),
         @import("tests/math_test.zig"),
         @import("tests/octree_quantizer_test.zig"),
+        @import("tests/pixel_format_converter_test.zig"),
         @import("tests/pixel_format_test.zig"),
     }) |source_file| std.testing.refAllDeclsRecursive(source_file);
 }

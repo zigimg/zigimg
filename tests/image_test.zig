@@ -388,6 +388,36 @@ test "Test Colorf32 iterator" {
     }
 }
 
+test "Convert Image from rgb24 to float32 (Colorf32)" {
+    var test_image = try helpers.testImageFromFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
+    defer test_image.deinit();
+
+    const expected_colors = [_]color.Colorf32{
+        color.Colorf32.initRgb(1.0, 0.0, 0.0),
+        color.Colorf32.initRgb(0.0, 1.0, 0.0),
+        color.Colorf32.initRgb(0.0, 0.0, 1.0),
+        color.Colorf32.initRgb(0.0, 1.0, 1.0),
+        color.Colorf32.initRgb(1.0, 0.0, 1.0),
+        color.Colorf32.initRgb(1.0, 1.0, 0.0),
+        color.Colorf32.initRgb(0.0, 0.0, 0.0),
+        color.Colorf32.initRgb(1.0, 1.0, 1.0),
+    };
+
+    try helpers.expectEq(test_image.width, 8);
+    try helpers.expectEq(test_image.height, 1);
+
+    try test_image.convert(.float32);
+
+    for (0..expected_colors.len) |index| {
+        const actual = test_image.pixels.float32[index];
+        const expected = expected_colors[index];
+
+        try helpers.expectEq(actual.r, expected.r);
+        try helpers.expectEq(actual.g, expected.g);
+        try helpers.expectEq(actual.b, expected.b);
+    }
+}
+
 test "Should return a valid byte slice with rawByte()" {
     var test_image = try helpers.testImageFromFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
     defer test_image.deinit();

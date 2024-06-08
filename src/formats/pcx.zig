@@ -175,7 +175,7 @@ const RLEFastEncoder = struct {
             current_byte = source_data[index];
 
             const current_byte_splatted: VectorType = @splat(current_byte);
-            const compare_chunk = simd.load(source_data[index..], VectorType, 0);
+            const compare_chunk = simd.load(u8, source_data[index..], VectorType, 0);
 
             const compare_mask = (current_byte_splatted == compare_chunk);
             const inverted_mask = ~@as(u16, @bitCast(compare_mask));
