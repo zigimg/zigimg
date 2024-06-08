@@ -568,129 +568,213 @@ pub const PixelStorage = union(PixelFormat) {
     rgba64: []Rgba64,
     float32: []Colorf32,
 
-    const Self = @This();
-
-    pub fn init(allocator: Allocator, format: PixelFormat, pixel_count: usize) !Self {
+    pub fn init(allocator: Allocator, format: PixelFormat, pixel_count: usize) !PixelStorage {
         return switch (format) {
             .invalid => {
-                return Self{
+                return .{
                     .invalid = void{},
                 };
             },
             .indexed1 => {
-                return Self{
+                return .{
                     .indexed1 = try IndexedStorage(u1).init(allocator, pixel_count),
                 };
             },
             .indexed2 => {
-                return Self{
+                return .{
                     .indexed2 = try IndexedStorage(u2).init(allocator, pixel_count),
                 };
             },
             .indexed4 => {
-                return Self{
+                return .{
                     .indexed4 = try IndexedStorage(u4).init(allocator, pixel_count),
                 };
             },
             .indexed8 => {
-                return Self{
+                return .{
                     .indexed8 = try IndexedStorage(u8).init(allocator, pixel_count),
                 };
             },
             .indexed16 => {
-                return Self{
+                return .{
                     .indexed16 = try IndexedStorage(u16).init(allocator, pixel_count),
                 };
             },
             .grayscale1 => {
-                return Self{
+                return .{
                     .grayscale1 = try allocator.alloc(Grayscale1, pixel_count),
                 };
             },
             .grayscale2 => {
-                return Self{
+                return .{
                     .grayscale2 = try allocator.alloc(Grayscale2, pixel_count),
                 };
             },
             .grayscale4 => {
-                return Self{
+                return .{
                     .grayscale4 = try allocator.alloc(Grayscale4, pixel_count),
                 };
             },
             .grayscale8 => {
-                return Self{
+                return .{
                     .grayscale8 = try allocator.alloc(Grayscale8, pixel_count),
                 };
             },
             .grayscale8Alpha => {
-                return Self{
+                return .{
                     .grayscale8Alpha = try allocator.alloc(Grayscale8Alpha, pixel_count),
                 };
             },
             .grayscale16 => {
-                return Self{
+                return .{
                     .grayscale16 = try allocator.alloc(Grayscale16, pixel_count),
                 };
             },
             .grayscale16Alpha => {
-                return Self{
+                return .{
                     .grayscale16Alpha = try allocator.alloc(Grayscale16Alpha, pixel_count),
                 };
             },
             .rgb24 => {
-                return Self{
+                return .{
                     .rgb24 = try allocator.alloc(Rgb24, pixel_count),
                 };
             },
             .rgba32 => {
-                return Self{
+                return .{
                     .rgba32 = try allocator.alloc(Rgba32, pixel_count),
                 };
             },
             .rgb565 => {
-                return Self{
+                return .{
                     .rgb565 = try allocator.alloc(Rgb565, pixel_count),
                 };
             },
             .rgb555 => {
-                return Self{
+                return .{
                     .rgb555 = try allocator.alloc(Rgb555, pixel_count),
                 };
             },
             .bgr555 => {
-                return Self{
+                return .{
                     .bgr555 = try allocator.alloc(Bgr555, pixel_count),
                 };
             },
             .bgr24 => {
-                return Self{
+                return .{
                     .bgr24 = try allocator.alloc(Bgr24, pixel_count),
                 };
             },
             .bgra32 => {
-                return Self{
+                return .{
                     .bgra32 = try allocator.alloc(Bgra32, pixel_count),
                 };
             },
             .rgb48 => {
-                return Self{
+                return .{
                     .rgb48 = try allocator.alloc(Rgb48, pixel_count),
                 };
             },
             .rgba64 => {
-                return Self{
+                return .{
                     .rgba64 = try allocator.alloc(Rgba64, pixel_count),
                 };
             },
             .float32 => {
-                return Self{
+                return .{
                     .float32 = try allocator.alloc(Colorf32, pixel_count),
                 };
             },
         };
     }
 
-    pub fn deinit(self: Self, allocator: Allocator) void {
+    pub fn initRawPixels(pixels: []const u8, pixel_format: PixelFormat) !PixelStorage {
+        return switch (pixel_format) {
+            .grayscale1 => {
+                return .{
+                    .grayscale1 = @constCast(std.mem.bytesAsSlice(Grayscale1, pixels)),
+                };
+            },
+            .grayscale2 => {
+                return .{
+                    .grayscale2 = @constCast(std.mem.bytesAsSlice(Grayscale2, pixels)),
+                };
+            },
+            .grayscale4 => {
+                return .{
+                    .grayscale4 = @constCast(std.mem.bytesAsSlice(Grayscale4, pixels)),
+                };
+            },
+            .grayscale8 => {
+                return .{
+                    .grayscale8 = @constCast(std.mem.bytesAsSlice(Grayscale8, pixels)),
+                };
+            },
+            .grayscale8Alpha => {
+                return .{
+                    .grayscale8Alpha = @constCast(std.mem.bytesAsSlice(Grayscale8Alpha, pixels)),
+                };
+            },
+            .grayscale16Alpha => {
+                return .{
+                    .grayscale16Alpha = @constCast(@alignCast(std.mem.bytesAsSlice(Grayscale16Alpha, pixels))),
+                };
+            },
+            .rgb555 => {
+                return .{
+                    .rgb555 = @constCast(@alignCast(std.mem.bytesAsSlice(Rgb555, pixels))),
+                };
+            },
+            .rgb565 => {
+                return .{
+                    .rgb565 = @constCast(@alignCast(std.mem.bytesAsSlice(Rgb565, pixels))),
+                };
+            },
+            .rgb24 => {
+                return .{
+                    .rgb24 = @constCast(std.mem.bytesAsSlice(Rgb24, pixels)),
+                };
+            },
+            .rgba32 => {
+                return .{
+                    .rgba32 = @constCast(std.mem.bytesAsSlice(Rgba32, pixels)),
+                };
+            },
+            .bgr555 => {
+                return .{
+                    .bgr555 = @constCast(@alignCast(std.mem.bytesAsSlice(Bgr555, pixels))),
+                };
+            },
+            .bgr24 => {
+                return .{
+                    .bgr24 = @constCast(std.mem.bytesAsSlice(Bgr24, pixels)),
+                };
+            },
+            .bgra32 => {
+                return .{
+                    .bgra32 = @constCast(std.mem.bytesAsSlice(Bgra32, pixels)),
+                };
+            },
+            .rgb48 => {
+                return .{
+                    .rgb48 = @constCast(std.mem.bytesAsSlice(Rgb48, pixels)),
+                };
+            },
+            .rgba64 => {
+                return .{
+                    .rgba64 = @constCast(std.mem.bytesAsSlice(Rgba64, pixels)),
+                };
+            },
+            .float32 => {
+                return .{
+                    .float32 = @constCast(std.mem.bytesAsSlice(Colorf32, pixels)),
+                };
+            },
+            else => error.Unsupported,
+        };
+    }
+
+    pub fn deinit(self: PixelStorage, allocator: Allocator) void {
         switch (self) {
             .invalid => {},
             .indexed1 => |data| data.deinit(allocator),
@@ -718,7 +802,7 @@ pub const PixelStorage = union(PixelFormat) {
         }
     }
 
-    pub fn len(self: Self) usize {
+    pub fn len(self: PixelStorage) usize {
         return switch (self) {
             .invalid => 0,
             .indexed1 => |data| data.indices.len,
@@ -746,7 +830,7 @@ pub const PixelStorage = union(PixelFormat) {
         };
     }
 
-    pub fn isIndexed(self: Self) bool {
+    pub fn isIndexed(self: PixelStorage) bool {
         return switch (self) {
             .indexed1 => true,
             .indexed2 => true,
@@ -757,7 +841,7 @@ pub const PixelStorage = union(PixelFormat) {
         };
     }
 
-    pub fn getPalette(self: Self) ?[]Rgba32 {
+    pub fn getPalette(self: PixelStorage) ?[]Rgba32 {
         return switch (self) {
             .indexed1 => |data| data.palette,
             .indexed2 => |data| data.palette,
@@ -769,7 +853,7 @@ pub const PixelStorage = union(PixelFormat) {
     }
 
     /// Return the pixel data as a const byte slice
-    pub fn asBytes(self: Self) []u8 {
+    pub fn asBytes(self: PixelStorage) []u8 {
         return switch (self) {
             .invalid => &[_]u8{},
             .indexed1 => |data| std.mem.sliceAsBytes(data.indices),
@@ -797,7 +881,7 @@ pub const PixelStorage = union(PixelFormat) {
         };
     }
 
-    pub fn asConstBytes(self: Self) []const u8 {
+    pub fn asConstBytes(self: PixelStorage) []const u8 {
         return switch (self) {
             .invalid => &[_]u8{},
             .indexed1 => |data| std.mem.sliceAsBytes(data.indices),
@@ -826,7 +910,7 @@ pub const PixelStorage = union(PixelFormat) {
     }
 
     /// Return a slice of the current pixel storage
-    pub fn slice(self: Self, begin: usize, end: usize) Self {
+    pub fn slice(self: PixelStorage, begin: usize, end: usize) PixelStorage {
         return switch (self) {
             .invalid => .invalid,
             .indexed1 => |data| .{ .indexed1 = .{ .palette = data.palette, .indices = data.indices[begin..end] } },

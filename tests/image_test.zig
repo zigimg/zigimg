@@ -2,7 +2,9 @@ const assert = std.debug.assert;
 const std = @import("std");
 const testing = std.testing;
 const Image = @import("../src/Image.zig");
+const ImageUnmanaged = @import("../src/ImageUnmanaged.zig");
 const color = @import("../src/color.zig");
+const Colors = @import("../src/predefined_colors.zig").Colors;
 const PixelFormat = @import("../src/pixel_format.zig").PixelFormat;
 const helpers = @import("helpers.zig");
 const ImageError = Image.Error;
@@ -469,4 +471,45 @@ test "Should return a valid byte size with imageByteSize()" {
     const image_size = test_image.imageByteSize();
 
     try helpers.expectEq(image_size, 153600);
+}
+
+test "Should import raw pixels and own the pixel data" {
+    const color_data: []const color.Rgb24 = &.{
+        Colors(color.Rgb24).Red,
+        Colors(color.Rgb24).Green,
+        Colors(color.Rgb24).Blue,
+        Colors(color.Rgb24).Cyan,
+        Colors(color.Rgb24).Magenta,
+        Colors(color.Rgb24).Yellow,
+        Colors(color.Rgb24).Black,
+        Colors(color.Rgb24).White,
+    };
+
+    const pixel_data = std.mem.sliceAsBytes(color_data);
+    var image = try Image.fromRawPixelsOwned(helpers.zigimg_test_allocator, 8, 1, pixel_data, .rgb24);
+    defer image.deinit();
+
+    try helpers.expectEq(std.meta.activeTag(image.pixels), .rgb24);
+    try helpers.expectEq(image.width, 8);
+    try helpers.expectEq(image.height, 1);
+}
+
+test "Should import raw pixels and not own the pixel data" {
+    const color_data: []const color.Rgb24 = &.{
+        Colors(color.Rgb24).Red,
+        Colors(color.Rgb24).Green,
+        Colors(color.Rgb24).Blue,
+        Colors(color.Rgb24).Cyan,
+        Colors(color.Rgb24).Magenta,
+        Colors(color.Rgb24).Yellow,
+        Colors(color.Rgb24).Black,
+        Colors(color.Rgb24).White,
+    };
+
+    const pixel_data = std.mem.sliceAsBytes(color_data);
+    const image = try ImageUnmanaged.fromRawPixels(8, 1, pixel_data, .rgb24);
+
+    try helpers.expectEq(std.meta.activeTag(image.pixels), .rgb24);
+    try helpers.expectEq(image.width, 8);
+    try helpers.expectEq(image.height, 1);
 }
