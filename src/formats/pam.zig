@@ -11,10 +11,10 @@ const color = @import("../color.zig");
 const FormatInterface = @import("../FormatInterface.zig");
 const PixelStorage = color.PixelStorage;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
-const Image = @import("../Image.zig");
-const ImageError = Image.Error;
-const ImageReadError = Image.ReadError;
-const ImageWriteError = Image.WriteError;
+const ImageUnmanaged = @import("../ImageUnmanaged.zig");
+const ImageError = ImageUnmanaged.Error;
+const ImageReadError = ImageUnmanaged.ReadError;
+const ImageWriteError = ImageUnmanaged.WriteError;
 const utils = @import("../utils.zig");
 
 /// Represents all supported values for `TUPLTYPE`.
@@ -209,8 +209,8 @@ const Header = struct {
 
     /// Initializes an `Image` with the values that `header`
     /// contains. Returns `error.OutOfMemory` if allocation fails.
-    fn initImage(header: Header, allocator: Allocator) error{OutOfMemory}!Image {
-        var image = Image.init(allocator);
+    fn initImage(header: Header, allocator: Allocator) error{OutOfMemory}!ImageUnmanaged {
+        var image = ImageUnmanaged{};
         image.width = header.width;
         image.height = header.height;
         image.pixels = try PixelStorage.init(allocator, header.getPixelFormat(), header.width * header.height);
@@ -220,7 +220,7 @@ const Header = struct {
     /// Initializes a `Header` from `image`. Returns
     /// `error.Unsupported` if the pixel format of `image` cannot be
     /// easily represented in PAM.
-    fn fromImage(image: Image) error{Unsupported}!Header {
+    fn fromImage(image: ImageUnmanaged) error{Unsupported}!Header {
         var header: Header = undefined;
         switch (image.pixelFormat()) {
             .invalid,
@@ -329,28 +329,28 @@ pub const PAM = struct {
         };
     }
 
-    pub fn format() Image.Format {
-        return Image.Format.pam;
+    pub fn format() ImageUnmanaged.Format {
+        return ImageUnmanaged.Format.pam;
     }
 
     /// Returns `true` if the image will be able to be decoded, or a
     /// `stream`-specific error if reading fails.
-    pub fn formatDetect(stream: *Image.Stream) ImageReadError!bool {
+    pub fn formatDetect(stream: *ImageUnmanaged.Stream) ImageReadError!bool {
         const magic = try stream.reader().readBytesNoEof(3);
         return mem.eql(u8, &magic, "P7\n"); // no possibility of misdetecting xv thumbnails (magic "P7 332")
     }
 
-    pub fn readImage(allocator: Allocator, stream: *Image.Stream) ImageReadError!Image {
+    pub fn readImage(allocator: Allocator, stream: *ImageUnmanaged.Stream) ImageReadError!ImageUnmanaged {
         var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
         const reader = buffered_stream.reader();
-        var image: Image = try readFrame(allocator, reader) orelse return ImageReadError.InvalidData; // empty stream
-        errdefer image.deinit();
+        var image: ImageUnmanaged = try readFrame(allocator, reader) orelse return ImageReadError.InvalidData; // empty stream
+        errdefer image.deinit(allocator);
 
         while (try readFrame(allocator, reader)) |frame| {
             if (frame.width != image.width or frame.height != image.height or meta.activeTag(frame.pixels) != meta.activeTag(image.pixels)) {
                 return ImageReadError.Unsupported; // no obvious way to have multiple frames with different dimensions
             }
-            try image.animation.frames.append(allocator, Image.AnimationFrame{ .pixels = frame.pixels, .duration = 0 });
+            try image.animation.frames.append(allocator, ImageUnmanaged.AnimationFrame{ .pixels = frame.pixels, .duration = 0 });
         }
         return image;
     }
@@ -368,7 +368,7 @@ pub const PAM = struct {
         return @intCast(@min(math.maxInt(T), @as(W, dst_maxval) * @as(W, val) / @as(W, src_maxval)));
     }
 
-    fn readFrame(allocator: Allocator, reader: anytype) ImageReadError!?Image {
+    fn readFrame(allocator: Allocator, reader: anytype) ImageReadError!?ImageUnmanaged {
         // we don't use catch switch here because error.EndOfStream
         // might be the only possible error (and would thus trigger a
         // compile error because of an unreachable else prong)
@@ -379,8 +379,8 @@ pub const PAM = struct {
         var header = try Header.read(allocator, reader);
         defer header.deinit(allocator);
 
-        var image: Image = try header.initImage(allocator);
-        errdefer image.deinit();
+        var image: ImageUnmanaged = try header.initImage(allocator);
+        errdefer image.deinit(allocator);
 
         for (0..image.height) |row| {
             const offset = row * image.width;
@@ -426,7 +426,7 @@ pub const PAM = struct {
         return image;
     }
 
-    pub fn writeImage(allocator: Allocator, stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) ImageWriteError!void {
+    pub fn writeImage(allocator: Allocator, stream: *ImageUnmanaged.Stream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageWriteError!void {
         var buffered_stream = buffered_stream_source.bufferedStreamSourceWriter(stream);
         const writer = buffered_stream.writer();
 
@@ -461,7 +461,7 @@ pub const PAM = struct {
                 if (add_duration_as_comment) _ = comments.pop();
             }
 
-            const frame_img = Image{ .pixels = frame.pixels, .width = image.width, .height = image.height, .allocator = image.allocator };
+            const frame_img = ImageUnmanaged{ .pixels = frame.pixels, .width = image.width, .height = image.height };
 
             try writeFrame(writer, frame_img, .{ .pam = .{ .comments = comments.items } });
         }
@@ -469,7 +469,7 @@ pub const PAM = struct {
         try buffered_stream.flush();
     }
 
-    pub fn writeFrame(writer: anytype, frame: Image, encoder_options: Image.EncoderOptions) ImageWriteError!void {
+    pub fn writeFrame(writer: anytype, frame: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageWriteError!void {
         var header = try Header.fromImage(frame);
         header.comments = encoder_options.pam.comments;
         try header.write(writer);

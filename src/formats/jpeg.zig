@@ -3,10 +3,10 @@ const buffered_stream_source = @import("../buffered_stream_source.zig");
 
 const Allocator = std.mem.Allocator;
 
-const ImageError = Image.Error;
-const ImageReadError = Image.ReadError;
-const ImageWriteError = Image.WriteError;
-const Image = @import("../Image.zig");
+const ImageError = ImageUnmanaged.Error;
+const ImageReadError = ImageUnmanaged.ReadError;
+const ImageWriteError = ImageUnmanaged.WriteError;
+const ImageUnmanaged = @import("../ImageUnmanaged.zig");
 const FormatInterface = @import("../FormatInterface.zig");
 const color = @import("../color.zig");
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
@@ -92,7 +92,7 @@ pub const JPEG = struct {
         } else return ImageReadError.InvalidData;
     }
 
-    pub fn read(self: *JPEG, stream: *Image.Stream, pixels_opt: *?color.PixelStorage) ImageReadError!Frame {
+    pub fn read(self: *JPEG, stream: *ImageUnmanaged.Stream, pixels_opt: *?color.PixelStorage) ImageReadError!Frame {
         var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
 
         const jfif_header = JFIFHeader.read(&buffered_stream) catch |err| switch (err) {
@@ -181,11 +181,11 @@ pub const JPEG = struct {
         };
     }
 
-    fn format() Image.Format {
-        return Image.Format.jpg;
+    fn format() ImageUnmanaged.Format {
+        return ImageUnmanaged.Format.jpg;
     }
 
-    fn formatDetect(stream: *Image.Stream) ImageReadError!bool {
+    fn formatDetect(stream: *ImageUnmanaged.Stream) ImageReadError!bool {
         var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
 
         const reader = buffered_stream.reader();
@@ -201,9 +201,10 @@ pub const JPEG = struct {
         return std.mem.eql(u8, identifier_buffer[0..], "JFIF");
     }
 
-    fn readImage(allocator: Allocator, stream: *Image.Stream) ImageReadError!Image {
-        var result = Image.init(allocator);
-        errdefer result.deinit();
+    fn readImage(allocator: Allocator, stream: *ImageUnmanaged.Stream) ImageReadError!ImageUnmanaged {
+        var result = ImageUnmanaged{};
+        errdefer result.deinit(allocator);
+
         var jpeg = JPEG.init(allocator);
         defer jpeg.deinit();
 
@@ -223,7 +224,7 @@ pub const JPEG = struct {
         return result;
     }
 
-    fn writeImage(allocator: Allocator, write_stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) ImageWriteError!void {
+    fn writeImage(allocator: Allocator, write_stream: *ImageUnmanaged.Stream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageWriteError!void {
         _ = allocator;
         _ = write_stream;
         _ = image;

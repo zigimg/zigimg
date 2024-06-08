@@ -1,82 +1,29 @@
-const AllImageFormats = @import("formats/all.zig");
-const FormatInterface = @import("FormatInterface.zig");
-const PixelFormat = @import("pixel_format.zig").PixelFormat;
-const color = @import("color.zig");
 const std = @import("std");
-const utils = @import("utils.zig");
-const PixelFormatConverter = @import("PixelFormatConverter.zig");
+const color = @import("color.zig");
+const ImageUnmanaged = @import("ImageUnmanaged.zig");
+const PixelFormat = @import("pixel_format.zig").PixelFormat;
 
-pub const Error = error{
-    Unsupported,
-};
+pub const Error = ImageUnmanaged.Error;
 
-pub const ReadError = Error ||
-    std.mem.Allocator.Error ||
-    utils.StructReadError ||
-    std.io.StreamSource.SeekError ||
-    std.io.StreamSource.GetSeekPosError ||
-    error{ EndOfStream, StreamTooLong, InvalidData };
+pub const ReadError = ImageUnmanaged.ReadError;
 
-pub const WriteError = Error ||
-    std.mem.Allocator.Error ||
-    std.io.StreamSource.WriteError ||
-    std.io.StreamSource.SeekError ||
-    std.io.StreamSource.GetSeekPosError ||
-    std.fs.File.OpenError ||
-    error{ EndOfStream, InvalidData, UnfinishedBits };
+pub const WriteError = ImageUnmanaged.WriteError;
 
-pub const ConvertError = Error ||
-    std.mem.Allocator.Error ||
-    error{ NoConversionAvailable, NoConversionNeeded, QuantizeError };
+pub const ConvertError = ImageUnmanaged.ConvertError;
 
-pub const Format = enum {
-    bmp,
-    gif,
-    jpg,
-    pbm,
-    pcx,
-    pgm,
-    png,
-    ppm,
-    qoi,
-    tga,
-    pam,
-};
+pub const Format = ImageUnmanaged.Format;
 
-pub const Stream = std.io.StreamSource;
+pub const Stream = ImageUnmanaged.Stream;
 
-pub const EncoderOptions = AllImageFormats.ImageEncoderOptions;
+pub const EncoderOptions = ImageUnmanaged.EncoderOptions;
 
-pub const AnimationLoopInfinite = -1;
+pub const AnimationLoopInfinite = ImageUnmanaged.AnimationLoopInfinite;
 
-pub const AnimationFrame = struct {
-    pixels: color.PixelStorage,
-    duration: f32,
+pub const AnimationFrame = ImageUnmanaged.AnimationFrame;
 
-    pub fn deinit(self: AnimationFrame, allocator: std.mem.Allocator) void {
-        self.pixels.deinit(allocator);
-    }
-};
+pub const Animation = ImageUnmanaged.Animation;
 
-pub const Animation = struct {
-    frames: FrameList = .{},
-    loop_count: i32 = AnimationLoopInfinite,
-
-    pub const FrameList = std.ArrayListUnmanaged(AnimationFrame);
-
-    pub fn deinit(self: *Animation, allocator: std.mem.Allocator) void {
-        // Animation share its first frame with the pixels in Image, we don't want to free it twice
-        if (self.frames.items.len >= 2) {
-            for (self.frames.items[1..]) |frame| {
-                frame.pixels.deinit(allocator);
-            }
-        }
-
-        self.frames.deinit(allocator);
-    }
-};
-
-/// Format-independant image with bundled allocator
+// This layout must match the one in ImageUnmanaged
 width: usize = 0,
 height: usize = 0,
 pixels: color.PixelStorage = .{ .invalid = void{} },
@@ -84,30 +31,6 @@ animation: Animation = .{},
 allocator: std.mem.Allocator = undefined, // Allocator needs to be last in order to be able to ptrCast to ImageUnmanaged
 
 const Image = @This();
-
-const FormatInteraceFnType = *const fn () FormatInterface;
-const all_interface_funcs = blk: {
-    const allFormatDecls = std.meta.declarations(AllImageFormats);
-    var result: []const FormatInteraceFnType = &[0]FormatInteraceFnType{};
-    for (allFormatDecls) |decl| {
-        const decl_value = @field(AllImageFormats, decl.name);
-        const entry_type = @TypeOf(decl_value);
-        if (entry_type == type) {
-            const entryTypeInfo = @typeInfo(decl_value);
-            if (entryTypeInfo == .Struct) {
-                for (entryTypeInfo.Struct.decls) |structEntry| {
-                    if (std.mem.eql(u8, structEntry.name, "formatInterface")) {
-                        result = result ++ [_]FormatInteraceFnType{
-                            @field(decl_value, structEntry.name),
-                        };
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    break :blk result[0..];
-};
 
 /// Init an empty image with no pixel data
 pub fn init(allocator: std.mem.Allocator) Image {
@@ -118,28 +41,22 @@ pub fn init(allocator: std.mem.Allocator) Image {
 
 /// Deinit the image
 pub fn deinit(self: *Image) void {
-    self.pixels.deinit(self.allocator);
-    self.animation.deinit(self.allocator);
+    ImageUnmanaged.deinit(@ptrCast(self), self.allocator);
 }
 
 /// Load an image from a file path
 pub fn fromFilePath(allocator: std.mem.Allocator, file_path: []const u8) !Image {
-    var file = try std.fs.cwd().openFile(file_path, .{});
-    defer file.close();
-
-    return fromFile(allocator, &file);
+    return (try ImageUnmanaged.fromFilePath(allocator, file_path)).toManaged(allocator);
 }
 
 /// Load an image from a standard library std.fs.File
 pub fn fromFile(allocator: std.mem.Allocator, file: *std.fs.File) !Image {
-    var stream_source = std.io.StreamSource{ .file = file.* };
-    return internalRead(allocator, &stream_source);
+    return (try ImageUnmanaged.fromFile(allocator, file)).toManaged(allocator);
 }
 
 /// Load an image from a memory buffer
 pub fn fromMemory(allocator: std.mem.Allocator, buffer: []const u8) !Image {
-    var stream_source = std.io.StreamSource{ .const_buffer = std.io.fixedBufferStream(buffer) };
-    return internalRead(allocator, &stream_source);
+    return (try ImageUnmanaged.fromMemory(allocator, buffer)).toManaged(allocator);
 }
 
 /// Create a pixel surface from scratch
@@ -181,44 +98,25 @@ pub fn isAnimation(self: Image) bool {
 
 /// Write the image to an image format to the specified path
 pub fn writeToFilePath(self: Image, file_path: []const u8, encoder_options: EncoderOptions) WriteError!void {
-    var file = try std.fs.cwd().createFile(file_path, .{});
-    defer file.close();
-
-    try self.writeToFile(file, encoder_options);
+    return ImageUnmanaged.writeToFilePath(self.toUnmanaged(), self.allocator, file_path, encoder_options);
 }
 
 /// Write the image to an image format to the specified std.fs.File
 pub fn writeToFile(self: Image, file: std.fs.File, encoder_options: EncoderOptions) WriteError!void {
-    var stream_source = std.io.StreamSource{ .file = file };
-
-    try self.internalWrite(&stream_source, encoder_options);
+    return ImageUnmanaged.writeToFile(self.toUnmanaged(), self.allocator, file, encoder_options);
 }
 
 /// Write the image to an image format in a memory buffer. The memory buffer is not grown
 /// for you so make sure you pass a large enough buffer.
 pub fn writeToMemory(self: Image, write_buffer: []u8, encoder_options: EncoderOptions) WriteError![]u8 {
-    var stream_source = std.io.StreamSource{ .buffer = std.io.fixedBufferStream(write_buffer) };
-
-    try self.internalWrite(&stream_source, encoder_options);
-
-    return stream_source.buffer.getWritten();
+    return ImageUnmanaged.writeToMemory(self.toUnmanaged(), self.allocator, write_buffer, encoder_options);
 }
 
 /// Convert the pixel format of the Image into another format.
 /// It will allocate another pixel storage for the destination and free the old one
 /// For the conversion to the indexed formats, no dithering is done.
 pub fn convert(self: *Image, destination_format: PixelFormat) ConvertError!void {
-    // Do nothing if the format is the same
-    if (std.meta.activeTag(self.pixels) == destination_format) {
-        return;
-    }
-
-    const new_pixels = try PixelFormatConverter.convert(self.allocator, &self.pixels, destination_format);
-    errdefer new_pixels.deinit(self.allocator);
-
-    self.pixels.deinit(self.allocator);
-
-    self.pixels = new_pixels;
+    return ImageUnmanaged.convert(@ptrCast(self), self.allocator, destination_format);
 }
 
 /// Iterate the pixel in pixel-format agnostic way. In the case of an animation, it returns an iterator for the first frame. The iterator is read-only.
@@ -228,44 +126,12 @@ pub fn iterator(self: *const Image) color.PixelStorageIterator {
     return color.PixelStorageIterator.init(&self.pixels);
 }
 
-fn internalRead(allocator: std.mem.Allocator, stream: *Stream) !Image {
-    const format_interface = try findImageInterfaceFromStream(stream);
-
-    try stream.seekTo(0);
-
-    return try format_interface.readImage(allocator, stream);
-}
-
-fn internalWrite(self: Image, stream: *Stream, encoder_options: EncoderOptions) WriteError!void {
-    const image_format = std.meta.activeTag(encoder_options);
-
-    var format_interface = try findImageInterfaceFromImageFormat(image_format);
-
-    try format_interface.writeImage(self.allocator, stream, self, encoder_options);
-}
-
-fn findImageInterfaceFromStream(stream: *Stream) !FormatInterface {
-    for (all_interface_funcs) |intefaceFn| {
-        const formatInterface = intefaceFn();
-
-        try stream.seekTo(0);
-        const found = try formatInterface.formatDetect(stream);
-        if (found) {
-            return formatInterface;
-        }
-    }
-
-    return Error.Unsupported;
-}
-
-fn findImageInterfaceFromImageFormat(image_format: Format) !FormatInterface {
-    for (all_interface_funcs) |interface_fn| {
-        const format_interface = interface_fn();
-
-        if (format_interface.format() == image_format) {
-            return format_interface;
-        }
-    }
-
-    return Error.Unsupported;
+/// Convert to unmanaged version
+pub fn toUnmanaged(self: Image) ImageUnmanaged {
+    return .{
+        .width = self.width,
+        .height = self.height,
+        .pixels = self.pixels,
+        .animation = self.animation,
+    };
 }

@@ -77,7 +77,6 @@ pub const Animation = struct {
     }
 };
 
-/// Format-independant image
 width: usize = 0,
 height: usize = 0,
 pixels: color.PixelStorage = .{ .invalid = void{} },
@@ -187,14 +186,14 @@ pub fn writeToFilePath(self: ImageUnmanaged, allocator: std.mem.Allocator, file_
     var file = try std.fs.cwd().createFile(file_path, .{});
     defer file.close();
 
-    try self.writeToFile(file, allocator, encoder_options);
+    try self.writeToFile(allocator, file, encoder_options);
 }
 
 /// Write the image to an image format to the specified std.fs.File
 pub fn writeToFile(self: ImageUnmanaged, allocator: std.mem.Allocator, file: std.fs.File, encoder_options: EncoderOptions) WriteError!void {
     var stream_source = std.io.StreamSource{ .file = file };
 
-    try self.internalWrite(&stream_source, allocator, encoder_options);
+    try self.internalWrite(allocator, &stream_source, encoder_options);
 }
 
 /// Write the image to an image format in a memory buffer. The memory buffer is not grown
@@ -202,7 +201,7 @@ pub fn writeToFile(self: ImageUnmanaged, allocator: std.mem.Allocator, file: std
 pub fn writeToMemory(self: ImageUnmanaged, allocator: std.mem.Allocator, write_buffer: []u8, encoder_options: EncoderOptions) WriteError![]u8 {
     var stream_source = std.io.StreamSource{ .buffer = std.io.fixedBufferStream(write_buffer) };
 
-    try self.internalWrite(&stream_source, allocator, encoder_options);
+    try self.internalWrite(allocator, &stream_source, encoder_options);
 
     return stream_source.buffer.getWritten();
 }

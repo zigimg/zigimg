@@ -6,9 +6,9 @@ const chunk_writer = @import("png/chunk_writer.zig");
 const color = @import("../color.zig");
 const filter = @import("png/filtering.zig");
 const FormatInterface = @import("../FormatInterface.zig");
-const Image = @import("../Image.zig");
-const ImageReadError = Image.ReadError;
-const ImageWriteError = Image.WriteError;
+const ImageUnmanaged = @import("../ImageUnmanaged.zig");
+const ImageReadError = ImageUnmanaged.ReadError;
+const ImageWriteError = ImageUnmanaged.WriteError;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const reader = @import("png/reader.zig");
 const std = @import("std");
@@ -55,11 +55,11 @@ pub const PNG = struct {
         };
     }
 
-    pub fn format() Image.Format {
-        return Image.Format.png;
+    pub fn format() ImageUnmanaged.Format {
+        return ImageUnmanaged.Format.png;
     }
 
-    pub fn formatDetect(stream: *Image.Stream) ImageReadError!bool {
+    pub fn formatDetect(stream: *ImageUnmanaged.Stream) ImageReadError!bool {
         var magic_buffer: [types.magic_header.len]u8 = undefined;
 
         _ = try stream.reader().readAll(magic_buffer[0..]);
@@ -67,12 +67,12 @@ pub const PNG = struct {
         return std.mem.eql(u8, magic_buffer[0..], types.magic_header[0..]);
     }
 
-    pub fn readImage(allocator: Allocator, stream: *Image.Stream) ImageReadError!Image {
+    pub fn readImage(allocator: Allocator, stream: *ImageUnmanaged.Stream) ImageReadError!ImageUnmanaged {
         var default_options = DefaultOptions{};
         return load(stream, allocator, default_options.get());
     }
 
-    pub fn writeImage(_: Allocator, write_stream: *Image.Stream, image: Image, encoder_options: Image.EncoderOptions) ImageWriteError!void {
+    pub fn writeImage(_: Allocator, write_stream: *ImageUnmanaged.Stream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageWriteError!void {
         const options = encoder_options.png;
 
         try ensureWritable(image);
@@ -92,7 +92,7 @@ pub const PNG = struct {
         try write(write_stream, image.pixels, header, options.filter_choice);
     }
 
-    pub fn write(write_stream: *Image.Stream, pixels: color.PixelStorage, header: HeaderData, filter_choice: filter.FilterChoice) ImageWriteError!void {
+    pub fn write(write_stream: *ImageUnmanaged.Stream, pixels: color.PixelStorage, header: HeaderData, filter_choice: filter.FilterChoice) ImageWriteError!void {
         if (header.interlace_method != .none)
             return ImageWriteError.Unsupported;
         if (header.compression_method != .deflate)
@@ -112,7 +112,7 @@ pub const PNG = struct {
         try writeTrailer(writer);
     }
 
-    pub fn ensureWritable(image: Image) !void {
+    pub fn ensureWritable(image: ImageUnmanaged) !void {
         if (image.width > std.math.maxInt(u31))
             return error.Unsupported;
         if (image.height > std.math.maxInt(u31))

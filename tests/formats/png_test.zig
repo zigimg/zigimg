@@ -216,7 +216,7 @@ test "InfoProcessor on Png Test suite" {
             info_stream.buffer.reset();
 
             var result = try png.load(&stream, std.testing.allocator, options.get());
-            defer result.deinit();
+            defer result.deinit(helpers.zigimg_test_allocator);
 
             const len = entry.name.len + 1;
             var tst_data_name: [50]u8 = undefined;
