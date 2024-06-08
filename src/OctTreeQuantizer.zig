@@ -5,63 +5,60 @@ const OctTreeQuantizer = @This();
 
 const MaxDepth = 8;
 
-root_node: Node,
-levels: [MaxDepth]NodeArrayList,
-area_allocator: std.heap.ArenaAllocator,
+pub const Error = std.mem.Allocator.Error ||
+    error{ InvalidColorIndex, ColorNotFound };
 
-const NodeArrayList = std.ArrayList(*Node);
+root_node: Node = .{},
+levels: [MaxDepth]?*Node = [_]?*Node{null} ** MaxDepth,
+area_allocator: std.heap.ArenaAllocator,
 
 pub fn init(allocator: std.mem.Allocator) OctTreeQuantizer {
     var result = OctTreeQuantizer{
-        .root_node = Node{},
         .area_allocator = std.heap.ArenaAllocator.init(allocator),
-        .levels = undefined,
     };
-    for (0..result.levels.len) |index| {
-        result.levels[index] = NodeArrayList.init(allocator);
-    }
-    result.root_node.init(0, &result) catch unreachable;
+    result.root_node.init(0, &result);
     return result;
 }
 
 pub fn deinit(self: *OctTreeQuantizer) void {
     self.area_allocator.deinit();
-    for (0..self.levels.len) |index| {
-        self.levels[index].deinit();
-    }
 }
 
-pub fn allocateNode(self: *OctTreeQuantizer) !*Node {
+pub fn allocateNode(self: *OctTreeQuantizer) Error!*Node {
     return try self.area_allocator.allocator().create(Node);
 }
 
-pub fn addLevelNode(self: *OctTreeQuantizer, level: i32, node: *Node) !void {
-    try self.levels[@intCast(level)].append(node);
+pub fn addLevelNode(self: *OctTreeQuantizer, level: i32, node: *Node) void {
+    node.level_next = self.levels[@intCast(level)];
+    self.levels[@intCast(level)] = node;
 }
 
-pub fn addColor(self: *OctTreeQuantizer, color_value: color.Rgba32) !void {
+pub fn addColor(self: *OctTreeQuantizer, color_value: color.Rgba32) Error!void {
     try self.root_node.addColor(color_value, 0, self);
 }
 
-pub fn getPaletteIndex(self: OctTreeQuantizer, color_value: color.Rgba32) !usize {
+pub fn getPaletteIndex(self: OctTreeQuantizer, color_value: color.Rgba32) Error!usize {
     return try self.root_node.getPaletteIndex(color_value, 0);
 }
 
-pub fn makePalette(self: *OctTreeQuantizer, color_count: usize, palette: []color.Rgba32) anyerror![]color.Rgba32 {
+pub fn makePalette(self: *OctTreeQuantizer, color_count: u32, palette: []color.Rgba32) []color.Rgba32 {
     var leaf_count = self.root_node.countLeafNodes();
 
-    var level: usize = MaxDepth - 1;
+    var level: u8 = MaxDepth - 1;
     while (level >= 0) : (level -= 1) {
-        for (self.levels[level].items) |node| {
+        var node_it = self.levels[level];
+
+        while (node_it) |node| {
             leaf_count -= @intCast(node.removeLeaves());
             if (leaf_count <= color_count) {
                 break;
             }
+            node_it = node.level_next;
         }
+
         if (leaf_count <= color_count) {
             break;
         }
-        try self.levels[level].resize(0);
     }
 
     var make_palette_context = MakePaletteContext{ .palette = palette, .color_count = color_count };
@@ -72,8 +69,8 @@ pub fn makePalette(self: *OctTreeQuantizer, color_count: usize, palette: []color
 
 const MakePaletteContext = struct {
     palette: []color.Rgba32,
-    palette_index: usize = 0,
-    color_count: usize = 0,
+    palette_index: u32 = 0,
+    color_count: u32 = 0,
 };
 
 const Node = struct {
@@ -81,22 +78,15 @@ const Node = struct {
     green: u32 = 0,
     blue: u32 = 0,
     reference_count: u32 = 0,
-    palette_index: usize = 0,
-    children: [8]?*Node = undefined,
+    palette_index: u32 = 0,
+    children: [8]?*Node = [_]?*Node{null} ** 8,
+    level_next: ?*Node = null,
 
-    pub fn init(self: *Node, level: i32, parent: *OctTreeQuantizer) !void {
-        self.red = 0;
-        self.green = 0;
-        self.blue = 0;
-        self.reference_count = 0;
-        self.palette_index = 0;
-
-        for (0..self.children.len) |index| {
-            self.children[index] = null;
-        }
+    pub fn init(self: *Node, level: i32, parent: *OctTreeQuantizer) void {
+        self.* = Node{};
 
         if (level < (MaxDepth - 1)) {
-            try parent.addLevelNode(level, self);
+            parent.addLevelNode(level, self);
         }
     }
 
@@ -108,7 +98,7 @@ const Node = struct {
         return color.Rgba32.initRgb(@intCast(self.red / self.reference_count), @intCast(self.green / self.reference_count), @intCast(self.blue / self.reference_count));
     }
 
-    pub fn addColor(self: *Node, color_value: color.Rgba32, level: i32, parent: *OctTreeQuantizer) anyerror!void {
+    pub fn addColor(self: *Node, color_value: color.Rgba32, level: i32, parent: *OctTreeQuantizer) Error!void {
         if (level >= MaxDepth) {
             self.red += color_value.r;
             self.green += color_value.g;
@@ -116,21 +106,23 @@ const Node = struct {
             self.reference_count += 1;
             return;
         }
+
         const index = getColorIndex(color_value, level);
         if (index >= self.children.len) {
-            return error.InvalidColorIndex;
+            return Error.InvalidColorIndex;
         }
+
         if (self.children[index]) |child| {
             try child.addColor(color_value, level + 1, parent);
         } else {
             var new_node = try parent.allocateNode();
-            try new_node.init(level, parent);
+            new_node.init(level, parent);
             try new_node.addColor(color_value, level + 1, parent);
             self.children[index] = new_node;
         }
     }
 
-    pub fn getPaletteIndex(self: Node, color_value: color.Rgba32, level: i32) anyerror!usize {
+    pub fn getPaletteIndex(self: Node, color_value: color.Rgba32, level: i32) Error!usize {
         if (self.isLeaf()) {
             return self.palette_index;
         }
@@ -147,7 +139,7 @@ const Node = struct {
             }
         }
 
-        return error.ColorNotFound;
+        return Error.ColorNotFound;
     }
 
     pub fn countLeafNodes(self: Node) usize {
