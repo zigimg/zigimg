@@ -10,6 +10,8 @@ const OctTreeQuantizer = @import("OctTreeQuantizer.zig");
 // The RGB to Grayscale factors are those for Rec. 709/sRGB assuming linear RGB
 const GrayscaleFactors: math.float4 = .{ 0.2125, 0.7154, 0.0721, 1.0 };
 
+/// Convert a pixel storage into another format.
+/// For the conversion to the indexed formats, no dithering is done.
 pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, destination_format: PixelFormat) Image.ConvertError!color.PixelStorage {
     if (std.meta.activeTag(source.*) == destination_format) {
         return Image.ConvertError.NoConversionNeeded;

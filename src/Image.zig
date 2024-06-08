@@ -206,6 +206,7 @@ pub fn writeToMemory(self: Image, write_buffer: []u8, encoder_options: EncoderOp
 
 /// Convert the pixel format of the Image into another format.
 /// It will allocate another pixel storage for the destination and free the old one
+/// For the conversion to the indexed formats, no dithering is done.
 pub fn convert(self: *Image, destination_format: PixelFormat) ConvertError!void {
     // Do nothing if the format is the same
     if (std.meta.activeTag(self.pixels) == destination_format) {
