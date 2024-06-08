@@ -108,6 +108,49 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.indexed8, .float32) => indexedToColorf32(.indexed8, source, &destination),
         conversionId(.indexed16, .float32) => indexedToColorf32(.indexed16, source, &destination),
 
+        // Grayscale -> indexed
+        conversionId(.grayscale1, .indexed1) => try GrayscaleToIndexed(.grayscale1, .indexed1).convert(allocator, source, &destination),
+        conversionId(.grayscale1, .indexed2) => try GrayscaleToIndexed(.grayscale1, .indexed2).convert(allocator, source, &destination),
+        conversionId(.grayscale1, .indexed4) => try GrayscaleToIndexed(.grayscale1, .indexed4).convert(allocator, source, &destination),
+        conversionId(.grayscale1, .indexed8) => try GrayscaleToIndexed(.grayscale1, .indexed8).convert(allocator, source, &destination),
+        conversionId(.grayscale1, .indexed16) => try GrayscaleToIndexed(.grayscale1, .indexed16).convert(allocator, source, &destination),
+
+        conversionId(.grayscale2, .indexed1) => try GrayscaleToIndexed(.grayscale2, .indexed1).convert(allocator, source, &destination),
+        conversionId(.grayscale2, .indexed2) => try GrayscaleToIndexed(.grayscale2, .indexed2).convert(allocator, source, &destination),
+        conversionId(.grayscale2, .indexed4) => try GrayscaleToIndexed(.grayscale2, .indexed4).convert(allocator, source, &destination),
+        conversionId(.grayscale2, .indexed8) => try GrayscaleToIndexed(.grayscale2, .indexed8).convert(allocator, source, &destination),
+        conversionId(.grayscale2, .indexed16) => try GrayscaleToIndexed(.grayscale2, .indexed16).convert(allocator, source, &destination),
+
+        conversionId(.grayscale4, .indexed1) => try GrayscaleToIndexed(.grayscale4, .indexed1).convert(allocator, source, &destination),
+        conversionId(.grayscale4, .indexed2) => try GrayscaleToIndexed(.grayscale4, .indexed2).convert(allocator, source, &destination),
+        conversionId(.grayscale4, .indexed4) => try GrayscaleToIndexed(.grayscale4, .indexed4).convert(allocator, source, &destination),
+        conversionId(.grayscale4, .indexed8) => try GrayscaleToIndexed(.grayscale4, .indexed8).convert(allocator, source, &destination),
+        conversionId(.grayscale4, .indexed16) => try GrayscaleToIndexed(.grayscale4, .indexed16).convert(allocator, source, &destination),
+
+        conversionId(.grayscale8, .indexed1) => try GrayscaleToIndexed(.grayscale8, .indexed1).convert(allocator, source, &destination),
+        conversionId(.grayscale8, .indexed2) => try GrayscaleToIndexed(.grayscale8, .indexed2).convert(allocator, source, &destination),
+        conversionId(.grayscale8, .indexed4) => try GrayscaleToIndexed(.grayscale8, .indexed4).convert(allocator, source, &destination),
+        conversionId(.grayscale8, .indexed8) => try GrayscaleToIndexed(.grayscale8, .indexed8).convert(allocator, source, &destination),
+        conversionId(.grayscale8, .indexed16) => try GrayscaleToIndexed(.grayscale8, .indexed16).convert(allocator, source, &destination),
+
+        conversionId(.grayscale16, .indexed1) => try GrayscaleToIndexed(.grayscale16, .indexed1).convert(allocator, source, &destination),
+        conversionId(.grayscale16, .indexed2) => try GrayscaleToIndexed(.grayscale16, .indexed2).convert(allocator, source, &destination),
+        conversionId(.grayscale16, .indexed4) => try GrayscaleToIndexed(.grayscale16, .indexed4).convert(allocator, source, &destination),
+        conversionId(.grayscale16, .indexed8) => try GrayscaleToIndexed(.grayscale16, .indexed8).convert(allocator, source, &destination),
+        conversionId(.grayscale16, .indexed16) => try GrayscaleToIndexed(.grayscale16, .indexed16).convert(allocator, source, &destination),
+
+        conversionId(.grayscale8Alpha, .indexed1) => try GrayscaleAlphaToIndexed(.grayscale8Alpha, .indexed1).convert(allocator, source, &destination),
+        conversionId(.grayscale8Alpha, .indexed2) => try GrayscaleAlphaToIndexed(.grayscale8Alpha, .indexed2).convert(allocator, source, &destination),
+        conversionId(.grayscale8Alpha, .indexed4) => try GrayscaleAlphaToIndexed(.grayscale8Alpha, .indexed4).convert(allocator, source, &destination),
+        conversionId(.grayscale8Alpha, .indexed8) => try GrayscaleAlphaToIndexed(.grayscale8Alpha, .indexed8).convert(allocator, source, &destination),
+        conversionId(.grayscale8Alpha, .indexed16) => try GrayscaleAlphaToIndexed(.grayscale8Alpha, .indexed16).convert(allocator, source, &destination),
+
+        conversionId(.grayscale16Alpha, .indexed1) => try GrayscaleAlphaToIndexed(.grayscale16Alpha, .indexed1).convert(allocator, source, &destination),
+        conversionId(.grayscale16Alpha, .indexed2) => try GrayscaleAlphaToIndexed(.grayscale16Alpha, .indexed2).convert(allocator, source, &destination),
+        conversionId(.grayscale16Alpha, .indexed4) => try GrayscaleAlphaToIndexed(.grayscale16Alpha, .indexed4).convert(allocator, source, &destination),
+        conversionId(.grayscale16Alpha, .indexed8) => try GrayscaleAlphaToIndexed(.grayscale16Alpha, .indexed8).convert(allocator, source, &destination),
+        conversionId(.grayscale16Alpha, .indexed16) => try GrayscaleAlphaToIndexed(.grayscale16Alpha, .indexed16).convert(allocator, source, &destination),
+
         // Grayscale small -> large
         conversionId(.grayscale1, .grayscale2) => GrayscaleToGrayscale(.grayscale1, .grayscale2).convert(source, &destination),
         conversionId(.grayscale1, .grayscale4) => GrayscaleToGrayscale(.grayscale1, .grayscale4).convert(source, &destination),
@@ -808,6 +851,76 @@ fn grayscaleToColorf32(comptime source_format: PixelFormat, source: *const color
     for (0..source_grayscale.len) |index| {
         destination.float32[index] = source_grayscale[index].toColorf32();
     }
+}
+
+fn GrayscaleToIndexed(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
+    return struct {
+        pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, destination: *color.PixelStorage) Image.ConvertError!void {
+            const source_grayscale = @field(source, getFieldNameFromPixelFormat(source_format));
+            var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+
+            var quantizer = OctTreeQuantizer.init(allocator);
+            defer quantizer.deinit();
+
+            // First pass: read all pixels and fill in the quantizer
+            for (source_grayscale) |pixel| {
+                const rgba_pixel = grayscaleToRgb(color.Rgb24, pixel);
+
+                quantizer.addColor(rgba_pixel) catch |err| {
+                    return switch (err) {
+                        std.mem.Allocator.Error.OutOfMemory => std.mem.Allocator.Error.OutOfMemory,
+                        else => Image.ConvertError.QuantizeError,
+                    };
+                };
+            }
+
+            // Make the palette
+            const color_count: u32 = (@as(u32, 1) << @as(u5, @truncate(destination_format.bitsPerChannel()))) - 1;
+            destination_pixels.palette = quantizer.makePalette(color_count, destination_pixels.palette);
+
+            // Second pass: assign indices
+            for (0..source_grayscale.len) |index| {
+                const rgba_pixel = grayscaleToRgb(color.Rgb24, source_grayscale[index]);
+
+                destination_pixels.indices[index] = @truncate(quantizer.getPaletteIndex(rgba_pixel) catch return Image.ConvertError.QuantizeError);
+            }
+        }
+    };
+}
+
+fn GrayscaleAlphaToIndexed(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
+    return struct {
+        pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, destination: *color.PixelStorage) Image.ConvertError!void {
+            const source_grayscale = @field(source, getFieldNameFromPixelFormat(source_format));
+            var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+
+            var quantizer = OctTreeQuantizer.init(allocator);
+            defer quantizer.deinit();
+
+            // First pass: read all pixels and fill in the quantizer
+            for (source_grayscale) |pixel| {
+                const rgba_pixel = grayscaleAlphaToRgba(color.Rgba32, pixel);
+
+                quantizer.addColor(rgba_pixel) catch |err| {
+                    return switch (err) {
+                        std.mem.Allocator.Error.OutOfMemory => std.mem.Allocator.Error.OutOfMemory,
+                        else => Image.ConvertError.QuantizeError,
+                    };
+                };
+            }
+
+            // Make the palette
+            const color_count: u32 = (@as(u32, 1) << @as(u5, @truncate(destination_format.bitsPerChannel()))) - 1;
+            destination_pixels.palette = quantizer.makePalette(color_count, destination_pixels.palette);
+
+            // Second pass: assign indices
+            for (0..source_grayscale.len) |index| {
+                const rgba_pixel = grayscaleAlphaToRgba(color.Rgba32, source_grayscale[index]);
+
+                destination_pixels.indices[index] = @truncate(quantizer.getPaletteIndex(rgba_pixel) catch return Image.ConvertError.QuantizeError);
+            }
+        }
+    };
 }
 
 // =====================

@@ -1737,3 +1737,83 @@ test "PixelFormatConverter: convert rgb565 to indexed4" {
         }
     }
 }
+
+test "PixelFormatConverter: convert grayscale8 to indexed8" {
+    const grayscale8_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .grayscale8, 32 * 8);
+    defer grayscale8_pixels.deinit(helpers.zigimg_test_allocator);
+
+    for (0..grayscale8_pixels.grayscale8.len) |index| {
+        const row: u8 = @truncate(index / 32);
+
+        switch (row) {
+            0 => grayscale8_pixels.grayscale8[index].value = 0,
+            1 => grayscale8_pixels.grayscale8[index].value = 32,
+            2 => grayscale8_pixels.grayscale8[index].value = 64,
+            3 => grayscale8_pixels.grayscale8[index].value = 96,
+            4 => grayscale8_pixels.grayscale8[index].value = 128,
+            5 => grayscale8_pixels.grayscale8[index].value = 160,
+            6 => grayscale8_pixels.grayscale8[index].value = 192,
+            7 => grayscale8_pixels.grayscale8[index].value = 224,
+            else => {},
+        }
+    }
+
+    const indexed8_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &grayscale8_pixels, .indexed8);
+    defer indexed8_pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[0].r, 0);
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[0].g, 0);
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[0].b, 0);
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[0].a, 255);
+
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[1].r, 32);
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[1].g, 32);
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[1].b, 32);
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[1].a, 255);
+
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[2].r, 64);
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[2].g, 64);
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[2].b, 64);
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[2].a, 255);
+
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[3].r, 96);
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[3].g, 96);
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[3].b, 96);
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[3].a, 255);
+
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[4].r, 128);
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[4].g, 128);
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[4].b, 128);
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[4].a, 255);
+
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[5].r, 160);
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[5].g, 160);
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[5].b, 160);
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[5].a, 255);
+
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[6].r, 192);
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[6].g, 192);
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[6].b, 192);
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[6].a, 255);
+
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[7].r, 224);
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[7].g, 224);
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[7].b, 224);
+    try helpers.expectEq(indexed8_pixels.indexed8.palette[7].a, 255);
+
+    for (0..indexed8_pixels.indexed8.indices.len) |index| {
+        const row: u8 = @truncate(index / 32);
+
+        switch (row) {
+            0 => try helpers.expectEq(indexed8_pixels.indexed8.indices[index], 0),
+            1 => try helpers.expectEq(indexed8_pixels.indexed8.indices[index], 1),
+            2 => try helpers.expectEq(indexed8_pixels.indexed8.indices[index], 2),
+            3 => try helpers.expectEq(indexed8_pixels.indexed8.indices[index], 3),
+            4 => try helpers.expectEq(indexed8_pixels.indexed8.indices[index], 4),
+            5 => try helpers.expectEq(indexed8_pixels.indexed8.indices[index], 5),
+            6 => try helpers.expectEq(indexed8_pixels.indexed8.indices[index], 6),
+            7 => try helpers.expectEq(indexed8_pixels.indexed8.indices[index], 7),
+            else => {},
+        }
+    }
+}
