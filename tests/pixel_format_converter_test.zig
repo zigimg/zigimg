@@ -1852,17 +1852,21 @@ test "PixelFormatConverter: convert grayscale8 to indexed8" {
 }
 
 test "PixelFormatConverter: convert grayscale8 to indexed2" {
-    const grayscale8_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .grayscale8, 32 * 4);
+    const grayscale8_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .grayscale8, 32 * 8);
     defer grayscale8_pixels.deinit(helpers.zigimg_test_allocator);
 
     for (0..grayscale8_pixels.grayscale8.len) |index| {
         const row: u8 = @truncate(index / 32);
 
         switch (row) {
-            0 => grayscale8_pixels.grayscale8[index].value = 64,
-            1 => grayscale8_pixels.grayscale8[index].value = 128,
-            2 => grayscale8_pixels.grayscale8[index].value = 192,
-            3 => grayscale8_pixels.grayscale8[index].value = 255,
+            0 => grayscale8_pixels.grayscale8[index].value = 32,
+            1 => grayscale8_pixels.grayscale8[index].value = 64,
+            2 => grayscale8_pixels.grayscale8[index].value = 96,
+            3 => grayscale8_pixels.grayscale8[index].value = 128,
+            4 => grayscale8_pixels.grayscale8[index].value = 160,
+            5 => grayscale8_pixels.grayscale8[index].value = 192,
+            6 => grayscale8_pixels.grayscale8[index].value = 224,
+            7 => grayscale8_pixels.grayscale8[index].value = 255,
             else => {},
         }
     }
@@ -1870,24 +1874,24 @@ test "PixelFormatConverter: convert grayscale8 to indexed2" {
     const indexed2_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &grayscale8_pixels, .indexed2);
     defer indexed2_pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(indexed2_pixels.indexed2.palette[0].r, 64);
-    try helpers.expectEq(indexed2_pixels.indexed2.palette[0].g, 64);
-    try helpers.expectEq(indexed2_pixels.indexed2.palette[0].b, 64);
+    try helpers.expectEq(indexed2_pixels.indexed2.palette[0].r, 32);
+    try helpers.expectEq(indexed2_pixels.indexed2.palette[0].g, 32);
+    try helpers.expectEq(indexed2_pixels.indexed2.palette[0].b, 32);
     try helpers.expectEq(indexed2_pixels.indexed2.palette[0].a, 255);
 
-    try helpers.expectEq(indexed2_pixels.indexed2.palette[1].r, 128);
-    try helpers.expectEq(indexed2_pixels.indexed2.palette[1].g, 128);
-    try helpers.expectEq(indexed2_pixels.indexed2.palette[1].b, 128);
+    try helpers.expectEq(indexed2_pixels.indexed2.palette[1].r, 80);
+    try helpers.expectEq(indexed2_pixels.indexed2.palette[1].g, 80);
+    try helpers.expectEq(indexed2_pixels.indexed2.palette[1].b, 80);
     try helpers.expectEq(indexed2_pixels.indexed2.palette[1].a, 255);
 
-    try helpers.expectEq(indexed2_pixels.indexed2.palette[2].r, 192);
-    try helpers.expectEq(indexed2_pixels.indexed2.palette[2].g, 192);
-    try helpers.expectEq(indexed2_pixels.indexed2.palette[2].b, 192);
+    try helpers.expectEq(indexed2_pixels.indexed2.palette[2].r, 144);
+    try helpers.expectEq(indexed2_pixels.indexed2.palette[2].g, 144);
+    try helpers.expectEq(indexed2_pixels.indexed2.palette[2].b, 144);
     try helpers.expectEq(indexed2_pixels.indexed2.palette[2].a, 255);
 
-    try helpers.expectEq(indexed2_pixels.indexed2.palette[3].r, 255);
-    try helpers.expectEq(indexed2_pixels.indexed2.palette[3].g, 255);
-    try helpers.expectEq(indexed2_pixels.indexed2.palette[3].b, 255);
+    try helpers.expectEq(indexed2_pixels.indexed2.palette[3].r, 223);
+    try helpers.expectEq(indexed2_pixels.indexed2.palette[3].g, 223);
+    try helpers.expectEq(indexed2_pixels.indexed2.palette[3].b, 223);
     try helpers.expectEq(indexed2_pixels.indexed2.palette[3].a, 255);
 
     for (0..indexed2_pixels.indexed2.indices.len) |index| {
@@ -1896,8 +1900,12 @@ test "PixelFormatConverter: convert grayscale8 to indexed2" {
         switch (row) {
             0 => try helpers.expectEq(indexed2_pixels.indexed2.indices[index], 0),
             1 => try helpers.expectEq(indexed2_pixels.indexed2.indices[index], 1),
-            2 => try helpers.expectEq(indexed2_pixels.indexed2.indices[index], 2),
-            3 => try helpers.expectEq(indexed2_pixels.indexed2.indices[index], 3),
+            2 => try helpers.expectEq(indexed2_pixels.indexed2.indices[index], 1),
+            3 => try helpers.expectEq(indexed2_pixels.indexed2.indices[index], 2),
+            4 => try helpers.expectEq(indexed2_pixels.indexed2.indices[index], 2),
+            5 => try helpers.expectEq(indexed2_pixels.indexed2.indices[index], 3),
+            6 => try helpers.expectEq(indexed2_pixels.indexed2.indices[index], 3),
+            7 => try helpers.expectEq(indexed2_pixels.indexed2.indices[index], 3),
             else => {},
         }
     }
