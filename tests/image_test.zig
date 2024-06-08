@@ -473,7 +473,7 @@ test "Should return a valid byte size with imageByteSize()" {
     try helpers.expectEq(image_size, 153600);
 }
 
-test "Should import raw pixels and take ownership the pixel data" {
+test "Should import raw pixels and take ownership of the pixel data" {
     const color_data: []const color.Rgb24 = &.{
         Colors(color.Rgb24).Red,
         Colors(color.Rgb24).Green,
