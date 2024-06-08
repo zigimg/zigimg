@@ -1850,3 +1850,55 @@ test "PixelFormatConverter: convert grayscale8 to indexed8" {
         }
     }
 }
+
+test "PixelFormatConverter: convert grayscale8 to indexed2" {
+    const grayscale8_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .grayscale8, 32 * 4);
+    defer grayscale8_pixels.deinit(helpers.zigimg_test_allocator);
+
+    for (0..grayscale8_pixels.grayscale8.len) |index| {
+        const row: u8 = @truncate(index / 32);
+
+        switch (row) {
+            0 => grayscale8_pixels.grayscale8[index].value = 64,
+            1 => grayscale8_pixels.grayscale8[index].value = 128,
+            2 => grayscale8_pixels.grayscale8[index].value = 192,
+            3 => grayscale8_pixels.grayscale8[index].value = 255,
+            else => {},
+        }
+    }
+
+    const indexed2_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &grayscale8_pixels, .indexed2);
+    defer indexed2_pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(indexed2_pixels.indexed2.palette[0].r, 64);
+    try helpers.expectEq(indexed2_pixels.indexed2.palette[0].g, 64);
+    try helpers.expectEq(indexed2_pixels.indexed2.palette[0].b, 64);
+    try helpers.expectEq(indexed2_pixels.indexed2.palette[0].a, 255);
+
+    try helpers.expectEq(indexed2_pixels.indexed2.palette[1].r, 128);
+    try helpers.expectEq(indexed2_pixels.indexed2.palette[1].g, 128);
+    try helpers.expectEq(indexed2_pixels.indexed2.palette[1].b, 128);
+    try helpers.expectEq(indexed2_pixels.indexed2.palette[1].a, 255);
+
+    try helpers.expectEq(indexed2_pixels.indexed2.palette[2].r, 192);
+    try helpers.expectEq(indexed2_pixels.indexed2.palette[2].g, 192);
+    try helpers.expectEq(indexed2_pixels.indexed2.palette[2].b, 192);
+    try helpers.expectEq(indexed2_pixels.indexed2.palette[2].a, 255);
+
+    try helpers.expectEq(indexed2_pixels.indexed2.palette[3].r, 255);
+    try helpers.expectEq(indexed2_pixels.indexed2.palette[3].g, 255);
+    try helpers.expectEq(indexed2_pixels.indexed2.palette[3].b, 255);
+    try helpers.expectEq(indexed2_pixels.indexed2.palette[3].a, 255);
+
+    for (0..indexed2_pixels.indexed2.indices.len) |index| {
+        const row: u8 = @truncate(index / 32);
+
+        switch (row) {
+            0 => try helpers.expectEq(indexed2_pixels.indexed2.indices[index], 0),
+            1 => try helpers.expectEq(indexed2_pixels.indexed2.indices[index], 1),
+            2 => try helpers.expectEq(indexed2_pixels.indexed2.indices[index], 2),
+            3 => try helpers.expectEq(indexed2_pixels.indexed2.indices[index], 3),
+            else => {},
+        }
+    }
+}
