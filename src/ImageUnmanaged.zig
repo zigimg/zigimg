@@ -135,11 +135,11 @@ pub fn fromMemory(allocator: std.mem.Allocator, buffer: []const u8) !ImageUnmana
 }
 
 /// Create an ImageUnmanaged from a raw memory stream.
-/// The resulting ImageUnmanaged will not own the pixel data because it will be a wrapper
+/// The resulting ImageUnmanaged will take ownership of the pixel data because it will be a wrapper
 /// around the raw bytes.
 ///
-/// Use fromRawPixelsOwned() to take a copy of the pixel data.
-pub fn fromRawPixels(width: usize, height: usize, pixels: []const u8, pixel_format: PixelFormat) !ImageUnmanaged {
+/// Use fromRawPixels() to take a copy of the pixel data.
+pub fn fromRawPixelsOwned(width: usize, height: usize, pixels: []const u8, pixel_format: PixelFormat) !ImageUnmanaged {
     return .{
         .width = width,
         .height = height,
@@ -149,7 +149,7 @@ pub fn fromRawPixels(width: usize, height: usize, pixels: []const u8, pixel_form
 
 /// Create an ImageUnmanaged from a raw memory stream and create a copy of it.
 /// The resulting ImageUnmanaged will own the pixel data.
-pub fn fromRawPixelsOwned(allocator: std.mem.Allocator, width: usize, height: usize, pixels: []const u8, pixel_format: PixelFormat) !ImageUnmanaged {
+pub fn fromRawPixels(allocator: std.mem.Allocator, width: usize, height: usize, pixels: []const u8, pixel_format: PixelFormat) !ImageUnmanaged {
     return .{
         .width = width,
         .height = height,

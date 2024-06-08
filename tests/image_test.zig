@@ -473,7 +473,7 @@ test "Should return a valid byte size with imageByteSize()" {
     try helpers.expectEq(image_size, 153600);
 }
 
-test "Should import raw pixels and own the pixel data" {
+test "Should import raw pixels and take ownership the pixel data" {
     const color_data: []const color.Rgb24 = &.{
         Colors(color.Rgb24).Red,
         Colors(color.Rgb24).Green,
@@ -486,15 +486,14 @@ test "Should import raw pixels and own the pixel data" {
     };
 
     const pixel_data = std.mem.sliceAsBytes(color_data);
-    var image = try Image.fromRawPixelsOwned(helpers.zigimg_test_allocator, 8, 1, pixel_data, .rgb24);
-    defer image.deinit();
+    const image = try ImageUnmanaged.fromRawPixelsOwned(8, 1, pixel_data, .rgb24);
 
     try helpers.expectEq(std.meta.activeTag(image.pixels), .rgb24);
     try helpers.expectEq(image.width, 8);
     try helpers.expectEq(image.height, 1);
 }
 
-test "Should import raw pixels and not own the pixel data" {
+test "Should import raw pixels and create a copy of pixel data" {
     const color_data: []const color.Rgb24 = &.{
         Colors(color.Rgb24).Red,
         Colors(color.Rgb24).Green,
@@ -507,7 +506,8 @@ test "Should import raw pixels and not own the pixel data" {
     };
 
     const pixel_data = std.mem.sliceAsBytes(color_data);
-    const image = try ImageUnmanaged.fromRawPixels(8, 1, pixel_data, .rgb24);
+    var image = try Image.fromRawPixels(helpers.zigimg_test_allocator, 8, 1, pixel_data, .rgb24);
+    defer image.deinit();
 
     try helpers.expectEq(std.meta.activeTag(image.pixels), .rgb24);
     try helpers.expectEq(image.width, 8);

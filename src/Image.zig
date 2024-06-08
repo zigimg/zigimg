@@ -61,7 +61,7 @@ pub fn fromMemory(allocator: std.mem.Allocator, buffer: []const u8) !Image {
 
 /// Create an Image from a raw memory stream and create a copy of it.
 /// The resulting Image will own the pixel data.
-pub fn fromRawPixelsOwned(allocator: std.mem.Allocator, width: usize, height: usize, pixels: []const u8, pixel_format: PixelFormat) !Image {
+pub fn fromRawPixels(allocator: std.mem.Allocator, width: usize, height: usize, pixels: []const u8, pixel_format: PixelFormat) !Image {
     return .{
         .allocator = allocator,
         .width = width,
