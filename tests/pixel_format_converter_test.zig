@@ -1426,14 +1426,14 @@ test "PixelFormatConverter: convert float32 to indexed16" {
         const row: u8 = @truncate(index / 32);
 
         switch (row) {
-            0 => float32_pixels.float32[index] = color.Colorf32.initRgb(1.0, 0.0, 0.0),
-            1 => float32_pixels.float32[index] = color.Colorf32.initRgb(0.0, 1.0, 0),
-            2 => float32_pixels.float32[index] = color.Colorf32.initRgb(0.0, 0.0, 1.0),
-            3 => float32_pixels.float32[index] = color.Colorf32.initRgb(1.0, 1.0, 0.0),
-            4 => float32_pixels.float32[index] = color.Colorf32.initRgb(1.0, 0.0, 1.0),
-            5 => float32_pixels.float32[index] = color.Colorf32.initRgb(0.0, 1.0, 1.0),
-            6 => float32_pixels.float32[index] = color.Colorf32.initRgb(1.0, 1.0, 1.0),
-            7 => float32_pixels.float32[index] = color.Colorf32.initRgb(0.0, 0.0, 0.0),
+            0 => float32_pixels.float32[index] = Colors(color.Colorf32).Red,
+            1 => float32_pixels.float32[index] = Colors(color.Colorf32).Green,
+            2 => float32_pixels.float32[index] = Colors(color.Colorf32).Blue,
+            3 => float32_pixels.float32[index] = Colors(color.Colorf32).Yellow,
+            4 => float32_pixels.float32[index] = Colors(color.Colorf32).Magenta,
+            5 => float32_pixels.float32[index] = Colors(color.Colorf32).Cyan,
+            6 => float32_pixels.float32[index] = Colors(color.Colorf32).White,
+            7 => float32_pixels.float32[index] = Colors(color.Colorf32).Black,
             else => {},
         }
     }
@@ -1506,19 +1506,179 @@ test "PixelFormatConverter: convert float32 to indexed4" {
         const row: u8 = @truncate(index / 32);
 
         switch (row) {
-            0 => float32_pixels.float32[index] = color.Colorf32.initRgb(1.0, 0.0, 0.0),
-            1 => float32_pixels.float32[index] = color.Colorf32.initRgb(0.0, 1.0, 0),
-            2 => float32_pixels.float32[index] = color.Colorf32.initRgb(0.0, 0.0, 1.0),
-            3 => float32_pixels.float32[index] = color.Colorf32.initRgb(1.0, 1.0, 0.0),
-            4 => float32_pixels.float32[index] = color.Colorf32.initRgb(1.0, 0.0, 1.0),
-            5 => float32_pixels.float32[index] = color.Colorf32.initRgb(0.0, 1.0, 1.0),
-            6 => float32_pixels.float32[index] = color.Colorf32.initRgb(1.0, 1.0, 1.0),
-            7 => float32_pixels.float32[index] = color.Colorf32.initRgb(0.0, 0.0, 0.0),
+            0 => float32_pixels.float32[index] = Colors(color.Colorf32).Red,
+            1 => float32_pixels.float32[index] = Colors(color.Colorf32).Green,
+            2 => float32_pixels.float32[index] = Colors(color.Colorf32).Blue,
+            3 => float32_pixels.float32[index] = Colors(color.Colorf32).Yellow,
+            4 => float32_pixels.float32[index] = Colors(color.Colorf32).Magenta,
+            5 => float32_pixels.float32[index] = Colors(color.Colorf32).Cyan,
+            6 => float32_pixels.float32[index] = Colors(color.Colorf32).White,
+            7 => float32_pixels.float32[index] = Colors(color.Colorf32).Black,
             else => {},
         }
     }
 
     const indexed4_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &float32_pixels, .indexed4);
+    defer indexed4_pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[0].r, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[0].g, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[0].b, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[0].a, 255);
+
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[1].r, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[1].g, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[1].b, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[1].a, 255);
+
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[2].r, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[2].g, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[2].b, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[2].a, 255);
+
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[3].r, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[3].g, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[3].b, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[3].a, 255);
+
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[4].r, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[4].g, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[4].b, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[4].a, 255);
+
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[5].r, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[5].g, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[5].b, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[5].a, 255);
+
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[6].r, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[6].g, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[6].b, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[6].a, 255);
+
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[7].r, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[7].g, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[7].b, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[7].a, 255);
+
+    for (0..indexed4_pixels.indexed4.indices.len) |index| {
+        const row: u8 = @truncate(index / 32);
+
+        switch (row) {
+            0 => try helpers.expectEq(indexed4_pixels.indexed4.indices[index], 4),
+            1 => try helpers.expectEq(indexed4_pixels.indexed4.indices[index], 2),
+            2 => try helpers.expectEq(indexed4_pixels.indexed4.indices[index], 1),
+            3 => try helpers.expectEq(indexed4_pixels.indexed4.indices[index], 6),
+            4 => try helpers.expectEq(indexed4_pixels.indexed4.indices[index], 5),
+            5 => try helpers.expectEq(indexed4_pixels.indexed4.indices[index], 3),
+            6 => try helpers.expectEq(indexed4_pixels.indexed4.indices[index], 7),
+            7 => try helpers.expectEq(indexed4_pixels.indexed4.indices[index], 0),
+            else => {},
+        }
+    }
+}
+
+test "PixelFormatConverter: convert rgba32 to indexed4" {
+    const rgba32_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .rgba32, 32 * 8);
+    defer rgba32_pixels.deinit(helpers.zigimg_test_allocator);
+
+    for (0..rgba32_pixels.rgba32.len) |index| {
+        const row: u8 = @truncate(index / 32);
+
+        switch (row) {
+            0 => rgba32_pixels.rgba32[index] = Colors(color.Rgba32).Red,
+            1 => rgba32_pixels.rgba32[index] = Colors(color.Rgba32).Green,
+            2 => rgba32_pixels.rgba32[index] = Colors(color.Rgba32).Blue,
+            3 => rgba32_pixels.rgba32[index] = Colors(color.Rgba32).Yellow,
+            4 => rgba32_pixels.rgba32[index] = Colors(color.Rgba32).Magenta,
+            5 => rgba32_pixels.rgba32[index] = Colors(color.Rgba32).Cyan,
+            6 => rgba32_pixels.rgba32[index] = Colors(color.Rgba32).White,
+            7 => rgba32_pixels.rgba32[index] = Colors(color.Rgba32).Black,
+            else => {},
+        }
+    }
+
+    const indexed4_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &rgba32_pixels, .indexed4);
+    defer indexed4_pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[0].r, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[0].g, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[0].b, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[0].a, 255);
+
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[1].r, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[1].g, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[1].b, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[1].a, 255);
+
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[2].r, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[2].g, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[2].b, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[2].a, 255);
+
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[3].r, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[3].g, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[3].b, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[3].a, 255);
+
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[4].r, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[4].g, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[4].b, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[4].a, 255);
+
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[5].r, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[5].g, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[5].b, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[5].a, 255);
+
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[6].r, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[6].g, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[6].b, 0);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[6].a, 255);
+
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[7].r, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[7].g, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[7].b, 255);
+    try helpers.expectEq(indexed4_pixels.indexed4.palette[7].a, 255);
+
+    for (0..indexed4_pixels.indexed4.indices.len) |index| {
+        const row: u8 = @truncate(index / 32);
+
+        switch (row) {
+            0 => try helpers.expectEq(indexed4_pixels.indexed4.indices[index], 4),
+            1 => try helpers.expectEq(indexed4_pixels.indexed4.indices[index], 2),
+            2 => try helpers.expectEq(indexed4_pixels.indexed4.indices[index], 1),
+            3 => try helpers.expectEq(indexed4_pixels.indexed4.indices[index], 6),
+            4 => try helpers.expectEq(indexed4_pixels.indexed4.indices[index], 5),
+            5 => try helpers.expectEq(indexed4_pixels.indexed4.indices[index], 3),
+            6 => try helpers.expectEq(indexed4_pixels.indexed4.indices[index], 7),
+            7 => try helpers.expectEq(indexed4_pixels.indexed4.indices[index], 0),
+            else => {},
+        }
+    }
+}
+
+test "PixelFormatConverter: convert rgb565 to indexed4" {
+    const rgb565_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .rgb565, 32 * 8);
+    defer rgb565_pixels.deinit(helpers.zigimg_test_allocator);
+
+    for (0..rgb565_pixels.rgb565.len) |index| {
+        const row: u8 = @truncate(index / 32);
+
+        switch (row) {
+            0 => rgb565_pixels.rgb565[index] = Colors(color.Rgb565).Red,
+            1 => rgb565_pixels.rgb565[index] = Colors(color.Rgb565).Green,
+            2 => rgb565_pixels.rgb565[index] = Colors(color.Rgb565).Blue,
+            3 => rgb565_pixels.rgb565[index] = Colors(color.Rgb565).Yellow,
+            4 => rgb565_pixels.rgb565[index] = Colors(color.Rgb565).Magenta,
+            5 => rgb565_pixels.rgb565[index] = Colors(color.Rgb565).Cyan,
+            6 => rgb565_pixels.rgb565[index] = Colors(color.Rgb565).White,
+            7 => rgb565_pixels.rgb565[index] = Colors(color.Rgb565).Black,
+            else => {},
+        }
+    }
+
+    const indexed4_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &rgb565_pixels, .indexed4);
     defer indexed4_pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(indexed4_pixels.indexed4.palette[0].r, 0);

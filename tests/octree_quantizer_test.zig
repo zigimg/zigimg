@@ -43,7 +43,7 @@ test "Build a oct tree with 32-bit RGBA bitmap" {
     var color_it = image.iterator();
 
     while (color_it.next()) |pixel| {
-        try quantizer.addColor(pixel.toPremultipliedAlpha().toRgba32());
+        try quantizer.addColor(pixel);
     }
 
     var palette_storage: [256]color.Rgba32 = undefined;

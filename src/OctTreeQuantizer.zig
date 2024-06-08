@@ -33,11 +33,11 @@ pub fn addLevelNode(self: *OctTreeQuantizer, level: i32, node: *Node) void {
     self.levels[@intCast(level)] = node;
 }
 
-pub fn addColor(self: *OctTreeQuantizer, color_value: color.Rgba32) Error!void {
+pub fn addColor(self: *OctTreeQuantizer, color_value: anytype) Error!void {
     try self.root_node.addColor(color_value, 0, self);
 }
 
-pub fn getPaletteIndex(self: OctTreeQuantizer, color_value: color.Rgba32) Error!usize {
+pub fn getPaletteIndex(self: OctTreeQuantizer, color_value: anytype) Error!usize {
     return try self.root_node.getPaletteIndex(color_value, 0);
 }
 
@@ -65,6 +65,23 @@ pub fn makePalette(self: *OctTreeQuantizer, color_count: u32, palette: []color.R
     self.root_node.makePalette(&make_palette_context);
 
     return palette[0..make_palette_context.palette_index];
+}
+
+fn anyColorToRgb24(color_value: anytype) color.Rgb24 {
+    const T = @TypeOf(color_value);
+
+    if (T == color.Rgb24) {
+        return color_value;
+    }
+
+    const has_alpha_type = @hasField(T, "a");
+    if (has_alpha_type) {
+        const premultiplied_alpha = color_value.toPremultipliedAlpha();
+
+        return color.Rgb24.fromU32Rgba(premultiplied_alpha.toU32Rgba());
+    } else {
+        return color.Rgb24.fromU32Rgb(color_value.toU32Rgb());
+    }
 }
 
 const MakePaletteContext = struct {
@@ -98,8 +115,10 @@ const Node = struct {
         return color.Rgba32.initRgb(@intCast(self.red / self.reference_count), @intCast(self.green / self.reference_count), @intCast(self.blue / self.reference_count));
     }
 
-    pub fn addColor(self: *Node, color_value: color.Rgba32, level: i32, parent: *OctTreeQuantizer) Error!void {
+    pub fn addColor(self: *Node, source_color: anytype, level: i32, parent: *OctTreeQuantizer) Error!void {
         if (level >= MaxDepth) {
+            const color_value = anyColorToRgb24(source_color);
+
             self.red += color_value.r;
             self.green += color_value.g;
             self.blue += color_value.b;
@@ -107,34 +126,34 @@ const Node = struct {
             return;
         }
 
-        const index = getColorIndex(color_value, level);
+        const index = getColorIndex(source_color, level);
         if (index >= self.children.len) {
             return Error.InvalidColorIndex;
         }
 
         if (self.children[index]) |child| {
-            try child.addColor(color_value, level + 1, parent);
+            try child.addColor(source_color, level + 1, parent);
         } else {
             var new_node = try parent.allocateNode();
             new_node.init(level, parent);
-            try new_node.addColor(color_value, level + 1, parent);
+            try new_node.addColor(source_color, level + 1, parent);
             self.children[index] = new_node;
         }
     }
 
-    pub fn getPaletteIndex(self: Node, color_value: color.Rgba32, level: i32) Error!usize {
+    pub fn getPaletteIndex(self: Node, source_color: anytype, level: i32) Error!usize {
         if (self.isLeaf()) {
             return self.palette_index;
         }
 
-        const index = getColorIndex(color_value, level);
+        const index = getColorIndex(source_color, level);
 
         if (self.children[index]) |child| {
-            return try child.getPaletteIndex(color_value, level + 1);
+            return try child.getPaletteIndex(source_color, level + 1);
         } else {
             for (self.children) |child_opt| {
                 if (child_opt) |child| {
-                    return try child.getPaletteIndex(color_value, level + 1);
+                    return try child.getPaletteIndex(source_color, level + 1);
                 }
             }
         }
@@ -190,7 +209,9 @@ const Node = struct {
         return result - 1;
     }
 
-    inline fn getColorIndex(color_value: color.Rgba32, level: i32) usize {
+    inline fn getColorIndex(source_color: anytype, level: i32) usize {
+        const color_value = anyColorToRgb24(source_color);
+
         var index: usize = 0;
         const mask = @as(u8, 0b10000000) >> @intCast(level);
         if (color_value.r & mask != 0) {
