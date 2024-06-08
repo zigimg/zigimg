@@ -231,6 +231,7 @@ pub fn writeToMemory(self: ImageUnmanaged, allocator: std.mem.Allocator, write_b
 
 /// Convert the pixel format of the Image into another format.
 /// It will allocate another pixel storage for the destination and free the old one
+///
 /// For the conversion to the indexed formats, no dithering is done.
 pub fn convert(self: *ImageUnmanaged, allocator: std.mem.Allocator, destination_format: PixelFormat) ConvertError!void {
     // Do nothing if the format is the same
@@ -242,6 +243,23 @@ pub fn convert(self: *ImageUnmanaged, allocator: std.mem.Allocator, destination_
     errdefer new_pixels.deinit(allocator);
 
     self.pixels.deinit(allocator);
+
+    self.pixels = new_pixels;
+}
+
+/// Convert the pixel format of the Image into another format.
+/// It will allocate another pixel storage for the destination and not free the old one.
+/// Ths is in the case the image doess not own the pixel data.
+///
+/// For the conversion to the indexed formats, no dithering is done.
+pub fn convertNoFree(self: *ImageUnmanaged, allocator: std.mem.Allocator, destination_format: PixelFormat) ConvertError!void {
+    // Do nothing if the format is the same
+    if (std.meta.activeTag(self.pixels) == destination_format) {
+        return;
+    }
+
+    const new_pixels = try PixelFormatConverter.convert(allocator, &self.pixels, destination_format);
+    errdefer new_pixels.deinit(allocator);
 
     self.pixels = new_pixels;
 }
