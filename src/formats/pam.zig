@@ -341,18 +341,44 @@ pub const PAM = struct {
     }
 
     pub fn readImage(allocator: Allocator, stream: *ImageUnmanaged.Stream) ImageReadError!ImageUnmanaged {
-        var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
-        const reader = buffered_stream.reader();
-        var image: ImageUnmanaged = try readFrame(allocator, reader) orelse return ImageReadError.InvalidData; // empty stream
-        errdefer image.deinit(allocator);
+        var result = ImageUnmanaged{};
+        errdefer result.deinit(allocator);
 
-        while (try readFrame(allocator, reader)) |frame| {
+        const image_list = try read(allocator, stream);
+        defer image_list.deinit();
+
+        if (image_list.items.len == 0) {
+            return ImageReadError.InvalidData;
+        }
+
+        // Result image will be the first image
+        var image = image_list.items[0];
+
+        // Try to make the other images "animation" frames if they have the same width and height as the first image
+        for (1..image_list.items.len) |index| {
+            const frame = image_list.items[index];
             if (frame.width != image.width or frame.height != image.height or meta.activeTag(frame.pixels) != meta.activeTag(image.pixels)) {
                 return ImageReadError.Unsupported; // no obvious way to have multiple frames with different dimensions
             }
+
             try image.animation.frames.append(allocator, ImageUnmanaged.AnimationFrame{ .pixels = frame.pixels, .duration = 0 });
         }
+
         return image;
+    }
+
+    pub fn read(allocator: Allocator, stream: *ImageUnmanaged.Stream) ImageReadError!std.ArrayList(ImageUnmanaged) {
+        var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
+        const reader = buffered_stream.reader();
+
+        var image_list = std.ArrayList(ImageUnmanaged).init(allocator);
+        errdefer image_list.deinit();
+
+        while (try readFrame(allocator, reader)) |image| {
+            try image_list.append(image);
+        }
+
+        return image_list;
     }
 
     /// Linearly maps `val` from [0..`src_maxval`] to
@@ -368,7 +394,7 @@ pub const PAM = struct {
         return @intCast(@min(math.maxInt(T), @as(W, dst_maxval) * @as(W, val) / @as(W, src_maxval)));
     }
 
-    fn readFrame(allocator: Allocator, reader: anytype) ImageReadError!?ImageUnmanaged {
+    fn readFrame(allocator: Allocator, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!?ImageUnmanaged {
         // we don't use catch switch here because error.EndOfStream
         // might be the only possible error (and would thus trigger a
         // compile error because of an unreachable else prong)
