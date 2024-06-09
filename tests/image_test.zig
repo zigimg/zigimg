@@ -491,6 +491,15 @@ test "Should import raw pixels and take ownership of the pixel data" {
     try helpers.expectEq(std.meta.activeTag(image.pixels), .rgb24);
     try helpers.expectEq(image.width, 8);
     try helpers.expectEq(image.height, 1);
+
+    try helpers.expectEq(image.pixels.rgb24[0], Colors(color.Rgb24).Red);
+    try helpers.expectEq(image.pixels.rgb24[1], Colors(color.Rgb24).Green);
+    try helpers.expectEq(image.pixels.rgb24[2], Colors(color.Rgb24).Blue);
+    try helpers.expectEq(image.pixels.rgb24[3], Colors(color.Rgb24).Cyan);
+    try helpers.expectEq(image.pixels.rgb24[4], Colors(color.Rgb24).Magenta);
+    try helpers.expectEq(image.pixels.rgb24[5], Colors(color.Rgb24).Yellow);
+    try helpers.expectEq(image.pixels.rgb24[6], Colors(color.Rgb24).Black);
+    try helpers.expectEq(image.pixels.rgb24[7], Colors(color.Rgb24).White);
 }
 
 test "Should import raw pixels and create a copy of pixel data" {
@@ -512,4 +521,13 @@ test "Should import raw pixels and create a copy of pixel data" {
     try helpers.expectEq(std.meta.activeTag(image.pixels), .rgb24);
     try helpers.expectEq(image.width, 8);
     try helpers.expectEq(image.height, 1);
+
+    try helpers.expectEq(image.pixels.rgb24[0], Colors(color.Rgb24).Red);
+    try helpers.expectEq(image.pixels.rgb24[1], Colors(color.Rgb24).Green);
+    try helpers.expectEq(image.pixels.rgb24[2], Colors(color.Rgb24).Blue);
+    try helpers.expectEq(image.pixels.rgb24[3], Colors(color.Rgb24).Cyan);
+    try helpers.expectEq(image.pixels.rgb24[4], Colors(color.Rgb24).Magenta);
+    try helpers.expectEq(image.pixels.rgb24[5], Colors(color.Rgb24).Yellow);
+    try helpers.expectEq(image.pixels.rgb24[6], Colors(color.Rgb24).Black);
+    try helpers.expectEq(image.pixels.rgb24[7], Colors(color.Rgb24).White);
 }
