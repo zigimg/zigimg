@@ -1980,8 +1980,8 @@ pub const CIExyY = struct {
     }
 };
 
-// Colorspaces are defined in the CIE xyY colorspace, requiring only the x and y value
-pub const Colorspace = struct {
+/// RGB Colorspace are defined in the CIE xyY colorspace, requiring only the x and y value
+pub const RgbColorspace = struct {
     red: CIExyY,
     green: CIExyY,
     blue: CIExyY,
@@ -2011,8 +2011,8 @@ pub const Colorspace = struct {
 
     pub const ConversionMatrix = math.float4x4;
 
-    pub fn init(args: InitArgs) Colorspace {
-        var result = Colorspace{
+    pub fn init(args: InitArgs) RgbColorspace {
+        var result = RgbColorspace{
             .red = args.red,
             .green = args.green,
             .blue = args.blue,
@@ -2034,7 +2034,7 @@ pub const Colorspace = struct {
     }
 
     /// Return a gamma-corrected version of the color
-    pub fn toGamma(self: Colorspace, color: Colorf32) Colorf32 {
+    pub fn toGamma(self: RgbColorspace, color: Colorf32) Colorf32 {
         return .{
             .r = self.to_gamma(color.r),
             .g = self.to_gamma(color.g),
@@ -2045,7 +2045,7 @@ pub const Colorspace = struct {
 
     /// Return a gamma-corrected version of the color using a fast approximation
     /// of the transfer function
-    pub fn toGammaFast(self: Colorspace, color: Colorf32) Colorf32 {
+    pub fn toGammaFast(self: RgbColorspace, color: Colorf32) Colorf32 {
         return .{
             .r = self.to_gamma_fast(color.r),
             .g = self.to_gamma_fast(color.g),
@@ -2055,7 +2055,7 @@ pub const Colorspace = struct {
     }
 
     /// Return a linear version of the color from a gamma-corrected color
-    pub fn toLinear(self: Colorspace, color: Colorf32) Colorf32 {
+    pub fn toLinear(self: RgbColorspace, color: Colorf32) Colorf32 {
         return .{
             .r = self.to_linear(color.r),
             .g = self.to_linear(color.g),
@@ -2066,7 +2066,7 @@ pub const Colorspace = struct {
 
     /// Return a linear version of the color from a gamma-corrected color using a fast approximation
     /// of the transfer function
-    pub fn toLinearFast(self: Colorspace, color: Colorf32) Colorf32 {
+    pub fn toLinearFast(self: RgbColorspace, color: Colorf32) Colorf32 {
         return .{
             .r = self.to_linear_fast(color.r),
             .g = self.to_linear_fast(color.g),
@@ -2075,7 +2075,7 @@ pub const Colorspace = struct {
         };
     }
 
-    pub fn fromXYZ(self: Colorspace, xyz: CIEXYZ) Colorf32 {
+    pub fn fromXYZ(self: RgbColorspace, xyz: CIEXYZ) Colorf32 {
         const xyz_float4 = math.float4{ xyz.x, xyz.y, xyz.z, 1.0 };
 
         const result = self.xyza_to_rgba.mulVector(xyz_float4);
@@ -2083,7 +2083,7 @@ pub const Colorspace = struct {
         return Colorf32.fromFloat4(result);
     }
 
-    pub fn toXYZ(self: Colorspace, color: Colorf32) CIEXYZ {
+    pub fn toXYZ(self: RgbColorspace, color: Colorf32) CIEXYZ {
         const result = self.rgba_to_xyza.mulVector(color.toFloat4());
 
         return .{
@@ -2093,19 +2093,19 @@ pub const Colorspace = struct {
         };
     }
 
-    pub fn fromXYZAlpha(self: Colorspace, xyza: CIEXYZAlpha) Colorf32 {
+    pub fn fromXYZAlpha(self: RgbColorspace, xyza: CIEXYZAlpha) Colorf32 {
         const result = self.xyza_to_rgba.mulVector(xyza.toFloat4());
 
         return Colorf32.fromFloat4(result);
     }
 
-    pub fn toXYZAlpha(self: Colorspace, color: Colorf32) CIEXYZAlpha {
+    pub fn toXYZAlpha(self: RgbColorspace, color: Colorf32) CIEXYZAlpha {
         const result = self.rgba_to_xyza.mulVector(color.toFloat4());
 
         return CIEXYZAlpha.fromFloat4(result);
     }
 
-    pub fn fromLab(self: Colorspace, lab: CIELab, post_conversion_behavior: PostConversionBehavior) Colorf32 {
+    pub fn fromLab(self: RgbColorspace, lab: CIELab, post_conversion_behavior: PostConversionBehavior) Colorf32 {
         const xyz = lab.toXYZ(self.white);
         var result = self.fromXYZ(xyz);
 
@@ -2119,19 +2119,19 @@ pub const Colorspace = struct {
         return result;
     }
 
-    pub fn toLab(self: Colorspace, color: Colorf32) CIELab {
+    pub fn toLab(self: RgbColorspace, color: Colorf32) CIELab {
         return CIELab.fromXYZ(self.toXYZ(color), self.white);
     }
 
-    pub inline fn fromLCHab(self: Colorspace, lch_ab: CIELCHab, post_conversion_behavior: PostConversionBehavior) Colorf32 {
+    pub inline fn fromLCHab(self: RgbColorspace, lch_ab: CIELCHab, post_conversion_behavior: PostConversionBehavior) Colorf32 {
         return self.fromLab(lch_ab.toLab(), post_conversion_behavior);
     }
 
-    pub inline fn toLCHab(self: Colorspace, color: Colorf32) CIELCHab {
+    pub inline fn toLCHab(self: RgbColorspace, color: Colorf32) CIELCHab {
         return self.toLab(color).toLCHab();
     }
 
-    pub fn fromLabAlpha(self: Colorspace, lab: CIELabAlpha, post_conversion_behavior: PostConversionBehavior) Colorf32 {
+    pub fn fromLabAlpha(self: RgbColorspace, lab: CIELabAlpha, post_conversion_behavior: PostConversionBehavior) Colorf32 {
         const xyza = lab.toXYZAlpha(self.white);
 
         var result = self.fromXYZAlpha(xyza);
@@ -2146,19 +2146,19 @@ pub const Colorspace = struct {
         return result;
     }
 
-    pub fn toLabAlpha(self: Colorspace, color: Colorf32) CIELabAlpha {
+    pub fn toLabAlpha(self: RgbColorspace, color: Colorf32) CIELabAlpha {
         return CIELabAlpha.fromXYZAlpha(self.toXYZAlpha(color), self.white);
     }
 
-    pub inline fn fromLCHabAlpha(self: Colorspace, lch_ab_alpha: CIELCHabAlpha, post_conversion_behavior: PostConversionBehavior) Colorf32 {
+    pub inline fn fromLCHabAlpha(self: RgbColorspace, lch_ab_alpha: CIELCHabAlpha, post_conversion_behavior: PostConversionBehavior) Colorf32 {
         return self.fromLabAlpha(lch_ab_alpha.toLabAlpha(), post_conversion_behavior);
     }
 
-    pub inline fn toLCHabAlpha(self: Colorspace, color: Colorf32) CIELCHabAlpha {
+    pub inline fn toLCHabAlpha(self: RgbColorspace, color: Colorf32) CIELCHabAlpha {
         return self.toLabAlpha(color).toLCHabAlpha();
     }
 
-    pub fn fromLuv(self: Colorspace, luv: CIELuv, post_conversion_behavior: PostConversionBehavior) Colorf32 {
+    pub fn fromLuv(self: RgbColorspace, luv: CIELuv, post_conversion_behavior: PostConversionBehavior) Colorf32 {
         const xyz = luv.toXYZ(self.white);
         var result = self.fromXYZ(xyz);
 
@@ -2172,19 +2172,19 @@ pub const Colorspace = struct {
         return result;
     }
 
-    pub fn toLuv(self: Colorspace, color: Colorf32) CIELuv {
+    pub fn toLuv(self: RgbColorspace, color: Colorf32) CIELuv {
         return CIELuv.fromXYZ(self.toXYZ(color), self.white);
     }
 
-    pub inline fn fromLCHuv(self: Colorspace, lch_uv: CIELCHuv, post_conversion_behavior: PostConversionBehavior) Colorf32 {
+    pub inline fn fromLCHuv(self: RgbColorspace, lch_uv: CIELCHuv, post_conversion_behavior: PostConversionBehavior) Colorf32 {
         return self.fromLuv(lch_uv.toLuv(), post_conversion_behavior);
     }
 
-    pub inline fn toLCHuv(self: Colorspace, color: Colorf32) CIELCHuv {
+    pub inline fn toLCHuv(self: RgbColorspace, color: Colorf32) CIELCHuv {
         return self.toLuv(color).toLCHuv();
     }
 
-    pub fn fromLuvAlpha(self: Colorspace, luv: CIELuvAlpha, post_conversion_behavior: PostConversionBehavior) Colorf32 {
+    pub fn fromLuvAlpha(self: RgbColorspace, luv: CIELuvAlpha, post_conversion_behavior: PostConversionBehavior) Colorf32 {
         const xyza = luv.toXYZAlpha(self.white);
         var result = self.fromXYZAlpha(xyza);
 
@@ -2198,43 +2198,43 @@ pub const Colorspace = struct {
         return result;
     }
 
-    pub fn toLuvAlpha(self: Colorspace, color: Colorf32) CIELuvAlpha {
+    pub fn toLuvAlpha(self: RgbColorspace, color: Colorf32) CIELuvAlpha {
         return CIELuvAlpha.fromXYZAlpha(self.toXYZAlpha(color), self.white);
     }
 
-    pub inline fn fromLCHuvAlpha(self: Colorspace, lch_uv: CIELCHuvAlpha, post_conversion_behavior: PostConversionBehavior) Colorf32 {
+    pub inline fn fromLCHuvAlpha(self: RgbColorspace, lch_uv: CIELCHuvAlpha, post_conversion_behavior: PostConversionBehavior) Colorf32 {
         return self.fromLuvAlpha(lch_uv.toLuvAlpha(), post_conversion_behavior);
     }
 
-    pub inline fn toLCHuvAlpha(self: Colorspace, color: Colorf32) CIELCHuvAlpha {
+    pub inline fn toLCHuvAlpha(self: RgbColorspace, color: Colorf32) CIELCHuvAlpha {
         return self.toLuvAlpha(color).toLCHuvAlpha();
     }
 
-    pub fn fromHSLuv(self: Colorspace, hsluv: HSLuv, post_conversion_behavior: PostConversionBehavior) Colorf32 {
+    pub fn fromHSLuv(self: RgbColorspace, hsluv: HSLuv, post_conversion_behavior: PostConversionBehavior) Colorf32 {
         const lch = hsluv.toCIELCHuv(self.xyza_to_rgba);
 
         return self.fromLCHuv(lch, post_conversion_behavior);
     }
 
-    pub fn toHSLuv(self: Colorspace, color: Colorf32) HSLuv {
+    pub fn toHSLuv(self: RgbColorspace, color: Colorf32) HSLuv {
         const lch = self.toLCHuv(color);
 
         return HSLuv.fromCIELChuv(lch, self.xyza_to_rgba);
     }
 
-    pub fn fromHSLuvAlpha(self: Colorspace, hsluv: HSLuvAlpha, post_conversion_behavior: PostConversionBehavior) Colorf32 {
+    pub fn fromHSLuvAlpha(self: RgbColorspace, hsluv: HSLuvAlpha, post_conversion_behavior: PostConversionBehavior) Colorf32 {
         const lch = hsluv.toCIELCHuvAlpha(self.xyza_to_rgba);
 
         return self.fromLCHuvAlpha(lch, post_conversion_behavior);
     }
 
-    pub fn toHSLuvAlpha(self: Colorspace, color: Colorf32) HSLuvAlpha {
+    pub fn toHSLuvAlpha(self: RgbColorspace, color: Colorf32) HSLuvAlpha {
         const lch = self.toLCHuvAlpha(color);
 
         return HSLuvAlpha.fromCIELChuvAlpha(lch, self.xyza_to_rgba);
     }
 
-    pub fn fromOkLab(self: Colorspace, oklab: Oklab, post_conversion_behavior: PostConversionBehavior) Colorf32 {
+    pub fn fromOkLab(self: RgbColorspace, oklab: Oklab, post_conversion_behavior: PostConversionBehavior) Colorf32 {
         const xyz = oklab.toXYZ();
         var result = self.fromXYZ(xyz);
 
@@ -2248,11 +2248,11 @@ pub const Colorspace = struct {
         return result;
     }
 
-    pub fn toOklab(self: Colorspace, color: Colorf32) Oklab {
+    pub fn toOklab(self: RgbColorspace, color: Colorf32) Oklab {
         return Oklab.fromXYZ(self.toXYZ(color));
     }
 
-    pub fn fromOkLabAlpha(self: Colorspace, oklab: OklabAlpha, post_conversion_behavior: PostConversionBehavior) Colorf32 {
+    pub fn fromOkLabAlpha(self: RgbColorspace, oklab: OklabAlpha, post_conversion_behavior: PostConversionBehavior) Colorf32 {
         const xyza = oklab.toXYZAlpha();
         var result = self.fromXYZAlpha(xyza);
 
@@ -2266,27 +2266,27 @@ pub const Colorspace = struct {
         return result;
     }
 
-    pub fn toOklabAlpha(self: Colorspace, color: Colorf32) OklabAlpha {
+    pub fn toOklabAlpha(self: RgbColorspace, color: Colorf32) OklabAlpha {
         return OklabAlpha.fromXYZAlpha(self.toXYZAlpha(color));
     }
 
-    pub inline fn fromOkLCh(self: Colorspace, lch: OkLCh, post_conversion_behavior: PostConversionBehavior) Colorf32 {
+    pub inline fn fromOkLCh(self: RgbColorspace, lch: OkLCh, post_conversion_behavior: PostConversionBehavior) Colorf32 {
         return self.fromOkLab(lch.toOklab(), post_conversion_behavior);
     }
 
-    pub inline fn toOkLCh(self: Colorspace, color: Colorf32) OkLCh {
+    pub inline fn toOkLCh(self: RgbColorspace, color: Colorf32) OkLCh {
         return self.toOklab(color).toOkLCh();
     }
 
-    pub inline fn fromOkLChAlpha(self: Colorspace, lch: OkLChAlpha, post_conversion_behavior: PostConversionBehavior) Colorf32 {
+    pub inline fn fromOkLChAlpha(self: RgbColorspace, lch: OkLChAlpha, post_conversion_behavior: PostConversionBehavior) Colorf32 {
         return self.fromOkLabAlpha(lch.toOkLabAlpha(), post_conversion_behavior);
     }
 
-    pub inline fn toOkLChAlpha(self: Colorspace, color: Colorf32) OkLChAlpha {
+    pub inline fn toOkLChAlpha(self: RgbColorspace, color: Colorf32) OkLChAlpha {
         return self.toOklabAlpha(color).toOkLChAlpha();
     }
 
-    pub fn sliceFromXYZAlphaInPlace(self: Colorspace, slice_xyza: []CIEXYZAlpha) []Colorf32 {
+    pub fn sliceFromXYZAlphaInPlace(self: RgbColorspace, slice_xyza: []CIEXYZAlpha) []Colorf32 {
         const slice_rgba: []Colorf32 = @ptrCast(slice_xyza);
 
         for (slice_rgba) |*rgba| {
@@ -2296,7 +2296,7 @@ pub const Colorspace = struct {
         return slice_rgba;
     }
 
-    pub fn sliceToXYZAlphaInPlace(self: Colorspace, colors: []Colorf32) []CIEXYZAlpha {
+    pub fn sliceToXYZAlphaInPlace(self: RgbColorspace, colors: []Colorf32) []CIEXYZAlpha {
         const slice_xyza: []CIEXYZAlpha = @ptrCast(colors);
 
         for (slice_xyza) |*xyza| {
@@ -2306,7 +2306,7 @@ pub const Colorspace = struct {
         return slice_xyza;
     }
 
-    pub fn sliceFromXYZAlphaCopy(self: Colorspace, allocator: std.mem.Allocator, slice_xyza: []const CIEXYZAlpha) ![]Colorf32 {
+    pub fn sliceFromXYZAlphaCopy(self: RgbColorspace, allocator: std.mem.Allocator, slice_xyza: []const CIEXYZAlpha) ![]Colorf32 {
         const slice_rgba: []Colorf32 = try allocator.alloc(Colorf32, slice_xyza.len);
 
         for (0..slice_xyza.len) |index| {
@@ -2316,7 +2316,7 @@ pub const Colorspace = struct {
         return slice_rgba;
     }
 
-    pub fn sliceToXYZAlphaCopy(self: Colorspace, allocator: std.mem.Allocator, colors: []const Colorf32) ![]CIEXYZAlpha {
+    pub fn sliceToXYZAlphaCopy(self: RgbColorspace, allocator: std.mem.Allocator, colors: []const Colorf32) ![]CIEXYZAlpha {
         const slice_xyza: []CIEXYZAlpha = try allocator.alloc(CIEXYZAlpha, colors.len);
 
         for (0..colors.len) |index| {
@@ -2326,7 +2326,7 @@ pub const Colorspace = struct {
         return slice_xyza;
     }
 
-    pub fn sliceFromLabAlphaInPlace(self: Colorspace, slice_lab: []CIELabAlpha, post_conversion_behavior: PostConversionBehavior) []Colorf32 {
+    pub fn sliceFromLabAlphaInPlace(self: RgbColorspace, slice_lab: []CIELabAlpha, post_conversion_behavior: PostConversionBehavior) []Colorf32 {
         const slice_rgba: []Colorf32 = @ptrCast(slice_lab);
 
         const white_point_xyz = self.white.toXYZ(1.0);
@@ -2352,7 +2352,7 @@ pub const Colorspace = struct {
         return slice_rgba;
     }
 
-    pub fn sliceToLabAlphaInPlace(self: Colorspace, colors: []Colorf32) []CIELabAlpha {
+    pub fn sliceToLabAlphaInPlace(self: RgbColorspace, colors: []Colorf32) []CIELabAlpha {
         const slice_lab: []CIELabAlpha = @ptrCast(colors);
 
         const white_point_xyz = self.white.toXYZ(1.0);
@@ -2366,7 +2366,7 @@ pub const Colorspace = struct {
         return slice_lab;
     }
 
-    pub fn sliceFromLabAlphaCopy(self: Colorspace, allocator: std.mem.Allocator, slice_lab: []const CIELabAlpha, post_conversion_behavior: PostConversionBehavior) ![]Colorf32 {
+    pub fn sliceFromLabAlphaCopy(self: RgbColorspace, allocator: std.mem.Allocator, slice_lab: []const CIELabAlpha, post_conversion_behavior: PostConversionBehavior) ![]Colorf32 {
         const slice_rgba: []Colorf32 = try allocator.alloc(Colorf32, slice_lab.len);
 
         const white_point_xyz = self.white.toXYZ(1.0);
@@ -2390,7 +2390,7 @@ pub const Colorspace = struct {
         return slice_rgba;
     }
 
-    pub fn sliceToLabAlphaCopy(self: Colorspace, allocator: std.mem.Allocator, colors: []const Colorf32) ![]CIELabAlpha {
+    pub fn sliceToLabAlphaCopy(self: RgbColorspace, allocator: std.mem.Allocator, colors: []const Colorf32) ![]CIELabAlpha {
         const slice_lab: []CIELabAlpha = try allocator.alloc(CIELabAlpha, colors.len);
 
         const white_point_xyz = self.white.toXYZ(1.0);
@@ -2404,7 +2404,7 @@ pub const Colorspace = struct {
         return slice_lab;
     }
 
-    pub fn sliceFromLuvAlphaInPlace(self: Colorspace, slice_luv: []CIELuvAlpha, post_conversion_behavior: PostConversionBehavior) []Colorf32 {
+    pub fn sliceFromLuvAlphaInPlace(self: RgbColorspace, slice_luv: []CIELuvAlpha, post_conversion_behavior: PostConversionBehavior) []Colorf32 {
         const slice_rgba: []Colorf32 = @ptrCast(slice_luv);
 
         const white_point_xyz = self.white.toXYZ(1.0);
@@ -2430,7 +2430,7 @@ pub const Colorspace = struct {
         return slice_rgba;
     }
 
-    pub fn sliceToLuvAlphaInPlace(self: Colorspace, colors: []Colorf32) []CIELuvAlpha {
+    pub fn sliceToLuvAlphaInPlace(self: RgbColorspace, colors: []Colorf32) []CIELuvAlpha {
         const slice_luv: []CIELuvAlpha = @ptrCast(colors);
 
         const white_point_xyz = self.white.toXYZ(1.0);
@@ -2444,7 +2444,7 @@ pub const Colorspace = struct {
         return slice_luv;
     }
 
-    pub fn sliceFromLuvAlphaCopy(self: Colorspace, allocator: std.mem.Allocator, slice_luv: []const CIELuvAlpha, post_conversion_behavior: PostConversionBehavior) ![]Colorf32 {
+    pub fn sliceFromLuvAlphaCopy(self: RgbColorspace, allocator: std.mem.Allocator, slice_luv: []const CIELuvAlpha, post_conversion_behavior: PostConversionBehavior) ![]Colorf32 {
         const slice_rgba: []Colorf32 = try allocator.alloc(Colorf32, slice_luv.len);
 
         const white_point_xyz = self.white.toXYZ(1.0);
@@ -2470,7 +2470,7 @@ pub const Colorspace = struct {
         return slice_rgba;
     }
 
-    pub fn sliceToLuvAlphaCopy(self: Colorspace, allocator: std.mem.Allocator, colors: []const Colorf32) ![]CIELuvAlpha {
+    pub fn sliceToLuvAlphaCopy(self: RgbColorspace, allocator: std.mem.Allocator, colors: []const Colorf32) ![]CIELuvAlpha {
         const slice_luv: []CIELuvAlpha = try allocator.alloc(CIELuvAlpha, colors.len);
 
         const white_point_xyz = self.white.toXYZ(1.0);
@@ -2484,7 +2484,7 @@ pub const Colorspace = struct {
         return slice_luv;
     }
 
-    pub fn sliceFromOkLabAlphaInPlace(self: Colorspace, slice_lab: []OklabAlpha, post_conversion_behavior: PostConversionBehavior) []Colorf32 {
+    pub fn sliceFromOkLabAlphaInPlace(self: RgbColorspace, slice_lab: []OklabAlpha, post_conversion_behavior: PostConversionBehavior) []Colorf32 {
         const slice_rgba: []Colorf32 = @ptrCast(slice_lab);
 
         const all_zeroes: math.float4 = @splat(0.0);
@@ -2508,7 +2508,7 @@ pub const Colorspace = struct {
         return slice_rgba;
     }
 
-    pub fn sliceToOklabAlphaInPlace(self: Colorspace, colors: []Colorf32) []OklabAlpha {
+    pub fn sliceToOklabAlphaInPlace(self: RgbColorspace, colors: []Colorf32) []OklabAlpha {
         const slice_lab: []OklabAlpha = @ptrCast(colors);
 
         for (slice_lab) |*lab_alpha| {
@@ -2520,7 +2520,7 @@ pub const Colorspace = struct {
         return slice_lab;
     }
 
-    pub fn sliceFromOkLabAlphaCopy(self: Colorspace, allocator: std.mem.Allocator, slice_lab: []const OklabAlpha, post_conversion_behavior: PostConversionBehavior) ![]Colorf32 {
+    pub fn sliceFromOkLabAlphaCopy(self: RgbColorspace, allocator: std.mem.Allocator, slice_lab: []const OklabAlpha, post_conversion_behavior: PostConversionBehavior) ![]Colorf32 {
         const slice_rgba: []Colorf32 = try allocator.alloc(Colorf32, slice_lab.len);
 
         const all_zeroes: math.float4 = @splat(0.0);
@@ -2544,7 +2544,7 @@ pub const Colorspace = struct {
         return slice_rgba;
     }
 
-    pub fn sliceToOklabAlphaCopy(self: Colorspace, allocator: std.mem.Allocator, colors: []const Colorf32) ![]OklabAlpha {
+    pub fn sliceToOklabAlphaCopy(self: RgbColorspace, allocator: std.mem.Allocator, colors: []const Colorf32) ![]OklabAlpha {
         const slice_lab: []OklabAlpha = try allocator.alloc(OklabAlpha, colors.len);
 
         for (0..colors.len) |index| {
@@ -2556,7 +2556,7 @@ pub const Colorspace = struct {
         return slice_lab;
     }
 
-    pub fn convertColor(source: Colorspace, target: Colorspace, color: Colorf32) Colorf32 {
+    pub fn convertColor(source: RgbColorspace, target: RgbColorspace, color: Colorf32) Colorf32 {
         const conversion_matrix = computeConversionMatrix(source, target);
 
         const color_float4 = color.toFloat4();
@@ -2565,7 +2565,7 @@ pub const Colorspace = struct {
         return Colorf32.fromFloat4(result);
     }
 
-    pub fn convertColors(source: Colorspace, target: Colorspace, colors: []Colorf32) void {
+    pub fn convertColors(source: RgbColorspace, target: RgbColorspace, colors: []Colorf32) void {
         const conversion_matrix = computeConversionMatrix(source, target);
 
         for (colors) |*color| {
@@ -2574,7 +2574,7 @@ pub const Colorspace = struct {
         }
     }
 
-    fn toXYZConversionMatrix(self: Colorspace) ConversionMatrix {
+    fn toXYZConversionMatrix(self: RgbColorspace) ConversionMatrix {
         // Adapted from http://docs-hoffmann.de/ciexyz29082000.pdf
         const D = (self.red.x - self.blue.x) * (self.green.y - self.blue.y) - (self.red.y - self.blue.y) * (self.green.x - self.blue.x);
         const U = (self.white.x - self.blue.x) * (self.green.y - self.blue.y) - (self.white.y - self.blue.y) * (self.green.x - self.blue.x);
@@ -2592,7 +2592,7 @@ pub const Colorspace = struct {
         });
     }
 
-    fn computeConversionMatrix(source: Colorspace, target: Colorspace) math.float4x4 {
+    fn computeConversionMatrix(source: RgbColorspace, target: RgbColorspace) math.float4x4 {
         const source_to_xyz_matrix = source.rgba_to_xyza;
         const target_to_rgb_matrix = target.xyza_to_rgba;
 
@@ -2789,7 +2789,7 @@ pub const WhitePoints = struct {
 };
 
 // BT.601-6 (NTSC)
-pub const BT601_NTSC = Colorspace.init(.{
+pub const BT601_NTSC = RgbColorspace.init(.{
     .red = .{ .x = 0.630, .y = 0.340 },
     .green = .{ .x = 0.310, .y = 0.595 },
     .blue = .{ .x = 0.155, .y = 0.070 },
@@ -2801,7 +2801,7 @@ pub const BT601_NTSC = Colorspace.init(.{
 });
 
 // BT.601-6 (PAL)
-pub const BT601_PAL = Colorspace.init(.{
+pub const BT601_PAL = RgbColorspace.init(.{
     .red = .{ .x = 0.640, .y = 0.330 },
     .green = .{ .x = 0.290, .y = 0.600 },
     .blue = .{ .x = 0.150, .y = 0.060 },
@@ -2813,7 +2813,7 @@ pub const BT601_PAL = Colorspace.init(.{
 });
 
 // ITU-R BT.709 aka Rec.709
-pub const BT709 = Colorspace.init(.{
+pub const BT709 = RgbColorspace.init(.{
     .red = .{ .x = 0.6400, .y = 0.3300 },
     .green = .{ .x = 0.3000, .y = 0.6000 },
     .blue = .{ .x = 0.1500, .y = 0.0600 },
@@ -2825,7 +2825,7 @@ pub const BT709 = Colorspace.init(.{
 });
 
 // sRGB use the same color gamut as BT.709 but have a different transfer function
-pub const sRGB = Colorspace.init(.{
+pub const sRGB = RgbColorspace.init(.{
     .red = .{ .x = 0.6400, .y = 0.3300 },
     .green = .{ .x = 0.3000, .y = 0.6000 },
     .blue = .{ .x = 0.1500, .y = 0.0600 },
@@ -2839,7 +2839,7 @@ pub const sRGB = Colorspace.init(.{
 //  Digital Cinema Initiatives P3 color spaces
 pub const DCIP3 = struct {
     // Display P3 usee the same transfer function as sRGB
-    pub const Display = Colorspace.init(.{
+    pub const Display = RgbColorspace.init(.{
         .red = .{ .x = 0.680, .y = 0.320 },
         .green = .{ .x = 0.265, .y = 0.690 },
         .blue = .{ .x = 0.150, .y = 0.060 },
@@ -2850,7 +2850,7 @@ pub const DCIP3 = struct {
         .to_linear_fast = sRGB_TransferFunctions.toLinearFast,
     });
 
-    pub const Theater = Colorspace.init(.{
+    pub const Theater = RgbColorspace.init(.{
         .red = .{ .x = 0.680, .y = 0.320 },
         .green = .{ .x = 0.265, .y = 0.690 },
         .blue = .{ .x = 0.150, .y = 0.060 },
@@ -2861,7 +2861,7 @@ pub const DCIP3 = struct {
         .to_linear_fast = DCIP3_TransferFuntions.toLinearFast,
     });
 
-    pub const ACES = Colorspace.init(.{
+    pub const ACES = RgbColorspace.init(.{
         .red = .{ .x = 0.680, .y = 0.320 },
         .green = .{ .x = 0.265, .y = 0.690 },
         .blue = .{ .x = 0.150, .y = 0.060 },
@@ -2874,7 +2874,7 @@ pub const DCIP3 = struct {
 };
 
 // ITU-R BT.2020 aka Rec.2020, Rec.2100 use the same color space
-pub const BT2020 = Colorspace.init(.{
+pub const BT2020 = RgbColorspace.init(.{
     .red = .{ .x = 0.708, .y = 0.292 },
     .green = .{ .x = 0.170, .y = 0.797 },
     .blue = .{ .x = 0.131, .y = 0.046 },
@@ -2885,7 +2885,7 @@ pub const BT2020 = Colorspace.init(.{
     .to_linear_fast = BT2020_TransferFunctions.toLinearFast,
 });
 
-pub const AdobeRGB = Colorspace.init(.{
+pub const AdobeRGB = RgbColorspace.init(.{
     .red = .{ .x = 0.6400, .y = 0.3300 },
     .green = .{ .x = 0.2100, .y = 0.7100 },
     .blue = .{ .x = 0.1500, .y = 0.0600 },
@@ -2896,7 +2896,7 @@ pub const AdobeRGB = Colorspace.init(.{
     .to_linear_fast = AdobeRGB_TransferFunctions.toLinearFast,
 });
 
-pub const AdobeWideGamutRGB = Colorspace.init(.{
+pub const AdobeWideGamutRGB = RgbColorspace.init(.{
     .red = .{ .x = 0.7347, .y = 0.2653 },
     .green = .{ .x = 0.1152, .y = 0.8264 },
     .blue = .{ .x = 0.1566, .y = 0.0177 },
@@ -2907,7 +2907,7 @@ pub const AdobeWideGamutRGB = Colorspace.init(.{
     .to_linear_fast = AdobeRGB_TransferFunctions.toLinearFast,
 });
 
-pub const ProPhotoRGB = Colorspace.init(.{
+pub const ProPhotoRGB = RgbColorspace.init(.{
     .red = .{ .x = 0.734699, .y = 0.265301 },
     .green = .{ .x = 0.159597, .y = 0.840403 },
     .blue = .{ .x = 0.036598, .y = 0.000105 },
