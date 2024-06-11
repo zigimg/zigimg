@@ -333,7 +333,7 @@ pub fn example() void {
 
     const image_data = image.rawBytes();
     const row_pitch = image.rowByteSize();
-    const image_byte_size = image.imaegByteSize();
+    const image_byte_size = image.imageByteSize();
 }
 ```
 
