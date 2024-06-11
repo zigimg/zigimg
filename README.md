@@ -691,7 +691,7 @@ pub fn example(linear_image: []zigimg.color.Colorf32) void {
 
 If the target RGB colorspace have a different white point, it will do the [chromatic adapdation](http://www.brucelindbloom.com/index.html?Eqn_ChromAdapt.html) for you using the Bradford method.
 
-### Predefined RBG color spaces
+### Predefined RGB color spaces
 
 Here the list of predefined RGB color spaces, all acessilbe from `zigimg.color` struct:
 
