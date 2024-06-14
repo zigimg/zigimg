@@ -17,6 +17,7 @@ pub const PixelFormatConverter = @import("src/PixelFormatConverter.zig");
 pub const png = @import("src/formats/png.zig");
 pub const qoi = @import("src/formats/qoi.zig");
 pub const tga = @import("src/formats/tga.zig");
+pub const farbfeld = @import("src/formats/farbfeld.zig");
 
 test {
     const std = @import("std");
@@ -36,6 +37,7 @@ test {
         @import("tests/formats/png_test.zig"),
         @import("tests/formats/qoi_test.zig"),
         @import("tests/formats/tga_test.zig"),
+        @import("tests/formats/farbfeld_test.zig"),
         @import("tests/image_test.zig"),
         @import("tests/math_test.zig"),
         @import("tests/octree_quantizer_test.zig"),
