@@ -42,6 +42,7 @@ pub const Format = enum {
     qoi,
     tga,
     pam,
+    farbfeld,
 };
 
 pub const Stream = std.io.StreamSource;
