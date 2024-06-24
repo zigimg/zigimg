@@ -277,7 +277,7 @@ fn doGifTest(entry_name: []const u8) !void {
         const string_frames = config_section.getValue("frames") orelse return error.InvalidGifConfigFile;
 
         if (string_frames.string.len > 0) {
-            var frame_iterator = std.mem.split(u8, string_frames.string, ",");
+            var frame_iterator = std.mem.splitScalar(u8, string_frames.string, ',');
             var frame_index: usize = 0;
             while (frame_iterator.next()) |current_frame| {
                 if (config_ini.getSection(current_frame)) |frame_section| {
