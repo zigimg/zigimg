@@ -101,7 +101,7 @@ const Header = struct {
                     continue;
                 }
 
-                var tok_iter = mem.tokenize(u8, line, &ascii.whitespace);
+                var tok_iter = mem.tokenizeAny(u8, line, &ascii.whitespace);
                 const first_token = tok_iter.next() orelse continue; // lines with 0 tokens are meaningless
 
                 if (first_token.len > 8) return error.InvalidData; // the first token must be at most 8 bytes
