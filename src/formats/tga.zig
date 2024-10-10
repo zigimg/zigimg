@@ -335,12 +335,12 @@ fn RunLengthSIMDEncoder(comptime IntType: type) type {
     return struct {
         const VectorLength = std.simd.suggestVectorLength(IntType) orelse 4;
         const VectorType = @Vector(VectorLength, IntType);
-        const BytesPerPixels = (@typeInfo(IntType).Int.bits + 7) / 8;
+        const BytesPerPixels = (@typeInfo(IntType).int.bits + 7) / 8;
         const IndexStep = VectorLength * BytesPerPixels;
         const MaskType = std.meta.Int(.unsigned, VectorLength);
 
         comptime {
-            if (!std.math.isPowerOfTwo(@typeInfo(IntType).Int.bits)) {
+            if (!std.math.isPowerOfTwo(@typeInfo(IntType).int.bits)) {
                 @compileError("Only power of two integers are supported by the run-length SIMD encoder");
             }
         }

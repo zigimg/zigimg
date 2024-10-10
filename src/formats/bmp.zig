@@ -376,7 +376,7 @@ pub const BMP = struct {
     }
 
     fn readPixelsInternal(pixels: anytype, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader, pixel_width: i32, pixel_height: i32) ImageUnmanaged.ReadError!void {
-        const ColorBufferType = @typeInfo(@TypeOf(pixels)).Pointer.child;
+        const ColorBufferType = @typeInfo(@TypeOf(pixels)).pointer.child;
 
         var x: i32 = 0;
         var y: i32 = pixel_height - 1;

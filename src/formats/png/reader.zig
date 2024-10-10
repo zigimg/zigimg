@@ -639,8 +639,8 @@ pub const ReaderProcessor = struct {
         const Ptr = @TypeOf(context);
         const ptr_info = @typeInfo(Ptr);
 
-        std.debug.assert(ptr_info == .Pointer); // Must be a pointer
-        std.debug.assert(ptr_info.Pointer.size == .One); // Must be a single-item pointer
+        std.debug.assert(ptr_info == .pointer); // Must be a pointer
+        std.debug.assert(ptr_info.pointer.size == .One); // Must be a single-item pointer
 
         const gen = struct {
             fn chunkProcessor(ptr: *anyopaque, data: *ChunkProcessData) ImageUnmanaged.ReadError!PixelFormat {
