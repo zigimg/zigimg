@@ -23,7 +23,7 @@ jobs:
           repository: zigimg/test-suite
           path: test-suite
       - name: Setup Zig
-        uses: goto-bus-stop/setup-zig@v1
+        uses: mlugg/setup-zig@v1
         with:
           version: 0.13.0-dev.351+64ef45eb0
       - name: AST Verify
