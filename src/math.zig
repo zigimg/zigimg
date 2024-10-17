@@ -13,7 +13,7 @@ pub fn Matrix(comptime T: type) type {
     return struct {
         matrix: T,
 
-        const ComponentSize = @typeInfo(T).Array.len;
+        const ComponentSize = @typeInfo(T).array.len;
         const VectorType = @Vector(ComponentSize, f32);
         const Self = @This();
 

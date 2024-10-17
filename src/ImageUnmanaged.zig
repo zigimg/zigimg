@@ -93,8 +93,8 @@ const all_interface_funcs = blk: {
         const entry_type = @TypeOf(decl_value);
         if (entry_type == type) {
             const entryTypeInfo = @typeInfo(decl_value);
-            if (entryTypeInfo == .Struct) {
-                for (entryTypeInfo.Struct.decls) |structEntry| {
+            if (entryTypeInfo == .@"struct") {
+                for (entryTypeInfo.@"struct".decls) |structEntry| {
                     if (std.mem.eql(u8, structEntry.name, "formatInterface")) {
                         result = result ++ [_]FormatInteraceFnType{
                             @field(decl_value, structEntry.name),
