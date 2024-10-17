@@ -47,7 +47,7 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
 
             var bits_to_read = self.code_size + 1;
 
-            var read_size: usize = 0;
+            var read_size: u16 = 0;
             var read_code: u13 = 0;
 
             if (self.remaining_data) |remaining_data| {
