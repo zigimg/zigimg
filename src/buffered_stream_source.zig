@@ -31,7 +31,15 @@ pub fn BufferedStreamSourceReader(comptime BufferSize: usize) type {
             return switch (self.buffered_reader.unbuffered_reader.context.*) {
                 .buffer => |*actual_reader| actual_reader.read(dest),
                 .const_buffer => |*actual_reader| actual_reader.read(dest),
-                .file => self.buffered_reader.read(dest),
+                .file => {
+                    var index: usize = 0;
+                    while (index < dest.len) {
+                        const amt = try self.buffered_reader.read(dest[index..]);
+                        if (amt == 0) break;
+                        index += amt;
+                    }
+                    return index;
+                },
             };
         }
 
