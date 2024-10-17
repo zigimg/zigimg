@@ -9,7 +9,7 @@ pub const Error = std.mem.Allocator.Error ||
     error{ InvalidColorIndex, ColorNotFound };
 
 root_node: Node = .{},
-levels: [MaxDepth]?*Node = [_]?*Node{null} ** MaxDepth,
+levels: [MaxDepth]?*Node = @splat(null),
 area_allocator: std.heap.ArenaAllocator,
 
 pub fn init(allocator: std.mem.Allocator) OctTreeQuantizer {
@@ -96,7 +96,7 @@ const Node = struct {
     blue: u32 = 0,
     reference_count: u32 = 0,
     palette_index: u32 = 0,
-    children: [8]?*Node = [_]?*Node{null} ** 8,
+    children: [8]?*Node = @splat(null),
     level_next: ?*Node = null,
 
     pub fn init(self: *Node, level: i32, parent: *OctTreeQuantizer) void {

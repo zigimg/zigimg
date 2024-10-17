@@ -107,12 +107,12 @@ pub const TGAAttributeType = enum(u8) {
 
 pub const TGAExtension = extern struct {
     extension_size: u16 align(1) = @sizeOf(TGAExtension),
-    author_name: [40:0]u8 align(1) = [_:0]u8{0} ** 40,
+    author_name: [40:0]u8 align(1) = @splat(0),
     author_comment: TGAExtensionComment align(1) = .{},
     timestamp: TGAExtensionTimestamp align(1) = .{},
-    job_id: [40:0]u8 align(1) = [_:0]u8{0} ** 40,
+    job_id: [40:0]u8 align(1) = @splat(0),
     job_time: TGAExtensionJobTime align(1) = .{},
-    software_id: [40:0]u8 align(1) = [_:0]u8{0} ** 40,
+    software_id: [40:0]u8 align(1) = @splat(0),
     software_version: TGAExtensionSoftwareVersion align(1) = .{},
     key_color: color.Bgra32 align(1) = .{ .r = 0, .g = 0, .b = 0, .a = 0 },
     pixel_aspect: TGAExtensionRatio align(1) = .{},
@@ -464,7 +464,7 @@ test "TGA RLE SIMD u8 (bytes) encoder" {
 }
 
 test "TGA RLE SIMD u8 (bytes) encoder should encore more than 128 bytes similar" {
-    const first_uncompressed_part = [_]u8{0x45} ** 135;
+    const first_uncompressed_part:[135]u8 = @splat(0x45);
     const second_uncompresse_part = [_]u8{ 0x1, 0x1, 0x1, 0x1 };
     const uncompressed_data = first_uncompressed_part ++ second_uncompresse_part;
 

@@ -106,9 +106,9 @@ fn filterChoiceHeuristic(scanline: color.PixelStorage, previous_scanline: ?color
 
     const filter_types = [_]FilterType{ .none, .sub, .up, .average, .paeth };
 
-    var previous_bytes: [filter_types.len]u8 = [_]u8{0} ** filter_types.len;
-    var combos: [filter_types.len]usize = [_]usize{0} ** filter_types.len;
-    var scores: [filter_types.len]usize = [_]usize{0} ** filter_types.len;
+    var previous_bytes: [filter_types.len]u8 = @splat(0);
+    var combos: [filter_types.len]usize = @splat(0);
+    var scores: [filter_types.len]usize = @splat(0);
 
     for (scanline.asBytes(), 0..) |sample, i| {
         const previous: u8 = if (i >= pixel_len) scanline.asBytes()[i - pixel_len] else 0;

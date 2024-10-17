@@ -33,8 +33,8 @@ pub fn read(allocator: Allocator, quantization_tables: *[4]?QuantizationTable, b
         .allocator = allocator,
         .frame_header = frame_header,
         .quantization_tables = quantization_tables,
-        .dc_huffman_tables = [_]?HuffmanTable{null} ** 2,
-        .ac_huffman_tables = [_]?HuffmanTable{null} ** 2,
+        .dc_huffman_tables = @splat(null),
+        .ac_huffman_tables = @splat(null),
     };
     errdefer self.deinit();
 

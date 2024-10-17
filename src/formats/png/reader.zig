@@ -996,7 +996,7 @@ test "spreadRowData" {
     var channel_count: u8 = 1;
     var bit_depth: u8 = 1;
     // 16 destination bytes, filter byte and two more bytes of current_row
-    var dest_buffer = [_]u8{0} ** 32;
+    var dest_buffer: [32]u8 = @splat(0);
     var cur_buffer = [_]u8{ 0, 0, 0, 0, 0xa5, 0x7c, 0x39, 0xf2, 0x5b, 0x15, 0x78, 0xd1 };
     var dest_row: []u8 = dest_buffer[0..16];
     var current_row: []u8 = cur_buffer[3..6];

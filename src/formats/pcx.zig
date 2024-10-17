@@ -39,14 +39,14 @@ pub const PCXHeader = extern struct {
     ymax: u16 align(1) = 0,
     horizontal_dpi: u16 align(1) = 320, // Default values found in the PCX image in the test suite
     vertical_dpi: u16 align(1) = 200, // Default values found in the PCX image in the test suite
-    builtin_palette: [16]color.Rgb24 = [_]color.Rgb24{.{ .r = 0, .g = 0, .b = 0 }} ** 16,
+    builtin_palette: [16]color.Rgb24 = @splat(.{ .r = 0, .g = 0, .b = 0 }),
     _reserved0: u8 = 0,
     planes: u8 = 0,
     stride: u16 align(1) = 0,
     palette_information: PaletteInfo align(1) = .color,
     screen_width: u16 align(1) = 0,
     screen_height: u16 align(1) = 0,
-    padding: [54]u8 = [_]u8{0} ** 54,
+    padding: [54]u8 = @splat(0),
 
     comptime {
         std.debug.assert(@sizeOf(PCXHeader) == 128);
@@ -236,7 +236,7 @@ test "PCX RLE Fast encoder" {
 }
 
 test "PCX RLE Fast encoder should encore more than 63 bytes similar" {
-    const first_uncompressed_part = [_]u8{0x45} ** 65;
+    const first_uncompressed_part:[65]u8 = @splat(0x45);
     const second_uncompresse_part = [_]u8{ 0x1, 0x1, 0x1, 0x1 };
     const uncompressed_data = first_uncompressed_part ++ second_uncompresse_part;
 

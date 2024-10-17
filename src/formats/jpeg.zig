@@ -41,7 +41,7 @@ pub const JPEG = struct {
     pub fn init(allocator: Allocator) JPEG {
         return .{
             .allocator = allocator,
-            .quantization_tables = [_]?QuantizationTable{null} ** 4,
+            .quantization_tables = @splat(null),
         };
     }
 
