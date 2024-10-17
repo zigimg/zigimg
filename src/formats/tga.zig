@@ -193,7 +193,7 @@ const TargaRLEDecoder = struct {
 
                 self.repeat_count = @as(usize, @intCast(packet_header.count)) + 1;
 
-                _ = try self.source_reader.read(self.repeat_data);
+                _ = try self.source_reader.readAll(self.repeat_data);
 
                 self.data_stream.reset();
             } else if (packet_header.packet_type == .raw) {
@@ -217,7 +217,7 @@ const TargaRLEDecoder = struct {
                 read_count = dest.len;
             },
             .raw => {
-                const read_bytes = try self.source_reader.read(dest);
+                const read_bytes = try self.source_reader.readAll(dest);
 
                 self.repeat_count -= read_bytes;
 
@@ -814,7 +814,7 @@ pub const TGA = struct {
         if (self.header.id_length > 0) {
             self.id.resize(self.header.id_length);
 
-            const read_id_size = try buffered_stream.read(self.id.data[0..]);
+            const read_id_size = try reader.readAll(self.id.data[0..]);
 
             if (read_id_size != self.header.id_length) {
                 return ImageUnmanaged.ReadError.InvalidData;

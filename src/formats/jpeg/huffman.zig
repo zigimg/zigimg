@@ -29,7 +29,7 @@ pub const Table = struct {
             return ImageReadError.InvalidData;
 
         var code_counts: [16]u8 = undefined;
-        if ((try reader.read(code_counts[0..])) < 16) {
+        if ((try reader.readAll(code_counts[0..])) < 16) {
             return ImageReadError.InvalidData;
         }
 

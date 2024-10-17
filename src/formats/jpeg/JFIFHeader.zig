@@ -36,7 +36,7 @@ pub fn read(buffered_stream: *buffered_stream_source.DefaultBufferedStreamSource
     _ = try reader.readInt(u16, .big);
 
     var identifier_buffer: [4]u8 = undefined;
-    _ = try reader.read(identifier_buffer[0..]);
+    _ = try reader.readAll(identifier_buffer[0..]);
 
     if (!std.mem.eql(u8, identifier_buffer[0..], "JFIF")) {
         return error.JfifIdentifierNotSet;
