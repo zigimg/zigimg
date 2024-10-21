@@ -69,7 +69,7 @@ pub const TGAHeader = extern struct {
 };
 
 pub const TGAExtensionComment = extern struct {
-    lines: [4][80:0]u8 = [_][80:0]u8{[_:0]u8{0} ** 80} ** 4,
+    lines: [4][80:0]u8 = @splat(@splat(0)),
 };
 
 pub const TGAExtensionSoftwareVersion = extern struct {
