@@ -8,10 +8,10 @@ This is a work in progress library to create, process, read and write different 
 
 ## Install & Build
 
-This library uses zig nominated [2024.5.0-mach](https://machengine.org/about/nominated-zig/). To install using [`zigup`](https://github.com/marler8997/zigup):
+This library uses zig nominated [2024.10.0-mach](https://machengine.org/about/nominated-zig/). To install using [`zigup`](https://github.com/marler8997/zigup):
 
 ```sh
-zigup 0.13.0-dev.351+64ef45eb0
+zigup 0.14.0-dev.1911+3bf89f55c
 ```
 
 ### Use zigimg in your project
@@ -28,30 +28,13 @@ exe.addAnonymousModule("zigimg", .{.source_file = .{ .path = "zigimg.zig" }});
 
 #### Through the package manager
 
-1. Example build.zig.zon file
+1. Run this command in your project folder to add `zigimg` to your `build.zig.zon`
 
-```zig
-.{
-    .name = "app",
-    .version = "0.0.0",
-    .dependencies = .{
-        .zigimg = .{
-            .url = "https://github.com/zigimg/zigimg/archive/$REPLACE_WITH_WANTED_COMMIT$.tar.gz",
-        },
-    },
-}
+```sh
+zig fetch --save "https://github.com/zigimg/zigimg/archive/$REPLACE_WITH_WANTED_COMMIT.tar.gz"
 ```
 
-2. When it fails to build due to a mismatched hash, add the `hash` line to the dependency
-
-```zig
-.zigimg = .{
-    .url = "https://github.com/zigimg/zigimg/archive/$REPLACE_WITH_WANTED_COMMIT$.tar.gz",
-    .hash = "$REPLACE_WITH_HASH_FROM_BUILD_ERROR$",
-},
-```
-
-3. Get the module in your build.zig file
+2. Get the module in your `build.zig` file
 
 ```zig
 const zigimg_dependency = b.dependency("zigimg", .{

@@ -194,7 +194,7 @@ pub const QOI = struct {
 
         const reader = buffered_stream.reader();
 
-        _ = try buffered_stream.read(magic_buffer[0..]);
+        _ = try reader.readAll(magic_buffer[0..]);
 
         if (!std.mem.eql(u8, magic_buffer[0..], Header.correct_magic[0..])) {
             return ImageReadError.InvalidData;

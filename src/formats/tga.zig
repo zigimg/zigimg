@@ -69,7 +69,7 @@ pub const TGAHeader = extern struct {
 };
 
 pub const TGAExtensionComment = extern struct {
-    lines: [4][80:0]u8 = [_][80:0]u8{[_:0]u8{0} ** 80} ** 4,
+    lines: [4][80:0]u8 = @splat(@splat(0)),
 };
 
 pub const TGAExtensionSoftwareVersion = extern struct {
@@ -107,12 +107,12 @@ pub const TGAAttributeType = enum(u8) {
 
 pub const TGAExtension = extern struct {
     extension_size: u16 align(1) = @sizeOf(TGAExtension),
-    author_name: [40:0]u8 align(1) = [_:0]u8{0} ** 40,
+    author_name: [40:0]u8 align(1) = @splat(0),
     author_comment: TGAExtensionComment align(1) = .{},
     timestamp: TGAExtensionTimestamp align(1) = .{},
-    job_id: [40:0]u8 align(1) = [_:0]u8{0} ** 40,
+    job_id: [40:0]u8 align(1) = @splat(0),
     job_time: TGAExtensionJobTime align(1) = .{},
-    software_id: [40:0]u8 align(1) = [_:0]u8{0} ** 40,
+    software_id: [40:0]u8 align(1) = @splat(0),
     software_version: TGAExtensionSoftwareVersion align(1) = .{},
     key_color: color.Bgra32 align(1) = .{ .r = 0, .g = 0, .b = 0, .a = 0 },
     pixel_aspect: TGAExtensionRatio align(1) = .{},
@@ -193,7 +193,7 @@ const TargaRLEDecoder = struct {
 
                 self.repeat_count = @as(usize, @intCast(packet_header.count)) + 1;
 
-                _ = try self.source_reader.read(self.repeat_data);
+                _ = try self.source_reader.readAll(self.repeat_data);
 
                 self.data_stream.reset();
             } else if (packet_header.packet_type == .raw) {
@@ -217,7 +217,7 @@ const TargaRLEDecoder = struct {
                 read_count = dest.len;
             },
             .raw => {
-                const read_bytes = try self.source_reader.read(dest);
+                const read_bytes = try self.source_reader.readAll(dest);
 
                 self.repeat_count -= read_bytes;
 
@@ -335,12 +335,12 @@ fn RunLengthSIMDEncoder(comptime IntType: type) type {
     return struct {
         const VectorLength = std.simd.suggestVectorLength(IntType) orelse 4;
         const VectorType = @Vector(VectorLength, IntType);
-        const BytesPerPixels = (@typeInfo(IntType).Int.bits + 7) / 8;
+        const BytesPerPixels = (@typeInfo(IntType).int.bits + 7) / 8;
         const IndexStep = VectorLength * BytesPerPixels;
         const MaskType = std.meta.Int(.unsigned, VectorLength);
 
         comptime {
-            if (!std.math.isPowerOfTwo(@typeInfo(IntType).Int.bits)) {
+            if (!std.math.isPowerOfTwo(@typeInfo(IntType).int.bits)) {
                 @compileError("Only power of two integers are supported by the run-length SIMD encoder");
             }
         }
@@ -464,7 +464,7 @@ test "TGA RLE SIMD u8 (bytes) encoder" {
 }
 
 test "TGA RLE SIMD u8 (bytes) encoder should encore more than 128 bytes similar" {
-    const first_uncompressed_part = [_]u8{0x45} ** 135;
+    const first_uncompressed_part:[135]u8 = @splat(0x45);
     const second_uncompresse_part = [_]u8{ 0x1, 0x1, 0x1, 0x1 };
     const uncompressed_data = first_uncompressed_part ++ second_uncompresse_part;
 
@@ -814,7 +814,7 @@ pub const TGA = struct {
         if (self.header.id_length > 0) {
             self.id.resize(self.header.id_length);
 
-            const read_id_size = try buffered_stream.read(self.id.data[0..]);
+            const read_id_size = try reader.readAll(self.id.data[0..]);
 
             if (read_id_size != self.header.id_length) {
                 return ImageUnmanaged.ReadError.InvalidData;

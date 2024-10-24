@@ -41,7 +41,7 @@ fn parseHeader(reader: buffered_stream_source.DefaultBufferedStreamSourceReader.
     var header: Header = undefined;
 
     var magic: [2]u8 = undefined;
-    _ = try reader.read(magic[0..]);
+    _ = try reader.readAll(magic[0..]);
 
     if (std.mem.eql(u8, &magic, "P1")) {
         header.binary = false;

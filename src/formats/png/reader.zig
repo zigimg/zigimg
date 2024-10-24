@@ -639,8 +639,8 @@ pub const ReaderProcessor = struct {
         const Ptr = @TypeOf(context);
         const ptr_info = @typeInfo(Ptr);
 
-        std.debug.assert(ptr_info == .Pointer); // Must be a pointer
-        std.debug.assert(ptr_info.Pointer.size == .One); // Must be a single-item pointer
+        std.debug.assert(ptr_info == .pointer); // Must be a pointer
+        std.debug.assert(ptr_info.pointer.size == .One); // Must be a single-item pointer
 
         const gen = struct {
             fn chunkProcessor(ptr: *anyopaque, data: *ChunkProcessData) ImageUnmanaged.ReadError!PixelFormat {
@@ -996,7 +996,7 @@ test "spreadRowData" {
     var channel_count: u8 = 1;
     var bit_depth: u8 = 1;
     // 16 destination bytes, filter byte and two more bytes of current_row
-    var dest_buffer = [_]u8{0} ** 32;
+    var dest_buffer: [32]u8 = @splat(0);
     var cur_buffer = [_]u8{ 0, 0, 0, 0, 0xa5, 0x7c, 0x39, 0xf2, 0x5b, 0x15, 0x78, 0xd1 };
     var dest_row: []u8 = dest_buffer[0..16];
     var current_row: []u8 = cur_buffer[3..6];

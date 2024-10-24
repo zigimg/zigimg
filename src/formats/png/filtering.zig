@@ -74,8 +74,8 @@ pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: Filter
 fn pixelByteSwappedIndex(storage: color.PixelStorage, index: usize) usize {
     return switch (storage) {
         .invalid => index,
-        inline .indexed1, .indexed2, .indexed4, .indexed8, .indexed16 => |data| byteSwappedIndex(@typeInfo(@TypeOf(data.indices)).Pointer.child, index),
-        inline else => |data| byteSwappedIndex(@typeInfo(@TypeOf(data)).Pointer.child, index),
+        inline .indexed1, .indexed2, .indexed4, .indexed8, .indexed16 => |data| byteSwappedIndex(@typeInfo(@TypeOf(data.indices)).pointer.child, index),
+        inline else => |data| byteSwappedIndex(@typeInfo(@TypeOf(data)).pointer.child, index),
     };
 }
 
@@ -85,11 +85,11 @@ fn byteSwappedIndex(comptime T: type, byte_index: usize) usize {
     const element_offset = element_index * @sizeOf(T);
     const index = byte_index % @sizeOf(T);
     switch (@typeInfo(T)) {
-        .Int => {
+        .int => {
             if (@sizeOf(T) == 1) return byte_index;
             return element_offset + @sizeOf(T) - 1 - index;
         },
-        .Struct => |info| {
+        .@"struct" => |info| {
             inline for (info.fields) |field| {
                 if (index >= @offsetOf(T, field.name) or index <= @offsetOf(T, field.name) + @sizeOf(field.type)) {
                     if (@sizeOf(field.type) == 1) return byte_index;
@@ -106,9 +106,9 @@ fn filterChoiceHeuristic(scanline: color.PixelStorage, previous_scanline: ?color
 
     const filter_types = [_]FilterType{ .none, .sub, .up, .average, .paeth };
 
-    var previous_bytes: [filter_types.len]u8 = [_]u8{0} ** filter_types.len;
-    var combos: [filter_types.len]usize = [_]usize{0} ** filter_types.len;
-    var scores: [filter_types.len]usize = [_]usize{0} ** filter_types.len;
+    var previous_bytes: [filter_types.len]u8 = @splat(0);
+    var combos: [filter_types.len]usize = @splat(0);
+    var scores: [filter_types.len]usize = @splat(0);
 
     for (scanline.asBytes(), 0..) |sample, i| {
         const previous: u8 = if (i >= pixel_len) scanline.asBytes()[i - pixel_len] else 0;
