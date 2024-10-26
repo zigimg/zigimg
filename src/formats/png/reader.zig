@@ -73,7 +73,7 @@ const IDatChunksReader = struct {
     }
 
     fn fillBuffer(self: *Self, to_read: usize) ImageUnmanaged.ReadError!usize {
-        @memcpy(self.buffer[0..self.data.len], self.data);
+        mem.copyForwards(u8, self.buffer[0..self.data.len], self.data);
         const new_start = self.data.len;
         var max = self.buffer.len;
         if (max > self.remaining_chunk_length) {
