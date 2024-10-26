@@ -220,7 +220,7 @@ pub const Header = struct {
 
         if (JPEG_DEBUG) std.debug.print("  Component count: {}\n", .{component_count});
 
-        var components:[4]?ScanComponentSpec = @splat(null);
+        var components: [4]?ScanComponentSpec = @splat(null);
 
         if (JPEG_VERY_DEBUG) std.debug.print("  Components:\n", .{});
         var i: usize = 0;

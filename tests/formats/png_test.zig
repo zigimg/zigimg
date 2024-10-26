@@ -147,7 +147,7 @@ pub fn testWithDir(directory: []const u8, testMd5Sig: bool) !void {
             std.crypto.hash.Md5.hash(result_bytes, &md5_val, .{});
 
             const len = entry.name.len;
-            var tst_data_name: [50]u8 = undefined;
+            var tst_data_name: [200]u8 = undefined;
             @memcpy(tst_data_name[0 .. len - 3], entry.name[0 .. len - 3]);
             @memcpy(tst_data_name[len - 3 .. len], "tsd");
 
