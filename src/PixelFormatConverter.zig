@@ -1123,7 +1123,7 @@ fn FastRgba32Shuffle(comptime source_format: PixelFormat, comptime destination_f
             }
 
             // Process the rest sequentially
-            while (index < source_pixels.len) {
+            while (index < source_pixels.len) : (index += 1) {
                 destination_pixels[index] = rgbaToRgba(destination_type, source_pixels[index]);
             }
         }
@@ -1156,7 +1156,7 @@ fn rgba32ToColorf32(comptime source_format: PixelFormat, source: *const color.Pi
     }
 
     // Process the rest sequentially
-    while (index < source_pixels.len) {
+    while (index < source_pixels.len) : (index += 1) {
         destination_pixels[index] = source_pixels[index].toColorf32();
     }
 }
@@ -1203,7 +1203,7 @@ fn bgra32ToColorf32(comptime source_format: PixelFormat, source: *const color.Pi
     }
 
     // Process the rest sequentially
-    while (index < source_pixels.len) {
+    while (index < source_pixels.len) : (index += 1) {
         destination_pixels[index] = source_pixels[index].toColorf32();
     }
 }
@@ -1308,7 +1308,7 @@ fn colorf32ToRgba32(comptime destination_format: PixelFormat, source: *const col
     }
 
     // Process the rest sequentially
-    while (index < source_pixels.len) {
+    while (index < source_pixels.len) : (index += 1) {
         destination_pixels[index] = colorf32ToRgba(destination_type, source_pixels[index]);
     }
 }
@@ -1356,7 +1356,7 @@ fn colorf32ToBgra32(comptime destination_format: PixelFormat, source: *const col
     }
 
     // Process the rest sequentially
-    while (index < source_pixels.len) {
+    while (index < source_pixels.len) : (index += 1) {
         destination_pixels[index] = colorf32ToRgba(destination_type, source_pixels[index]);
     }
 }
