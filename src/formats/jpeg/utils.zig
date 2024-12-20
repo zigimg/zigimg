@@ -2,51 +2,15 @@
 const std = @import("std");
 
 // See figure A.6 in T.81.
-pub const ZigzagOffsets = blk: {
-    var offsets: [64]usize = undefined;
-    offsets[0] = 0;
-
-    var current_offset: usize = 0;
-    var direction: enum { north_east, south_west } = .north_east;
-    var i: usize = 1;
-    while (i < 64) : (i += 1) {
-        switch (direction) {
-            .north_east => {
-                if (current_offset < 8) {
-                    // Hit top edge
-                    current_offset += 1;
-                    direction = .south_west;
-                } else if (current_offset % 8 == 7) {
-                    // Hit right edge
-                    current_offset += 8;
-                    direction = .south_west;
-                } else {
-                    current_offset -= 7;
-                }
-            },
-            .south_west => {
-                if (current_offset >= 56) {
-                    // Hit bottom edge
-                    current_offset += 1;
-                    direction = .north_east;
-                } else if (current_offset % 8 == 0) {
-                    // Hit left edge
-                    current_offset += 8;
-                    direction = .north_east;
-                } else {
-                    current_offset += 7;
-                }
-            },
-        }
-
-        if (current_offset >= 64) {
-            @compileError(std.fmt.comptimePrint("ZigzagOffsets: Hit offset {} (>= 64) at index {}!\n", .{ current_offset, i }));
-        }
-
-        offsets[i] = current_offset;
-    }
-
-    break :blk offsets;
+pub const ZigzagOffsets: [64]usize  = .{
+    0,   1,  8, 16,  9,  2,  3, 10,
+    17, 24, 32, 25, 18, 11,  4,  5,
+    12, 19, 26, 33, 40, 48, 41, 34,
+    27, 20, 13,  6,  7, 14, 21, 28,
+    35, 42, 49, 56, 57, 50, 43, 36,
+    29, 22, 15, 23, 30, 37, 44, 51,
+    58, 59, 52, 45, 38, 31, 39, 46,
+    53, 60, 61, 54, 47, 55, 62, 63
 };
 
 /// The precalculated IDCT multipliers. This is possible because the only part of
