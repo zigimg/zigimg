@@ -2,6 +2,7 @@
 const std = @import("std");
 
 // See figure A.6 in T.81.
+// zig fmt: off
 pub const ZigzagOffsets: [64]usize  = .{
     0,   1,  8, 16,  9,  2,  3, 10,
     17, 24, 32, 25, 18, 11,  4,  5,
@@ -12,6 +13,7 @@ pub const ZigzagOffsets: [64]usize  = .{
     58, 59, 52, 45, 38, 31, 39, 46,
     53, 60, 61, 54, 47, 55, 62, 63
 };
+// zig fmt: on
 
 /// The precalculated IDCT multipliers. This is possible because the only part of
 /// the IDCT calculation that changes between runs is the coefficients.
