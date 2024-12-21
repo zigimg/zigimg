@@ -91,7 +91,22 @@ pub const Markers = enum(u16) {
     expand_reference_components = 0xFFDF,
 
     // 0xFFE0-0xFFEF application segments markers add 0-15 as needed.
-    application0 = 0xFFE0,
+    app0 = 0xFFE0,
+    app1 = 0xFFE1,
+    app2 = 0xFFE2,
+    app3 = 0xFFE3,
+    app4 = 0xFFE4,
+    app5 = 0xFFE5,
+    app6 = 0xFFE6,
+    app7 = 0xFFE7,
+    app8 = 0xFFE8,
+    app9 = 0xFFE9,
+    app10 = 0xFFEA,
+    app11 = 0xFFEB,
+    app12 = 0xFFEC,
+    app13 = 0xFFED,
+    app14 = 0xFFEE,
+    app15 = 0xFFEF,
 
     // 0xFFF0-0xFFFD jpeg extension markers add 0-13 as needed.
     jpeg_extension0 = 0xFFF0,
