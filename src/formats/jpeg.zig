@@ -95,12 +95,6 @@ pub const JPEG = struct {
     pub fn read(self: *JPEG, stream: *ImageUnmanaged.Stream, pixels_opt: *?color.PixelStorage) ImageReadError!Frame {
         var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
 
-        const jfif_header = JFIFHeader.read(&buffered_stream) catch |err| switch (err) {
-            error.App0MarkerDoesNotExist, error.JfifIdentifierNotSet, error.ThumbnailImagesUnsupported, error.ExtraneousApplicationMarker => return ImageReadError.InvalidData,
-            else => |e| return e,
-        };
-        _ = jfif_header;
-
         errdefer {
             if (pixels_opt.*) |pixels| {
                 pixels.deinit(self.allocator);
@@ -110,20 +104,16 @@ pub const JPEG = struct {
 
         const reader = buffered_stream.reader();
         var marker = try reader.readInt(u16, .big);
+
+        if (marker != @intFromEnum(Markers.start_of_image)) {
+            return ImageReadError.InvalidData;
+        }
+        marker = try reader.readInt(u16, .big);
+
         while (marker != @intFromEnum(Markers.end_of_image)) : (marker = try reader.readInt(u16, .big)) {
             if (JPEG_DEBUG) std.debug.print("Parsing marker value: 0x{X}\n", .{marker});
 
-            if (marker >= @intFromEnum(Markers.application0) and marker < @intFromEnum(Markers.application0) + 16) {
-                if (JPEG_DEBUG) std.debug.print("Skipping application data segment\n", .{});
-                const application_data_length = try reader.readInt(u16, .big);
-                try buffered_stream.seekBy(application_data_length - 2);
-                continue;
-            }
-
             switch (@as(Markers, @enumFromInt(marker))) {
-                // TODO(angelo): this should be moved inside the frameheader, it's part of thet
-                // and then the header just dispatches correctly what to do with it.
-                // JPEG should be as clear as possible
                 .sof0 => { // Baseline DCT
                     if (self.frame != null) {
                         return ImageError.Unsupported;
@@ -159,6 +149,12 @@ pub const JPEG = struct {
 
                     const comment_length = try reader.readInt(u16, .big);
                     try buffered_stream.seekBy(comment_length - 2);
+                },
+
+                .app0, .app1, .app2, .app3, .app4, .app5, .app6, .app7, .app8, .app9, .app10, .app11, .app12, .app13, .app14, .app15 => {
+                    if (JPEG_DEBUG) std.debug.print("Skipping application data segment\n", .{});
+                    const application_data_length = try reader.readInt(u16, .big);
+                    try buffered_stream.seekBy(application_data_length - 2);
                 },
 
                 else => {

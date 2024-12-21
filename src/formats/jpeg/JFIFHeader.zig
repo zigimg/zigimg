@@ -1,6 +1,5 @@
 //! this module implements the JFIF header
-//! specified in https://www.w3.org/Graphics/JPEG/itu-t81.pdf
-//! section B.2.1 and assumes that there will be an application0 segment.
+//! specified in https://www.w3.org/Graphics/JPEG/jfif3.pdf
 
 const std = @import("std");
 
