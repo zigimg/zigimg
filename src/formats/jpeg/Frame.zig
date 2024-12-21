@@ -22,12 +22,28 @@ frame_header: FrameHeader,
 quantization_tables: *[4]?QuantizationTable,
 dc_huffman_tables: [2]?HuffmanTable,
 ac_huffman_tables: [2]?HuffmanTable,
+mcu_storage: [][MAX_COMPONENTS][MAX_BLOCKS]MCU,
 
 const JPEG_DEBUG = false;
+
+pub fn calculateMCUCountInFrame(frame_header: *const FrameHeader) usize {
+    // FIXME: This is very naive and probably only works for Baseline DCT.
+    // MCU of non-interleaved is just one block.
+    const horizontal_block_count = if (1 < frame_header.components.len) frame_header.getMaxHorizontalSamplingFactor() else 1;
+    const vertical_block_count = if (1 < frame_header.components.len) frame_header.getMaxVerticalSamplingFactor() else 1;
+    const mcu_width = 8 * horizontal_block_count;
+    const mcu_height = 8 * vertical_block_count;
+    const mcu_count_per_row = (frame_header.samples_per_row + mcu_width - 1) / mcu_width;
+    const mcu_count_per_column = (frame_header.row_count + mcu_height - 1) / mcu_height;
+    return mcu_count_per_row * mcu_count_per_column;
+}
 
 pub fn read(allocator: Allocator, quantization_tables: *[4]?QuantizationTable, buffered_stream: *buffered_stream_source.DefaultBufferedStreamSourceReader) ImageReadError!Self {
     const reader = buffered_stream.reader();
     const frame_header = try FrameHeader.read(allocator, reader);
+    const mcu_count: usize = calculateMCUCountInFrame(&frame_header);
+
+    const mcu_storage = try allocator.alloc([MAX_COMPONENTS][MAX_BLOCKS]MCU, mcu_count);
 
     var self = Self{
         .allocator = allocator,
@@ -35,6 +51,7 @@ pub fn read(allocator: Allocator, quantization_tables: *[4]?QuantizationTable, b
         .quantization_tables = quantization_tables,
         .dc_huffman_tables = @splat(null),
         .ac_huffman_tables = @splat(null),
+        .mcu_storage = mcu_storage,
     };
     errdefer self.deinit();
 
@@ -59,6 +76,7 @@ pub fn read(allocator: Allocator, quantization_tables: *[4]?QuantizationTable, b
 }
 
 pub fn deinit(self: *Self) void {
+    self.allocator.free(self.mcu_storage);
     for (&self.dc_huffman_tables) |*maybe_huffman_table| {
         if (maybe_huffman_table.*) |*huffman_table| {
             huffman_table.deinit();
@@ -74,7 +92,7 @@ pub fn deinit(self: *Self) void {
     self.frame_header.deinit();
 }
 
-fn parseDefineHuffmanTables(self: *Self, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!void {
+pub fn parseDefineHuffmanTables(self: *Self, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!void {
     var segment_size = try reader.readInt(u16, .big);
     if (JPEG_DEBUG) std.debug.print("DefineHuffmanTables: segment size = 0x{X}\n", .{segment_size});
     segment_size -= 2;
