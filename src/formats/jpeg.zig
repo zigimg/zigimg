@@ -134,7 +134,9 @@ pub const JPEG = struct {
                 .sof13 => return ImageError.Unsupported,
                 .sof14 => return ImageError.Unsupported,
                 .sof15 => return ImageError.Unsupported,
-
+                .define_huffman_tables => {
+                    try self.frame.?.parseDefineHuffmanTables(reader);
+                },
                 .start_of_scan => {
                     try self.initializePixels(pixels_opt);
                     try self.parseScan(reader, pixels_opt);
