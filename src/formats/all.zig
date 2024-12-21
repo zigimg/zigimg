@@ -22,4 +22,5 @@ pub const ImageEncoderOptions = union(@import("../Image.zig").Format) {
     qoi: QOI.EncoderOptions,
     tga: TGA.EncoderOptions,
     pam: PAM.EncoderOptions,
+    farbfeld: void,
 };
