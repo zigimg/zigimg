@@ -9,8 +9,6 @@ const FrameHeader = @import("FrameHeader.zig");
 const Frame = @import("Frame.zig");
 const HuffmanReader = @import("huffman.zig").Reader;
 
-const MAX_COMPONENTS = @import("utils.zig").MAX_COMPONENTS;
-const MAX_BLOCKS = @import("utils.zig").MAX_BLOCKS;
 const MCU = @import("utils.zig").MCU;
 const ZigzagOffsets = @import("utils.zig").ZigzagOffsets;
 
@@ -22,7 +20,6 @@ const JPEG_VERY_DEBUG = false;
 frame: *const Frame,
 reader: HuffmanReader,
 scan_header: ScanHeader,
-mcu_storage: [MAX_COMPONENTS][MAX_BLOCKS]MCU,
 prediction_values: [3]i12,
 
 pub fn init(frame: *const Frame, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!Self {
@@ -31,7 +28,6 @@ pub fn init(frame: *const Frame, reader: buffered_stream_source.DefaultBufferedS
         .frame = frame,
         .reader = HuffmanReader.init(reader),
         .scan_header = scan_header,
-        .mcu_storage = undefined,
         .prediction_values = [3]i12{ 0, 0, 0 },
     };
 }
@@ -39,56 +35,26 @@ pub fn init(frame: *const Frame, reader: buffered_stream_source.DefaultBufferedS
 /// Perform the scan operation.
 /// We assume the AC and DC huffman tables are already set up, and ready to decode.
 /// This should implement section E.2.3 of t-81 1992.
-pub fn performScan(frame: *const Frame, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader, pixels_opt: *?color.PixelStorage) ImageReadError!void {
+pub fn performScan(frame: *const Frame, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!void {
     var self = try Self.init(frame, reader);
 
-    const mcu_count = Self.calculateMCUCountInFrame(&frame.frame_header);
+    const mcu_count = Frame.calculateMCUCountInFrame(&self.frame.frame_header);
     for (0..mcu_count) |mcu_id| {
-        try self.decodeMCU();
-        try self.dequantize();
-        try frame.renderToPixels(&self.mcu_storage, mcu_id, &pixels_opt.*.?);
+        try self.decodeMCU(mcu_id);
     }
 }
 
-fn dequantize(self: *Self) !void {
-    for (self.frame.frame_header.components, 0..) |component, component_id| {
-        const block_count = self.frame.frame_header.getBlockCount(component_id);
-        for (0..block_count) |i| {
-            const block = &self.mcu_storage[component_id][i];
-
-            if (self.frame.quantization_tables[component.quantization_table_id]) |quantization_table| {
-                var sample_id: usize = 0;
-                while (sample_id < 64) : (sample_id += 1) {
-                    block[sample_id] = block[sample_id] * quantization_table.q8[sample_id];
-                }
-            } else return ImageReadError.InvalidData;
-        }
-    }
-}
-
-fn calculateMCUCountInFrame(frame_header: *const FrameHeader) usize {
-    // FIXME: This is very naive and probably only works for Baseline DCT.
-    // MCU of non-interleaved is just one block.
-    const horizontal_block_count = if (1 < frame_header.components.len) frame_header.getMaxHorizontalSamplingFactor() else 1;
-    const vertical_block_count = if (1 < frame_header.components.len) frame_header.getMaxVerticalSamplingFactor() else 1;
-    const mcu_width = 8 * horizontal_block_count;
-    const mcu_height = 8 * vertical_block_count;
-    const mcu_count_per_row = (frame_header.samples_per_row + mcu_width - 1) / mcu_width;
-    const mcu_count_per_column = (frame_header.row_count + mcu_height - 1) / mcu_height;
-    return mcu_count_per_row * mcu_count_per_column;
-}
-
-fn decodeMCU(self: *Self) ImageReadError!void {
+fn decodeMCU(self: *Self, mcu_id: usize) ImageReadError!void {
     for (self.scan_header.components, 0..) |maybe_component, component_id| {
         _ = component_id;
         if (maybe_component == null)
             break;
 
-        try self.decodeMCUComponent(maybe_component.?);
+        try self.decodeMCUComponent(maybe_component.?, mcu_id);
     }
 }
 
-fn decodeMCUComponent(self: *Self, component: ScanComponentSpec) ImageReadError!void {
+fn decodeMCUComponent(self: *Self, component: ScanComponentSpec, mcu_id: usize) ImageReadError!void {
     // The encoder might reorder components or omit one if it decides that the
     // file size can be reduced that way. Therefore we need to select the correct
     // destination for this component.
@@ -104,7 +70,7 @@ fn decodeMCUComponent(self: *Self, component: ScanComponentSpec) ImageReadError!
 
     const block_count = self.frame.frame_header.getBlockCount(component_destination);
     for (0..block_count) |i| {
-        const mcu = &self.mcu_storage[component_destination][i];
+        const mcu = &self.frame.mcu_storage[mcu_id][component_destination][i];
 
         // Decode the DC coefficient
         if (self.frame.dc_huffman_tables[component.dc_table_selector] == null) return ImageReadError.InvalidData;
