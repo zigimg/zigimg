@@ -38,23 +38,6 @@ pub fn read(allocator: Allocator, quantization_tables: *[4]?QuantizationTable, b
     };
     errdefer self.deinit();
 
-    var marker = try reader.readInt(u16, .big);
-    while (marker != @intFromEnum(Markers.start_of_scan)) : (marker = try reader.readInt(u16, .big)) {
-        if (JPEG_DEBUG) std.debug.print("Frame: Parsing marker value: 0x{X}\n", .{marker});
-
-        switch (@as(Markers, @enumFromInt(marker))) {
-            .define_huffman_tables => {
-                try self.parseDefineHuffmanTables(reader);
-            },
-            else => {
-                return ImageReadError.InvalidData;
-            },
-        }
-    }
-
-    // Undo the last marker read
-    try buffered_stream.seekBy(-2);
-
     return self;
 }
 
@@ -74,7 +57,7 @@ pub fn deinit(self: *Self) void {
     self.frame_header.deinit();
 }
 
-fn parseDefineHuffmanTables(self: *Self, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!void {
+pub fn parseDefineHuffmanTables(self: *Self, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!void {
     var segment_size = try reader.readInt(u16, .big);
     if (JPEG_DEBUG) std.debug.print("DefineHuffmanTables: segment size = 0x{X}\n", .{segment_size});
     segment_size -= 2;
