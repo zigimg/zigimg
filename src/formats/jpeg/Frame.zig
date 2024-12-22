@@ -229,6 +229,25 @@ fn renderToPixelsRgb(self: *Self, pixels: []color.Rgb24) ImageReadError!void {
     }
 }
 
+pub fn dequantizeMCUs(self: *Self) !void {
+    var mcu_id: usize = 0;
+    while (mcu_id < self.mcu_storage.len) : (mcu_id += 1) {
+        for (self.frame_header.components, 0..) |component, component_id| {
+            const block_count = self.frame_header.getBlockCount(component_id);
+            for (0..block_count) |i| {
+                const block = &self.mcu_storage[mcu_id][component_id][i];
+
+                if (self.quantization_tables[component.quantization_table_id]) |quantization_table| {
+                    var sample_id: usize = 0;
+                    while (sample_id < 64) : (sample_id += 1) {
+                        block[sample_id] = block[sample_id] * quantization_table.q8[sample_id];
+                    }
+                } else return ImageReadError.InvalidData;
+            }
+        }
+    }
+}
+
 fn idct(mcu: *const MCU, x: u3, y: u3, mcu_id: usize, component_id: usize) i8 {
     // TODO(angelo): if Ns > 1 it is not interleaved, so the order this should be fixed...
     // FIXME is wrong for Ns > 1
