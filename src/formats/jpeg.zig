@@ -72,9 +72,9 @@ pub const JPEG = struct {
         }
     }
 
-    fn parseScan(self: *JPEG, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader, pixels_opt: *?color.PixelStorage) ImageReadError!void {
+    fn parseScan(self: *JPEG, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!void {
         if (self.frame) |frame| {
-            try Scan.performScan(&frame, reader, pixels_opt);
+            try Scan.performScan(&frame, reader);
         } else return ImageReadError.InvalidData;
     }
 
@@ -139,7 +139,7 @@ pub const JPEG = struct {
                 },
                 .start_of_scan => {
                     try self.initializePixels(pixels_opt);
-                    try self.parseScan(reader, pixels_opt);
+                    try self.parseScan(reader);
                 },
 
                 .define_quantization_tables => {
@@ -165,6 +165,8 @@ pub const JPEG = struct {
                 },
             }
         }
+
+        try self.frame.?.renderToPixels(&pixels_opt.*.?);
 
         return if (self.frame) |frame| frame else ImageReadError.InvalidData;
     }

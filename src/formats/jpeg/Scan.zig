@@ -35,29 +35,28 @@ pub fn init(frame: *const Frame, reader: buffered_stream_source.DefaultBufferedS
 /// Perform the scan operation.
 /// We assume the AC and DC huffman tables are already set up, and ready to decode.
 /// This should implement section E.2.3 of t-81 1992.
-pub fn performScan(frame: *const Frame, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader, pixels_opt: *?color.PixelStorage) ImageReadError!void {
+pub fn performScan(frame: *const Frame, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!void {
     var self = try Self.init(frame, reader);
 
     const mcu_count = Frame.calculateMCUCountInFrame(&self.frame.frame_header);
     for (0..mcu_count) |mcu_id| {
         try self.decodeMCU(mcu_id);
         try self.dequantize(mcu_id);
-        try frame.renderToPixels(&frame.mcu_storage[mcu_id], mcu_id, &pixels_opt.*.?);
     }
 }
 
 fn dequantize(self: *Self, mcu_id: usize) !void {
-    for (self.frame.frame_header.components, 0..) |component, component_id| {
-        const block_count = self.frame.frame_header.getBlockCount(component_id);
-        for (0..block_count) |i| {
-            const block = &self.frame.mcu_storage[mcu_id][component_id][i];
+        for (self.frame.frame_header.components, 0..) |component, component_id| {
+            const block_count = self.frame.frame_header.getBlockCount(component_id);
+            for (0..block_count) |i| {
+                const block = &self.frame.mcu_storage[mcu_id][component_id][i];
 
-            if (self.frame.quantization_tables[component.quantization_table_id]) |quantization_table| {
-                var sample_id: usize = 0;
-                while (sample_id < 64) : (sample_id += 1) {
-                    block[sample_id] = block[sample_id] * quantization_table.q8[sample_id];
-                }
-            } else return ImageReadError.InvalidData;
+                if (self.frame.quantization_tables[component.quantization_table_id]) |quantization_table| {
+                    var sample_id: usize = 0;
+                    while (sample_id < 64) : (sample_id += 1) {
+                        block[sample_id] = block[sample_id] * quantization_table.q8[sample_id];
+                    }
+                } else return ImageReadError.InvalidData;
         }
     }
 }
