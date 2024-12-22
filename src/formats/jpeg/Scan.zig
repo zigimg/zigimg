@@ -41,11 +41,14 @@ pub fn performScan(frame: *const Frame, reader: buffered_stream_source.DefaultBu
     const mcu_count = Frame.calculateMCUCountInFrame(&self.frame.frame_header);
     for (0..mcu_count) |mcu_id| {
         try self.decodeMCU(mcu_id);
-        try self.dequantize(mcu_id);
     }
+
+    try self.dequantizeMCUs();
 }
 
-fn dequantize(self: *Self, mcu_id: usize) !void {
+fn dequantizeMCUs(self: *Self) !void {
+    var mcu_id: usize = 0;
+    while (mcu_id < self.frame.mcu_storage.len) : (mcu_id += 1) {
         for (self.frame.frame_header.components, 0..) |component, component_id| {
             const block_count = self.frame.frame_header.getBlockCount(component_id);
             for (0..block_count) |i| {
@@ -57,6 +60,7 @@ fn dequantize(self: *Self, mcu_id: usize) !void {
                         block[sample_id] = block[sample_id] * quantization_table.q8[sample_id];
                     }
                 } else return ImageReadError.InvalidData;
+            }
         }
     }
 }
