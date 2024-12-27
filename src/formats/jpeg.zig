@@ -167,6 +167,7 @@ pub const JPEG = struct {
         }
 
         try self.frame.?.dequantizeMCUs();
+        self.frame.?.idctMCUs();
         try self.frame.?.renderToPixels(&pixels_opt.*.?);
 
         return if (self.frame) |frame| frame else ImageReadError.InvalidData;
