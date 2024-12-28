@@ -37,11 +37,15 @@ pub const JPEG = struct {
     frame: ?Frame = null,
     allocator: Allocator,
     quantization_tables: [4]?QuantizationTable,
+    dc_huffman_tables: [2]?HuffmanTable,
+    ac_huffman_tables: [2]?HuffmanTable,
 
     pub fn init(allocator: Allocator) JPEG {
         return .{
             .allocator = allocator,
             .quantization_tables = @splat(null),
+            .dc_huffman_tables = @splat(null),
+            .ac_huffman_tables = @splat(null),
         };
     }
 
@@ -119,7 +123,7 @@ pub const JPEG = struct {
                         return ImageError.Unsupported;
                     }
 
-                    self.frame = try Frame.read(self.allocator, &self.quantization_tables, &buffered_stream);
+                    self.frame = try Frame.read(self.allocator, &self.quantization_tables, &self.dc_huffman_tables, &self.ac_huffman_tables, &buffered_stream);
                 },
 
                 .sof1 => return ImageError.Unsupported, // extended sequential DCT Huffman coding
@@ -135,7 +139,7 @@ pub const JPEG = struct {
                 .sof14 => return ImageError.Unsupported,
                 .sof15 => return ImageError.Unsupported,
                 .define_huffman_tables => {
-                    try self.frame.?.parseDefineHuffmanTables(reader);
+                    try self.parseDefineHuffmanTables(reader);
                 },
                 .start_of_scan => {
                     try self.initializePixels(pixels_opt);
@@ -231,5 +235,36 @@ pub const JPEG = struct {
         _ = write_stream;
         _ = image;
         _ = encoder_options;
+    }
+
+    fn parseDefineHuffmanTables(self: *JPEG, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!void {
+        var segment_size = try reader.readInt(u16, .big);
+        if (JPEG_DEBUG) std.debug.print("DefineHuffmanTables: segment size = 0x{X}\n", .{segment_size});
+        segment_size -= 2;
+
+        while (segment_size > 0) {
+            const class_and_destination = try reader.readByte();
+            const table_class = class_and_destination >> 4;
+            const table_destination = class_and_destination & 0b1;
+
+            const huffman_table = try HuffmanTable.read(self.allocator, table_class, reader);
+
+            if (table_class == 0) {
+                if (self.dc_huffman_tables[table_destination]) |*old_huffman_table| {
+                    old_huffman_table.deinit();
+                }
+                self.dc_huffman_tables[table_destination] = huffman_table;
+            } else {
+                if (self.ac_huffman_tables[table_destination]) |*old_huffman_table| {
+                    old_huffman_table.deinit();
+                }
+                self.ac_huffman_tables[table_destination] = huffman_table;
+            }
+
+            if (JPEG_DEBUG) std.debug.print("  Table with class {} installed at {}\n", .{ table_class, table_destination });
+
+            // Class+Destination + code counts + code table
+            segment_size -= 1 + 16 + @as(u16, @intCast(huffman_table.code_map.count()));
+        }
     }
 };
