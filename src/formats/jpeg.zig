@@ -198,13 +198,9 @@ pub const JPEG = struct {
         const maybe_start_of_image = try reader.readInt(u16, .big);
         if (maybe_start_of_image != @intFromEnum(Markers.start_of_image)) {
             return false;
+        } else {
+            return true;
         }
-
-        try buffered_stream.seekTo(6);
-        var identifier_buffer: [4]u8 = undefined;
-        _ = try buffered_stream.read(identifier_buffer[0..]);
-
-        return std.mem.eql(u8, identifier_buffer[0..], "JFIF");
     }
 
     fn readImage(allocator: Allocator, stream: *ImageUnmanaged.Stream) ImageReadError!ImageUnmanaged {
