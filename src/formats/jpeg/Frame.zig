@@ -20,8 +20,8 @@ const Self = @This();
 allocator: Allocator,
 frame_header: FrameHeader,
 quantization_tables: *[4]?QuantizationTable,
-dc_huffman_tables: [2]?HuffmanTable,
-ac_huffman_tables: [2]?HuffmanTable,
+dc_huffman_tables: *[2]?HuffmanTable,
+ac_huffman_tables: *[2]?HuffmanTable,
 mcu_storage: [][MAX_COMPONENTS][MAX_BLOCKS]MCU,
 
 const JPEG_DEBUG = false;
@@ -38,7 +38,7 @@ pub fn calculateMCUCountInFrame(frame_header: *const FrameHeader) usize {
     return mcu_count_per_row * mcu_count_per_column;
 }
 
-pub fn read(allocator: Allocator, quantization_tables: *[4]?QuantizationTable, buffered_stream: *buffered_stream_source.DefaultBufferedStreamSourceReader) ImageReadError!Self {
+pub fn read(allocator: Allocator, quantization_tables: *[4]?QuantizationTable, dc_huffman_tables: *[2]?HuffmanTable, ac_huffman_tables: *[2]?HuffmanTable, buffered_stream: *buffered_stream_source.DefaultBufferedStreamSourceReader) ImageReadError!Self {
     const reader = buffered_stream.reader();
     const frame_header = try FrameHeader.read(allocator, reader);
     const mcu_count: usize = calculateMCUCountInFrame(&frame_header);
@@ -49,8 +49,8 @@ pub fn read(allocator: Allocator, quantization_tables: *[4]?QuantizationTable, b
         .allocator = allocator,
         .frame_header = frame_header,
         .quantization_tables = quantization_tables,
-        .dc_huffman_tables = @splat(null),
-        .ac_huffman_tables = @splat(null),
+        .dc_huffman_tables = dc_huffman_tables,
+        .ac_huffman_tables = ac_huffman_tables,
         .mcu_storage = mcu_storage,
     };
     errdefer self.deinit();
@@ -60,50 +60,19 @@ pub fn read(allocator: Allocator, quantization_tables: *[4]?QuantizationTable, b
 
 pub fn deinit(self: *Self) void {
     self.allocator.free(self.mcu_storage);
-    for (&self.dc_huffman_tables) |*maybe_huffman_table| {
+    for (self.dc_huffman_tables) |*maybe_huffman_table| {
         if (maybe_huffman_table.*) |*huffman_table| {
             huffman_table.deinit();
         }
     }
 
-    for (&self.ac_huffman_tables) |*maybe_huffman_table| {
+    for (self.ac_huffman_tables) |*maybe_huffman_table| {
         if (maybe_huffman_table.*) |*huffman_table| {
             huffman_table.deinit();
         }
     }
 
     self.frame_header.deinit();
-}
-
-pub fn parseDefineHuffmanTables(self: *Self, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!void {
-    var segment_size = try reader.readInt(u16, .big);
-    if (JPEG_DEBUG) std.debug.print("DefineHuffmanTables: segment size = 0x{X}\n", .{segment_size});
-    segment_size -= 2;
-
-    while (segment_size > 0) {
-        const class_and_destination = try reader.readByte();
-        const table_class = class_and_destination >> 4;
-        const table_destination = class_and_destination & 0b1;
-
-        const huffman_table = try HuffmanTable.read(self.allocator, table_class, reader);
-
-        if (table_class == 0) {
-            if (self.dc_huffman_tables[table_destination]) |*old_huffman_table| {
-                old_huffman_table.deinit();
-            }
-            self.dc_huffman_tables[table_destination] = huffman_table;
-        } else {
-            if (self.ac_huffman_tables[table_destination]) |*old_huffman_table| {
-                old_huffman_table.deinit();
-            }
-            self.ac_huffman_tables[table_destination] = huffman_table;
-        }
-
-        if (JPEG_DEBUG) std.debug.print("  Table with class {} installed at {}\n", .{ table_class, table_destination });
-
-        // Class+Destination + code counts + code table
-        segment_size -= 1 + 16 + @as(u16, @intCast(huffman_table.code_map.count()));
-    }
 }
 
 pub fn renderToPixels(self: *Self, pixels: *color.PixelStorage) ImageReadError!void {
