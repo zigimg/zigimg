@@ -141,7 +141,7 @@ fn renderToPixelsGrayscale(self: *Self, pixels: []color.Grayscale8) ImageReadErr
                 // x coordinates in the block
                 const block_x = mcu_x % 8;
 
-                const reconstructed_Y = idct(&self.mcu_storage[mcu_id][0][0], @as(u3, @intCast(block_x)), @as(u3, @intCast(block_y)), mcu_id, 0);
+                const reconstructed_Y = self.mcu_storage[mcu_id][0][0][block_y * 8 + block_x];
                 const Y: f32 = @floatFromInt(reconstructed_Y);
                 pixels[stride + x] = .{
                     .value = @as(u8, @intFromFloat(std.math.clamp(Y + 128.0, 0.0, 255.0))),
@@ -179,8 +179,6 @@ fn renderToPixelsRgb(self: *Self, pixels: []color.Rgb24) ImageReadError!void {
             const cb_block_y = cb_sampled_y % 8;
             const cr_block_y = cr_sampled_y % 8;
 
-            const stride = y * width;
-
             for (0..mcu_width) |mcu_x| {
                 const x = mcu_origin_x + mcu_x;
                 if (x >= width) continue;
@@ -203,13 +201,9 @@ fn renderToPixelsRgb(self: *Self, pixels: []color.Rgb24) ImageReadError!void {
                 const mcu_Cb = &self.mcu_storage[mcu_id][1][cb_block_ind];
                 const mcu_Cr = &self.mcu_storage[mcu_id][2][cr_block_ind];
 
-                const reconstructed_Y = idct(mcu_Y, @as(u3, @intCast(y_block_x)), @as(u3, @intCast(y_block_y)), mcu_id, 0);
-                const reconstructed_Cb = idct(mcu_Cb, @as(u3, @intCast(cb_block_x)), @as(u3, @intCast(cb_block_y)), mcu_id, 1);
-                const reconstructed_Cr = idct(mcu_Cr, @as(u3, @intCast(cr_block_x)), @as(u3, @intCast(cr_block_y)), mcu_id, 2);
-
-                const Y: f32 = @floatFromInt(reconstructed_Y);
-                const Cb: f32 = @floatFromInt(reconstructed_Cb);
-                const Cr: f32 = @floatFromInt(reconstructed_Cr);
+                const Y: f32 = @floatFromInt(mcu_Y[y_block_y * 8 + y_block_x]);
+                const Cb: f32 = @floatFromInt(mcu_Cb[cb_block_y * 8 + cb_block_x]);
+                const Cr: f32 = @floatFromInt(mcu_Cr[cr_block_y * 8 + cr_block_x]);
 
                 const Co_red = 0.299;
                 const Co_green = 0.587;
@@ -219,7 +213,7 @@ fn renderToPixelsRgb(self: *Self, pixels: []color.Rgb24) ImageReadError!void {
                 const b = Cb * (2 - 2 * Co_blue) + Y;
                 const g = (Y - Co_blue * b - Co_red * r) / Co_green;
 
-                pixels[stride + x] = .{
+                pixels[y * width + x] = .{
                     .r = @intFromFloat(std.math.clamp(r + 128.0, 0.0, 255.0)),
                     .g = @intFromFloat(std.math.clamp(g + 128.0, 0.0, 255.0)),
                     .b = @intFromFloat(std.math.clamp(b + 128.0, 0.0, 255.0)),
@@ -248,7 +242,33 @@ pub fn dequantizeMCUs(self: *Self) !void {
     }
 }
 
-fn idct(mcu: *const MCU, x: u3, y: u3, mcu_id: usize, component_id: usize) i8 {
+pub fn idctMCUs(self: *Self) void {
+    for (0..self.mcu_storage.len) |mcu_id| {
+        for (0..self.frame_header.components.len) |component_id| {
+            const block_count: usize = self.frame_header.getBlockCount(component_id);
+            for (0..block_count) |i| {
+                idctBlock(&self.mcu_storage[mcu_id][component_id][i]);
+            }
+        }
+    }
+}
+
+fn idctBlock(mcu: *MCU) void {
+    var result: MCU = undefined;
+
+    for (0..8) |y| {
+        for (0..8) |x| {
+            result[y * 8 + x] = idct(mcu, x, y, 0, 0);
+        }
+    }
+
+    // write final result back
+    for (0..64) |idx| {
+        mcu[idx] = result[idx];
+    }
+}
+
+fn idct(mcu: *const MCU, x: usize, y: usize, mcu_id: usize, component_id: usize) i8 {
     // TODO(angelo): if Ns > 1 it is not interleaved, so the order this should be fixed...
     // FIXME is wrong for Ns > 1
     var reconstructed_pixel: f32 = 0.0;
