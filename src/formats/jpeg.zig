@@ -36,16 +36,14 @@ const JPEG_DEBUG = false;
 pub const JPEG = struct {
     frame: ?Frame = null,
     allocator: Allocator,
-    quantization_tables: [4]?QuantizationTable,
-    dc_huffman_tables: [2]?HuffmanTable,
-    ac_huffman_tables: [2]?HuffmanTable,
+    quantization_tables: [4]?QuantizationTable = @splat(null),
+    dc_huffman_tables: [2]?HuffmanTable = @splat(null),
+    ac_huffman_tables: [2]?HuffmanTable = @splat(null),
+    restart_interval: u16 = 0,
 
     pub fn init(allocator: Allocator) JPEG {
         return .{
             .allocator = allocator,
-            .quantization_tables = @splat(null),
-            .dc_huffman_tables = @splat(null),
-            .ac_huffman_tables = @splat(null),
         };
     }
 
@@ -193,14 +191,9 @@ pub const JPEG = struct {
 
     fn formatDetect(stream: *ImageUnmanaged.Stream) ImageReadError!bool {
         var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
-
         const reader = buffered_stream.reader();
         const maybe_start_of_image = try reader.readInt(u16, .big);
-        if (maybe_start_of_image != @intFromEnum(Markers.start_of_image)) {
-            return false;
-        } else {
-            return true;
-        }
+        return maybe_start_of_image == @intFromEnum(Markers.start_of_image);
     }
 
     fn readImage(allocator: Allocator, stream: *ImageUnmanaged.Stream) ImageReadError!ImageUnmanaged {
