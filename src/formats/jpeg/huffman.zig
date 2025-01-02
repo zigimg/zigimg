@@ -89,9 +89,6 @@ pub const Reader = struct {
 
     table: ?*const Table = null,
     reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader,
-    byte_buffer: u8 = 0,
-    bits_left: u4 = 0,
-    last_byte_was_ff: bool = false,
     bit_buffer: u32 = 0,
     bit_count: u5 = 0,
 
@@ -142,34 +139,16 @@ pub const Reader = struct {
         self.bit_count = 0;
     }
 
-    fn readBit(self: *Self) ImageReadError!u1 {
-        if (self.bits_left == 0) {
-            self.byte_buffer = try self.reader.readByte();
-
-            if (self.byte_buffer == 0 and self.last_byte_was_ff) {
-                // This was a stuffed byte, read one more.
-                self.byte_buffer = try self.reader.readByte();
-            }
-            self.last_byte_was_ff = self.byte_buffer == 0xFF;
-            self.bits_left = 8;
-        }
-
-        const bit: u1 = @intCast(self.byte_buffer >> 7);
-        self.byte_buffer <<= 1;
-        self.bits_left -= 1;
-
-        return bit;
-    }
-
     pub fn readCode(self: *Self) ImageReadError!u8 {
-        var code: u16 = 0;
+        var code: u32 = 0;
 
-        var i: u5 = 0;
-        while (i < 16) : (i += 1) {
+        var length: u5 = 1;
+        while (length <= 16) : (length += 1) {
             // NOTE: if the table is stored as a tree, this is O(1) to update the new node,
             // instead of O(log n), so should be faster.
-            code = (code << 1) | (try self.readBit());
-            if (self.table.?.code_map.get(.{ .length_minus_one = @intCast(i), .code = code })) |value| {
+            code = try self.peekBits(length);
+            if (self.table.?.code_map.get(.{ .length_minus_one = @intCast(length - 1), .code = @intCast(code) })) |value| {
+                try self.consumeBits(length);
                 return value;
             }
         }
@@ -178,23 +157,13 @@ pub const Reader = struct {
         return ImageReadError.InvalidData;
     }
 
-    pub fn readLiteralBits(self: *Self, bitsNeeded: u8) ImageReadError!u32 {
-        var bits: u32 = 0;
-
-        var i: usize = 0;
-        while (i < bitsNeeded) : (i += 1) {
-            bits = (bits << 1) | (try self.readBit());
-        }
-
-        return bits;
-    }
-
     /// This function implements T.81 section F1.2.1, Huffman encoding of DC coefficients.
     pub fn readMagnitudeCoded(self: *Self, magnitude: u5) ImageReadError!i32 {
         if (magnitude == 0)
             return 0;
 
-        const bits = try self.readLiteralBits(magnitude);
+        const bits = try self.peekBits(magnitude);
+        try self.consumeBits(magnitude);
 
         // The sign of the read bits value.
         const bits_sign = (bits >> (magnitude - 1)) & 1;
