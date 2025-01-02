@@ -92,6 +92,8 @@ pub const Reader = struct {
     byte_buffer: u8 = 0,
     bits_left: u4 = 0,
     last_byte_was_ff: bool = false,
+    bit_buffer: u32 = 0,
+    bit_count: u5 = 0,
 
     pub fn init(reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) Self {
         return .{
@@ -101,6 +103,43 @@ pub const Reader = struct {
 
     pub fn setHuffmanTable(self: *Self, table: *const Table) void {
         self.table = table;
+    }
+
+    fn peekBits(self: *Self, num_bits: u5) ImageReadError!u32 {
+        if (num_bits > 16) {
+            return ImageReadError.InvalidData;
+        }
+
+        while (self.bit_count < num_bits) {
+            const byte_curr: u32 = try self.reader.readByte();
+
+            while (byte_curr == 0xFF) {
+                const byte_next: u8 = try self.reader.readByte();
+
+                if (byte_next == 0x00) {
+                    break;
+                }
+            }
+
+            self.bit_buffer |= byte_curr << (24 - self.bit_count);
+            self.bit_count += 8;
+        }
+
+        return (self.bit_buffer >> 1) >> (31 - num_bits);
+    }
+
+    fn consumeBits(self: *Self, num_bits: u5) ImageReadError!void {
+        if (num_bits > 16) {
+            return ImageReadError.InvalidData;
+        }
+
+        self.bit_buffer <<= num_bits;
+        self.bit_count -= num_bits;
+    }
+
+    fn flushBits(self: *Self) void {
+        self.bit_buffer = 0;
+        self.bit_count = 0;
     }
 
     fn readBit(self: *Self) ImageReadError!u1 {
