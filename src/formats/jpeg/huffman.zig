@@ -108,13 +108,17 @@ pub const Reader = struct {
         }
 
         while (self.bit_count < num_bits) {
-            const byte_curr: u32 = try self.reader.readByte();
+            var byte_curr: u32 = try self.reader.readByte();
 
             while (byte_curr == 0xFF) {
                 const byte_next: u8 = try self.reader.readByte();
 
                 if (byte_next == 0x00) {
                     break;
+                } else if (byte_next == 0xFF) {
+                    continue;
+                } else if (byte_next >= 0xD0 and byte_next <= 0xD7) {
+                    byte_curr = try self.reader.readByte();
                 }
             }
 
@@ -134,7 +138,7 @@ pub const Reader = struct {
         self.bit_count -= num_bits;
     }
 
-    fn flushBits(self: *Self) void {
+    pub fn flushBits(self: *Self) void {
         self.bit_buffer = 0;
         self.bit_count = 0;
     }

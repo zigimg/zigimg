@@ -40,6 +40,10 @@ pub fn performScan(frame: *const Frame, reader: buffered_stream_source.DefaultBu
 
     const mcu_count = Frame.calculateMCUCountInFrame(&self.frame.frame_header);
     for (0..mcu_count) |mcu_id| {
+        if (frame.restart_interval != 0 and mcu_id % frame.restart_interval == 0) {
+            self.reader.flushBits();
+            self.prediction_values = @splat(0);
+        }
         try self.decodeMCU(mcu_id);
     }
 }

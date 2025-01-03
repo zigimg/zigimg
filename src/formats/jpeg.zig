@@ -121,7 +121,7 @@ pub const JPEG = struct {
                         return ImageError.Unsupported;
                     }
 
-                    self.frame = try Frame.read(self.allocator, &self.quantization_tables, &self.dc_huffman_tables, &self.ac_huffman_tables, &buffered_stream);
+                    self.frame = try Frame.read(self.allocator, self.restart_interval, &self.quantization_tables, &self.dc_huffman_tables, &self.ac_huffman_tables, &buffered_stream);
                 },
 
                 .sof1 => return ImageError.Unsupported, // extended sequential DCT Huffman coding
