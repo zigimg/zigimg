@@ -160,9 +160,15 @@ pub const JPEG = struct {
                     const application_data_length = try reader.readInt(u16, .big);
                     try buffered_stream.seekBy(application_data_length - 2);
                 },
+                .dri => {
+                    try self.parseDefineRestartInterval(reader);
+                },
+                .rst0, .rst1, .rst2, .rst3, .rst4, .rst5, .rst6, .rst7 => {
+                    continue;
+                },
 
                 else => {
-                    // TODO(angelo): raise invalid marker, more precise error.
+                    std.debug.panic("Unrecognized Marker: {x}", .{marker});
                     return ImageReadError.InvalidData;
                 },
             }
@@ -255,5 +261,13 @@ pub const JPEG = struct {
             // Class+Destination + code counts + code table
             segment_size -= 1 + 16 + @as(u16, @intCast(huffman_table.code_map.count()));
         }
+    }
+
+    fn parseDefineRestartInterval(self: *JPEG, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) !void {
+        const segment_length = try reader.readInt(u16, .big);
+        std.debug.assert(segment_length - 4 == 0);
+
+        self.restart_interval = try reader.readInt(u16, .big);
+        std.debug.print("Restart Interval: {}", .{self.restart_interval});
     }
 };
