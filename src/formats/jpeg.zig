@@ -113,7 +113,7 @@ pub const JPEG = struct {
         marker = try reader.readInt(u16, .big);
 
         while (marker != @intFromEnum(Markers.end_of_image)) : (marker = try reader.readInt(u16, .big)) {
-            if (JPEG_DEBUG) std.debug.print("Parsing marker value: 0x{X}\n", .{marker});
+            // std.debug.print("Parsing marker value: 0x{X}\n", .{marker});
 
             switch (@as(Markers, @enumFromInt(marker))) {
                 .sof0 => { // Baseline DCT
@@ -160,10 +160,10 @@ pub const JPEG = struct {
                     const application_data_length = try reader.readInt(u16, .big);
                     try buffered_stream.seekBy(application_data_length - 2);
                 },
-                .dri => {
+                .define_restart_interval => {
                     try self.parseDefineRestartInterval(reader);
                 },
-                .rst0, .rst1, .rst2, .rst3, .rst4, .rst5, .rst6, .rst7 => {
+                .restart0, .restart1, .restart2, .restart3, .restart4, .restart5, .restart6, .restart7 => {
                     continue;
                 },
 
