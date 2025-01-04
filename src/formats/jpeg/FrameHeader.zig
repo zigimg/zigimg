@@ -7,6 +7,8 @@ const buffered_stream_source = @import("../../buffered_stream_source.zig");
 const Image = @import("../../Image.zig");
 const ImageReadError = Image.ReadError;
 
+const Markers = @import("utils.zig").Markers;
+
 const Allocator = std.mem.Allocator;
 
 const JPEG_DEBUG = false;

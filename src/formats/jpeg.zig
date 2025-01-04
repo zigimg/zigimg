@@ -116,16 +116,15 @@ pub const JPEG = struct {
             // std.debug.print("Parsing marker value: 0x{X}\n", .{marker});
 
             switch (@as(Markers, @enumFromInt(marker))) {
-                .sof0 => { // Baseline DCT
+                .sof0, .sof2 => { // Baseline DCT, progressive DCT Huffman coding
                     if (self.frame != null) {
                         return ImageError.Unsupported;
                     }
 
-                    self.frame = try Frame.read(self.allocator, self.restart_interval, &self.quantization_tables, &self.dc_huffman_tables, &self.ac_huffman_tables, &buffered_stream);
+                    self.frame = try Frame.read(self.allocator, @enumFromInt(marker), self.restart_interval, &self.quantization_tables, &self.dc_huffman_tables, &self.ac_huffman_tables, &buffered_stream);
                 },
 
                 .sof1 => return ImageError.Unsupported, // extended sequential DCT Huffman coding
-                .sof2 => return ImageError.Unsupported, // progressive DCT Huffman coding
                 .sof3 => return ImageError.Unsupported, // lossless (sequential) Huffman coding
                 .sof5 => return ImageError.Unsupported,
                 .sof6 => return ImageError.Unsupported,
