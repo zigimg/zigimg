@@ -48,13 +48,21 @@ pub fn init(frame: *const Frame, reader: buffered_stream_source.DefaultBufferedS
     while (i < component_count) : (i += 1) {
         components[i] = try ScanComponentSpec.read(reader);
 
-        var valid_component_id: bool = false;
+        var valid_component: bool = false;
         for (frame.frame_header.components) |frame_component| {
             if (frame_component.id == components[i].?.component_id) {
-                valid_component_id = true;
+                valid_component = true;
             }
         }
-        if (!valid_component_id) {
+
+        if (frame.dc_huffman_tables[components[i].?.dc_table_selector] != null) {
+            valid_component = true;
+        }
+        if (frame.ac_huffman_tables[components[i].?.ac_table_selector] != null) {
+            valid_component = true;
+        }
+
+        if (!valid_component) {
             return ImageReadError.InvalidData;
         }
     }
@@ -139,15 +147,11 @@ fn decodeMCU(self: *Self, mcu_id: usize) ImageReadError!void {
             const mcu = &self.frame.mcu_storage[mcu_id][component_index][i];
 
             // Decode the DC coefficient
-            if (self.frame.dc_huffman_tables[component.dc_table_selector] == null) return ImageReadError.InvalidData;
-
             self.reader.setHuffmanTable(&self.frame.dc_huffman_tables[component.dc_table_selector].?);
 
             try self.decodeDCCoefficient(mcu, component_index);
 
             // Decode the AC coefficients
-            if (self.frame.ac_huffman_tables[component.ac_table_selector] == null) return ImageReadError.InvalidData;
-
             self.reader.setHuffmanTable(&self.frame.ac_huffman_tables[component.ac_table_selector].?);
 
             try self.decodeACCoefficients(mcu);
