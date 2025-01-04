@@ -160,22 +160,29 @@ fn decodeMCU(self: *Self, mcu_id: usize) ImageReadError!void {
 }
 
 fn decodeDCCoefficient(self: *Self, mcu: *MCU, component_destination: usize) ImageReadError!void {
-    const maybe_magnitude = try self.reader.readCode();
-    if (maybe_magnitude > 11) return ImageReadError.InvalidData;
-    const magnitude: u4 = @intCast(maybe_magnitude);
+    if (self.start_of_spectral_selection == 0) {
+        const maybe_magnitude = try self.reader.readCode();
+        if (maybe_magnitude > 11) return ImageReadError.InvalidData;
+        const magnitude: u4 = @intCast(maybe_magnitude);
 
-    const diff: i12 = @intCast(try self.reader.readMagnitudeCoded(magnitude));
-    // TODO: check correctess after refactor
-    const dc_coefficient = diff + self.prediction_values[component_destination];
-    self.prediction_values[component_destination] = dc_coefficient;
+        const diff: i12 = @intCast(try self.reader.readMagnitudeCoded(magnitude));
+        const dc_coefficient = diff + self.prediction_values[component_destination];
+        self.prediction_values[component_destination] = dc_coefficient;
 
-    mcu[0] = dc_coefficient;
+        mcu[0] = dc_coefficient;
+    }
 }
 
 fn decodeACCoefficients(self: *Self, mcu: *MCU) ImageReadError!void {
-    var ac: usize = 1;
+    var ac: usize = undefined;
+    if (self.frame.frame_type == Markers.sof0) {
+        ac = 1;
+    } else if (self.frame.frame_type == Markers.sof2) {
+        if (self.start_of_spectral_selection == 0) return;
+        ac = self.start_of_spectral_selection;
+    }
     var did_see_eob = false;
-    while (ac < 64) : (ac += 1) {
+    while (ac < self.end_of_spectral_selection + 1) : (ac += 1) {
         if (did_see_eob) {
             mcu[ZigzagOffsets[ac]] = 0;
             continue;
