@@ -51,12 +51,26 @@ pub fn init(frame: *const Frame, reader: buffered_stream_source.DefaultBufferedS
     const start_of_spectral_selection = try reader.readByte();
     const end_of_spectral_selection = try reader.readByte();
 
-    if (start_of_spectral_selection > 63) {
+    if (start_of_spectral_selection > 63 or end_of_spectral_selection > 63) {
         return ImageReadError.InvalidData;
     }
 
-    if (end_of_spectral_selection < start_of_spectral_selection or end_of_spectral_selection > 63) {
+    if (end_of_spectral_selection < start_of_spectral_selection) {
         return ImageReadError.InvalidData;
+    }
+
+    if (frame.frame_type == Markers.sof0) {
+        if (start_of_spectral_selection != 0 or end_of_spectral_selection != 63) {
+            return ImageReadError.InvalidData;
+        }
+    }
+
+    if (frame.frame_type == Markers.sof2) {
+        const any_zero: bool = start_of_spectral_selection == 0 or end_of_spectral_selection == 0;
+        const both_zero: bool = start_of_spectral_selection == 0 and end_of_spectral_selection == 0;
+        if (any_zero and !both_zero) {
+            return ImageReadError.InvalidData;
+        }
     }
 
     if (JPEG_VERY_DEBUG) std.debug.print("  Spectral selection: {}-{}\n", .{ start_of_spectral_selection, end_of_spectral_selection });
