@@ -113,7 +113,7 @@ pub const JPEG = struct {
         marker = try reader.readInt(u16, .big);
 
         while (marker != @intFromEnum(Markers.end_of_image)) : (marker = try reader.readInt(u16, .big)) {
-            // std.debug.print("Parsing marker value: 0x{X}\n", .{marker});
+            if (JPEG_DEBUG) std.debug.print("Parsing marker value: 0x{X}\n", .{marker});
 
             switch (@as(Markers, @enumFromInt(marker))) {
                 .sof0, .sof2 => { // Baseline DCT, progressive DCT Huffman coding
