@@ -50,7 +50,7 @@ pub fn init(frame: *const Frame, reader: buffered_stream_source.DefaultBufferedS
 
         var valid_component_id: bool = false;
         for (frame.frame_header.components) |frame_component| {
-            if (frame_component.id == components[i].?.component_selector) {
+            if (frame_component.id == components[i].?.component_id) {
                 valid_component_id = true;
             }
         }
@@ -128,7 +128,7 @@ fn decodeMCU(self: *Self, mcu_id: usize) ImageReadError!void {
 
         var component_index: usize = undefined;
         for (self.frame.frame_header.components, 0..) |frame_component, i| {
-            if (frame_component.id == component.component_selector) {
+            if (frame_component.id == component.component_id) {
                 component_index = i;
                 std.debug.assert(component_index < self.component_count);
             }
@@ -204,23 +204,23 @@ fn decodeACCoefficients(self: *Self, mcu: *MCU) ImageReadError!void {
 }
 
 pub const ScanComponentSpec = struct {
-    component_selector: u8,
+    component_id: u8,
     dc_table_selector: u4,
     ac_table_selector: u4,
 
     pub fn read(reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!ScanComponentSpec {
-        const component_selector = try reader.readByte();
+        const component_id = try reader.readByte();
         const entropy_coding_selectors = try reader.readByte();
 
         const dc_table_selector: u4 = @intCast(entropy_coding_selectors >> 4);
         const ac_table_selector: u4 = @intCast(entropy_coding_selectors & 0b11);
 
         if (JPEG_VERY_DEBUG) {
-            std.debug.print("    Component spec: selector={}, DC table ID={}, AC table ID={}\n", .{ component_selector, dc_table_selector, ac_table_selector });
+            std.debug.print("    Component spec: selector={}, DC table ID={}, AC table ID={}\n", .{ component_id, dc_table_selector, ac_table_selector });
         }
 
         return ScanComponentSpec{
-            .component_selector = component_selector,
+            .component_id = component_id,
             .dc_table_selector = dc_table_selector,
             .ac_table_selector = ac_table_selector,
         };
