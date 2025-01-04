@@ -143,8 +143,7 @@ fn decodeMCUComponent(self: *Self, component: ScanComponentSpec, mcu_id: usize) 
 
         self.reader.setHuffmanTable(&self.frame.dc_huffman_tables[component.dc_table_selector].?);
 
-        const dc_coefficient = try self.decodeDCCoefficient(component_destination);
-        mcu[0] = dc_coefficient;
+        try self.decodeDCCoefficient(mcu, component_destination);
 
         // Decode the AC coefficients
         if (self.frame.ac_huffman_tables[component.ac_table_selector] == null)
@@ -156,7 +155,7 @@ fn decodeMCUComponent(self: *Self, component: ScanComponentSpec, mcu_id: usize) 
     }
 }
 
-fn decodeDCCoefficient(self: *Self, component_destination: usize) ImageReadError!i12 {
+fn decodeDCCoefficient(self: *Self, mcu: *MCU, component_destination: usize) ImageReadError!void {
     const maybe_magnitude = try self.reader.readCode();
     if (maybe_magnitude > 11) return ImageReadError.InvalidData;
     const magnitude: u4 = @intCast(maybe_magnitude);
@@ -166,7 +165,7 @@ fn decodeDCCoefficient(self: *Self, component_destination: usize) ImageReadError
     const dc_coefficient = diff + self.prediction_values[component_destination];
     self.prediction_values[component_destination] = dc_coefficient;
 
-    return dc_coefficient;
+    mcu[0] = dc_coefficient;
 }
 
 fn decodeACCoefficients(self: *Self, mcu: *MCU) ImageReadError!void {
