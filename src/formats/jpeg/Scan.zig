@@ -22,6 +22,7 @@ frame: *const Frame,
 reader: HuffmanReader,
 
 components: [4]?ScanComponentSpec,
+component_count: u8,
 start_of_spectral_selection: u8,
 end_of_spectral_selection: u8,
 approximation_high: u4,
@@ -86,6 +87,7 @@ pub fn init(frame: *const Frame, reader: buffered_stream_source.DefaultBufferedS
         .frame = frame,
         .reader = HuffmanReader.init(reader),
         .components = components,
+        .component_count = component_count,
         .start_of_spectral_selection = start_of_spectral_selection,
         .end_of_spectral_selection = end_of_spectral_selection,
         .approximation_high = approximation_high,
@@ -111,47 +113,37 @@ pub fn performScan(frame: *const Frame, reader: buffered_stream_source.DefaultBu
 }
 
 fn decodeMCU(self: *Self, mcu_id: usize) ImageReadError!void {
-    for (self.components, 0..) |maybe_component, component_id| {
-        _ = component_id;
-        if (maybe_component == null)
-            break;
+    for (0..self.component_count) |index| {
+        const component: ScanComponentSpec = self.components[index].?;
 
-        try self.decodeMCUComponent(maybe_component.?, mcu_id);
-    }
-}
-
-fn decodeMCUComponent(self: *Self, component: ScanComponentSpec, mcu_id: usize) ImageReadError!void {
-    // The encoder might reorder components or omit one if it decides that the
-    // file size can be reduced that way. Therefore we need to select the correct
-    // destination for this component.
-    const component_destination: usize = blk: {
-        for (self.frame.frame_header.components, 0..) |frame_component, i| {
-            if (frame_component.id == component.component_selector) {
-                break :blk i;
+        const component_index: usize = blk: {
+            for (self.frame.frame_header.components, 0..) |frame_component, i| {
+                if (frame_component.id == component.component_selector) {
+                    break :blk i;
+                }
             }
-        }
 
-        return ImageReadError.InvalidData;
-    };
-
-    const block_count = self.frame.frame_header.getBlockCount(component_destination);
-    for (0..block_count) |i| {
-        const mcu = &self.frame.mcu_storage[mcu_id][component_destination][i];
-
-        // Decode the DC coefficient
-        if (self.frame.dc_huffman_tables[component.dc_table_selector] == null) return ImageReadError.InvalidData;
-
-        self.reader.setHuffmanTable(&self.frame.dc_huffman_tables[component.dc_table_selector].?);
-
-        try self.decodeDCCoefficient(mcu, component_destination);
-
-        // Decode the AC coefficients
-        if (self.frame.ac_huffman_tables[component.ac_table_selector] == null)
             return ImageReadError.InvalidData;
+        };
 
-        self.reader.setHuffmanTable(&self.frame.ac_huffman_tables[component.ac_table_selector].?);
+        const block_count = self.frame.frame_header.getBlockCount(component_index);
+        for (0..block_count) |i| {
+            const mcu = &self.frame.mcu_storage[mcu_id][component_index][i];
 
-        try self.decodeACCoefficients(mcu);
+            // Decode the DC coefficient
+            if (self.frame.dc_huffman_tables[component.dc_table_selector] == null) return ImageReadError.InvalidData;
+
+            self.reader.setHuffmanTable(&self.frame.dc_huffman_tables[component.dc_table_selector].?);
+
+            try self.decodeDCCoefficient(mcu, component_index);
+
+            // Decode the AC coefficients
+            if (self.frame.ac_huffman_tables[component.ac_table_selector] == null) return ImageReadError.InvalidData;
+
+            self.reader.setHuffmanTable(&self.frame.ac_huffman_tables[component.ac_table_selector].?);
+
+            try self.decodeACCoefficients(mcu);
+        }
     }
 }
 
