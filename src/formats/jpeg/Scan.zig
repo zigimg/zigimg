@@ -5,6 +5,7 @@ const color = @import("../../color.zig");
 const Image = @import("../../Image.zig");
 const ImageReadError = Image.ReadError;
 
+const Markers = @import("utils.zig").Markers;
 const FrameHeader = @import("FrameHeader.zig");
 const Frame = @import("Frame.zig");
 const HuffmanReader = @import("huffman.zig").Reader;
@@ -19,15 +20,62 @@ const JPEG_VERY_DEBUG = false;
 
 frame: *const Frame,
 reader: HuffmanReader,
-scan_header: ScanHeader,
+
+components: [4]?ScanComponentSpec,
+start_of_spectral_selection: u8,
+end_of_spectral_selection: u8,
+approximation_high: u4,
+approximation_low: u4,
+
 prediction_values: [3]i12,
 
 pub fn init(frame: *const Frame, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!Self {
-    const scan_header = try ScanHeader.read(reader);
+    const segment_size = try reader.readInt(u16, .big);
+    if (JPEG_DEBUG) std.debug.print("StartOfScan: segment size = 0x{X}\n", .{segment_size});
+
+    const component_count = try reader.readByte();
+    if (component_count < 1 or component_count > 4) {
+        return ImageReadError.InvalidData;
+    }
+
+    if (JPEG_DEBUG) std.debug.print("  Component count: {}\n", .{component_count});
+
+    var components: [4]?ScanComponentSpec = @splat(null);
+
+    if (JPEG_VERY_DEBUG) std.debug.print("  Components:\n", .{});
+    var i: usize = 0;
+    while (i < component_count) : (i += 1) {
+        components[i] = try ScanComponentSpec.read(reader);
+    }
+
+    const start_of_spectral_selection = try reader.readByte();
+    const end_of_spectral_selection = try reader.readByte();
+
+    if (start_of_spectral_selection > 63) {
+        return ImageReadError.InvalidData;
+    }
+
+    if (end_of_spectral_selection < start_of_spectral_selection or end_of_spectral_selection > 63) {
+        return ImageReadError.InvalidData;
+    }
+
+    if (JPEG_VERY_DEBUG) std.debug.print("  Spectral selection: {}-{}\n", .{ start_of_spectral_selection, end_of_spectral_selection });
+
+    const approximation_bits = try reader.readByte();
+    const approximation_high: u4 = @intCast(approximation_bits >> 4);
+    const approximation_low: u4 = @intCast(approximation_bits & 0b1111);
+    if (JPEG_VERY_DEBUG) std.debug.print("  Approximation bit position: high={} low={}\n", .{ approximation_high, approximation_low });
+
+    std.debug.assert(segment_size == 2 * component_count + 1 + 2 + 1 + 2);
+
     return Self{
         .frame = frame,
         .reader = HuffmanReader.init(reader),
-        .scan_header = scan_header,
+        .components = components,
+        .start_of_spectral_selection = start_of_spectral_selection,
+        .end_of_spectral_selection = end_of_spectral_selection,
+        .approximation_high = approximation_high,
+        .approximation_low = approximation_low,
         .prediction_values = [3]i12{ 0, 0, 0 },
     };
 }
@@ -49,7 +97,7 @@ pub fn performScan(frame: *const Frame, reader: buffered_stream_source.DefaultBu
 }
 
 fn decodeMCU(self: *Self, mcu_id: usize) ImageReadError!void {
-    for (self.scan_header.components, 0..) |maybe_component, component_id| {
+    for (self.components, 0..) |maybe_component, component_id| {
         _ = component_id;
         if (maybe_component == null)
             break;
@@ -165,72 +213,3 @@ pub const ScanComponentSpec = struct {
         };
     }
 };
-
-pub const Header = struct {
-    components: [4]?ScanComponentSpec,
-
-    ///  first DCT coefficient in each block in zig-zag order
-    start_of_spectral_selection: u8,
-
-    /// last DCT coefficient in each block in zig-zag order
-    /// 63 for sequential DCT, 0 for lossless
-    /// TODO(angelo) add check for this.
-    end_of_spectral_selection: u8,
-    approximation_high: u4,
-    approximation_low: u4,
-
-    pub fn read(reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!Header {
-        const segment_size = try reader.readInt(u16, .big);
-        if (JPEG_DEBUG) std.debug.print("StartOfScan: segment size = 0x{X}\n", .{segment_size});
-
-        const component_count = try reader.readByte();
-        if (component_count < 1 or component_count > 4) {
-            return ImageReadError.InvalidData;
-        }
-
-        if (JPEG_DEBUG) std.debug.print("  Component count: {}\n", .{component_count});
-
-        var components: [4]?ScanComponentSpec = @splat(null);
-
-        if (JPEG_VERY_DEBUG) std.debug.print("  Components:\n", .{});
-        var i: usize = 0;
-        while (i < component_count) : (i += 1) {
-            components[i] = try ScanComponentSpec.read(reader);
-        }
-
-        const start_of_spectral_selection = try reader.readByte();
-        const end_of_spectral_selection = try reader.readByte();
-
-        if (start_of_spectral_selection > 63) {
-            return ImageReadError.InvalidData;
-        }
-
-        if (end_of_spectral_selection < start_of_spectral_selection or end_of_spectral_selection > 63) {
-            return ImageReadError.InvalidData;
-        }
-
-        // If Ss = 0, then Se = 63.
-        if (start_of_spectral_selection == 0 and end_of_spectral_selection != 63) {
-            return ImageReadError.InvalidData;
-        }
-
-        if (JPEG_VERY_DEBUG) std.debug.print("  Spectral selection: {}-{}\n", .{ start_of_spectral_selection, end_of_spectral_selection });
-
-        const approximation_bits = try reader.readByte();
-        const approximation_high: u4 = @intCast(approximation_bits >> 4);
-        const approximation_low: u4 = @intCast(approximation_bits & 0b1111);
-        if (JPEG_VERY_DEBUG) std.debug.print("  Approximation bit position: high={} low={}\n", .{ approximation_high, approximation_low });
-
-        std.debug.assert(segment_size == 2 * component_count + 1 + 2 + 1 + 2);
-
-        return Header{
-            .components = components,
-            .start_of_spectral_selection = start_of_spectral_selection,
-            .end_of_spectral_selection = end_of_spectral_selection,
-            .approximation_high = approximation_high,
-            .approximation_low = approximation_low,
-        };
-    }
-};
-
-const ScanHeader = Header;
