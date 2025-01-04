@@ -47,6 +47,16 @@ pub fn init(frame: *const Frame, reader: buffered_stream_source.DefaultBufferedS
     var i: usize = 0;
     while (i < component_count) : (i += 1) {
         components[i] = try ScanComponentSpec.read(reader);
+
+        var valid_component_id: bool = false;
+        for (frame.frame_header.components) |frame_component| {
+            if (frame_component.id == components[i].?.component_selector) {
+                valid_component_id = true;
+            }
+        }
+        if (!valid_component_id) {
+            return ImageReadError.InvalidData;
+        }
     }
 
     const start_of_spectral_selection = try reader.readByte();
@@ -116,15 +126,13 @@ fn decodeMCU(self: *Self, mcu_id: usize) ImageReadError!void {
     for (0..self.component_count) |index| {
         const component: ScanComponentSpec = self.components[index].?;
 
-        const component_index: usize = blk: {
-            for (self.frame.frame_header.components, 0..) |frame_component, i| {
-                if (frame_component.id == component.component_selector) {
-                    break :blk i;
-                }
+        var component_index: usize = undefined;
+        for (self.frame.frame_header.components, 0..) |frame_component, i| {
+            if (frame_component.id == component.component_selector) {
+                component_index = i;
+                std.debug.assert(component_index < self.component_count);
             }
-
-            return ImageReadError.InvalidData;
-        };
+        }
 
         const block_count = self.frame.frame_header.getBlockCount(component_index);
         for (0..block_count) |i| {
