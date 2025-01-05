@@ -113,7 +113,7 @@ pub const JPEG = struct {
         marker = try reader.readInt(u16, .big);
 
         while (marker != @intFromEnum(Markers.end_of_image)) : (marker = try reader.readInt(u16, .big)) {
-            if (JPEG_DEBUG) std.debug.print("Parsing marker value: 0x{X}\n", .{marker});
+            // std.debug.print("Parsing marker value: 0x{X}\n", .{marker});
 
             switch (@as(Markers, @enumFromInt(marker))) {
                 .sof0 => { // Baseline DCT
@@ -121,7 +121,7 @@ pub const JPEG = struct {
                         return ImageError.Unsupported;
                     }
 
-                    self.frame = try Frame.read(self.allocator, &self.quantization_tables, &self.dc_huffman_tables, &self.ac_huffman_tables, &buffered_stream);
+                    self.frame = try Frame.read(self.allocator, self.restart_interval, &self.quantization_tables, &self.dc_huffman_tables, &self.ac_huffman_tables, &buffered_stream);
                 },
 
                 .sof1 => return ImageError.Unsupported, // extended sequential DCT Huffman coding
@@ -160,9 +160,15 @@ pub const JPEG = struct {
                     const application_data_length = try reader.readInt(u16, .big);
                     try buffered_stream.seekBy(application_data_length - 2);
                 },
+                .define_restart_interval => {
+                    try self.parseDefineRestartInterval(reader);
+                },
+                .restart0, .restart1, .restart2, .restart3, .restart4, .restart5, .restart6, .restart7 => {
+                    continue;
+                },
 
                 else => {
-                    // TODO(angelo): raise invalid marker, more precise error.
+                    std.debug.panic("Unrecognized Marker: {x}", .{marker});
                     return ImageReadError.InvalidData;
                 },
             }
@@ -255,5 +261,13 @@ pub const JPEG = struct {
             // Class+Destination + code counts + code table
             segment_size -= 1 + 16 + @as(u16, @intCast(huffman_table.code_map.count()));
         }
+    }
+
+    fn parseDefineRestartInterval(self: *JPEG, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) !void {
+        const segment_length = try reader.readInt(u16, .big);
+        std.debug.assert(segment_length - 4 == 0);
+
+        self.restart_interval = try reader.readInt(u16, .big);
+        std.debug.print("Restart Interval: {}", .{self.restart_interval});
     }
 };

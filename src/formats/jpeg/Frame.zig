@@ -23,6 +23,7 @@ quantization_tables: *[4]?QuantizationTable,
 dc_huffman_tables: *[2]?HuffmanTable,
 ac_huffman_tables: *[2]?HuffmanTable,
 mcu_storage: [][MAX_COMPONENTS][MAX_BLOCKS]MCU,
+restart_interval: u16 = 0,
 
 const JPEG_DEBUG = false;
 
@@ -38,7 +39,7 @@ pub fn calculateMCUCountInFrame(frame_header: *const FrameHeader) usize {
     return mcu_count_per_row * mcu_count_per_column;
 }
 
-pub fn read(allocator: Allocator, quantization_tables: *[4]?QuantizationTable, dc_huffman_tables: *[2]?HuffmanTable, ac_huffman_tables: *[2]?HuffmanTable, buffered_stream: *buffered_stream_source.DefaultBufferedStreamSourceReader) ImageReadError!Self {
+pub fn read(allocator: Allocator, restart_interval: u16, quantization_tables: *[4]?QuantizationTable, dc_huffman_tables: *[2]?HuffmanTable, ac_huffman_tables: *[2]?HuffmanTable, buffered_stream: *buffered_stream_source.DefaultBufferedStreamSourceReader) ImageReadError!Self {
     const reader = buffered_stream.reader();
     const frame_header = try FrameHeader.read(allocator, reader);
     const mcu_count: usize = calculateMCUCountInFrame(&frame_header);
@@ -52,6 +53,7 @@ pub fn read(allocator: Allocator, quantization_tables: *[4]?QuantizationTable, d
         .dc_huffman_tables = dc_huffman_tables,
         .ac_huffman_tables = ac_huffman_tables,
         .mcu_storage = mcu_storage,
+        .restart_interval = restart_interval,
     };
     errdefer self.deinit();
 
