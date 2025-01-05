@@ -8,10 +8,10 @@ This is a work in progress library to create, process, read and write different 
 
 ## Install & Build
 
-This library uses zig nominated [2024.10.0-mach](https://machengine.org/about/nominated-zig/). To install using [`zigup`](https://github.com/marler8997/zigup):
+This library uses zig nominated [2024.11.0-mach](https://machengine.org/about/nominated-zig/). To install using [`zigup`](https://github.com/marler8997/zigup):
 
 ```sh
-zigup 0.14.0-dev.1911+3bf89f55c
+zigup 0.14.0-dev.2577+271452d22
 ```
 
 ### Use zigimg in your project
