@@ -267,6 +267,6 @@ pub const JPEG = struct {
         std.debug.assert(segment_length - 4 == 0);
 
         self.restart_interval = try reader.readInt(u16, .big);
-        std.debug.print("Restart Interval: {}", .{self.restart_interval});
+        if (JPEG_DEBUG) std.debug.print("Restart Interval: {}", .{self.restart_interval});
     }
 };
