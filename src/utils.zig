@@ -82,17 +82,17 @@ pub fn writeStructForeign(writer: anytype, value: anytype) StructWriteError!void
     const T = @typeInfo(@TypeOf(value));
     inline for (std.meta.fields(T)) |field| {
         switch (@typeInfo(field.type)) {
-            .Int => {
+            .int => {
                 try writer.writeIntForeign(field.type, @field(value, field.name));
             },
-            .Struct => {
+            .@"struct" => {
                 try writeStructForeign(writer, @field(value, field.name));
             },
-            .Enum => {
+            .@"enum" => {
                 const enum_value = @intFromEnum(@field(value, field.name));
                 try writer.writeIntForeign(field.type, enum_value);
             },
-            .Bool => {
+            .bool => {
                 try writer.writeByte(@intFromBool(@field(value, field.name)));
             },
             else => {
