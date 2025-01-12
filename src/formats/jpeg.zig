@@ -37,8 +37,8 @@ pub const JPEG = struct {
     frame: ?Frame = null,
     allocator: Allocator,
     quantization_tables: [4]?QuantizationTable = @splat(null),
-    dc_huffman_tables: [2]?HuffmanTable = @splat(null),
-    ac_huffman_tables: [2]?HuffmanTable = @splat(null),
+    dc_huffman_tables: [4]?HuffmanTable = @splat(null),
+    ac_huffman_tables: [4]?HuffmanTable = @splat(null),
     restart_interval: u16 = 0,
 
     pub fn init(allocator: Allocator) JPEG {
@@ -239,7 +239,7 @@ pub const JPEG = struct {
         while (segment_size > 0) {
             const class_and_destination = try reader.readByte();
             const table_class = class_and_destination >> 4;
-            const table_destination = class_and_destination & 0b1;
+            const table_destination = class_and_destination & 0x0F;
 
             const huffman_table = try HuffmanTable.read(self.allocator, table_class, reader);
 
