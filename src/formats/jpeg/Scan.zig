@@ -160,7 +160,6 @@ fn decodeMCU(self: *Self, mcu_id: usize) ImageReadError!void {
 }
 
 fn decodeDCCoefficient(self: *Self, block: *Block, component_destination: usize) ImageReadError!void {
-    if (self.start_of_spectral_selection == 0) {
         const maybe_magnitude = try self.reader.readCode();
         if (maybe_magnitude > 11) return ImageReadError.InvalidData;
         const magnitude: u4 = @intCast(maybe_magnitude);
@@ -170,30 +169,18 @@ fn decodeDCCoefficient(self: *Self, block: *Block, component_destination: usize)
         self.prediction_values[component_destination] = dc_coefficient;
 
     block[0] = dc_coefficient;
-    }
 }
 
 fn decodeACCoefficients(self: *Self, block: *Block) ImageReadError!void {
     var ac: usize = undefined;
-    if (self.frame.frame_type == Markers.sof0) {
         ac = 1;
-    } else if (self.frame.frame_type == Markers.sof2) {
-        if (self.start_of_spectral_selection == 0) return;
-        ac = self.start_of_spectral_selection;
-    }
-    var did_see_eob = false;
-    while (ac < self.end_of_spectral_selection + 1) : (ac += 1) {
-        if (did_see_eob) {
-            mcu[ZigzagOffsets[ac]] = 0;
-            continue;
-        }
-
+    while (ac < 64) : (ac += 1) {
         const zero_run_length_and_magnitude = try self.reader.readCode();
         // 00 == EOB
         if (zero_run_length_and_magnitude == 0x00) {
-            did_see_eob = true;
+            while (ac < 64) : (ac += 1) {
                 block[ZigzagOffsets[ac]] = 0;
-            continue;
+            }
         }
 
         const zero_run_length = zero_run_length_and_magnitude >> 4;
