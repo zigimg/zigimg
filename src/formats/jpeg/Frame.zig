@@ -14,7 +14,7 @@ const color = @import("../../color.zig");
 const IDCTMultipliers = @import("utils.zig").IDCTMultipliers;
 const MAX_COMPONENTS = @import("utils.zig").MAX_COMPONENTS;
 const MAX_BLOCKS = @import("utils.zig").MAX_BLOCKS;
-const MCU = @import("utils.zig").MCU;
+const Block = @import("utils.zig").Block;
 
 const Self = @This();
 allocator: Allocator,
@@ -45,7 +45,7 @@ pub fn read(allocator: Allocator, frame_type: Markers, restart_interval: u16, qu
     const frame_header = try FrameHeader.read(allocator, reader);
     const mcu_count: usize = calculateMCUCountInFrame(&frame_header);
 
-    const mcu_storage = try allocator.alloc([MAX_COMPONENTS][MAX_BLOCKS]MCU, mcu_count);
+    const mcu_storage = try allocator.alloc([MAX_COMPONENTS][MAX_BLOCKS]Block, mcu_count);
 
     var self = Self{
         .allocator = allocator,
@@ -226,22 +226,22 @@ pub fn idctMCUs(self: *Self) void {
     }
 }
 
-fn idctBlock(mcu: *MCU) void {
-    var result: MCU = undefined;
+fn idctBlock(block: *Block) void {
+    var result: Block = undefined;
 
     for (0..8) |y| {
         for (0..8) |x| {
-            result[y * 8 + x] = idct(mcu, x, y, 0, 0);
+            result[y * 8 + x] = idct(block, x, y, 0, 0);
         }
     }
 
     // write final result back
     for (0..64) |idx| {
-        mcu[idx] = result[idx];
+        block[idx] = result[idx];
     }
 }
 
-fn idct(mcu: *const MCU, x: usize, y: usize, mcu_id: usize, component_id: usize) i8 {
+fn idct(block: *const Block, x: usize, y: usize, mcu_id: usize, component_id: usize) i8 {
     // TODO(angelo): if Ns > 1 it is not interleaved, so the order this should be fixed...
     // FIXME is wrong for Ns > 1
     var reconstructed_pixel: f32 = 0.0;
@@ -250,8 +250,8 @@ fn idct(mcu: *const MCU, x: usize, y: usize, mcu_id: usize, component_id: usize)
     while (u < 8) : (u += 1) {
         var v: usize = 0;
         while (v < 8) : (v += 1) {
-            const mcu_value = mcu[v * 8 + u];
-            reconstructed_pixel += IDCTMultipliers[y][x][u][v] * @as(f32, @floatFromInt(mcu_value));
+            const block_value = block[v * 8 + u];
+            reconstructed_pixel += IDCTMultipliers[y][x][u][v] * @as(f32, @floatFromInt(block_value));
         }
     }
 

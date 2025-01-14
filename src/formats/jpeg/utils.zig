@@ -117,4 +117,4 @@ pub const Markers = enum(u16) {
 
 pub const MAX_COMPONENTS = 3;
 pub const MAX_BLOCKS = 8;
-pub const MCU = [64]i32;
+pub const Block = [64]i32;

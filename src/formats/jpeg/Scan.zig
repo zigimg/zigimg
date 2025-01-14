@@ -10,7 +10,7 @@ const FrameHeader = @import("FrameHeader.zig");
 const Frame = @import("Frame.zig");
 const HuffmanReader = @import("huffman.zig").Reader;
 
-const MCU = @import("utils.zig").MCU;
+const Block = @import("utils.zig").Block;
 const ZigzagOffsets = @import("utils.zig").ZigzagOffsets;
 
 const Self = @This();
@@ -159,7 +159,7 @@ fn decodeMCU(self: *Self, mcu_id: usize) ImageReadError!void {
     }
 }
 
-fn decodeDCCoefficient(self: *Self, mcu: *MCU, component_destination: usize) ImageReadError!void {
+fn decodeDCCoefficient(self: *Self, block: *Block, component_destination: usize) ImageReadError!void {
     if (self.start_of_spectral_selection == 0) {
         const maybe_magnitude = try self.reader.readCode();
         if (maybe_magnitude > 11) return ImageReadError.InvalidData;
@@ -169,11 +169,11 @@ fn decodeDCCoefficient(self: *Self, mcu: *MCU, component_destination: usize) Ima
         const dc_coefficient = diff + self.prediction_values[component_destination];
         self.prediction_values[component_destination] = dc_coefficient;
 
-        mcu[0] = dc_coefficient;
+    block[0] = dc_coefficient;
     }
 }
 
-fn decodeACCoefficients(self: *Self, mcu: *MCU) ImageReadError!void {
+fn decodeACCoefficients(self: *Self, block: *Block) ImageReadError!void {
     var ac: usize = undefined;
     if (self.frame.frame_type == Markers.sof0) {
         ac = 1;
@@ -192,7 +192,7 @@ fn decodeACCoefficients(self: *Self, mcu: *MCU) ImageReadError!void {
         // 00 == EOB
         if (zero_run_length_and_magnitude == 0x00) {
             did_see_eob = true;
-            mcu[ZigzagOffsets[ac]] = 0;
+                block[ZigzagOffsets[ac]] = 0;
             continue;
         }
 
@@ -206,11 +206,11 @@ fn decodeACCoefficients(self: *Self, mcu: *MCU) ImageReadError!void {
 
         var i: usize = 0;
         while (i < zero_run_length) : (i += 1) {
-            mcu[ZigzagOffsets[ac]] = 0;
+            block[ZigzagOffsets[ac]] = 0;
             ac += 1;
         }
 
-        mcu[ZigzagOffsets[ac]] = ac_coefficient;
+        block[ZigzagOffsets[ac]] = ac_coefficient;
     }
 }
 
