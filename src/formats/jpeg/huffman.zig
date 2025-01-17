@@ -102,7 +102,7 @@ pub const Reader = struct {
         self.table = table;
     }
 
-    fn peekBits(self: *Self, num_bits: u5) ImageReadError!u32 {
+    pub fn peekBits(self: *Self, num_bits: u5) ImageReadError!u32 {
         if (num_bits > 16) {
             return ImageReadError.InvalidData;
         }
@@ -129,13 +129,17 @@ pub const Reader = struct {
         return (self.bit_buffer >> 1) >> (31 - num_bits);
     }
 
-    fn consumeBits(self: *Self, num_bits: u5) ImageReadError!void {
-        if (num_bits > 16) {
-            return ImageReadError.InvalidData;
-        }
+    pub fn consumeBits(self: *Self, num_bits: u5) void {
+        std.debug.assert(num_bits <= self.bit_count and num_bits <= 16);
 
         self.bit_buffer <<= num_bits;
         self.bit_count -= num_bits;
+    }
+
+    pub fn readBits(self: *Self, num_bits: u5) ImageReadError!u32 {
+        const bits: u32 = try peekBits(self, num_bits);
+        consumeBits(self, num_bits);
+        return bits;
     }
 
     pub fn flushBits(self: *Self) void {
@@ -152,7 +156,7 @@ pub const Reader = struct {
             // instead of O(log n), so should be faster.
             code = try self.peekBits(length);
             if (self.table.?.code_map.get(.{ .length_minus_one = @intCast(length - 1), .code = @intCast(code) })) |value| {
-                try self.consumeBits(length);
+                self.consumeBits(length);
                 return value;
             }
         }
@@ -167,7 +171,7 @@ pub const Reader = struct {
             return 0;
 
         const bits = try self.peekBits(magnitude);
-        try self.consumeBits(magnitude);
+        self.consumeBits(magnitude);
 
         // The sign of the read bits value.
         const bits_sign = (bits >> (magnitude - 1)) & 1;
