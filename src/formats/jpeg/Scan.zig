@@ -162,7 +162,20 @@ fn decodeMCU(self: *Self, mcu_id: usize, skips: *u32) ImageReadError!void {
 fn decodeBlockProgressive(self: *Self, component: *const ScanComponentSpec, block: *Block, component_index: usize, skips: *u32) ImageReadError!void {
     if (self.start_of_spectral_selection == 0 and self.approximation_high == 0) {
         self.reader.setHuffmanTable(&self.frame.dc_huffman_tables[component.dc_table_selector].?);
-        try self.decodeDCCoefficient(block, component_index);
+        const maybe_magnitude = try self.reader.readCode();
+        if (maybe_magnitude > 11) return ImageReadError.InvalidData;
+        const magnitude: u4 = @intCast(maybe_magnitude);
+
+        const diff: i12 = @intCast(try self.reader.readMagnitudeCoded(magnitude));
+        const dc_coefficient = diff + self.prediction_values[component_index];
+        self.prediction_values[component_index] = dc_coefficient;
+
+        block[0] = dc_coefficient << self.approximation_low;
+    } else if (self.start_of_spectral_selection == 0 and self.approximation_high != 0) {
+        self.reader.setHuffmanTable(&self.frame.dc_huffman_tables[component.dc_table_selector].?);
+
+        const bit: u32 = try self.reader.readBits(1);
+        block[0] |= @bitCast(bit << self.approximation_low);
     } else if (self.start_of_spectral_selection != 0 and self.approximation_high == 0) {
         var ac: usize = self.start_of_spectral_selection;
         if (skips.* > 0) {
@@ -180,16 +193,16 @@ fn decodeBlockProgressive(self: *Self, component: *const ScanComponentSpec, bloc
             const maybe_magnitude = zero_run_length_and_magnitude & 0x0F;
 
             if (maybe_magnitude == 0) {
-                if (zero_run_length == 15) {
-                    for (0..zero_run_length) |_| {
-                        block[ZigzagOffsets[ac]] = 0;
-                        ac += 1;
-                    }
-                } else {
+                if (zero_run_length < 15) {
                     const extra_skips: u32 = try self.reader.readBits(@intCast(zero_run_length));
                     skips.* = (@as(u32, 1) << @intCast(zero_run_length)) - 1;
                     skips.* += extra_skips;
                     while (ac <= self.end_of_spectral_selection) {
+                        block[ZigzagOffsets[ac]] = 0;
+                        ac += 1;
+                    }
+                } else {
+                    for (0..zero_run_length) |_| {
                         block[ZigzagOffsets[ac]] = 0;
                         ac += 1;
                     }
@@ -204,17 +217,66 @@ fn decodeBlockProgressive(self: *Self, component: *const ScanComponentSpec, bloc
                 }
                 const ac_coefficient: i11 = @intCast(try self.reader.readMagnitudeCoded(magnitude));
 
-                block[ZigzagOffsets[ac]] = ac_coefficient;
+                block[ZigzagOffsets[ac]] = ac_coefficient << self.approximation_low;
                 ac += 1;
             }
         }
-    } else {
-        // Successive Approximation isn't implemented
-        return ImageReadError.InvalidData;
+    } else if (self.start_of_spectral_selection != 0 and self.approximation_high != 0) {
+        self.reader.setHuffmanTable(&self.frame.ac_huffman_tables[component.ac_table_selector].?);
+
+        const bit: i32 = @as(i32, 1) << self.approximation_low;
+        var ac: usize = self.start_of_spectral_selection;
+        if (skips.* == 0) {
+            while (ac <= self.end_of_spectral_selection) {
+                var coeff: i32 = 0;
+                const zero_run_length_and_magnitude = try self.reader.readCode();
+                var zero_run_length = zero_run_length_and_magnitude >> 4;
+                const maybe_magnitude = zero_run_length_and_magnitude & 0x0F;
+
+                if (maybe_magnitude == 0) {
+                    if (zero_run_length < 15) {
+                        skips.* = (@as(u32, 1) << @intCast(zero_run_length));
+                        const extra_skips: u32 = try self.reader.readBits(@intCast(zero_run_length));
+                        skips.* += extra_skips;
+                        break; // start processing skips
+                    } // no special treatment for zero_run_length == 15
+                } else if (maybe_magnitude != 0) {
+                    const sign_bit: u32 = try self.reader.readBits(1);
+                    coeff = if (sign_bit == 1) bit else -bit;
+                }
+
+                while (ac <= self.end_of_spectral_selection) {
+                    if (block[ZigzagOffsets[ac]] == 0) {
+                        if (zero_run_length > 0) {
+                            zero_run_length -= 1;
+                        } else {
+                            block[ZigzagOffsets[ac]] = coeff;
+                            ac += 1;
+                            break;
+                        }
+                    } else {
+                        const sign_bit: u32 = try self.reader.readBits(1);
+                        block[ZigzagOffsets[ac]] += if (sign_bit == 1) bit else -bit;
+                    }
+                    ac += 1;
+                }
+            }
+        }
+
+        if (skips.* > 0) {
+            while (ac <= self.end_of_spectral_selection) {
+                if (block[ZigzagOffsets[ac]] != 0) {
+                    const sign_bit: u32 = try self.reader.readBits(1);
+                    block[ZigzagOffsets[ac]] += if (sign_bit == 1) bit else -bit;
+                }
+                ac += 1;
+            }
+            skips.* -= 1;
+        }
     }
 }
 
-fn decodeDCCoefficient(self: *Self, mcu: *Block, component_destination: usize) ImageReadError!void {
+fn decodeDCCoefficient(self: *Self, block: *Block, component_destination: usize) ImageReadError!void {
     const maybe_magnitude = try self.reader.readCode();
     if (maybe_magnitude > 11) return ImageReadError.InvalidData;
     const magnitude: u4 = @intCast(maybe_magnitude);
@@ -223,7 +285,7 @@ fn decodeDCCoefficient(self: *Self, mcu: *Block, component_destination: usize) I
     const dc_coefficient = diff + self.prediction_values[component_destination];
     self.prediction_values[component_destination] = dc_coefficient;
 
-    mcu[0] = dc_coefficient;
+    block[0] = dc_coefficient;
 }
 
 fn decodeACCoefficients(self: *Self, block: *Block) ImageReadError!void {
