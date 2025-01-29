@@ -66,7 +66,7 @@ zig build test
 | BMP           | ✔️ (Partial)  | ✔️ (Partial)  |
 | GIF           | ✔️            | ❌            |
 | ICO           | ❌            | ❌            |
-| IILBM         | ❌            | ❌            |
+| ILBM          | ❌            | ❌            |
 | JPEG          | ❌            | ❌            |
 | PAM           | ✔️            | ✔️            |
 | PBM           | ✔️            | ✔️            |
