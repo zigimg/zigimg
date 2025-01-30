@@ -230,6 +230,7 @@ const Header = struct {
             .indexed8,
             .indexed16,
             .float32,
+            .rgb332,
             .rgb565,
             => return error.Unsupported, // unsupported pixel format
 

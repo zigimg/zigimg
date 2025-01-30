@@ -36,6 +36,7 @@ pub const PixelFormat = enum(u32) {
     grayscale16 = toPixelFormatValue(.{ .channel_count = 1, .bits_per_channel = 16 }),
     grayscale8Alpha = toPixelFormatValue(.{ .channel_count = 2, .bits_per_channel = 8 }),
     grayscale16Alpha = toPixelFormatValue(.{ .channel_count = 2, .bits_per_channel = 16 }),
+    rgb332 = toPixelFormatValue(.{ .channel_count = 3, .bits_per_channel = 3 }),
     rgb555 = toPixelFormatValue(.{ .channel_count = 3, .bits_per_channel = 5 }),
     rgb565 = toPixelFormatValue(.{ .variant = .rgb565, .channel_count = 3, .bits_per_channel = 5 }),
     rgb24 = toPixelFormatValue(.{ .channel_count = 3, .bits_per_channel = 8 }),
@@ -86,6 +87,7 @@ pub const PixelFormat = enum(u32) {
 
     pub fn bitsPerChannel(self: PixelFormat) u8 {
         return switch (self) {
+            .rgb332 => unreachable, // TODO: what to do in that case?
             .rgb565 => unreachable, // TODO: what to do in that case?
             inline else => |value| info(value).bits_per_channel,
         };
@@ -108,6 +110,7 @@ comptime {
     std.debug.assert(@intFromEnum(PixelFormat.grayscale1) == 0x101);
     std.debug.assert(@intFromEnum(PixelFormat.grayscale16) == 0x110);
     std.debug.assert(@intFromEnum(PixelFormat.grayscale8Alpha) == 0x208);
+    std.debug.assert(@intFromEnum(PixelFormat.rgb332) == 0x303);
     std.debug.assert(@intFromEnum(PixelFormat.rgb555) == 0x305);
     std.debug.assert(@intFromEnum(PixelFormat.rgb565) == 0x3305);
     std.debug.assert(@intFromEnum(PixelFormat.rgba32) == 0x408);

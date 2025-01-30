@@ -55,6 +55,13 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.indexed16, .indexed4) => try IndexedLargeToSmall(.indexed16, .indexed4).convert(allocator, source, &destination),
         conversionId(.indexed16, .indexed8) => try IndexedLargeToSmall(.indexed16, .indexed8).convert(allocator, source, &destination),
 
+        // Indexted -> RGB332
+        conversionId(.indexed1, .rgb332) => IndexedToRgbColor(.indexed1, .rgb332).convert(source, &destination),
+        conversionId(.indexed2, .rgb332) => IndexedToRgbColor(.indexed2, .rgb332).convert(source, &destination),
+        conversionId(.indexed4, .rgb332) => IndexedToRgbColor(.indexed4, .rgb332).convert(source, &destination),
+        conversionId(.indexed8, .rgb332) => IndexedToRgbColor(.indexed8, .rgb332).convert(source, &destination),
+        conversionId(.indexed16, .rgb332) => IndexedToRgbColor(.indexed16, .rgb332).convert(source, &destination),
+
         // Indexed -> RGB555
         conversionId(.indexed1, .rgb555) => IndexedToRgbColor(.indexed1, .rgb555).convert(source, &destination),
         conversionId(.indexed2, .rgb555) => IndexedToRgbColor(.indexed2, .rgb555).convert(source, &destination),
@@ -224,6 +231,15 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
 
         conversionId(.grayscale2, .grayscale1) => GrayscaleToGrayscale(.grayscale2, .grayscale1).convert(source, &destination),
 
+        // Grayscale -> RGB332
+        conversionId(.grayscale1, .rgb332) => GreyscaleToRgbColor(.grayscale1, .rgb332).convert(source, &destination),
+        conversionId(.grayscale2, .rgb332) => GreyscaleToRgbColor(.grayscale2, .rgb332).convert(source, &destination),
+        conversionId(.grayscale4, .rgb332) => GreyscaleToRgbColor(.grayscale4, .rgb332).convert(source, &destination),
+        conversionId(.grayscale8, .rgb332) => GreyscaleToRgbColor(.grayscale8, .rgb332).convert(source, &destination),
+        conversionId(.grayscale16, .rgb332) => GreyscaleToRgbColor(.grayscale16, .rgb332).convert(source, &destination),
+        conversionId(.grayscale8Alpha, .rgb332) => GreyscaleAlphaToRgbColor(.grayscale8Alpha, .rgb332).convert(source, &destination),
+        conversionId(.grayscale16Alpha, .rgb332) => GreyscaleAlphaToRgbColor(.grayscale16Alpha, .rgb332).convert(source, &destination),
+
         // Grayscale -> RGB555
         conversionId(.grayscale1, .rgb555) => GreyscaleToRgbColor(.grayscale1, .rgb555).convert(source, &destination),
         conversionId(.grayscale2, .rgb555) => GreyscaleToRgbColor(.grayscale2, .rgb555).convert(source, &destination),
@@ -314,6 +330,33 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.grayscale8Alpha, .float32) => grayscaleToColorf32(.grayscale8Alpha, source, &destination),
         conversionId(.grayscale16Alpha, .float32) => grayscaleToColorf32(.grayscale16Alpha, source, &destination),
 
+        // rgb332 -> Indexed
+        conversionId(.rgb332, .indexed1) => try RgbColorToIndexed(.rgb332, .indexed1).convert(allocator, source, &destination),
+        conversionId(.rgb332, .indexed2) => try RgbColorToIndexed(.rgb332, .indexed2).convert(allocator, source, &destination),
+        conversionId(.rgb332, .indexed4) => try RgbColorToIndexed(.rgb332, .indexed4).convert(allocator, source, &destination),
+        conversionId(.rgb332, .indexed8) => try RgbColorToIndexed(.rgb332, .indexed8).convert(allocator, source, &destination),
+        conversionId(.rgb332, .indexed16) => try RgbColorToIndexed(.rgb332, .indexed16).convert(allocator, source, &destination),
+
+        // rgb332 -> Grayscale
+        conversionId(.rgb332, .grayscale1) => RgbColorToGrayscale(.rgb332, .grayscale1).convert(source, &destination),
+        conversionId(.rgb332, .grayscale2) => RgbColorToGrayscale(.rgb332, .grayscale2).convert(source, &destination),
+        conversionId(.rgb332, .grayscale4) => RgbColorToGrayscale(.rgb332, .grayscale4).convert(source, &destination),
+        conversionId(.rgb332, .grayscale8) => RgbColorToGrayscale(.rgb332, .grayscale8).convert(source, &destination),
+        conversionId(.rgb332, .grayscale8Alpha) => RgbColorToGrayscaleAlpha(.rgb332, .grayscale8Alpha).convert(source, &destination),
+        conversionId(.rgb332, .grayscale16Alpha) => RgbColorToGrayscaleAlpha(.rgb332, .grayscale16Alpha).convert(source, &destination),
+
+        // rgb332 -> RGB + Colorf32
+        conversionId(.rgb332, .rgb555) => RgbColorToRgbColor(.rgb332, .rgb555).convert(source, &destination),
+        conversionId(.rgb332, .rgb565) => RgbColorToRgbColor(.rgb332, .rgb565).convert(source, &destination),
+        conversionId(.rgb332, .rgb24) => RgbColorToRgbColor(.rgb332, .rgb24).convert(source, &destination),
+        conversionId(.rgb332, .rgba32) => RgbColorToRgbaColor(.rgb332, .rgba32).convert(source, &destination),
+        conversionId(.rgb332, .bgr555) => RgbColorToRgbColor(.rgb332, .bgr555).convert(source, &destination),
+        conversionId(.rgb332, .bgr24) => RgbColorToRgbColor(.rgb332, .bgr24).convert(source, &destination),
+        conversionId(.rgb332, .bgra32) => RgbColorToRgbaColor(.rgb332, .bgra32).convert(source, &destination),
+        conversionId(.rgb332, .rgb48) => RgbColorToRgbColor(.rgb332, .rgb48).convert(source, &destination),
+        conversionId(.rgb332, .rgba64) => RgbColorToRgbaColor(.rgb332, .rgba64).convert(source, &destination),
+        conversionId(.rgb332, .float32) => rgbColorToColorf32(.rgb332, source, &destination),
+
         // rgb555 -> Indexed
         conversionId(.rgb555, .indexed1) => try RgbColorToIndexed(.rgb555, .indexed1).convert(allocator, source, &destination),
         conversionId(.rgb555, .indexed2) => try RgbColorToIndexed(.rgb555, .indexed2).convert(allocator, source, &destination),
@@ -330,6 +373,7 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.rgb555, .grayscale16Alpha) => RgbColorToGrayscaleAlpha(.rgb555, .grayscale16Alpha).convert(source, &destination),
 
         // rgb555 -> RGB + Colorf32
+        conversionId(.rgb555, .rgb332) => RgbColorToRgbColor(.rgb555, .rgb332).convert(source, &destination),
         conversionId(.rgb555, .rgb565) => RgbColorToRgbColor(.rgb555, .rgb565).convert(source, &destination),
         conversionId(.rgb555, .rgb24) => RgbColorToRgbColor(.rgb555, .rgb24).convert(source, &destination),
         conversionId(.rgb555, .rgba32) => RgbColorToRgbaColor(.rgb555, .rgba32).convert(source, &destination),
@@ -356,6 +400,7 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.rgb565, .grayscale16Alpha) => RgbColorToGrayscaleAlpha(.rgb565, .grayscale16Alpha).convert(source, &destination),
 
         // rgb565 -> RGB + Colorf32
+        conversionId(.rgb565, .rgb332) => RgbColorToRgbColor(.rgb565, .rgb332).convert(source, &destination),
         conversionId(.rgb565, .rgb555) => RgbColorToRgbColor(.rgb565, .rgb555).convert(source, &destination),
         conversionId(.rgb565, .rgb24) => RgbColorToRgbColor(.rgb565, .rgb24).convert(source, &destination),
         conversionId(.rgb565, .rgba32) => RgbColorToRgbaColor(.rgb565, .rgba32).convert(source, &destination),
@@ -382,6 +427,7 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.rgb24, .grayscale16Alpha) => RgbColorToGrayscaleAlpha(.rgb24, .grayscale16Alpha).convert(source, &destination),
 
         // rgb24 -> RGB + Colorf32
+        conversionId(.rgb24, .rgb332) => RgbColorToRgbColor(.rgb24, .rgb332).convert(source, &destination),
         conversionId(.rgb24, .rgb555) => RgbColorToRgbColor(.rgb24, .rgb555).convert(source, &destination),
         conversionId(.rgb24, .rgb565) => RgbColorToRgbColor(.rgb24, .rgb565).convert(source, &destination),
         conversionId(.rgb24, .rgba32) => RgbColorToRgbaColor(.rgb24, .rgba32).convert(source, &destination),
@@ -408,6 +454,7 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.rgba32, .grayscale16Alpha) => RgbColorToGrayscaleAlpha(.rgba32, .grayscale16Alpha).convert(source, &destination),
 
         // rgba32 -> RGB + Colorf32
+        conversionId(.rgba32, .rgb332) => RgbColorToRgbColor(.rgba32, .rgb332).convert(source, &destination),
         conversionId(.rgba32, .rgb555) => RgbaColorToRgbColor(.rgba32, .rgb555).convert(source, &destination),
         conversionId(.rgba32, .rgb565) => RgbaColorToRgbColor(.rgba32, .rgb565).convert(source, &destination),
         conversionId(.rgba32, .rgb24) => RgbaColorToRgbColor(.rgba32, .rgb24).convert(source, &destination),
@@ -434,6 +481,8 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.bgr555, .grayscale16Alpha) => RgbColorToGrayscaleAlpha(.bgr555, .grayscale16Alpha).convert(source, &destination),
 
         // bgr555 -> RGB + Colorf32
+        // TODO(ntr0): check if the conversions are correct
+        conversionId(.bgr555, .rgb332) => RgbColorToRgbColor(.bgr555, .rgb332).convert(source, &destination),
         conversionId(.bgr555, .rgb555) => RgbColorToRgbColor(.rgb555, .rgb555).convert(source, &destination),
         conversionId(.bgr555, .rgb565) => RgbColorToRgbColor(.rgb555, .rgb565).convert(source, &destination),
         conversionId(.bgr555, .rgb24) => RgbColorToRgbColor(.rgb555, .rgb24).convert(source, &destination),
@@ -460,6 +509,7 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.bgr24, .grayscale16Alpha) => RgbColorToGrayscaleAlpha(.bgr24, .grayscale16Alpha).convert(source, &destination),
 
         // bgr24 -> RGB + Colorf32
+        conversionId(.bgr24, .rgb332) => RgbColorToRgbColor(.bgr24, .rgb332).convert(source, &destination),
         conversionId(.bgr24, .rgb555) => RgbColorToRgbColor(.bgr24, .rgb555).convert(source, &destination),
         conversionId(.bgr24, .rgb565) => RgbColorToRgbColor(.bgr24, .rgb565).convert(source, &destination),
         conversionId(.bgr24, .rgb24) => RgbColorToRgbColor(.bgr24, .rgb24).convert(source, &destination),
@@ -486,6 +536,7 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.bgra32, .grayscale16Alpha) => RgbColorToGrayscaleAlpha(.bgra32, .grayscale16Alpha).convert(source, &destination),
 
         // bgra32 -> RGB + Colorf32
+        conversionId(.bgra32, .rgb332) => RgbColorToRgbColor(.bgra32, .rgb332).convert(source, &destination),
         conversionId(.bgra32, .rgb555) => RgbaColorToRgbColor(.bgra32, .rgb555).convert(source, &destination),
         conversionId(.bgra32, .rgb565) => RgbaColorToRgbColor(.bgra32, .rgb565).convert(source, &destination),
         conversionId(.bgra32, .rgb24) => RgbaColorToRgbColor(.bgra32, .rgb24).convert(source, &destination),
@@ -512,6 +563,7 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.rgb48, .grayscale16Alpha) => RgbColorToGrayscaleAlpha(.rgb48, .grayscale16Alpha).convert(source, &destination),
 
         // rgb48 -> RGB + Colorf32
+        conversionId(.rgb48, .rgb332) => RgbColorToRgbColor(.rgb48, .rgb332).convert(source, &destination),
         conversionId(.rgb48, .rgb555) => RgbColorToRgbColor(.rgb48, .rgb555).convert(source, &destination),
         conversionId(.rgb48, .rgb565) => RgbColorToRgbColor(.rgb48, .rgb565).convert(source, &destination),
         conversionId(.rgb48, .rgb24) => RgbColorToRgbColor(.rgb48, .rgb24).convert(source, &destination),
@@ -538,6 +590,7 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.rgba64, .grayscale16Alpha) => RgbColorToGrayscaleAlpha(.rgba64, .grayscale16Alpha).convert(source, &destination),
 
         // rgba64 -> RGB + Colorf32
+        conversionId(.rgba64, .rgb332) => RgbColorToRgbColor(.rgba64, .rgb332).convert(source, &destination),
         conversionId(.rgba64, .rgb555) => RgbaColorToRgbColor(.rgba64, .rgb555).convert(source, &destination),
         conversionId(.rgba64, .rgb565) => RgbaColorToRgbColor(.rgba64, .rgb565).convert(source, &destination),
         conversionId(.rgba64, .rgb24) => RgbaColorToRgbColor(.rgba64, .rgb24).convert(source, &destination),
@@ -564,6 +617,7 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.float32, .grayscale16Alpha) => colorf32ToGrayscaleAlpha(.grayscale16Alpha, source, &destination),
 
         // Colorf32(float32) -> RGB
+        conversionId(.float32, .rgb332) => colorf32ToRgbColor(.rgb332, source, &destination),
         conversionId(.float32, .rgb555) => colorf32ToRgbColor(.rgb555, source, &destination),
         conversionId(.float32, .rgb565) => colorf32ToRgbColor(.rgb565, source, &destination),
         conversionId(.float32, .rgb24) => colorf32ToRgbColor(.rgb24, source, &destination),
