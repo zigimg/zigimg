@@ -104,6 +104,30 @@ fn testHeaderWithInvalidValue(buf: []u8, position: usize, val: u8) !void {
     buf[position] = origin;
 }
 
+test "Indexed PNG with transparency (Aseprite output)" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "png/aseprite_indexed_transparent.png");
+    defer file.close();
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    var png_image = try png.PNG.readImage(helpers.zigimg_test_allocator, &stream_source);
+    defer png_image.deinit(helpers.zigimg_test_allocator);
+
+    try std.testing.expect(png_image.pixels == .indexed8);
+
+    const pixels8_indexed = png_image.pixels.indexed8;
+
+    try helpers.expectEq(pixels8_indexed.palette[0].r, 0);
+    try helpers.expectEq(pixels8_indexed.palette[0].g, 0);
+    try helpers.expectEq(pixels8_indexed.palette[0].b, 0);
+    try helpers.expectEq(pixels8_indexed.palette[0].a, 0);
+
+    try helpers.expectEq(pixels8_indexed.palette[1].r, 0x22);
+    try helpers.expectEq(pixels8_indexed.palette[1].g, 0x20);
+    try helpers.expectEq(pixels8_indexed.palette[1].b, 0x34);
+    try helpers.expectEq(pixels8_indexed.palette[1].a, 255);
+}
+
 test "PNG Official Test Suite" {
     try testWithDir(helpers.fixtures_path ++ "png/", true);
 }
