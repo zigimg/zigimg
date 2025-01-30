@@ -121,14 +121,3 @@ pub fn getMaxVerticalSamplingFactor(self: Self) usize {
 
     return ret;
 }
-
-pub fn getBlockCount(self: Self, component_id: usize) usize {
-    // MCU of non-interleaved is just one block.
-    if (self.components.len == 1) {
-        return 1;
-    }
-
-    const horizontal_block_count = self.components[component_id].horizontal_sampling_factor;
-    const vertical_block_count = self.components[component_id].vertical_sampling_factor;
-    return horizontal_block_count * vertical_block_count;
-}

@@ -22,7 +22,6 @@ frame_header: FrameHeader,
 quantization_tables: *[4]?QuantizationTable,
 dc_huffman_tables: *[4]?HuffmanTable,
 ac_huffman_tables: *[4]?HuffmanTable,
-mcu_storage: [][MAX_COMPONENTS][MAX_BLOCKS]Block,
 block_storage: [][MAX_COMPONENTS]Block,
 restart_interval: u16 = 0,
 frame_type: Markers = undefined,
@@ -34,22 +33,9 @@ block_height_actual: u32 = 0,
 
 const JPEG_DEBUG = false;
 
-pub fn calculateMCUCountInFrame(frame_header: *const FrameHeader) usize {
-    const horizontal_block_count = if (1 < frame_header.components.len) frame_header.getMaxHorizontalSamplingFactor() else 1;
-    const vertical_block_count = if (1 < frame_header.components.len) frame_header.getMaxVerticalSamplingFactor() else 1;
-    const mcu_width = 8 * horizontal_block_count;
-    const mcu_height = 8 * vertical_block_count;
-    const mcu_count_per_row = (frame_header.width + mcu_width - 1) / mcu_width;
-    const mcu_count_per_column = (frame_header.height + mcu_height - 1) / mcu_height;
-    return mcu_count_per_row * mcu_count_per_column;
-}
-
 pub fn read(allocator: Allocator, frame_type: Markers, restart_interval: u16, quantization_tables: *[4]?QuantizationTable, dc_huffman_tables: *[4]?HuffmanTable, ac_huffman_tables: *[4]?HuffmanTable, buffered_stream: *buffered_stream_source.DefaultBufferedStreamSourceReader) ImageReadError!Self {
     const reader = buffered_stream.reader();
     const frame_header = try FrameHeader.read(allocator, reader);
-    const mcu_count: usize = calculateMCUCountInFrame(&frame_header);
-
-    const mcu_storage = try allocator.alloc([MAX_COMPONENTS][MAX_BLOCKS]Block, mcu_count);
 
     const horizontal_block_count = frame_header.getMaxHorizontalSamplingFactor();
     const vertical_block_count = frame_header.getMaxVerticalSamplingFactor();
@@ -67,7 +53,6 @@ pub fn read(allocator: Allocator, frame_type: Markers, restart_interval: u16, qu
         .quantization_tables = quantization_tables,
         .dc_huffman_tables = dc_huffman_tables,
         .ac_huffman_tables = ac_huffman_tables,
-        .mcu_storage = mcu_storage,
         .restart_interval = restart_interval,
         .frame_type = frame_type,
         .block_storage = block_storage,
@@ -82,7 +67,6 @@ pub fn read(allocator: Allocator, frame_type: Markers, restart_interval: u16, qu
 }
 
 pub fn deinit(self: *Self) void {
-    self.allocator.free(self.mcu_storage);
     self.allocator.free(self.block_storage);
     for (self.dc_huffman_tables) |*maybe_huffman_table| {
         if (maybe_huffman_table.*) |*huffman_table| {
