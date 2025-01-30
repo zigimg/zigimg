@@ -55,7 +55,7 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.indexed16, .indexed4) => try IndexedLargeToSmall(.indexed16, .indexed4).convert(allocator, source, &destination),
         conversionId(.indexed16, .indexed8) => try IndexedLargeToSmall(.indexed16, .indexed8).convert(allocator, source, &destination),
 
-        // Indexted -> RGB332
+        // Indexed -> RGB332
         conversionId(.indexed1, .rgb332) => IndexedToRgbColor(.indexed1, .rgb332).convert(source, &destination),
         conversionId(.indexed2, .rgb332) => IndexedToRgbColor(.indexed2, .rgb332).convert(source, &destination),
         conversionId(.indexed4, .rgb332) => IndexedToRgbColor(.indexed4, .rgb332).convert(source, &destination),
