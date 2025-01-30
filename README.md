@@ -143,6 +143,10 @@ Currently, this only supports a subset of PAMs where:
 * Supports reading version 1 and version 2
 * Supports writing version 2
 
+### Other formats
+
+* Rgb565 and Rgb332 which are frequently used in embedded systems
+
 # User Guide
 
 ## Design philosophy
