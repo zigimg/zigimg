@@ -45,8 +45,8 @@ test "Read JFIF header properly and decode simple Huffman stream" {
         }
     }
 
-    try helpers.expectEq(frame.frame_header.row_count, 8);
-    try helpers.expectEq(frame.frame_header.samples_per_row, 16);
+    try helpers.expectEq(frame.frame_header.height, 8);
+    try helpers.expectEq(frame.frame_header.width, 16);
     try helpers.expectEq(frame.frame_header.sample_precision, 8);
     try helpers.expectEq(frame.frame_header.components.len, 3);
 
@@ -75,8 +75,8 @@ test "Read the tuba properly" {
         }
     }
 
-    try helpers.expectEq(frame.frame_header.row_count, 512);
-    try helpers.expectEq(frame.frame_header.samples_per_row, 512);
+    try helpers.expectEq(frame.frame_header.height, 512);
+    try helpers.expectEq(frame.frame_header.width, 512);
     try helpers.expectEq(frame.frame_header.sample_precision, 8);
     try helpers.expectEq(frame.frame_header.components.len, 3);
 
@@ -110,8 +110,8 @@ test "Read grayscale images" {
         }
     }
 
-    try helpers.expectEq(frame.frame_header.row_count, 32);
-    try helpers.expectEq(frame.frame_header.samples_per_row, 32);
+    try helpers.expectEq(frame.frame_header.height, 32);
+    try helpers.expectEq(frame.frame_header.width, 32);
     try helpers.expectEq(frame.frame_header.sample_precision, 8);
     try helpers.expectEq(frame.frame_header.components.len, 1);
 
