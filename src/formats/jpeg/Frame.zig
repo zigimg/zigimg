@@ -87,7 +87,7 @@ pub fn renderToPixels(self: *Self, pixels: *color.PixelStorage) ImageReadError!v
     switch (self.frame_header.components.len) {
         1 => try self.renderToPixelsGrayscale(pixels.grayscale8), // Grayscale images is non-interleaved
         3 => {
-            try self.YCbCrToRgb();
+            try self.yCbCrToRgb();
             try self.renderToPixelsRgb(pixels.rgb24);
         },
         else => unreachable,
@@ -152,7 +152,7 @@ pub fn renderToPixelsRgb(self: *Self, pixels: []color.Rgb24) ImageReadError!void
     }
 }
 
-pub fn YCbCrToRgbBlock(self: *Self, y_block: *[3]Block, cbcr_block: *[3]Block, v: usize, h: usize) void {
+pub fn yCbCrToRgbBlock(self: *Self, y_block: *[3]Block, cbcr_block: *[3]Block, v: usize, h: usize) void {
     const y_step = self.frame_header.getMaxVerticalSamplingFactor();
     const x_step = self.frame_header.getMaxHorizontalSamplingFactor();
 
@@ -187,7 +187,7 @@ pub fn YCbCrToRgbBlock(self: *Self, y_block: *[3]Block, cbcr_block: *[3]Block, v
     }
 }
 
-pub fn YCbCrToRgb(self: *Self) ImageReadError!void {
+pub fn yCbCrToRgb(self: *Self) ImageReadError!void {
     const y_step = self.frame_header.getMaxVerticalSamplingFactor();
     const x_step = self.frame_header.getMaxHorizontalSamplingFactor();
 
@@ -207,7 +207,7 @@ pub fn YCbCrToRgb(self: *Self) ImageReadError!void {
                 while (h > 0) {
                     h -= 1;
                     const y_block = &self.block_storage[(y + v) * self.block_width_actual + (x + h)];
-                    YCbCrToRgbBlock(self, y_block, cbcr_block, v, h);
+                    yCbCrToRgbBlock(self, y_block, cbcr_block, v, h);
                 }
             }
         }
@@ -282,8 +282,6 @@ fn idctBlock(block: *Block) void {
 }
 
 fn idct(block: *const Block, x: usize, y: usize, mcu_id: usize, component_id: usize) i8 {
-    // TODO(angelo): if Ns > 1 it is not interleaved, so the order this should be fixed...
-    // FIXME is wrong for Ns > 1
     var reconstructed_pixel: f32 = 0.0;
 
     var u: usize = 0;
