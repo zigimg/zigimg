@@ -120,40 +120,54 @@ pub fn init(frame: *const Frame, reader: buffered_stream_source.DefaultBufferedS
 pub fn performScan(frame: *const Frame, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!void {
     var self = try Self.init(frame, reader);
 
-    const mcu_count = Frame.calculateMCUCountInFrame(&self.frame.frame_header);
     var skips: u32 = 0;
-    for (0..mcu_count) |mcu_id| {
-        if (frame.restart_interval != 0 and mcu_id % frame.restart_interval == 0) {
-            self.reader.flushBits();
-            self.prediction_values = @splat(0);
-            skips = 0;
-        }
-        try self.decodeMCU(mcu_id, &skips);
-    }
-}
 
-fn decodeMCU(self: *Self, mcu_id: usize, skips: *u32) ImageReadError!void {
-    for (0..self.component_count) |index| {
-        const component: ScanComponentSpec = self.components[index].?;
+    const y_step = frame.frame_header.getMaxVerticalSamplingFactor();
+    const x_step = frame.frame_header.getMaxHorizontalSamplingFactor();
+    const restart_interval = frame.restart_interval * y_step * x_step;
 
-        var component_index: usize = undefined;
-        for (self.frame.frame_header.components, 0..) |frame_component, i| {
-            if (frame_component.id == component.component_id) {
-                component_index = i;
+    var y: usize = 0;
+    while (y < self.frame.block_height) : (y += y_step) {
+        var x: usize = 0;
+        while (x < self.frame.block_width) : (x += x_step) {
+            const mcu_id = y * self.frame.block_width_actual + x;
+
+            if (frame.restart_interval != 0 and mcu_id % restart_interval == 0) {
+                self.reader.flushBits();
+                self.prediction_values = @splat(0);
+                skips = 0;
             }
-        }
+            for (0..self.component_count) |index| {
+                const component: ScanComponentSpec = self.components[index].?;
 
-        const block_count = self.frame.frame_header.getBlockCount(component_index);
-        for (0..block_count) |i| {
-            const block = &self.frame.mcu_storage[mcu_id][component_index][i];
+                var component_index: usize = undefined;
+                var v_max: usize = undefined;
+                var h_max: usize = undefined;
 
-            if (self.frame.frame_type == Markers.sof0) {
-                self.reader.setHuffmanTable(&self.frame.dc_huffman_tables[component.dc_table_selector].?);
-                try self.decodeDCCoefficient(block, component_index);
-                self.reader.setHuffmanTable(&self.frame.ac_huffman_tables[component.ac_table_selector].?);
-                try self.decodeACCoefficients(block);
-            } else if (self.frame.frame_type == Markers.sof2) {
-                try decodeBlockProgressive(self, &component, block, component_index, skips);
+                for (self.frame.frame_header.components, 0..) |frame_component, i| {
+                    if (frame_component.id == component.component_id) {
+                        component_index = i;
+                        v_max = frame_component.vertical_sampling_factor;
+                        h_max = frame_component.horizontal_sampling_factor;
+                        break;
+                    }
+                }
+
+                for (0..v_max) |v| {
+                    for (0..h_max) |h| {
+                        const block_id = (y + v) * self.frame.block_width_actual + (x + h);
+                        const block = &self.frame.block_storage[block_id][component_index];
+
+                        if (self.frame.frame_type == Markers.sof0) {
+                            self.reader.setHuffmanTable(&self.frame.dc_huffman_tables[component.dc_table_selector].?);
+                            try self.decodeDCCoefficient(block, component_index);
+                            self.reader.setHuffmanTable(&self.frame.ac_huffman_tables[component.ac_table_selector].?);
+                            try self.decodeACCoefficients(block);
+                        } else if (self.frame.frame_type == Markers.sof2) {
+                            try decodeBlockProgressive(&self, &component, block, component_index, &skips);
+                        }
+                    }
+                }
             }
         }
     }

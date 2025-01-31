@@ -89,7 +89,7 @@ pub const JPEG = struct {
                 else => unreachable,
             }
 
-            const pixel_count = @as(usize, @intCast(frame.frame_header.samples_per_row)) * @as(usize, @intCast(frame.frame_header.row_count));
+            const pixel_count = @as(usize, @intCast(frame.frame_header.width)) * @as(usize, @intCast(frame.frame_header.height));
             pixels_opt.* = try color.PixelStorage.init(self.allocator, pixel_format, pixel_count);
         } else return ImageReadError.InvalidData;
     }
@@ -212,8 +212,8 @@ pub const JPEG = struct {
 
         const frame = try jpeg.read(stream, &pixels_opt);
 
-        result.width = frame.frame_header.samples_per_row;
-        result.height = frame.frame_header.row_count;
+        result.width = frame.frame_header.width;
+        result.height = frame.frame_header.height;
 
         if (pixels_opt) |pixels| {
             result.pixels = pixels;
