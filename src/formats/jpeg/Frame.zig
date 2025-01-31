@@ -31,18 +31,21 @@ block_width: u32 = 0,
 block_width_actual: u32 = 0,
 block_height_actual: u32 = 0,
 
+horizontal_sampling_factor_max: usize = 0,
+vertical_sampling_factor_max: usize = 0,
+
 const JPEG_DEBUG = false;
 
 pub fn read(allocator: Allocator, frame_type: Markers, restart_interval: u16, quantization_tables: *[4]?QuantizationTable, dc_huffman_tables: *[4]?HuffmanTable, ac_huffman_tables: *[4]?HuffmanTable, buffered_stream: *buffered_stream_source.DefaultBufferedStreamSourceReader) ImageReadError!Self {
     const reader = buffered_stream.reader();
     const frame_header = try FrameHeader.read(allocator, reader);
 
-    const horizontal_block_count = frame_header.getMaxHorizontalSamplingFactor();
-    const vertical_block_count = frame_header.getMaxVerticalSamplingFactor();
+    const horizontal_sampling_factor_max = frame_header.getMaxHorizontalSamplingFactor();
+    const vertical_sampling_factor_max = frame_header.getMaxVerticalSamplingFactor();
 
-    const mcu_width = 8 * horizontal_block_count; // pixels
-    const mcu_height = 8 * vertical_block_count; // pixels
-    const width_actual = ((frame_header.width + mcu_width - 1) / mcu_width) * mcu_width; //
+    const mcu_width = 8 * horizontal_sampling_factor_max;
+    const mcu_height = 8 * vertical_sampling_factor_max;
+    const width_actual = ((frame_header.width + mcu_width - 1) / mcu_width) * mcu_width;
 
     const height_actual = ((frame_header.height + mcu_height - 1) / mcu_height) * mcu_height;
     const block_storage = try allocator.alloc([MAX_COMPONENTS]Block, width_actual * height_actual / 64);
@@ -60,6 +63,8 @@ pub fn read(allocator: Allocator, frame_type: Markers, restart_interval: u16, qu
         .block_width_actual = @intCast((width_actual + 7) / 8),
         .block_height = (frame_header.height + 7) / 8,
         .block_width = (frame_header.width + 7) / 8,
+        .horizontal_sampling_factor_max = horizontal_sampling_factor_max,
+        .vertical_sampling_factor_max = vertical_sampling_factor_max,
     };
     errdefer self.deinit();
 
@@ -153,50 +158,131 @@ pub fn renderToPixelsRgb(self: *Self, pixels: []color.Rgb24) ImageReadError!void
 }
 
 pub fn yCbCrToRgbBlock(self: *Self, y_block: *[3]Block, cbcr_block: *[3]Block, v: usize, h: usize) void {
-    const y_step = self.frame_header.getMaxVerticalSamplingFactor();
-    const x_step = self.frame_header.getMaxHorizontalSamplingFactor();
+    const y_step = self.vertical_sampling_factor_max;
+    const x_step = self.horizontal_sampling_factor_max;
 
     var y: usize = 8;
     while (y > 0) {
         y -= 1;
-        var x: usize = 8;
-        while (x > 0) {
-            x -= 1;
-            const pixel_index: usize = y * 8 + x;
-            const Y: f32 = @floatFromInt(y_block[0][pixel_index]);
+        const cbcr_y: usize = y / y_step + (8 / y_step) * v;
 
-            const cbcr_y: usize = y / y_step + (8 / y_step) * v;
-            const cbcr_x: usize = x / x_step + (8 / x_step) * h;
-            const cbcr_pixel: usize = cbcr_y * 8 + cbcr_x;
+        const pixel_index: usize = y * 8;
+        const Y0: f32 = @floatFromInt(y_block[0][pixel_index + 0]);
+        const Y1: f32 = @floatFromInt(y_block[0][pixel_index + 1]);
+        const Y2: f32 = @floatFromInt(y_block[0][pixel_index + 2]);
+        const Y3: f32 = @floatFromInt(y_block[0][pixel_index + 3]);
+        const Y4: f32 = @floatFromInt(y_block[0][pixel_index + 4]);
+        const Y5: f32 = @floatFromInt(y_block[0][pixel_index + 5]);
+        const Y6: f32 = @floatFromInt(y_block[0][pixel_index + 6]);
+        const Y7: f32 = @floatFromInt(y_block[0][pixel_index + 7]);
 
-            const Cb: f32 = @floatFromInt(cbcr_block[1][cbcr_pixel]);
-            const Cr: f32 = @floatFromInt(cbcr_block[2][cbcr_pixel]);
+        const cbcr_x0: usize = 0 / x_step + (8 / x_step) * h;
+        const cbcr_x1: usize = 1 / x_step + (8 / x_step) * h;
+        const cbcr_x2: usize = 2 / x_step + (8 / x_step) * h;
+        const cbcr_x3: usize = 3 / x_step + (8 / x_step) * h;
+        const cbcr_x4: usize = 4 / x_step + (8 / x_step) * h;
+        const cbcr_x5: usize = 5 / x_step + (8 / x_step) * h;
+        const cbcr_x6: usize = 6 / x_step + (8 / x_step) * h;
+        const cbcr_x7: usize = 7 / x_step + (8 / x_step) * h;
 
-            const Co_red = 0.299;
-            const Co_green = 0.587;
-            const Co_blue = 0.114;
+        const cbcr_pixel0: usize = cbcr_y * 8 + cbcr_x0;
+        const cbcr_pixel1: usize = cbcr_y * 8 + cbcr_x1;
+        const cbcr_pixel2: usize = cbcr_y * 8 + cbcr_x2;
+        const cbcr_pixel3: usize = cbcr_y * 8 + cbcr_x3;
+        const cbcr_pixel4: usize = cbcr_y * 8 + cbcr_x4;
+        const cbcr_pixel5: usize = cbcr_y * 8 + cbcr_x5;
+        const cbcr_pixel6: usize = cbcr_y * 8 + cbcr_x6;
+        const cbcr_pixel7: usize = cbcr_y * 8 + cbcr_x7;
 
-            const r = Cr * (2 - 2 * Co_red) + Y;
-            const b = Cb * (2 - 2 * Co_blue) + Y;
-            const g = (Y - Co_blue * b - Co_red * r) / Co_green;
+        const Cb0: f32 = @floatFromInt(cbcr_block[1][cbcr_pixel0]);
+        const Cb1: f32 = @floatFromInt(cbcr_block[1][cbcr_pixel1]);
+        const Cb2: f32 = @floatFromInt(cbcr_block[1][cbcr_pixel2]);
+        const Cb3: f32 = @floatFromInt(cbcr_block[1][cbcr_pixel3]);
+        const Cb4: f32 = @floatFromInt(cbcr_block[1][cbcr_pixel4]);
+        const Cb5: f32 = @floatFromInt(cbcr_block[1][cbcr_pixel5]);
+        const Cb6: f32 = @floatFromInt(cbcr_block[1][cbcr_pixel6]);
+        const Cb7: f32 = @floatFromInt(cbcr_block[1][cbcr_pixel7]);
 
-            y_block[0][pixel_index] = @intFromFloat(std.math.clamp(r + 128.0, 0.0, 255.0));
-            y_block[1][pixel_index] = @intFromFloat(std.math.clamp(g + 128.0, 0.0, 255.0));
-            y_block[2][pixel_index] = @intFromFloat(std.math.clamp(b + 128.0, 0.0, 255.0));
-        }
+        const Cr0: f32 = @floatFromInt(cbcr_block[2][cbcr_pixel0]);
+        const Cr1: f32 = @floatFromInt(cbcr_block[2][cbcr_pixel1]);
+        const Cr2: f32 = @floatFromInt(cbcr_block[2][cbcr_pixel2]);
+        const Cr3: f32 = @floatFromInt(cbcr_block[2][cbcr_pixel3]);
+        const Cr4: f32 = @floatFromInt(cbcr_block[2][cbcr_pixel4]);
+        const Cr5: f32 = @floatFromInt(cbcr_block[2][cbcr_pixel5]);
+        const Cr6: f32 = @floatFromInt(cbcr_block[2][cbcr_pixel6]);
+        const Cr7: f32 = @floatFromInt(cbcr_block[2][cbcr_pixel7]);
+
+        const r0 = Cr0 * (2 - 2 * 0.299) + Y0;
+        const r1 = Cr1 * (2 - 2 * 0.299) + Y1;
+        const r2 = Cr2 * (2 - 2 * 0.299) + Y2;
+        const r3 = Cr3 * (2 - 2 * 0.299) + Y3;
+        const r4 = Cr4 * (2 - 2 * 0.299) + Y4;
+        const r5 = Cr5 * (2 - 2 * 0.299) + Y5;
+        const r6 = Cr6 * (2 - 2 * 0.299) + Y6;
+        const r7 = Cr7 * (2 - 2 * 0.299) + Y7;
+
+        const b0 = Cb0 * (2 - 2 * 0.114) + Y0;
+        const b1 = Cb1 * (2 - 2 * 0.114) + Y1;
+        const b2 = Cb2 * (2 - 2 * 0.114) + Y2;
+        const b3 = Cb3 * (2 - 2 * 0.114) + Y3;
+        const b4 = Cb4 * (2 - 2 * 0.114) + Y4;
+        const b5 = Cb5 * (2 - 2 * 0.114) + Y5;
+        const b6 = Cb6 * (2 - 2 * 0.114) + Y6;
+        const b7 = Cb7 * (2 - 2 * 0.114) + Y7;
+
+        const g0 = (Y0 - 0.114 * b0 - 0.299 * r0) / 0.587;
+        const g1 = (Y1 - 0.114 * b1 - 0.299 * r1) / 0.587;
+        const g2 = (Y2 - 0.114 * b2 - 0.299 * r2) / 0.587;
+        const g3 = (Y3 - 0.114 * b3 - 0.299 * r3) / 0.587;
+        const g4 = (Y4 - 0.114 * b4 - 0.299 * r4) / 0.587;
+        const g5 = (Y5 - 0.114 * b5 - 0.299 * r5) / 0.587;
+        const g6 = (Y6 - 0.114 * b6 - 0.299 * r6) / 0.587;
+        const g7 = (Y7 - 0.114 * b7 - 0.299 * r7) / 0.587;
+
+        y_block[0][pixel_index + 0] = @intFromFloat(std.math.clamp(r0 + 128.0, 0.0, 255.0));
+        y_block[1][pixel_index + 0] = @intFromFloat(std.math.clamp(g0 + 128.0, 0.0, 255.0));
+        y_block[2][pixel_index + 0] = @intFromFloat(std.math.clamp(b0 + 128.0, 0.0, 255.0));
+
+        y_block[0][pixel_index + 1] = @intFromFloat(std.math.clamp(r1 + 128.0, 0.0, 255.0));
+        y_block[1][pixel_index + 1] = @intFromFloat(std.math.clamp(g1 + 128.0, 0.0, 255.0));
+        y_block[2][pixel_index + 1] = @intFromFloat(std.math.clamp(b1 + 128.0, 0.0, 255.0));
+
+        y_block[0][pixel_index + 2] = @intFromFloat(std.math.clamp(r2 + 128.0, 0.0, 255.0));
+        y_block[1][pixel_index + 2] = @intFromFloat(std.math.clamp(g2 + 128.0, 0.0, 255.0));
+        y_block[2][pixel_index + 2] = @intFromFloat(std.math.clamp(b2 + 128.0, 0.0, 255.0));
+
+        y_block[0][pixel_index + 3] = @intFromFloat(std.math.clamp(r3 + 128.0, 0.0, 255.0));
+        y_block[1][pixel_index + 3] = @intFromFloat(std.math.clamp(g3 + 128.0, 0.0, 255.0));
+        y_block[2][pixel_index + 3] = @intFromFloat(std.math.clamp(b3 + 128.0, 0.0, 255.0));
+
+        y_block[0][pixel_index + 4] = @intFromFloat(std.math.clamp(r4 + 128.0, 0.0, 255.0));
+        y_block[1][pixel_index + 4] = @intFromFloat(std.math.clamp(g4 + 128.0, 0.0, 255.0));
+        y_block[2][pixel_index + 4] = @intFromFloat(std.math.clamp(b4 + 128.0, 0.0, 255.0));
+
+        y_block[0][pixel_index + 5] = @intFromFloat(std.math.clamp(r5 + 128.0, 0.0, 255.0));
+        y_block[1][pixel_index + 5] = @intFromFloat(std.math.clamp(g5 + 128.0, 0.0, 255.0));
+        y_block[2][pixel_index + 5] = @intFromFloat(std.math.clamp(b5 + 128.0, 0.0, 255.0));
+
+        y_block[0][pixel_index + 6] = @intFromFloat(std.math.clamp(r6 + 128.0, 0.0, 255.0));
+        y_block[1][pixel_index + 6] = @intFromFloat(std.math.clamp(g6 + 128.0, 0.0, 255.0));
+        y_block[2][pixel_index + 6] = @intFromFloat(std.math.clamp(b6 + 128.0, 0.0, 255.0));
+
+        y_block[0][pixel_index + 7] = @intFromFloat(std.math.clamp(r7 + 128.0, 0.0, 255.0));
+        y_block[1][pixel_index + 7] = @intFromFloat(std.math.clamp(g7 + 128.0, 0.0, 255.0));
+        y_block[2][pixel_index + 7] = @intFromFloat(std.math.clamp(b7 + 128.0, 0.0, 255.0));
     }
 }
 
 pub fn yCbCrToRgb(self: *Self) ImageReadError!void {
-    const y_step = self.frame_header.getMaxVerticalSamplingFactor();
-    const x_step = self.frame_header.getMaxHorizontalSamplingFactor();
+    const y_step = self.vertical_sampling_factor_max;
+    const x_step = self.horizontal_sampling_factor_max;
 
     var y: usize = 0;
     while (y < self.block_height) : (y += y_step) {
         var x: usize = 0;
         while (x < self.block_width) : (x += x_step) {
-            const v_max = self.frame_header.getMaxVerticalSamplingFactor();
-            const h_max = self.frame_header.getMaxHorizontalSamplingFactor();
+            const v_max = self.vertical_sampling_factor_max;
+            const h_max = self.horizontal_sampling_factor_max;
 
             const cbcr_block = &self.block_storage[y * self.block_width_actual + x];
 
@@ -214,15 +300,22 @@ pub fn yCbCrToRgb(self: *Self) ImageReadError!void {
     }
 }
 
-pub fn dequantizeMCUs(self: *Self) !void {
-    const y_step = self.frame_header.getMaxVerticalSamplingFactor();
-    const x_step = self.frame_header.getMaxHorizontalSamplingFactor();
+pub fn dequantizeMCUs(self: *Self) ImageReadError!void {
+    for (self.frame_header.components) |component| {
+        if (self.quantization_tables[component.quantization_table_id] == null) {
+            return ImageReadError.InvalidData;
+        }
+    }
+
+    const y_step = self.vertical_sampling_factor_max;
+    const x_step = self.horizontal_sampling_factor_max;
 
     var y: usize = 0;
     while (y < self.block_height) : (y += y_step) {
         var x: usize = 0;
         while (x < self.block_width) : (x += x_step) {
             for (self.frame_header.components, 0..) |component, component_id| {
+                const quantization_table = self.quantization_tables[component.quantization_table_id].?;
                 const v_max = component.vertical_sampling_factor;
                 const h_max = component.horizontal_sampling_factor;
 
@@ -230,11 +323,9 @@ pub fn dequantizeMCUs(self: *Self) !void {
                     for (0..h_max) |h| {
                         const block_id = (y + v) * self.block_width_actual + (x + h);
                         const block = &self.block_storage[block_id][component_id];
-                        if (self.quantization_tables[component.quantization_table_id]) |quantization_table| {
-                            for (0..64) |sample_id| {
-                                block[sample_id] = block[sample_id] * quantization_table.q8[sample_id];
-                            }
-                        } else return ImageReadError.InvalidData;
+                        for (0..64) |sample_id| {
+                            block[sample_id] = block[sample_id] * quantization_table.q8[sample_id];
+                        }
                     }
                 }
             }
@@ -243,8 +334,8 @@ pub fn dequantizeMCUs(self: *Self) !void {
 }
 
 pub fn idctMCUs(self: *Self) void {
-    const y_step = self.frame_header.getMaxVerticalSamplingFactor();
-    const x_step = self.frame_header.getMaxHorizontalSamplingFactor();
+    const y_step = self.vertical_sampling_factor_max;
+    const x_step = self.horizontal_sampling_factor_max;
 
     var y: usize = 0;
     while (y < self.block_height) : (y += y_step) {
