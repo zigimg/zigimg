@@ -64,6 +64,7 @@ zig build test
 | ------------- |:-------------:|:--------------:|
 | ANIM          | ❌            | ❌            |
 | BMP           | ✔️ (Partial)  | ✔️ (Partial)  |
+| Farbfeld      | ✔️            | ✔️            |
 | GIF           | ✔️            | ❌            |
 | ICO           | ❌            | ❌            |
 | ILBM          | ❌            | ❌            |
