@@ -14,58 +14,67 @@ const color = @import("../../color.zig");
 const IDCTMultipliers = @import("utils.zig").IDCTMultipliers;
 const MAX_COMPONENTS = @import("utils.zig").MAX_COMPONENTS;
 const MAX_BLOCKS = @import("utils.zig").MAX_BLOCKS;
-const MCU = @import("utils.zig").MCU;
+const Block = @import("utils.zig").Block;
 
 const Self = @This();
 allocator: Allocator,
 frame_header: FrameHeader,
 quantization_tables: *[4]?QuantizationTable,
-dc_huffman_tables: [2]?HuffmanTable,
-ac_huffman_tables: [2]?HuffmanTable,
+dc_huffman_tables: *[4]?HuffmanTable,
+ac_huffman_tables: *[4]?HuffmanTable,
+block_storage: [][MAX_COMPONENTS]Block,
+restart_interval: u16 = 0,
+frame_type: Markers = undefined,
+
+block_height: u32 = 0,
+block_width: u32 = 0,
+block_width_actual: u32 = 0,
+block_height_actual: u32 = 0,
 
 const JPEG_DEBUG = false;
 
-pub fn read(allocator: Allocator, quantization_tables: *[4]?QuantizationTable, buffered_stream: *buffered_stream_source.DefaultBufferedStreamSourceReader) ImageReadError!Self {
+pub fn read(allocator: Allocator, frame_type: Markers, restart_interval: u16, quantization_tables: *[4]?QuantizationTable, dc_huffman_tables: *[4]?HuffmanTable, ac_huffman_tables: *[4]?HuffmanTable, buffered_stream: *buffered_stream_source.DefaultBufferedStreamSourceReader) ImageReadError!Self {
     const reader = buffered_stream.reader();
     const frame_header = try FrameHeader.read(allocator, reader);
+
+    const horizontal_block_count = frame_header.getMaxHorizontalSamplingFactor();
+    const vertical_block_count = frame_header.getMaxVerticalSamplingFactor();
+
+    const mcu_width = 8 * horizontal_block_count; // pixels
+    const mcu_height = 8 * vertical_block_count; // pixels
+    const width_actual = ((frame_header.width + mcu_width - 1) / mcu_width) * mcu_width; //
+
+    const height_actual = ((frame_header.height + mcu_height - 1) / mcu_height) * mcu_height;
+    const block_storage = try allocator.alloc([MAX_COMPONENTS]Block, width_actual * height_actual / 64);
 
     var self = Self{
         .allocator = allocator,
         .frame_header = frame_header,
         .quantization_tables = quantization_tables,
-        .dc_huffman_tables = @splat(null),
-        .ac_huffman_tables = @splat(null),
+        .dc_huffman_tables = dc_huffman_tables,
+        .ac_huffman_tables = ac_huffman_tables,
+        .restart_interval = restart_interval,
+        .frame_type = frame_type,
+        .block_storage = block_storage,
+        .block_height_actual = @intCast((height_actual + 7) / 8),
+        .block_width_actual = @intCast((width_actual + 7) / 8),
+        .block_height = (frame_header.height + 7) / 8,
+        .block_width = (frame_header.width + 7) / 8,
     };
     errdefer self.deinit();
-
-    var marker = try reader.readInt(u16, .big);
-    while (marker != @intFromEnum(Markers.start_of_scan)) : (marker = try reader.readInt(u16, .big)) {
-        if (JPEG_DEBUG) std.debug.print("Frame: Parsing marker value: 0x{X}\n", .{marker});
-
-        switch (@as(Markers, @enumFromInt(marker))) {
-            .define_huffman_tables => {
-                try self.parseDefineHuffmanTables(reader);
-            },
-            else => {
-                return ImageReadError.InvalidData;
-            },
-        }
-    }
-
-    // Undo the last marker read
-    try buffered_stream.seekBy(-2);
 
     return self;
 }
 
 pub fn deinit(self: *Self) void {
-    for (&self.dc_huffman_tables) |*maybe_huffman_table| {
+    self.allocator.free(self.block_storage);
+    for (self.dc_huffman_tables) |*maybe_huffman_table| {
         if (maybe_huffman_table.*) |*huffman_table| {
             huffman_table.deinit();
         }
     }
 
-    for (&self.ac_huffman_tables) |*maybe_huffman_table| {
+    for (self.ac_huffman_tables) |*maybe_huffman_table| {
         if (maybe_huffman_table.*) |*huffman_table| {
             huffman_table.deinit();
         }
@@ -74,136 +83,94 @@ pub fn deinit(self: *Self) void {
     self.frame_header.deinit();
 }
 
-fn parseDefineHuffmanTables(self: *Self, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!void {
-    var segment_size = try reader.readInt(u16, .big);
-    if (JPEG_DEBUG) std.debug.print("DefineHuffmanTables: segment size = 0x{X}\n", .{segment_size});
-    segment_size -= 2;
-
-    while (segment_size > 0) {
-        const class_and_destination = try reader.readByte();
-        const table_class = class_and_destination >> 4;
-        const table_destination = class_and_destination & 0b1;
-
-        const huffman_table = try HuffmanTable.read(self.allocator, table_class, reader);
-
-        if (table_class == 0) {
-            if (self.dc_huffman_tables[table_destination]) |*old_huffman_table| {
-                old_huffman_table.deinit();
-            }
-            self.dc_huffman_tables[table_destination] = huffman_table;
-        } else {
-            if (self.ac_huffman_tables[table_destination]) |*old_huffman_table| {
-                old_huffman_table.deinit();
-            }
-            self.ac_huffman_tables[table_destination] = huffman_table;
-        }
-
-        if (JPEG_DEBUG) std.debug.print("  Table with class {} installed at {}\n", .{ table_class, table_destination });
-
-        // Class+Destination + code counts + code table
-        segment_size -= 1 + 16 + @as(u16, @intCast(huffman_table.code_map.count()));
-    }
-}
-
-pub fn renderToPixels(self: *const Self, mcu_storage: *[MAX_COMPONENTS][MAX_BLOCKS]MCU, mcu_id: usize, pixels: *color.PixelStorage) ImageReadError!void {
+pub fn renderToPixels(self: *Self, pixels: *color.PixelStorage) ImageReadError!void {
     switch (self.frame_header.components.len) {
-        1 => try self.renderToPixelsGrayscale(&mcu_storage[0][0], mcu_id, pixels.grayscale8), // Grayscale images is non-interleaved
-        3 => try self.renderToPixelsRgb(mcu_storage, mcu_id, pixels.rgb24),
+        1 => try self.renderToPixelsGrayscale(pixels.grayscale8), // Grayscale images is non-interleaved
+        3 => {
+            try self.yCbCrToRgb();
+            try self.renderToPixelsRgb(pixels.rgb24);
+        },
         else => unreachable,
     }
 }
 
-fn renderToPixelsGrayscale(self: *const Self, mcu_storage: *MCU, mcu_id: usize, pixels: []color.Grayscale8) ImageReadError!void {
-    const mcu_width = 8;
-    const mcu_height = 8;
-    const width = self.frame_header.samples_per_row;
-    const height = pixels.len / width;
-    const mcus_per_row = (width + mcu_width - 1) / mcu_width;
-    const mcu_origin_x = (mcu_id % mcus_per_row) * mcu_width;
-    const mcu_origin_y = (mcu_id / mcus_per_row) * mcu_height;
+fn renderToPixelsGrayscale(self: *Self, pixels: []color.Grayscale8) ImageReadError!void {
+    var block_y: usize = 0;
+    while (block_y < self.block_height) : (block_y += 1) {
+        const pixel_y = block_y * 8;
 
-    for (0..mcu_height) |mcu_y| {
-        const y = mcu_origin_y + mcu_y;
-        if (y >= height) continue;
+        var block_x: usize = 0;
+        while (block_x < self.block_width) : (block_x += 1) {
+            const block_index = block_y * self.block_width_actual + block_x;
 
-        // y coordinates in the block
-        const block_y = mcu_y % 8;
+            const pixel_x = block_x * 8;
 
-        const stride = y * width;
+            for (0..8) |y| {
+                for (0..8) |x| {
+                    if (pixel_y + y >= self.frame_header.height or pixel_x + x >= self.frame_header.width) {
+                        continue;
+                    }
+                    const pixel_index = (pixel_y + y) * self.frame_header.width + (pixel_x + x);
+                    const Y = self.block_storage[block_index][0][y * 8 + x];
 
-        for (0..mcu_width) |mcu_x| {
-            const x = mcu_origin_x + mcu_x;
-            if (x >= width) continue;
-
-            // x coordinates in the block
-            const block_x = mcu_x % 8;
-
-            const reconstructed_Y = idct(mcu_storage, @as(u3, @intCast(block_x)), @as(u3, @intCast(block_y)), mcu_id, 0);
-            const Y: f32 = @floatFromInt(reconstructed_Y);
-            pixels[stride + x] = .{
-                .value = @as(u8, @intFromFloat(std.math.clamp(Y + 128.0, 0.0, 255.0))),
-            };
+                    pixels[pixel_index] = .{
+                        .value = @intCast(std.math.clamp(Y + 128, 0, 255)),
+                    };
+                }
+            }
         }
     }
 }
 
-fn renderToPixelsRgb(self: *const Self, mcu_storage: *[MAX_COMPONENTS][MAX_BLOCKS]MCU, mcu_id: usize, pixels: []color.Rgb24) ImageReadError!void {
-    const max_horizontal_sampling_factor = self.frame_header.getMaxHorizontalSamplingFactor();
-    const max_vertical_sampling_factor = self.frame_header.getMaxVerticalSamplingFactor();
-    const mcu_width = 8 * max_horizontal_sampling_factor;
-    const mcu_height = 8 * max_vertical_sampling_factor;
-    const width = self.frame_header.samples_per_row;
-    const height = pixels.len / width;
-    const mcus_per_row = (width + mcu_width - 1) / mcu_width;
+pub fn renderToPixelsRgb(self: *Self, pixels: []color.Rgb24) ImageReadError!void {
+    var block_y: usize = 0;
+    while (block_y < self.block_height) : (block_y += 1) {
+        const pixel_y = block_y * 8;
 
-    const mcu_origin_x = (mcu_id % mcus_per_row) * mcu_width;
-    const mcu_origin_y = (mcu_id / mcus_per_row) * mcu_height;
+        var block_x: usize = 0;
+        while (block_x < self.block_width) : (block_x += 1) {
+            const block_index = block_y * self.block_width_actual + block_x;
 
-    for (0..mcu_height) |mcu_y| {
-        const y = mcu_origin_y + mcu_y;
-        if (y >= height) continue;
+            const pixel_x = block_x * 8;
 
-        // y coordinates of each component applied to the sampling factor
-        const y_sampled_y = (mcu_y * self.frame_header.components[0].vertical_sampling_factor) / max_vertical_sampling_factor;
-        const cb_sampled_y = (mcu_y * self.frame_header.components[1].vertical_sampling_factor) / max_vertical_sampling_factor;
-        const cr_sampled_y = (mcu_y * self.frame_header.components[2].vertical_sampling_factor) / max_vertical_sampling_factor;
+            for (0..8) |y| {
+                for (0..8) |x| {
+                    if (pixel_y + y >= self.frame_header.height or pixel_x + x >= self.frame_header.width) {
+                        continue;
+                    }
 
-        // y coordinates of each component in the block
-        const y_block_y = y_sampled_y % 8;
-        const cb_block_y = cb_sampled_y % 8;
-        const cr_block_y = cr_sampled_y % 8;
+                    const pixel_index = (pixel_y + y) * self.frame_header.width + (pixel_x + x);
 
-        const stride = y * width;
+                    pixels[pixel_index] = .{
+                        .r = @intCast(self.block_storage[block_index][0][y * 8 + x]),
+                        .g = @intCast(self.block_storage[block_index][1][y * 8 + x]),
+                        .b = @intCast(self.block_storage[block_index][2][y * 8 + x]),
+                    };
+                }
+            }
+        }
+    }
+}
 
-        for (0..mcu_width) |mcu_x| {
-            const x = mcu_origin_x + mcu_x;
-            if (x >= width) continue;
+pub fn yCbCrToRgbBlock(self: *Self, y_block: *[3]Block, cbcr_block: *[3]Block, v: usize, h: usize) void {
+    const y_step = self.frame_header.getMaxVerticalSamplingFactor();
+    const x_step = self.frame_header.getMaxHorizontalSamplingFactor();
 
-            // x coordinates of each component applied to the sampling factor
-            const y_sampled_x = (mcu_x * self.frame_header.components[0].horizontal_sampling_factor) / max_horizontal_sampling_factor;
-            const cb_sampled_x = (mcu_x * self.frame_header.components[1].horizontal_sampling_factor) / max_horizontal_sampling_factor;
-            const cr_sampled_x = (mcu_x * self.frame_header.components[2].horizontal_sampling_factor) / max_horizontal_sampling_factor;
+    var y: usize = 8;
+    while (y > 0) {
+        y -= 1;
+        var x: usize = 8;
+        while (x > 0) {
+            x -= 1;
+            const pixel_index: usize = y * 8 + x;
+            const Y: f32 = @floatFromInt(y_block[0][pixel_index]);
 
-            // x coordinates of each component in the block
-            const y_block_x = y_sampled_x % 8;
-            const cb_block_x = cb_sampled_x % 8;
-            const cr_block_x = cr_sampled_x % 8;
+            const cbcr_y: usize = y / y_step + (8 / y_step) * v;
+            const cbcr_x: usize = x / x_step + (8 / x_step) * h;
+            const cbcr_pixel: usize = cbcr_y * 8 + cbcr_x;
 
-            const y_block_ind = (y_sampled_y / 8) * self.frame_header.components[0].horizontal_sampling_factor + (y_sampled_x / 8);
-            const cb_block_ind = (cb_sampled_y / 8) * self.frame_header.components[1].horizontal_sampling_factor + (cb_sampled_x / 8);
-            const cr_block_ind = (cr_sampled_y / 8) * self.frame_header.components[2].horizontal_sampling_factor + (cr_sampled_x / 8);
-
-            const mcu_Y = &mcu_storage[0][y_block_ind];
-            const mcu_Cb = &mcu_storage[1][cb_block_ind];
-            const mcu_Cr = &mcu_storage[2][cr_block_ind];
-
-            const reconstructed_Y = idct(mcu_Y, @as(u3, @intCast(y_block_x)), @as(u3, @intCast(y_block_y)), mcu_id, 0);
-            const reconstructed_Cb = idct(mcu_Cb, @as(u3, @intCast(cb_block_x)), @as(u3, @intCast(cb_block_y)), mcu_id, 1);
-            const reconstructed_Cr = idct(mcu_Cr, @as(u3, @intCast(cr_block_x)), @as(u3, @intCast(cr_block_y)), mcu_id, 2);
-
-            const Y: f32 = @floatFromInt(reconstructed_Y);
-            const Cb: f32 = @floatFromInt(reconstructed_Cb);
-            const Cr: f32 = @floatFromInt(reconstructed_Cr);
+            const Cb: f32 = @floatFromInt(cbcr_block[1][cbcr_pixel]);
+            const Cr: f32 = @floatFromInt(cbcr_block[2][cbcr_pixel]);
 
             const Co_red = 0.299;
             const Co_green = 0.587;
@@ -213,26 +180,116 @@ fn renderToPixelsRgb(self: *const Self, mcu_storage: *[MAX_COMPONENTS][MAX_BLOCK
             const b = Cb * (2 - 2 * Co_blue) + Y;
             const g = (Y - Co_blue * b - Co_red * r) / Co_green;
 
-            pixels[stride + x] = .{
-                .r = @intFromFloat(std.math.clamp(r + 128.0, 0.0, 255.0)),
-                .g = @intFromFloat(std.math.clamp(g + 128.0, 0.0, 255.0)),
-                .b = @intFromFloat(std.math.clamp(b + 128.0, 0.0, 255.0)),
-            };
+            y_block[0][pixel_index] = @intFromFloat(std.math.clamp(r + 128.0, 0.0, 255.0));
+            y_block[1][pixel_index] = @intFromFloat(std.math.clamp(g + 128.0, 0.0, 255.0));
+            y_block[2][pixel_index] = @intFromFloat(std.math.clamp(b + 128.0, 0.0, 255.0));
         }
     }
 }
 
-fn idct(mcu: *const MCU, x: u3, y: u3, mcu_id: usize, component_id: usize) i8 {
-    // TODO(angelo): if Ns > 1 it is not interleaved, so the order this should be fixed...
-    // FIXME is wrong for Ns > 1
+pub fn yCbCrToRgb(self: *Self) ImageReadError!void {
+    const y_step = self.frame_header.getMaxVerticalSamplingFactor();
+    const x_step = self.frame_header.getMaxHorizontalSamplingFactor();
+
+    var y: usize = 0;
+    while (y < self.block_height) : (y += y_step) {
+        var x: usize = 0;
+        while (x < self.block_width) : (x += x_step) {
+            const v_max = self.frame_header.getMaxVerticalSamplingFactor();
+            const h_max = self.frame_header.getMaxHorizontalSamplingFactor();
+
+            const cbcr_block = &self.block_storage[y * self.block_width_actual + x];
+
+            var v: usize = v_max;
+            while (v > 0) {
+                v -= 1;
+                var h: usize = h_max;
+                while (h > 0) {
+                    h -= 1;
+                    const y_block = &self.block_storage[(y + v) * self.block_width_actual + (x + h)];
+                    yCbCrToRgbBlock(self, y_block, cbcr_block, v, h);
+                }
+            }
+        }
+    }
+}
+
+pub fn dequantizeMCUs(self: *Self) !void {
+    const y_step = self.frame_header.getMaxVerticalSamplingFactor();
+    const x_step = self.frame_header.getMaxHorizontalSamplingFactor();
+
+    var y: usize = 0;
+    while (y < self.block_height) : (y += y_step) {
+        var x: usize = 0;
+        while (x < self.block_width) : (x += x_step) {
+            for (self.frame_header.components, 0..) |component, component_id| {
+                const v_max = component.vertical_sampling_factor;
+                const h_max = component.horizontal_sampling_factor;
+
+                for (0..v_max) |v| {
+                    for (0..h_max) |h| {
+                        const block_id = (y + v) * self.block_width_actual + (x + h);
+                        const block = &self.block_storage[block_id][component_id];
+                        if (self.quantization_tables[component.quantization_table_id]) |quantization_table| {
+                            for (0..64) |sample_id| {
+                                block[sample_id] = block[sample_id] * quantization_table.q8[sample_id];
+                            }
+                        } else return ImageReadError.InvalidData;
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn idctMCUs(self: *Self) void {
+    const y_step = self.frame_header.getMaxVerticalSamplingFactor();
+    const x_step = self.frame_header.getMaxHorizontalSamplingFactor();
+
+    var y: usize = 0;
+    while (y < self.block_height) : (y += y_step) {
+        var x: usize = 0;
+        while (x < self.block_width) : (x += x_step) {
+            for (self.frame_header.components, 0..) |component, component_id| {
+                const v_max = component.vertical_sampling_factor;
+                const h_max = component.horizontal_sampling_factor;
+
+                for (0..v_max) |v| {
+                    for (0..h_max) |h| {
+                        const block_id = (y + v) * self.block_width_actual + (x + h);
+                        const block = &self.block_storage[block_id][component_id];
+                        idctBlock(block);
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn idctBlock(block: *Block) void {
+    var result: Block = undefined;
+
+    for (0..8) |y| {
+        for (0..8) |x| {
+            result[y * 8 + x] = idct(block, x, y, 0, 0);
+        }
+    }
+
+    // write final result back
+    for (0..64) |idx| {
+        block[idx] = result[idx];
+    }
+}
+
+fn idct(block: *const Block, x: usize, y: usize, mcu_id: usize, component_id: usize) i8 {
     var reconstructed_pixel: f32 = 0.0;
 
     var u: usize = 0;
     while (u < 8) : (u += 1) {
         var v: usize = 0;
         while (v < 8) : (v += 1) {
-            const mcu_value = mcu[v * 8 + u];
-            reconstructed_pixel += IDCTMultipliers[y][x][u][v] * @as(f32, @floatFromInt(mcu_value));
+            const block_value = block[v * 8 + u];
+            reconstructed_pixel += IDCTMultipliers[y][x][u][v] * @as(f32, @floatFromInt(block_value));
         }
     }
 

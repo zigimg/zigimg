@@ -13,6 +13,9 @@ const utils = @import("../../utils.zig");
 
 // Png specification: http://www.libpng.org/pub/png/spec/iso/index-object.html
 
+// mlarouche: Enable this to step into the processors with a debugger
+const PNG_DEBUG = false;
+
 pub fn isChunkCritical(id: u32) bool {
     return (id & 0x20000000) == 0;
 }
@@ -73,7 +76,7 @@ const IDatChunksReader = struct {
     }
 
     fn fillBuffer(self: *Self, to_read: usize) ImageUnmanaged.ReadError!usize {
-        @memcpy(self.buffer[0..self.data.len], self.data);
+        mem.copyForwards(u8, self.buffer[0..self.data.len], self.data);
         const new_start = self.data.len;
         var max = self.buffer.len;
         if (max > self.remaining_chunk_length) {
@@ -645,15 +648,15 @@ pub const ReaderProcessor = struct {
         const gen = struct {
             fn chunkProcessor(ptr: *anyopaque, data: *ChunkProcessData) ImageUnmanaged.ReadError!PixelFormat {
                 const self: Ptr = @ptrCast(@alignCast(ptr));
-                return @call(.always_inline, chunkProcessorFn.?, .{ self, data });
+                return @call(if (PNG_DEBUG) .auto else .always_inline, chunkProcessorFn.?, .{ self, data });
             }
             fn paletteProcessor(ptr: *anyopaque, data: *PaletteProcessData) ImageUnmanaged.ReadError!void {
                 const self: Ptr = @ptrCast(@alignCast(ptr));
-                return @call(.always_inline, paletteProcessorFn.?, .{ self, data });
+                return @call(if (PNG_DEBUG) .auto else .always_inline, paletteProcessorFn.?, .{ self, data });
             }
             fn dataRowProcessor(ptr: *anyopaque, data: *RowProcessData) ImageUnmanaged.ReadError!PixelFormat {
                 const self: Ptr = @ptrCast(@alignCast(ptr));
-                return @call(.always_inline, dataRowProcessorFn.?, .{ self, data });
+                return @call(if (PNG_DEBUG) .auto else .always_inline, dataRowProcessorFn.?, .{ self, data });
             }
 
             const vtable = VTable{
@@ -839,7 +842,18 @@ pub const PlteProcessor = struct {
             return result_format;
         }
 
-        return .rgba32;
+        const palette_size = data.chunk_length / 3;
+        if (palette_size <= 2) {
+            return .indexed1;
+        } else if (palette_size <= 4) {
+            return .indexed2;
+        } else if (palette_size <= 16) {
+            return .indexed4;
+        } else if (palette_size <= 256) {
+            return .indexed8;
+        } else {
+            return .indexed16;
+        }
     }
 
     pub fn processPalette(self: *Self, data: *PaletteProcessData) ImageUnmanaged.ReadError!void {

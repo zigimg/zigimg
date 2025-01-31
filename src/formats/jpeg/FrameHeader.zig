@@ -7,6 +7,8 @@ const buffered_stream_source = @import("../../buffered_stream_source.zig");
 const Image = @import("../../Image.zig");
 const ImageReadError = Image.ReadError;
 
+const Markers = @import("utils.zig").Markers;
+
 const Allocator = std.mem.Allocator;
 
 const JPEG_DEBUG = false;
@@ -53,8 +55,8 @@ const Self = @This();
 
 allocator: Allocator,
 sample_precision: u8,
-row_count: u16,
-samples_per_row: u16,
+height: u16,
+width: u16,
 components: []Component,
 
 pub fn read(allocator: Allocator, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!Self {
@@ -62,8 +64,8 @@ pub fn read(allocator: Allocator, reader: buffered_stream_source.DefaultBuffered
     if (JPEG_DEBUG) std.debug.print("StartOfFrame: frame size = 0x{X}\n", .{segment_size});
 
     const sample_precision = try reader.readByte();
-    const row_count = try reader.readInt(u16, .big);
-    const samples_per_row = try reader.readInt(u16, .big);
+    const height = try reader.readInt(u16, .big);
+    const width = try reader.readInt(u16, .big);
 
     const component_count = try reader.readByte();
 
@@ -72,7 +74,7 @@ pub fn read(allocator: Allocator, reader: buffered_stream_source.DefaultBuffered
         return ImageReadError.InvalidData;
     }
 
-    if (JPEG_DEBUG) std.debug.print("  {}x{}, precision={}, {} components\n", .{ samples_per_row, row_count, sample_precision, component_count });
+    if (JPEG_DEBUG) std.debug.print("  {}x{}, precision={}, {} components\n", .{ height, width, sample_precision, component_count });
 
     var components = try allocator.alloc(Component, component_count);
     errdefer allocator.free(components);
@@ -80,12 +82,6 @@ pub fn read(allocator: Allocator, reader: buffered_stream_source.DefaultBuffered
     var i: usize = 0;
     while (i < component_count) : (i += 1) {
         components[i] = try Component.read(reader);
-        // TODO(angelo): remove this
-        // if (JPEG_VERY_DEBUG) {
-        //     std.debug.print("    ID={}, Vfactor={}, Hfactor={} QtableID={}\n", .{
-        //         components[i].id, components[i].vertical_sampling_factor, components[i].horizontal_sampling_factor, components[i].quantization_table_id,
-        //     });
-        // }
     }
 
     // see B 8.2 table for the meaning of this check.
@@ -94,8 +90,8 @@ pub fn read(allocator: Allocator, reader: buffered_stream_source.DefaultBuffered
     return Self{
         .allocator = allocator,
         .sample_precision = sample_precision,
-        .row_count = row_count,
-        .samples_per_row = samples_per_row,
+        .height = height,
+        .width = width,
         .components = components,
     };
 }
@@ -124,15 +120,4 @@ pub fn getMaxVerticalSamplingFactor(self: Self) usize {
     }
 
     return ret;
-}
-
-pub fn getBlockCount(self: Self, component_id: usize) usize {
-    // MCU of non-interleaved is just one block.
-    if (self.components.len == 1) {
-        return 1;
-    }
-
-    const horizontal_block_count = self.components[component_id].horizontal_sampling_factor;
-    const vertical_block_count = self.components[component_id].vertical_sampling_factor;
-    return horizontal_block_count * vertical_block_count;
 }

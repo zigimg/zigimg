@@ -25,7 +25,7 @@ jobs:
       - name: Setup Zig
         uses: mlugg/setup-zig@v1
         with:
-          version: 0.14.0-dev.1911+3bf89f55c
+          version: 0.14.0-dev.2577+271452d22
       - name: AST Verify
         run: zig fmt --check --ast-check src/
         working-directory: zigimg

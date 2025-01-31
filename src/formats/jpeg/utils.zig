@@ -2,52 +2,18 @@
 const std = @import("std");
 
 // See figure A.6 in T.81.
-pub const ZigzagOffsets = blk: {
-    var offsets: [64]usize = undefined;
-    offsets[0] = 0;
-
-    var current_offset: usize = 0;
-    var direction: enum { north_east, south_west } = .north_east;
-    var i: usize = 1;
-    while (i < 64) : (i += 1) {
-        switch (direction) {
-            .north_east => {
-                if (current_offset < 8) {
-                    // Hit top edge
-                    current_offset += 1;
-                    direction = .south_west;
-                } else if (current_offset % 8 == 7) {
-                    // Hit right edge
-                    current_offset += 8;
-                    direction = .south_west;
-                } else {
-                    current_offset -= 7;
-                }
-            },
-            .south_west => {
-                if (current_offset >= 56) {
-                    // Hit bottom edge
-                    current_offset += 1;
-                    direction = .north_east;
-                } else if (current_offset % 8 == 0) {
-                    // Hit left edge
-                    current_offset += 8;
-                    direction = .north_east;
-                } else {
-                    current_offset += 7;
-                }
-            },
-        }
-
-        if (current_offset >= 64) {
-            @compileError(std.fmt.comptimePrint("ZigzagOffsets: Hit offset {} (>= 64) at index {}!\n", .{ current_offset, i }));
-        }
-
-        offsets[i] = current_offset;
-    }
-
-    break :blk offsets;
+// zig fmt: off
+pub const ZigzagOffsets: [64]usize  = .{
+    0,   1,  8, 16,  9,  2,  3, 10,
+    17, 24, 32, 25, 18, 11,  4,  5,
+    12, 19, 26, 33, 40, 48, 41, 34,
+    27, 20, 13,  6,  7, 14, 21, 28,
+    35, 42, 49, 56, 57, 50, 43, 36,
+    29, 22, 15, 23, 30, 37, 44, 51,
+    58, 59, 52, 45, 38, 31, 39, 46,
+    53, 60, 61, 54, 47, 55, 62, 63
 };
+// zig fmt: on
 
 /// The precalculated IDCT multipliers. This is possible because the only part of
 /// the IDCT calculation that changes between runs is the coefficients.
@@ -125,7 +91,22 @@ pub const Markers = enum(u16) {
     expand_reference_components = 0xFFDF,
 
     // 0xFFE0-0xFFEF application segments markers add 0-15 as needed.
-    application0 = 0xFFE0,
+    app0 = 0xFFE0,
+    app1 = 0xFFE1,
+    app2 = 0xFFE2,
+    app3 = 0xFFE3,
+    app4 = 0xFFE4,
+    app5 = 0xFFE5,
+    app6 = 0xFFE6,
+    app7 = 0xFFE7,
+    app8 = 0xFFE8,
+    app9 = 0xFFE9,
+    app10 = 0xFFEA,
+    app11 = 0xFFEB,
+    app12 = 0xFFEC,
+    app13 = 0xFFED,
+    app14 = 0xFFEE,
+    app15 = 0xFFEF,
 
     // 0xFFF0-0xFFFD jpeg extension markers add 0-13 as needed.
     jpeg_extension0 = 0xFFF0,
@@ -136,4 +117,4 @@ pub const Markers = enum(u16) {
 
 pub const MAX_COMPONENTS = 3;
 pub const MAX_BLOCKS = 8;
-pub const MCU = [64]i32;
+pub const Block = [64]i32;

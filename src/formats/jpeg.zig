@@ -36,12 +36,14 @@ const JPEG_DEBUG = false;
 pub const JPEG = struct {
     frame: ?Frame = null,
     allocator: Allocator,
-    quantization_tables: [4]?QuantizationTable,
+    quantization_tables: [4]?QuantizationTable = @splat(null),
+    dc_huffman_tables: [4]?HuffmanTable = @splat(null),
+    ac_huffman_tables: [4]?HuffmanTable = @splat(null),
+    restart_interval: u16 = 0,
 
     pub fn init(allocator: Allocator) JPEG {
         return .{
             .allocator = allocator,
-            .quantization_tables = @splat(null),
         };
     }
 
@@ -72,9 +74,9 @@ pub const JPEG = struct {
         }
     }
 
-    fn parseScan(self: *JPEG, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader, pixels_opt: *?color.PixelStorage) ImageReadError!void {
+    fn parseScan(self: *JPEG, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!void {
         if (self.frame) |frame| {
-            try Scan.performScan(&frame, reader, pixels_opt);
+            try Scan.performScan(&frame, reader);
         } else return ImageReadError.InvalidData;
     }
 
@@ -87,19 +89,13 @@ pub const JPEG = struct {
                 else => unreachable,
             }
 
-            const pixel_count = @as(usize, @intCast(frame.frame_header.samples_per_row)) * @as(usize, @intCast(frame.frame_header.row_count));
+            const pixel_count = @as(usize, @intCast(frame.frame_header.width)) * @as(usize, @intCast(frame.frame_header.height));
             pixels_opt.* = try color.PixelStorage.init(self.allocator, pixel_format, pixel_count);
         } else return ImageReadError.InvalidData;
     }
 
     pub fn read(self: *JPEG, stream: *ImageUnmanaged.Stream, pixels_opt: *?color.PixelStorage) ImageReadError!Frame {
         var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
-
-        const jfif_header = JFIFHeader.read(&buffered_stream) catch |err| switch (err) {
-            error.App0MarkerDoesNotExist, error.JfifIdentifierNotSet, error.ThumbnailImagesUnsupported, error.ExtraneousApplicationMarker => return ImageReadError.InvalidData,
-            else => |e| return e,
-        };
-        _ = jfif_header;
 
         errdefer {
             if (pixels_opt.*) |pixels| {
@@ -110,30 +106,25 @@ pub const JPEG = struct {
 
         const reader = buffered_stream.reader();
         var marker = try reader.readInt(u16, .big);
+
+        if (marker != @intFromEnum(Markers.start_of_image)) {
+            return ImageReadError.InvalidData;
+        }
+        marker = try reader.readInt(u16, .big);
+
         while (marker != @intFromEnum(Markers.end_of_image)) : (marker = try reader.readInt(u16, .big)) {
             if (JPEG_DEBUG) std.debug.print("Parsing marker value: 0x{X}\n", .{marker});
 
-            if (marker >= @intFromEnum(Markers.application0) and marker < @intFromEnum(Markers.application0) + 16) {
-                if (JPEG_DEBUG) std.debug.print("Skipping application data segment\n", .{});
-                const application_data_length = try reader.readInt(u16, .big);
-                try buffered_stream.seekBy(application_data_length - 2);
-                continue;
-            }
-
             switch (@as(Markers, @enumFromInt(marker))) {
-                // TODO(angelo): this should be moved inside the frameheader, it's part of thet
-                // and then the header just dispatches correctly what to do with it.
-                // JPEG should be as clear as possible
-                .sof0 => { // Baseline DCT
+                .sof0, .sof2 => { // Baseline DCT, progressive DCT Huffman coding
                     if (self.frame != null) {
                         return ImageError.Unsupported;
                     }
 
-                    self.frame = try Frame.read(self.allocator, &self.quantization_tables, &buffered_stream);
+                    self.frame = try Frame.read(self.allocator, @enumFromInt(marker), self.restart_interval, &self.quantization_tables, &self.dc_huffman_tables, &self.ac_huffman_tables, &buffered_stream);
                 },
 
                 .sof1 => return ImageError.Unsupported, // extended sequential DCT Huffman coding
-                .sof2 => return ImageError.Unsupported, // progressive DCT Huffman coding
                 .sof3 => return ImageError.Unsupported, // lossless (sequential) Huffman coding
                 .sof5 => return ImageError.Unsupported,
                 .sof6 => return ImageError.Unsupported,
@@ -144,10 +135,12 @@ pub const JPEG = struct {
                 .sof13 => return ImageError.Unsupported,
                 .sof14 => return ImageError.Unsupported,
                 .sof15 => return ImageError.Unsupported,
-
+                .define_huffman_tables => {
+                    try self.parseDefineHuffmanTables(reader);
+                },
                 .start_of_scan => {
                     try self.initializePixels(pixels_opt);
-                    try self.parseScan(reader, pixels_opt);
+                    try self.parseScan(reader);
                 },
 
                 .define_quantization_tables => {
@@ -161,12 +154,28 @@ pub const JPEG = struct {
                     try buffered_stream.seekBy(comment_length - 2);
                 },
 
+                .app0, .app1, .app2, .app3, .app4, .app5, .app6, .app7, .app8, .app9, .app10, .app11, .app12, .app13, .app14, .app15 => {
+                    if (JPEG_DEBUG) std.debug.print("Skipping application data segment\n", .{});
+                    const application_data_length = try reader.readInt(u16, .big);
+                    try buffered_stream.seekBy(application_data_length - 2);
+                },
+                .define_restart_interval => {
+                    try self.parseDefineRestartInterval(reader);
+                },
+                .restart0, .restart1, .restart2, .restart3, .restart4, .restart5, .restart6, .restart7 => {
+                    continue;
+                },
+
                 else => {
-                    // TODO(angelo): raise invalid marker, more precise error.
+                    std.debug.panic("Unrecognized Marker: {x}", .{marker});
                     return ImageReadError.InvalidData;
                 },
             }
         }
+
+        try self.frame.?.dequantizeMCUs();
+        self.frame.?.idctMCUs();
+        try self.frame.?.renderToPixels(&pixels_opt.*.?);
 
         return if (self.frame) |frame| frame else ImageReadError.InvalidData;
     }
@@ -187,18 +196,9 @@ pub const JPEG = struct {
 
     fn formatDetect(stream: *ImageUnmanaged.Stream) ImageReadError!bool {
         var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
-
         const reader = buffered_stream.reader();
         const maybe_start_of_image = try reader.readInt(u16, .big);
-        if (maybe_start_of_image != @intFromEnum(Markers.start_of_image)) {
-            return false;
-        }
-
-        try buffered_stream.seekTo(6);
-        var identifier_buffer: [4]u8 = undefined;
-        _ = try buffered_stream.read(identifier_buffer[0..]);
-
-        return std.mem.eql(u8, identifier_buffer[0..], "JFIF");
+        return maybe_start_of_image == @intFromEnum(Markers.start_of_image);
     }
 
     fn readImage(allocator: Allocator, stream: *ImageUnmanaged.Stream) ImageReadError!ImageUnmanaged {
@@ -212,8 +212,8 @@ pub const JPEG = struct {
 
         const frame = try jpeg.read(stream, &pixels_opt);
 
-        result.width = frame.frame_header.samples_per_row;
-        result.height = frame.frame_header.row_count;
+        result.width = frame.frame_header.width;
+        result.height = frame.frame_header.height;
 
         if (pixels_opt) |pixels| {
             result.pixels = pixels;
@@ -229,5 +229,44 @@ pub const JPEG = struct {
         _ = write_stream;
         _ = image;
         _ = encoder_options;
+    }
+
+    fn parseDefineHuffmanTables(self: *JPEG, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!void {
+        var segment_size = try reader.readInt(u16, .big);
+        if (JPEG_DEBUG) std.debug.print("DefineHuffmanTables: segment size = 0x{X}\n", .{segment_size});
+        segment_size -= 2;
+
+        while (segment_size > 0) {
+            const class_and_destination = try reader.readByte();
+            const table_class = class_and_destination >> 4;
+            const table_destination = class_and_destination & 0x0F;
+
+            const huffman_table = try HuffmanTable.read(self.allocator, table_class, reader);
+
+            if (table_class == 0) {
+                if (self.dc_huffman_tables[table_destination]) |*old_huffman_table| {
+                    old_huffman_table.deinit();
+                }
+                self.dc_huffman_tables[table_destination] = huffman_table;
+            } else {
+                if (self.ac_huffman_tables[table_destination]) |*old_huffman_table| {
+                    old_huffman_table.deinit();
+                }
+                self.ac_huffman_tables[table_destination] = huffman_table;
+            }
+
+            if (JPEG_DEBUG) std.debug.print("  Table with class {} installed at {}\n", .{ table_class, table_destination });
+
+            // Class+Destination + code counts + code table
+            segment_size -= 1 + 16 + @as(u16, @intCast(huffman_table.code_map.count()));
+        }
+    }
+
+    fn parseDefineRestartInterval(self: *JPEG, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) !void {
+        const segment_length = try reader.readInt(u16, .big);
+        std.debug.assert(segment_length - 4 == 0);
+
+        self.restart_interval = try reader.readInt(u16, .big);
+        if (JPEG_DEBUG) std.debug.print("Restart Interval: {}", .{self.restart_interval});
     }
 };

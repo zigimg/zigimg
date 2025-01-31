@@ -464,7 +464,7 @@ test "TGA RLE SIMD u8 (bytes) encoder" {
 }
 
 test "TGA RLE SIMD u8 (bytes) encoder should encore more than 128 bytes similar" {
-    const first_uncompressed_part:[135]u8 = @splat(0x45);
+    const first_uncompressed_part: [135]u8 = @splat(0x45);
     const second_uncompresse_part = [_]u8{ 0x1, 0x1, 0x1, 0x1 };
     const uncompressed_data = first_uncompressed_part ++ second_uncompresse_part;
 

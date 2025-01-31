@@ -104,6 +104,30 @@ fn testHeaderWithInvalidValue(buf: []u8, position: usize, val: u8) !void {
     buf[position] = origin;
 }
 
+test "Indexed PNG with transparency (Aseprite output)" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "png/aseprite_indexed_transparent.png");
+    defer file.close();
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    var png_image = try png.PNG.readImage(helpers.zigimg_test_allocator, &stream_source);
+    defer png_image.deinit(helpers.zigimg_test_allocator);
+
+    try std.testing.expect(png_image.pixels == .indexed8);
+
+    const pixels8_indexed = png_image.pixels.indexed8;
+
+    try helpers.expectEq(pixels8_indexed.palette[0].r, 0);
+    try helpers.expectEq(pixels8_indexed.palette[0].g, 0);
+    try helpers.expectEq(pixels8_indexed.palette[0].b, 0);
+    try helpers.expectEq(pixels8_indexed.palette[0].a, 0);
+
+    try helpers.expectEq(pixels8_indexed.palette[1].r, 0x22);
+    try helpers.expectEq(pixels8_indexed.palette[1].g, 0x20);
+    try helpers.expectEq(pixels8_indexed.palette[1].b, 0x34);
+    try helpers.expectEq(pixels8_indexed.palette[1].a, 255);
+}
+
 test "PNG Official Test Suite" {
     try testWithDir(helpers.fixtures_path ++ "png/", true);
 }
@@ -147,7 +171,7 @@ pub fn testWithDir(directory: []const u8, testMd5Sig: bool) !void {
             std.crypto.hash.Md5.hash(result_bytes, &md5_val, .{});
 
             const len = entry.name.len;
-            var tst_data_name: [50]u8 = undefined;
+            var tst_data_name: [200]u8 = undefined;
             @memcpy(tst_data_name[0 .. len - 3], entry.name[0 .. len - 3]);
             @memcpy(tst_data_name[len - 3 .. len], "tsd");
 
