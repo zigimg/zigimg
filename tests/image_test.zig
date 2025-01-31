@@ -9,6 +9,126 @@ const PixelFormat = @import("../src/pixel_format.zig").PixelFormat;
 const helpers = @import("helpers.zig");
 const ImageError = Image.Error;
 
+// test "Create Image indexed1" {
+//     var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed1);
+//     defer test_image.deinit();
+
+//     try helpers.expectEq(test_image.width, 24);
+//     try helpers.expectEq(test_image.height, 32);
+//     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.indexed1);
+
+//     const pixels = test_image.pixels;
+
+//     try testing.expect(pixels == .indexed1);
+//     try testing.expect(pixels.indexed1.palette.len == 2);
+//     try testing.expect(pixels.indexed1.indices.len == 24 * 32);
+// }
+
+// test "Create Image indexed2" {
+//     var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed2);
+//     defer test_image.deinit();
+
+//     try helpers.expectEq(test_image.width, 24);
+//     try helpers.expectEq(test_image.height, 32);
+//     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.indexed2);
+
+//     const pixels = test_image.pixels;
+// test "Create Image indexed1" {
+//     var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed1);
+//     defer test_image.deinit();
+
+//     try helpers.expectEq(test_image.width, 24);
+//     try helpers.expectEq(test_image.height, 32);
+//     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.indexed1);
+
+//     const pixels = test_image.pixels;
+
+//     try testing.expect(pixels == .indexed1);
+//     try testing.expect(pixels.indexed1.palette.len == 2);
+//     try testing.expect(pixels.indexed1.indices.len == 24 * 32);
+// }
+
+// test "Create Image indexed2" {
+//     var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed2);
+//     defer test_image.deinit();
+
+//     try helpers.expectEq(test_image.width, 24);
+//     try helpers.expectEq(test_image.height, 32);
+//     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.indexed2);
+
+//     const pixels = test_image.pixels;
+// test "Create Image indexed1" {
+//     var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed1);
+//     defer test_image.deinit();
+
+//     try helpers.expectEq(test_image.width, 24);
+//     try helpers.expectEq(test_image.height, 32);
+//     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.indexed1);
+
+//     const pixels = test_image.pixels;
+
+//     try testing.expect(pixels == .indexed1);
+//     try testing.expect(pixels.indexed1.palette.len == 2);
+//     try testing.expect(pixels.indexed1.indices.len == 24 * 32);
+// }
+
+// test "Create Image indexed2" {
+//     var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed2);
+//     defer test_image.deinit();
+
+//     try helpers.expectEq(test_image.width, 24);
+//     try helpers.expectEq(test_image.height, 32);
+//     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.indexed2);
+
+//     const pixels = test_image.pixels;
+// test "Create Image indexed1" {
+//     var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed1);
+//     defer test_image.deinit();
+
+//     try helpers.expectEq(test_image.width, 24);
+//     try helpers.expectEq(test_image.height, 32);
+//     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.indexed1);
+
+//     const pixels = test_image.pixels;
+
+//     try testing.expect(pixels == .indexed1);
+//     try testing.expect(pixels.indexed1.palette.len == 2);
+//     try testing.expect(pixels.indexed1.indices.len == 24 * 32);
+// }
+
+// test "Create Image indexed2" {
+//     var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed2);
+//     defer test_image.deinit();
+
+//     try helpers.expectEq(test_image.width, 24);
+//     try helpers.expectEq(test_image.height, 32);
+//     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.indexed2);
+
+//     const pixels = test_image.pixels;
+// test "Create Image indexed1" {
+//     var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed1);
+//     defer test_image.deinit();
+
+//     try helpers.expectEq(test_image.width, 24);
+//     try helpers.expectEq(test_image.height, 32);
+//     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.indexed1);
+
+//     const pixels = test_image.pixels;
+
+//     try testing.expect(pixels == .indexed1);
+//     try testing.expect(pixels.indexed1.palette.len == 2);
+//     try testing.expect(pixels.indexed1.indices.len == 24 * 32);
+// }
+
+// test "Create Image indexed2" {
+//     var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed2);
+//     defer test_image.deinit();
+
+//     try helpers.expectEq(test_image.width, 24);
+//     try helpers.expectEq(test_image.height, 32);
+//     try helpers.expectEq(test_image.pixelFormat(), PixelFormat.indexed2);
+
+//     const pixels = test_image.pixels;
 test "Create Image indexed1" {
     var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed1);
     defer test_image.deinit();
@@ -322,6 +442,17 @@ test "Should detect Farbfeld properly" {
     const image_tests = &[_][]const u8{
         helpers.fixtures_path ++ "farbfeld/dragon.ff",
         helpers.fixtures_path ++ "farbfeld/yellow-1x1-semitransparent.png.ff",
+    };
+
+    for (image_tests) |image_path| {
+        var test_image = try helpers.testImageFromFile(image_path);
+        defer test_image.deinit();
+    }
+}
+
+test "Should detect IFF/PBM properly" {
+    const image_tests = &[_][]const u8{
+        helpers.fixtures_path ++ "ilbm/sample-pbm.iff",
     };
 
     for (image_tests) |image_path| {
