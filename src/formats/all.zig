@@ -10,6 +10,7 @@ pub const PPM = @import("netpbm.zig").PPM;
 pub const QOI = @import("qoi.zig").QOI;
 pub const TGA = @import("tga.zig").TGA;
 pub const PAM = @import("pam.zig").PAM;
+pub const ILBM = @import("ilbm.zig").ILBM;
 
 pub const ImageEncoderOptions = union(@import("../Image.zig").Format) {
     bmp: BMP.EncoderOptions,
@@ -24,4 +25,5 @@ pub const ImageEncoderOptions = union(@import("../Image.zig").Format) {
     tga: TGA.EncoderOptions,
     pam: PAM.EncoderOptions,
     farbfeld: void,
+    ilbm: void,
 };

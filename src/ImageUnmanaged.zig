@@ -43,6 +43,7 @@ pub const Format = enum {
     tga,
     pam,
     farbfeld,
+    ilbm,
 };
 
 pub const Stream = std.io.StreamSource;
