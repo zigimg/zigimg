@@ -2,6 +2,7 @@ pub const AllFormats = @import("src/formats/all.zig");
 pub const bmp = @import("src/formats/bmp.zig");
 pub const color = @import("src/color.zig");
 pub const Colors = @import("src/predefined_colors.zig").Colors;
+pub const farbfeld = @import("src/formats/farbfeld.zig");
 pub const FormatInterface = @import("src/FormatInterface.zig");
 pub const gif = @import("src/formats/gif.zig");
 pub const Image = @import("src/Image.zig");
@@ -36,6 +37,7 @@ test {
         @import("tests/formats/png_test.zig"),
         @import("tests/formats/qoi_test.zig"),
         @import("tests/formats/tga_test.zig"),
+        @import("tests/formats/farbfeld_test.zig"),
         @import("tests/image_test.zig"),
         @import("tests/math_test.zig"),
         @import("tests/octree_quantizer_test.zig"),
