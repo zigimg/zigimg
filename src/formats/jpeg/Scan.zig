@@ -122,8 +122,10 @@ pub fn performScan(frame: *const Frame, reader: buffered_stream_source.DefaultBu
 
     var skips: u32 = 0;
 
-    const y_step = frame.frame_header.getMaxVerticalSamplingFactor();
-    const x_step = frame.frame_header.getMaxHorizontalSamplingFactor();
+    const noninterleaved = self.component_count == 1 and self.components[0].?.component_id == 1;
+
+    const y_step = if (noninterleaved) 1 else frame.frame_header.getMaxVerticalSamplingFactor();
+    const x_step = if (noninterleaved) 1 else frame.frame_header.getMaxHorizontalSamplingFactor();
     const restart_interval = frame.restart_interval * y_step * x_step;
 
     var y: usize = 0;
@@ -147,8 +149,8 @@ pub fn performScan(frame: *const Frame, reader: buffered_stream_source.DefaultBu
                 for (self.frame.frame_header.components, 0..) |frame_component, i| {
                     if (frame_component.id == component.component_id) {
                         component_index = i;
-                        v_max = frame_component.vertical_sampling_factor;
-                        h_max = frame_component.horizontal_sampling_factor;
+                        v_max = if (noninterleaved) 1 else frame_component.vertical_sampling_factor;
+                        h_max = if (noninterleaved) 1 else frame_component.horizontal_sampling_factor;
                         break;
                     }
                 }
