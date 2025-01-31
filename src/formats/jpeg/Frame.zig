@@ -267,38 +267,157 @@ pub fn idctMCUs(self: *Self) void {
 }
 
 fn idctBlock(block: *Block) void {
-    var result: Block = undefined;
+    var result: [64]f32 = undefined;
+
+    const m0: f32 = 2.0 * @cos(1.0 / 16.0 * 2.0 * std.math.pi);
+    const m1: f32 = 2.0 * @cos(2.0 / 16.0 * 2.0 * std.math.pi);
+    const m3: f32 = 2.0 * @cos(2.0 / 16.0 * 2.0 * std.math.pi);
+    const m5: f32 = 2.0 * @cos(3.0 / 16.0 * 2.0 * std.math.pi);
+    const m2: f32 = m0 - m5;
+    const m4: f32 = m0 + m5;
+
+    const s0: f32 = @cos(0.0 / 16.0 * std.math.pi) / @sqrt(8.0);
+    const s1: f32 = @cos(1.0 / 16.0 * std.math.pi) / 2.0;
+    const s2: f32 = @cos(2.0 / 16.0 * std.math.pi) / 2.0;
+    const s3: f32 = @cos(3.0 / 16.0 * std.math.pi) / 2.0;
+    const s4: f32 = @cos(4.0 / 16.0 * std.math.pi) / 2.0;
+    const s5: f32 = @cos(5.0 / 16.0 * std.math.pi) / 2.0;
+    const s6: f32 = @cos(6.0 / 16.0 * std.math.pi) / 2.0;
+    const s7: f32 = @cos(7.0 / 16.0 * std.math.pi) / 2.0;
+
+    for (0..8) |x| {
+        const a0 = @as(f32, @floatFromInt(block[0 * 8 + x])) * s0;
+        const a1 = @as(f32, @floatFromInt(block[4 * 8 + x])) * s4;
+        const a2 = @as(f32, @floatFromInt(block[2 * 8 + x])) * s2;
+        const a3 = @as(f32, @floatFromInt(block[6 * 8 + x])) * s6;
+        const a4 = @as(f32, @floatFromInt(block[5 * 8 + x])) * s5;
+        const a5 = @as(f32, @floatFromInt(block[1 * 8 + x])) * s1;
+        const a6 = @as(f32, @floatFromInt(block[7 * 8 + x])) * s7;
+        const a7 = @as(f32, @floatFromInt(block[3 * 8 + x])) * s3;
+
+        const b0 = a0;
+        const b1 = a1;
+        const b2 = a2;
+        const b3 = a3;
+        const b4 = a4 - a7;
+        const b5 = a5 + a6;
+        const b6 = a5 - a6;
+        const b7 = a4 + a7;
+
+        const c0 = b0;
+        const c1 = b1;
+        const c2 = b2 - b3;
+        const c3 = b2 + b3;
+        const c4 = b4;
+        const c5 = b5 - b7;
+        const c6 = b6;
+        const c7 = b5 + b7;
+        const c8 = b4 + b6;
+
+        const d0 = c0;
+        const d1 = c1;
+        const d2 = c2 * m1;
+        const d3 = c3;
+        const d4 = c4 * m2;
+        const d5 = c5 * m3;
+        const d6 = c6 * m4;
+        const d7 = c7;
+        const d8 = c8 * m5;
+
+        const e0 = d0 + d1;
+        const e1 = d0 - d1;
+        const e2 = d2 - d3;
+        const e3 = d3;
+        const e4 = d4 + d8;
+        const e5 = d5 + d7;
+        const e6 = d6 - d8;
+        const e7 = d7;
+        const e8 = e5 - e6;
+
+        const f0 = e0 + e3;
+        const f1 = e1 + e2;
+        const f2 = e1 - e2;
+        const f3 = e0 - e3;
+        const f4 = e4 - e8;
+        const f5 = e8;
+        const f6 = e6 - e7;
+        const f7 = e7;
+
+        result[0 * 8 + x] = f0 + f7;
+        result[1 * 8 + x] = f1 + f6;
+        result[2 * 8 + x] = f2 + f5;
+        result[3 * 8 + x] = f3 + f4;
+        result[4 * 8 + x] = f3 - f4;
+        result[5 * 8 + x] = f2 - f5;
+        result[6 * 8 + x] = f1 - f6;
+        result[7 * 8 + x] = f0 - f7;
+    }
 
     for (0..8) |y| {
-        for (0..8) |x| {
-            result[y * 8 + x] = idct(block, x, y, 0, 0);
-        }
+        const a0 = result[y * 8 + 0] * s0;
+        const a1 = result[y * 8 + 4] * s4;
+        const a2 = result[y * 8 + 2] * s2;
+        const a3 = result[y * 8 + 6] * s6;
+        const a4 = result[y * 8 + 5] * s5;
+        const a5 = result[y * 8 + 1] * s1;
+        const a6 = result[y * 8 + 7] * s7;
+        const a7 = result[y * 8 + 3] * s3;
+
+        const b0 = a0;
+        const b1 = a1;
+        const b2 = a2;
+        const b3 = a3;
+        const b4 = a4 - a7;
+        const b5 = a5 + a6;
+        const b6 = a5 - a6;
+        const b7 = a4 + a7;
+
+        const c0 = b0;
+        const c1 = b1;
+        const c2 = b2 - b3;
+        const c3 = b2 + b3;
+        const c4 = b4;
+        const c5 = b5 - b7;
+        const c6 = b6;
+        const c7 = b5 + b7;
+        const c8 = b4 + b6;
+
+        const d0 = c0;
+        const d1 = c1;
+        const d2 = c2 * m1;
+        const d3 = c3;
+        const d4 = c4 * m2;
+        const d5 = c5 * m3;
+        const d6 = c6 * m4;
+        const d7 = c7;
+        const d8 = c8 * m5;
+
+        const e0 = d0 + d1;
+        const e1 = d0 - d1;
+        const e2 = d2 - d3;
+        const e3 = d3;
+        const e4 = d4 + d8;
+        const e5 = d5 + d7;
+        const e6 = d6 - d8;
+        const e7 = d7;
+        const e8 = e5 - e6;
+
+        const f0 = e0 + e3;
+        const f1 = e1 + e2;
+        const f2 = e1 - e2;
+        const f3 = e0 - e3;
+        const f4 = e4 - e8;
+        const f5 = e8;
+        const f6 = e6 - e7;
+        const f7 = e7;
+
+        block[y * 8 + 0] = @intFromFloat(std.math.clamp(f0 + f7 + 0.5, -128.0, 127.0));
+        block[y * 8 + 1] = @intFromFloat(std.math.clamp(f1 + f6 + 0.5, -128.0, 127.0));
+        block[y * 8 + 2] = @intFromFloat(std.math.clamp(f2 + f5 + 0.5, -128.0, 127.0));
+        block[y * 8 + 3] = @intFromFloat(std.math.clamp(f3 + f4 + 0.5, -128.0, 127.0));
+        block[y * 8 + 4] = @intFromFloat(std.math.clamp(f3 - f4 + 0.5, -128.0, 127.0));
+        block[y * 8 + 5] = @intFromFloat(std.math.clamp(f2 - f5 + 0.5, -128.0, 127.0));
+        block[y * 8 + 6] = @intFromFloat(std.math.clamp(f1 - f6 + 0.5, -128.0, 127.0));
+        block[y * 8 + 7] = @intFromFloat(std.math.clamp(f0 - f7 + 0.5, -128.0, 127.0));
     }
-
-    // write final result back
-    for (0..64) |idx| {
-        block[idx] = result[idx];
-    }
-}
-
-fn idct(block: *const Block, x: usize, y: usize, mcu_id: usize, component_id: usize) i8 {
-    var reconstructed_pixel: f32 = 0.0;
-
-    var u: usize = 0;
-    while (u < 8) : (u += 1) {
-        var v: usize = 0;
-        while (v < 8) : (v += 1) {
-            const block_value = block[v * 8 + u];
-            reconstructed_pixel += IDCTMultipliers[y][x][u][v] * @as(f32, @floatFromInt(block_value));
-        }
-    }
-
-    const scaled_pixel = @round(reconstructed_pixel / 4.0);
-    if (JPEG_DEBUG) {
-        if (scaled_pixel < -128.0 or scaled_pixel > 127.0) {
-            std.debug.print("Pixel at mcu={} x={} y={} component_id={} is out of bounds with DCT: {d}!\n", .{ mcu_id, x, y, component_id, scaled_pixel });
-        }
-    }
-
-    return @intFromFloat(std.math.clamp(scaled_pixel, -128.0, 127.0));
 }
