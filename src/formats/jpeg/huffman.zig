@@ -14,6 +14,8 @@ const HuffmanCodeMap = std.AutoArrayHashMap(HuffmanCode, u8);
 const JPEG_DEBUG = false;
 const JPEG_VERY_DEBUG = false;
 
+const fast_bits = 9;
+
 pub const Table = struct {
     const Self = @This();
 
@@ -21,6 +23,8 @@ pub const Table = struct {
 
     code_counts: [16]u8,
     code_map: HuffmanCodeMap,
+    fast_table: [1 << fast_bits]u8,
+    fast_size: [1 << fast_bits]u5,
 
     table_class: u8,
 
@@ -40,6 +44,9 @@ pub const Table = struct {
 
         var huffman_code_map = HuffmanCodeMap.init(allocator);
         errdefer huffman_code_map.deinit();
+
+        var fast_table: [1 << fast_bits]u8 = @splat(255);
+        var fast_size: [1 << fast_bits]u5 = @splat(0);
 
         if (JPEG_VERY_DEBUG) std.debug.print("  Decoded huffman codes map:\n", .{});
 
@@ -64,6 +71,17 @@ pub const Table = struct {
                 const byte = try reader.readByte();
                 try huffman_code_map.put(.{ .length_minus_one = @as(u4, @intCast(i)), .code = code }, byte);
 
+                // construct accelaration structure see stb_image
+                if (i + 1 <= fast_bits) {
+                    const first_index = code << fast_bits - @as(u4, @intCast(i + 1));
+                    const num_indexes = @as(usize, 1) << @as(u4, @intCast(fast_bits - (i + 1)));
+                    for (0..num_indexes) |index| {
+                        std.debug.assert(fast_table[first_index + index] == 255);
+                        fast_table[first_index + index] = byte;
+                        fast_size[first_index + index] = @as(u5, @intCast(i + 1));
+                    }
+                }
+
                 if (JPEG_VERY_DEBUG) std.debug.print("      {b} => 0x{X}\n", .{ code, byte });
                 code += 1;
             }
@@ -75,6 +93,8 @@ pub const Table = struct {
             .allocator = allocator,
             .code_counts = code_counts,
             .code_map = huffman_code_map,
+            .fast_table = fast_table,
+            .fast_size = fast_size,
             .table_class = table_class,
         };
     }
@@ -89,12 +109,14 @@ pub const Reader = struct {
 
     table: ?*const Table = null,
     reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader,
+    stream: *buffered_stream_source.DefaultBufferedStreamSourceReader,
     bit_buffer: u32 = 0,
     bit_count: u5 = 0,
 
-    pub fn init(reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) Self {
+    pub fn init(stream: *buffered_stream_source.DefaultBufferedStreamSourceReader) Self {
         return .{
-            .reader = reader,
+            .reader = stream.reader(),
+            .stream = stream,
         };
     }
 
@@ -119,6 +141,10 @@ pub const Reader = struct {
                     continue;
                 } else if (byte_next >= 0xD0 and byte_next <= 0xD7) {
                     byte_curr = try self.reader.readByte();
+                } else {
+                    // read an actual marker, return to 2 bytes to stream
+                    try self.stream.seekBy(-2);
+                    return ImageReadError.InvalidData;
                 }
             }
 
@@ -148,12 +174,21 @@ pub const Reader = struct {
     }
 
     pub fn readCode(self: *Self) ImageReadError!u8 {
+        const fast_index = self.peekBits(9) catch 0;
+
+        if (self.bit_count >= 9) {
+            const value = self.table.?.fast_table[fast_index];
+            if (value != 255) {
+                const length = self.table.?.fast_size[fast_index];
+                self.consumeBits(length);
+                return value;
+            }
+        }
+
         var code: u32 = 0;
 
-        var length: u5 = 1;
+        var length: u5 = if (self.bit_count < 9) 1 else 10;
         while (length <= 16) : (length += 1) {
-            // NOTE: if the table is stored as a tree, this is O(1) to update the new node,
-            // instead of O(log n), so should be faster.
             code = try self.peekBits(length);
             if (self.table.?.code_map.get(.{ .length_minus_one = @intCast(length - 1), .code = @intCast(code) })) |value| {
                 self.consumeBits(length);

@@ -176,14 +176,14 @@ pub fn yCbCrToRgbBlock(self: *Self, y_block: *[3]Block, cbcr_block: *[3]Block, v
         const Y6: f32 = @floatFromInt(y_block[0][pixel_index + 6]);
         const Y7: f32 = @floatFromInt(y_block[0][pixel_index + 7]);
 
-        const cbcr_x0: usize = 0 / x_step + (8 / x_step) * h;
-        const cbcr_x1: usize = 1 / x_step + (8 / x_step) * h;
-        const cbcr_x2: usize = 2 / x_step + (8 / x_step) * h;
-        const cbcr_x3: usize = 3 / x_step + (8 / x_step) * h;
-        const cbcr_x4: usize = 4 / x_step + (8 / x_step) * h;
-        const cbcr_x5: usize = 5 / x_step + (8 / x_step) * h;
-        const cbcr_x6: usize = 6 / x_step + (8 / x_step) * h;
-        const cbcr_x7: usize = 7 / x_step + (8 / x_step) * h;
+        const cbcr_x0: usize = (0 / x_step) + (8 / x_step) * h;
+        const cbcr_x1: usize = (1 / x_step) + (8 / x_step) * h;
+        const cbcr_x2: usize = (2 / x_step) + (8 / x_step) * h;
+        const cbcr_x3: usize = (3 / x_step) + (8 / x_step) * h;
+        const cbcr_x4: usize = (4 / x_step) + (8 / x_step) * h;
+        const cbcr_x5: usize = (5 / x_step) + (8 / x_step) * h;
+        const cbcr_x6: usize = (6 / x_step) + (8 / x_step) * h;
+        const cbcr_x7: usize = (7 / x_step) + (8 / x_step) * h;
 
         const cbcr_pixel0: usize = cbcr_y * 8 + cbcr_x0;
         const cbcr_pixel1: usize = cbcr_y * 8 + cbcr_x1;
