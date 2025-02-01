@@ -63,6 +63,16 @@ test "Convert Rgba64 to Colorf32" {
     try helpers.expectEq(result.a, 4);
 }
 
+test "Convert Rgb332 to Colorf32" {
+    const originalColor = color.Rgb332.initRgb(7, 4, 2);
+    const result = originalColor.toColorf32().toRgba32();
+
+    try helpers.expectEq(result.r, 255);
+    try helpers.expectEq(result.g, 146);
+    try helpers.expectEq(result.b, 170);
+    try helpers.expectEq(result.a, 255);
+}
+
 test "Convert Rgb565 to Colorf32" {
     const originalColor = color.Rgb565.initRgb(10, 30, 20);
     const result = originalColor.toColorf32().toRgba32();

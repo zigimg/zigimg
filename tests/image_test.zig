@@ -112,6 +112,20 @@ test "Create Image Rgba32" {
     try testing.expect(pixels.rgba32.len == 24 * 32);
 }
 
+test "Create Image Rgb332" {
+    var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.rgb332);
+    defer test_image.deinit();
+
+    try helpers.expectEq(test_image.width, 24);
+    try helpers.expectEq(test_image.height, 32);
+    try helpers.expectEq(test_image.pixelFormat(), PixelFormat.rgb332);
+
+    const pixels = test_image.pixels;
+
+    try testing.expect(pixels == .rgb332);
+    try testing.expect(pixels.rgb332.len == 24 * 32);
+}
+
 test "Create Image Rgb565" {
     var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.rgb565);
     defer test_image.deinit();
