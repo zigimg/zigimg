@@ -304,6 +304,18 @@ test "Should detect JPEG properly" {
     }
 }
 
+test "Should detect Farbfeld properly" {
+    const image_tests = &[_][]const u8{
+        helpers.fixtures_path ++ "farbfeld/dragon.ff",
+        helpers.fixtures_path ++ "farbfeld/yellow-1x1-semitransparent.png.ff",
+    };
+
+    for (image_tests) |image_path| {
+        var test_image = try helpers.testImageFromFile(image_path);
+        defer test_image.deinit();
+    }
+}
+
 test "Should error on invalid file" {
     const invalidFile = helpers.testImageFromFile("tests/helpers.zig");
     try helpers.expectError(invalidFile, ImageError.Unsupported);
