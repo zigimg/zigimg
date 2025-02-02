@@ -74,9 +74,9 @@ pub const JPEG = struct {
         }
     }
 
-    fn parseScan(self: *JPEG, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!void {
+    fn parseScan(self: *JPEG, stream: *buffered_stream_source.DefaultBufferedStreamSourceReader) ImageReadError!void {
         if (self.frame) |frame| {
-            try Scan.performScan(&frame, reader);
+            try Scan.performScan(&frame, stream);
         } else return ImageReadError.InvalidData;
     }
 
@@ -110,9 +110,10 @@ pub const JPEG = struct {
         if (marker != @intFromEnum(Markers.start_of_image)) {
             return ImageReadError.InvalidData;
         }
-        marker = try reader.readInt(u16, .big);
 
-        while (marker != @intFromEnum(Markers.end_of_image)) : (marker = try reader.readInt(u16, .big)) {
+        while (marker != @intFromEnum(Markers.end_of_image)) {
+            marker = try reader.readInt(u16, .big);
+
             if (JPEG_DEBUG) std.debug.print("Parsing marker value: 0x{X}\n", .{marker});
 
             switch (@as(Markers, @enumFromInt(marker))) {
@@ -140,7 +141,7 @@ pub const JPEG = struct {
                 },
                 .start_of_scan => {
                     try self.initializePixels(pixels_opt);
-                    try self.parseScan(reader);
+                    try self.parseScan(&buffered_stream);
                 },
 
                 .define_quantization_tables => {
@@ -165,9 +166,10 @@ pub const JPEG = struct {
                 .restart0, .restart1, .restart2, .restart3, .restart4, .restart5, .restart6, .restart7 => {
                     continue;
                 },
-
+                .end_of_image => {
+                    continue;
+                },
                 else => {
-                    std.debug.panic("Unrecognized Marker: {x}", .{marker});
                     return ImageReadError.InvalidData;
                 },
             }

@@ -30,7 +30,8 @@ approximation_low: u4,
 
 prediction_values: [3]i12,
 
-pub fn init(frame: *const Frame, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!Self {
+pub fn init(frame: *const Frame, stream: *buffered_stream_source.DefaultBufferedStreamSourceReader) ImageReadError!Self {
+    const reader = stream.reader();
     const segment_size = try reader.readInt(u16, .big);
     if (JPEG_DEBUG) std.debug.print("StartOfScan: segment size = 0x{X}\n", .{segment_size});
 
@@ -103,7 +104,7 @@ pub fn init(frame: *const Frame, reader: buffered_stream_source.DefaultBufferedS
 
     return Self{
         .frame = frame,
-        .reader = HuffmanReader.init(reader),
+        .reader = HuffmanReader.init(stream),
         .components = components,
         .component_count = component_count,
         .start_of_spectral_selection = start_of_spectral_selection,
@@ -117,15 +118,15 @@ pub fn init(frame: *const Frame, reader: buffered_stream_source.DefaultBufferedS
 /// Perform the scan operation.
 /// We assume the AC and DC huffman tables are already set up, and ready to decode.
 /// This should implement section E.2.3 of t-81 1992.
-pub fn performScan(frame: *const Frame, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!void {
-    var self = try Self.init(frame, reader);
+pub fn performScan(frame: *const Frame, stream: *buffered_stream_source.DefaultBufferedStreamSourceReader) ImageReadError!void {
+    var self = try Self.init(frame, stream);
 
     var skips: u32 = 0;
 
     const noninterleaved = self.component_count == 1 and self.components[0].?.component_id == 1;
 
-    const y_step = if (noninterleaved) 1 else frame.frame_header.getMaxVerticalSamplingFactor();
-    const x_step = if (noninterleaved) 1 else frame.frame_header.getMaxHorizontalSamplingFactor();
+    const y_step = if (noninterleaved) 1 else frame.vertical_sampling_factor_max;
+    const x_step = if (noninterleaved) 1 else frame.horizontal_sampling_factor_max;
     const restart_interval = frame.restart_interval * y_step * x_step;
 
     var y: usize = 0;
