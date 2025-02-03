@@ -15,9 +15,10 @@ const PBMMagicHeader = "PBM ";
 
 pub const Chunk = struct {
     id: u32,
-    name: *const [4:0]u8,
+    name: []const u8,
 
-    pub fn init(name: *const [4:0]u8) Chunk {
+    pub fn init(name: []const u8) Chunk {
+        std.debug.assert(name.len == 4);
         return .{ .name = name, .id = std.mem.bigToNative(u32, std.mem.bytesToValue(u32, name)) };
     }
 };
