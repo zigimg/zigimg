@@ -16,8 +16,7 @@ test "ILBM indexed8 PBM (chunky Deluxe Paint DOS file)" {
 
     var stream_source = std.io.StreamSource{ .file = file };
 
-    try the_bitmap.load(&stream_source, helpers.zigimg_test_allocator);
-    const pixels = the_bitmap.pixels;
+    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(the_bitmap.width(), 380);

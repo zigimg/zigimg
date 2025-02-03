@@ -9,9 +9,9 @@ const PixelStorage = color.PixelStorage;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 
 const iff_description_length = 12;
-const IFFMagicHeader = [_]u8{ 'F', 'O', 'R', 'M' };
-const ILBMMagicHeader = [_]u8{ 'I', 'L', 'B', 'M' };
-const PBMMagicHeader = [_]u8{ 'P', 'B', 'M', ' ' };
+const IFFMagicHeader = "FORM";
+const ILBMMagicHeader = "ILBM";
+const PBMMagicHeader = "PBM ";
 
 pub const Chunk = struct {
     id: u32,
@@ -28,26 +28,20 @@ pub const Chunks = struct {
     pub const BODY = Chunk.init("BODY");
 };
 
-pub fn isILBMHeader(stream: *ImageUnmanaged.Stream) ImageUnmanaged.Stream.ReadError!bool {
+pub fn getILBMFormatId(stream: *ImageUnmanaged.Stream) ImageUnmanaged.ReadError!Format {
     var magic_buffer: [iff_description_length]u8 = undefined;
 
     _ = try stream.reader().readAll(magic_buffer[0..]);
     const is_iff = std.mem.eql(u8, magic_buffer[0..4], IFFMagicHeader[0..]);
     if (!is_iff) {
-        return false;
+        return ImageUnmanaged.ReadError.InvalidData;
     }
-    if (std.mem.eql(u8, magic_buffer[8..], PBMMagicHeader[0..])) {
-        return true;
-    }
+    const format = if (std.mem.eql(u8, magic_buffer[8..], PBMMagicHeader[0..])) Format.pbm else Format.pbm;
 
-    return false;
+    return format;
 }
 
 pub fn loadHeader(stream: *ImageUnmanaged.Stream) ImageUnmanaged.ReadError!BitmapHeader {
-    if (!try isILBMHeader(stream)) {
-        return ImageUnmanaged.ReadError.InvalidData;
-    }
-
     var reader = stream.reader();
     const chunk = try utils.readStruct(reader, ChunkHeader, .big);
     if (chunk.type != Chunks.BMHD.id) return ImageUnmanaged.ReadError.InvalidData;
@@ -96,6 +90,7 @@ pub const Format = enum(u8) {
     ilbm = 0,
     // PC-DeluxePaint chunky format
     pbm = 1,
+    bad = 2,
 };
 
 pub const BitmapHeader = extern struct {
@@ -122,7 +117,7 @@ pub const BitmapHeader = extern struct {
     }
 };
 
-pub fn decodeByteRun1(stream: *ImageUnmanaged.Stream, tmp_buffer: *[]u8, length: u32) !void {
+pub fn decodeByteRun1(stream: *ImageUnmanaged.Stream, tmp_buffer: []u8, length: u32) !void {
     const reader = stream.reader();
     var output_offset: u32 = 0;
     var input_offset: u32 = 0;
@@ -135,7 +130,7 @@ pub fn decodeByteRun1(stream: *ImageUnmanaged.Stream, tmp_buffer: *[]u8, length:
                 if (input_offset >= length) {
                     return;
                 }
-                tmp_buffer.*[output_offset] = try reader.readByte();
+                tmp_buffer[output_offset] = try reader.readByte();
                 output_offset += 1;
                 input_offset += 1;
             }
@@ -143,7 +138,7 @@ pub fn decodeByteRun1(stream: *ImageUnmanaged.Stream, tmp_buffer: *[]u8, length:
             const value = try reader.readByte();
             input_offset += 1;
             for (0..257 - control) |_| {
-                tmp_buffer.*[output_offset] = value;
+                tmp_buffer[output_offset] = value;
                 output_offset += 1;
             }
         }
@@ -152,7 +147,8 @@ pub fn decodeByteRun1(stream: *ImageUnmanaged.Stream, tmp_buffer: *[]u8, length:
 
 pub const ILBM = struct {
     header: BitmapHeader = undefined,
-    pixels: PixelStorage = undefined,
+    format_id: Format = undefined,
+    palette: utils.FixedStorage(color.Rgba32, 256) = .{},
 
     pub fn width(self: *ILBM) usize {
         return self.header.width;
@@ -160,6 +156,14 @@ pub const ILBM = struct {
 
     pub fn height(self: *ILBM) usize {
         return self.header.height;
+    }
+
+    pub fn pixelFormat(self: *ILBM) ImageUnmanaged.Error!PixelFormat {
+        if (self.header.planes <= 8) {
+            return PixelFormat.indexed8;
+        } else {
+            return ImageUnmanaged.Error.Unsupported;
+        }
     }
 
     pub fn format() ImageUnmanaged.Format {
@@ -175,8 +179,14 @@ pub const ILBM = struct {
         };
     }
 
-    pub fn formatDetect(stream: *ImageUnmanaged.Stream) ImageUnmanaged.Stream.ReadError!bool {
-        return try isILBMHeader(stream);
+    pub fn formatDetect(stream: *ImageUnmanaged.Stream) !bool {
+        const format_id = getILBMFormatId(stream) catch Format.bad;
+
+        if (format_id == .bad) {
+            return false;
+        } else {
+            return true;
+        }
     }
 
     pub fn readImage(allocator: std.mem.Allocator, stream: *ImageUnmanaged.Stream) ImageUnmanaged.ReadError!ImageUnmanaged {
@@ -185,9 +195,9 @@ pub const ILBM = struct {
 
         var ilbm = ILBM{};
 
-        try ilbm.load(stream, allocator);
+        const pixels = try ilbm.read(stream, allocator);
 
-        result.pixels = ilbm.pixels;
+        result.pixels = pixels;
         result.width = ilbm.width();
         result.height = ilbm.height();
 
@@ -201,67 +211,75 @@ pub const ILBM = struct {
         _ = encoder_options;
     }
 
-    pub fn load(self: *ILBM, stream: *ImageUnmanaged.Stream, allocator: std.mem.Allocator) ImageUnmanaged.ReadError!void {
+    pub fn read(self: *ILBM, stream: *ImageUnmanaged.Stream, allocator: std.mem.Allocator) ImageUnmanaged.ReadError!color.PixelStorage {
+        self.format_id = try getILBMFormatId(stream);
         self.header = try loadHeader(stream);
         self.header.debug();
 
-        self.pixels = try color.PixelStorage.init(allocator, PixelFormat.indexed8, self.width() * self.height());
-        errdefer self.pixels.deinit(allocator);
+        const pixels = try self.decodeChunks(stream, allocator);
 
-        try self.decodeChunks(stream, allocator);
+        return pixels;
     }
 
-    pub fn decodeChunks(self: *ILBM, stream: *ImageUnmanaged.Stream, allocator: std.mem.Allocator) !void {
+    pub fn decodeChunks(self: *ILBM, stream: *ImageUnmanaged.Stream, allocator: std.mem.Allocator) !color.PixelStorage {
         const reader = stream.reader();
         const end_pos = try stream.getEndPos();
         while (true) {
             const chunk = try utils.readStruct(reader, ChunkHeader, .big);
-            try self.processChunk(&chunk, stream, allocator);
+            switch (chunk.type) {
+                Chunks.CMAP.id => try self.decodeCMAPChunk(stream, &chunk),
+                Chunks.BODY.id => return try self.decodeBODYChunk(stream, &chunk, allocator),
+                // skip unsupported chunks
+                else => try stream.seekBy(chunk.length),
+            }
             if (try stream.getPos() >= end_pos - 1) {
                 break;
             }
         }
-    }
 
-    pub fn processChunk(self: *ILBM, chunk: *const ChunkHeader, stream: *ImageUnmanaged.Stream, allocator: std.mem.Allocator) !void {
-        switch (chunk.type) {
-            Chunks.CMAP.id => try self.decodeCMAPChunk(stream, chunk),
-            Chunks.BODY.id => try self.decodeBODYChunk(stream, chunk, allocator),
-            // skip unsupported chunks
-            else => try stream.seekBy(chunk.length),
-        }
+        return ImageUnmanaged.Error.Unsupported;
     }
 
     pub fn decodeCMAPChunk(self: *ILBM, stream: *ImageUnmanaged.Stream, chunk: *const ChunkHeader) !void {
         const num_colors = chunk.length / 3;
-        var palette = switch (self.pixels) {
-            .indexed8 => |*storage| storage.palette[0..],
-            else => undefined,
-        };
-
         const reader = stream.reader();
+        self.palette.resize(num_colors);
+        const palette = self.palette.data;
 
         for (0..num_colors) |i| {
             const c = try utils.readStruct(reader, color.Rgb24, .little);
-            palette[i].r = c.r;
-            palette[i].g = c.g;
-            palette[i].b = c.b;
-            palette[i].a = 255;
+            palette[i] = color.Rgba32.fromU32Rgb(c.toU32Rgb());
         }
     }
 
-    pub fn decodeBODYChunk(self: *ILBM, stream: *ImageUnmanaged.Stream, chunk: *const ChunkHeader, allocator: std.mem.Allocator) !void {
-        if (self.header.compression_type == CompressionType.byterun) {
-            var tmp_buffer = try allocator.alloc(u8, self.width() * self.height());
-            defer allocator.free(tmp_buffer);
-            try decodeByteRun1(stream, &tmp_buffer, chunk.length);
+    pub fn decodeBODYChunk(self: *ILBM, stream: *ImageUnmanaged.Stream, chunk: *const ChunkHeader, allocator: std.mem.Allocator) !color.PixelStorage {
+        const pixel_format = try self.pixelFormat();
 
-            switch (self.pixels) {
-                .indexed8 => |storage| {
-                    @memcpy(storage.indices[0..], tmp_buffer[0..]);
-                },
-                else => unreachable,
-            }
-        } else unreachable;
+        const pixels = try color.PixelStorage.init(allocator, pixel_format, self.width() * self.height());
+        errdefer pixels.deinit(allocator);
+
+        var tmp_buffer: []u8 = try allocator.alloc(u8, self.width() * self.height());
+        defer allocator.free(tmp_buffer);
+
+        // first uncompress planes data if needed
+        if (self.header.compression_type == CompressionType.byterun) {
+            try decodeByteRun1(stream, tmp_buffer, chunk.length);
+        } else {
+            const reader = stream.reader();
+            _ = try reader.readAll(tmp_buffer);
+        }
+
+        switch (pixels) {
+            .indexed8 => |storage| {
+                @memcpy(storage.indices[0..], tmp_buffer[0..]);
+                for (0..self.palette.data.len) |index| {
+                    const palette = storage.palette;
+                    palette[index] = self.palette.data[index];
+                }
+            },
+            else => unreachable,
+        }
+
+        return pixels;
     }
 };
