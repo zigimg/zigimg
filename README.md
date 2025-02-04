@@ -67,7 +67,7 @@ zig build test
 | Farbfeld      | ✔️            | ✔️            |
 | GIF           | ✔️            | ❌            |
 | ICO           | ❌            | ❌            |
-| ILBM          | ❌            | ❌            |
+| ILBM          | ✔️ (Partial)   | ❌            |
 | JPEG          | ❌            | ❌            |
 | PAM           | ✔️            | ✔️            |
 | PBM           | ✔️            | ✔️            |
@@ -96,6 +96,12 @@ zig build test
 * Supported interlaced
 * Supports tiled and layered images used to achieve pseudo true color and more.
 * The plain text extension is not supported
+
+### ILBM - InterLeaved BitMap Format
+
+ * Supports PBM (Deluxe Paint DOS) encoded files
+ * Amiga and Atari planar files are not supported yet
+ * Most chunks are ignored
 
 ### PAM - Portable Arbitrary Map
 

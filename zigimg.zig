@@ -18,6 +18,7 @@ pub const PixelFormatConverter = @import("src/PixelFormatConverter.zig");
 pub const png = @import("src/formats/png.zig");
 pub const qoi = @import("src/formats/qoi.zig");
 pub const tga = @import("src/formats/tga.zig");
+pub const ilbm = @import("src/formats/ilbm.zig");
 
 test {
     const std = @import("std");
@@ -30,6 +31,7 @@ test {
         @import("tests/color_test.zig"),
         @import("tests/formats/bmp_test.zig"),
         @import("tests/formats/gif_test.zig"),
+        @import("tests/formats/ilbm_test.zig"),
         @import("tests/formats/jpeg_test.zig"),
         @import("tests/formats/netpbm_test.zig"),
         @import("tests/formats/pam_test.zig"),
