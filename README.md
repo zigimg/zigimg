@@ -23,7 +23,9 @@ How to add to your project:
 1. Clone this repository or add as a submodule
 1. Add to your `build.zig`
 ```
-exe.addAnonymousModule("zigimg", .{.source_file = .{ .path = "zigimg.zig" }});
+pub fn build(b: *std.Build) void {
+    exe.root_module.addAnonymousModule("zigimg", .{ .root_source_file = b.path("zigimg.zig") });
+}
 ```
 
 #### Through the package manager
@@ -31,7 +33,7 @@ exe.addAnonymousModule("zigimg", .{.source_file = .{ .path = "zigimg.zig" }});
 1. Run this command in your project folder to add `zigimg` to your `build.zig.zon`
 
 ```sh
-zig fetch --save "https://github.com/zigimg/zigimg/archive/$REPLACE_WITH_WANTED_COMMIT.tar.gz"
+zig fetch --save git+https://github.com/zigimg/zigimg.git
 ```
 
 2. Get the module in your `build.zig` file
