@@ -105,6 +105,8 @@ fn testHeaderWithInvalidValue(buf: []u8, position: usize, val: u8) !void {
 }
 
 test "Indexed PNG with transparency (Aseprite output)" {
+    // mlarouche: While the full test suite already test this image, I like having a smaller test that I can verify
+    // some specific info myself
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "png/aseprite_indexed_transparent.png");
     defer file.close();
 
@@ -116,6 +118,8 @@ test "Indexed PNG with transparency (Aseprite output)" {
     try std.testing.expect(png_image.pixels == .indexed8);
 
     const pixels8_indexed = png_image.pixels.indexed8;
+
+    try helpers.expectEq(pixels8_indexed.palette.len, 32);
 
     try helpers.expectEq(pixels8_indexed.palette[0].r, 0);
     try helpers.expectEq(pixels8_indexed.palette[0].g, 0);

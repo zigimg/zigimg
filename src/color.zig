@@ -486,20 +486,36 @@ pub fn IndexedStorage(comptime T: type) type {
         const Self = @This();
 
         pub fn init(allocator: Allocator, pixel_count: usize) !Self {
-            const result = Self{
+            return initPaletteSize(allocator, pixel_count, PaletteSize);
+        }
+
+        pub fn initPaletteSize(allocator: Allocator, pixel_count: usize, palette_size: usize) !Self {
+            std.debug.assert(palette_size <= PaletteSize);
+
+            // Allocate the full capacity of the palette but reduce its length to the requested size
+            var result = Self{
                 .indices = try allocator.alloc(T, pixel_count),
                 .palette = try allocator.alloc(Rgba32, PaletteSize),
             };
 
-            // Since not all palette entries need to be filled we make sure
-            // they are all zero at the start.
-            @memset(result.palette, Rgba32.initRgba(0, 0, 0, 0));
+            result.palette.len = palette_size;
+
+            // Palette is filled with a opaque black by default. Having palette not use
+            // alpha is a good heuristic for indexed PNG to not add the transparency chunk.
+            @memset(result.palette, Rgba32.initRgba(0, 0, 0, 255));
             return result;
         }
 
         pub fn deinit(self: Self, allocator: Allocator) void {
-            allocator.free(self.palette);
+            var full_palette = self.palette;
+            full_palette.len = PaletteSize;
+            allocator.free(full_palette);
             allocator.free(self.indices);
+        }
+
+        pub fn resizePalette(self: *Self, new_palette_size: usize) void {
+            std.debug.assert(new_palette_size <= PaletteSize);
+            self.palette.len = new_palette_size;
         }
     };
 }
@@ -875,6 +891,17 @@ pub const PixelStorage = union(PixelFormat) {
             .indexed16 => |data| data.palette,
             else => null,
         };
+    }
+
+    pub fn resizePalette(self: *PixelStorage, new_palette_size: usize) void {
+        switch (self.*) {
+            .indexed1 => |*data| data.resizePalette(new_palette_size),
+            .indexed2 => |*data| data.resizePalette(new_palette_size),
+            .indexed4 => |*data| data.resizePalette(new_palette_size),
+            .indexed8 => |*data| data.resizePalette(new_palette_size),
+            .indexed16 => |*data| data.resizePalette(new_palette_size),
+            else => {},
+        }
     }
 
     /// Return the pixel data as a const byte slice

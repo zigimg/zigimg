@@ -296,13 +296,22 @@ fn readAllData(
     var decompress_stream = std.compress.zlib.decompressor(idat_reader);
 
     if (palette.len > 0) {
-        var destination_palette = if (result.getPalette()) |result_palette|
-            result_palette
-        else
-            try options.temp_allocator.alloc(color.Rgba32, palette.len);
+        var destination_palette = blk: {
+            if (result.isIndexed()) {
+                result.resizePalette(palette.len);
+
+                if (result.getPalette()) |result_palette| {
+                    break :blk result_palette;
+                }
+            }
+
+            break :blk try options.temp_allocator.alloc(color.Rgba32, palette.len);
+        };
+
         for (palette, 0..) |entry, n| {
             destination_palette[n] = color.Rgba32.initRgb(entry.r, entry.g, entry.b);
         }
+
         try callPaletteProcessors(options, destination_palette);
     }
 
