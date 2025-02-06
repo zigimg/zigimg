@@ -133,6 +133,26 @@ pub fn deinit(self: *ImageUnmanaged, allocator: std.mem.Allocator) void {
     self.animation.deinit(allocator);
 }
 
+/// Detect which image format is used by the file path
+pub fn detectFormatFromFilePath(file_path: []const u8) !Format {
+    var file = try std.fs.cwd().openFile(file_path, .{});
+    defer file.close();
+
+    return detectFormatFromFile(&file);
+}
+
+/// Detect which image format is used by the file
+pub fn detectFormatFromFile(file: *std.fs.File) !Format {
+    var stream_source = std.io.StreamSource{ .file = file.* };
+    return internalDetectFormat(&stream_source);
+}
+
+/// Detect which image format is used by the memory buffer
+pub fn detectFormatFromMemory(buffer: []const u8) !Format {
+    var stream_source = std.io.StreamSource{ .const_buffer = std.io.fixedBufferStream(buffer) };
+    return internalDetectFormat(&stream_source);
+}
+
 /// Load an image from a file path
 pub fn fromFilePath(allocator: std.mem.Allocator, file_path: []const u8) !ImageUnmanaged {
     var file = try std.fs.cwd().openFile(file_path, .{});
@@ -286,6 +306,20 @@ pub fn convertNoFree(self: *ImageUnmanaged, allocator: std.mem.Allocator, destin
 /// Iterate the pixel in pixel-format agnostic way. In the case of an animation, it returns an iterator for the first frame. The iterator is read-only.
 pub fn iterator(self: *const ImageUnmanaged) color.PixelStorageIterator {
     return color.PixelStorageIterator.init(&self.pixels);
+}
+
+fn internalDetectFormat(stream: *Stream) !Format {
+    for (all_interface_funcs, 0..) |intefaceFn, format_index| {
+        const formatInterface = intefaceFn();
+
+        try stream.seekTo(0);
+        const found = try formatInterface.formatDetect(stream);
+        if (found) {
+            return @enumFromInt(format_index);
+        }
+    }
+
+    return Error.Unsupported;
 }
 
 fn internalRead(allocator: std.mem.Allocator, stream: *Stream) !ImageUnmanaged {

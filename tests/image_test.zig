@@ -189,6 +189,9 @@ test "Should detect BMP properly" {
     };
 
     for (image_tests) |image_path| {
+        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path);
+        try std.testing.expect(format == .bmp);
+
         var test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
     }
@@ -197,6 +200,9 @@ test "Should detect BMP properly" {
 test "Should detect Memory BMP properly" {
     var MemoryRGBABitmap: [200 * 1024]u8 = undefined;
     const buffer = try helpers.testReadFile(helpers.fixtures_path ++ "bmp/windows_rgba_v5.bmp", MemoryRGBABitmap[0..]);
+
+    const format = try ImageUnmanaged.detectFormatFromMemory(buffer);
+    try std.testing.expect(format == .bmp);
 
     var test_image = try Image.fromMemory(helpers.zigimg_test_allocator, buffer);
     defer test_image.deinit();
@@ -208,6 +214,9 @@ test "Should detect GIF properly" {
     };
 
     for (image_tests) |image_path| {
+        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path);
+        try std.testing.expect(format == .gif);
+
         var test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
     }
@@ -222,6 +231,9 @@ test "Should detect PCX properly" {
     };
 
     for (image_tests) |image_path| {
+        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path);
+        try std.testing.expect(format == .pcx);
+
         var test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
     }
@@ -234,6 +246,9 @@ test "Should detect PBM properly" {
     };
 
     for (image_tests) |image_path| {
+        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path);
+        try std.testing.expect(format == .pbm);
+
         var test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
     }
@@ -248,6 +263,9 @@ test "Should detect PGM properly" {
     };
 
     for (image_tests) |image_path| {
+        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path);
+        try std.testing.expect(format == .pgm);
+
         var test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
     }
@@ -260,6 +278,9 @@ test "Should detect PPM properly" {
     };
 
     for (image_tests) |image_path| {
+        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path);
+        try std.testing.expect(format == .ppm);
+
         var test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
     }
@@ -272,6 +293,9 @@ test "Should detect PNG properly" {
     };
 
     for (image_tests) |image_path| {
+        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path);
+        try std.testing.expect(format == .png);
+
         var test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
     }
@@ -292,6 +316,9 @@ test "Should detect TGA properly" {
     };
 
     for (image_tests) |image_path| {
+        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path);
+        try std.testing.expect(format == .tga);
+
         var test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
     }
@@ -301,6 +328,9 @@ test "Should detect QOI properly" {
     const image_tests = &[_][]const u8{helpers.fixtures_path ++ "qoi/zero.qoi"};
 
     for (image_tests) |image_path| {
+        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path);
+        try std.testing.expect(format == .qoi);
+
         var test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
     }
@@ -313,6 +343,9 @@ test "Should detect JPEG properly" {
     };
 
     for (image_tests) |image_path| {
+        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path);
+        try std.testing.expect(format == .jpeg);
+
         var test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
     }
@@ -325,6 +358,9 @@ test "Should detect Farbfeld properly" {
     };
 
     for (image_tests) |image_path| {
+        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path);
+        try std.testing.expect(format == .farbfeld);
+
         var test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
     }
@@ -336,6 +372,9 @@ test "Should detect IFF/PBM properly" {
     };
 
     for (image_tests) |image_path| {
+        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path);
+        try std.testing.expect(format == .ilbm);
+
         var test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();
     }
