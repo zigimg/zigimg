@@ -299,15 +299,10 @@ pub const PCX = struct {
 
     pub fn formatInterface() FormatInterface {
         return FormatInterface{
-            .format = format,
             .formatDetect = formatDetect,
             .readImage = readImage,
             .writeImage = writeImage,
         };
-    }
-
-    pub fn format() ImageUnmanaged.Format {
-        return ImageUnmanaged.Format.pcx;
     }
 
     pub fn formatDetect(stream: *ImageUnmanaged.Stream) ImageReadError!bool {

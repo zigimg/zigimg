@@ -1,10 +1,11 @@
-pub const AllFormats = @import("src/formats/all.zig");
 pub const bmp = @import("src/formats/bmp.zig");
 pub const color = @import("src/color.zig");
 pub const Colors = @import("src/predefined_colors.zig").Colors;
 pub const farbfeld = @import("src/formats/farbfeld.zig");
 pub const FormatInterface = @import("src/FormatInterface.zig");
+pub const formats = @import("src/formats.zig");
 pub const gif = @import("src/formats/gif.zig");
+pub const ilbm = @import("src/formats/ilbm.zig");
 pub const Image = @import("src/Image.zig");
 pub const ImageUnmanaged = @import("src/ImageUnmanaged.zig");
 pub const jpeg = @import("src/formats/jpeg.zig");
@@ -18,7 +19,6 @@ pub const PixelFormatConverter = @import("src/PixelFormatConverter.zig");
 pub const png = @import("src/formats/png.zig");
 pub const qoi = @import("src/formats/qoi.zig");
 pub const tga = @import("src/formats/tga.zig");
-pub const ilbm = @import("src/formats/ilbm.zig");
 
 test {
     const std = @import("std");
