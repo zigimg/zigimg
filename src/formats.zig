@@ -9,3 +9,8 @@ pub const pcx = @import("formats/pcx.zig");
 pub const png = @import("formats/png.zig");
 pub const qoi = @import("formats/qoi.zig");
 pub const tga = @import("formats/tga.zig");
+
+test {
+    const std = @import("std");
+    std.testing.refAllDecls(@This());
+}

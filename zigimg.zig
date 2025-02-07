@@ -15,7 +15,6 @@ test {
 
     inline for (.{
         @import("src/compressions/lzw.zig"),
-        @import("src/formats/png/reader.zig"),
         @import("tests/buffered_stream_source_test.zig"),
         @import("tests/color_test.zig"),
         @import("tests/formats/bmp_test.zig"),

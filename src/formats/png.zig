@@ -212,3 +212,7 @@ pub const PNG = struct {
         try chunk.flush();
     }
 };
+
+test {
+    _ = @import("png/reader.zig");
+}
