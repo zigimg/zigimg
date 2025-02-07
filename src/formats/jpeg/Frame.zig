@@ -23,7 +23,6 @@ quantization_tables: *[4]?QuantizationTable,
 dc_huffman_tables: *[4]?HuffmanTable,
 ac_huffman_tables: *[4]?HuffmanTable,
 block_storage: [][MAX_COMPONENTS]Block,
-restart_interval: u16 = 0,
 frame_type: Markers = undefined,
 
 block_height: u32 = 0,
@@ -36,7 +35,7 @@ vertical_sampling_factor_max: usize = 0,
 
 const JPEG_DEBUG = false;
 
-pub fn read(allocator: Allocator, frame_type: Markers, restart_interval: u16, quantization_tables: *[4]?QuantizationTable, dc_huffman_tables: *[4]?HuffmanTable, ac_huffman_tables: *[4]?HuffmanTable, buffered_stream: *buffered_stream_source.DefaultBufferedStreamSourceReader) ImageReadError!Self {
+pub fn read(allocator: Allocator, frame_type: Markers, quantization_tables: *[4]?QuantizationTable, dc_huffman_tables: *[4]?HuffmanTable, ac_huffman_tables: *[4]?HuffmanTable, buffered_stream: *buffered_stream_source.DefaultBufferedStreamSourceReader) ImageReadError!Self {
     const reader = buffered_stream.reader();
     const frame_header = try FrameHeader.read(allocator, reader);
 
@@ -56,7 +55,6 @@ pub fn read(allocator: Allocator, frame_type: Markers, restart_interval: u16, qu
         .quantization_tables = quantization_tables,
         .dc_huffman_tables = dc_huffman_tables,
         .ac_huffman_tables = ac_huffman_tables,
-        .restart_interval = restart_interval,
         .frame_type = frame_type,
         .block_storage = block_storage,
         .block_height_actual = @intCast((height_actual + 7) / 8),

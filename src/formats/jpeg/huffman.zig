@@ -129,6 +129,12 @@ pub const Reader = struct {
             return ImageReadError.InvalidData;
         }
 
+        try self.fillBits(num_bits);
+
+        return (self.bit_buffer >> 1) >> (31 - num_bits);
+    }
+
+    pub fn fillBits(self: *Self, num_bits: u5) ImageReadError!void {
         while (self.bit_count < num_bits) {
             var byte_curr: u32 = try self.reader.readByte();
 
@@ -142,7 +148,6 @@ pub const Reader = struct {
                 } else if (byte_next >= 0xD0 and byte_next <= 0xD7) {
                     byte_curr = try self.reader.readByte();
                 } else {
-                    // read an actual marker, return to 2 bytes to stream
                     try self.stream.seekBy(-2);
                     return ImageReadError.InvalidData;
                 }
@@ -151,8 +156,6 @@ pub const Reader = struct {
             self.bit_buffer |= byte_curr << (24 - self.bit_count);
             self.bit_count += 8;
         }
-
-        return (self.bit_buffer >> 1) >> (31 - num_bits);
     }
 
     pub fn consumeBits(self: *Self, num_bits: u5) void {
@@ -169,14 +172,24 @@ pub const Reader = struct {
     }
 
     pub fn flushBits(self: *Self) void {
-        self.bit_buffer = 0;
-        self.bit_count = 0;
+        if (self.bit_count > 8 and self.bit_count % 8 != 0) {
+            const bits_to_flush: u5 = self.bit_count % 8;
+            self.bit_buffer <<= bits_to_flush;
+            self.bit_count = self.bit_count - bits_to_flush;
+        } else if (self.bit_count % 8 == 0) {
+            return;
+        } else if (self.bit_count < 8) {
+            self.bit_buffer = 0;
+            self.bit_count = 0;
+        } else {
+            unreachable;
+        }
     }
 
     pub fn readCode(self: *Self) ImageReadError!u8 {
-        const fast_index = self.peekBits(9) catch 0;
+        const fast_index = self.peekBits(fast_bits) catch 0;
 
-        if (self.bit_count >= 9) {
+        if (self.bit_count >= fast_bits) {
             const value = self.table.?.fast_table[fast_index];
             if (value != 255) {
                 const length = self.table.?.fast_size[fast_index];
@@ -187,7 +200,7 @@ pub const Reader = struct {
 
         var code: u32 = 0;
 
-        var length: u5 = if (self.bit_count < 9) 1 else 10;
+        var length: u5 = 1;
         while (length <= 16) : (length += 1) {
             code = try self.peekBits(length);
             if (self.table.?.code_map.get(.{ .length_minus_one = @intCast(length - 1), .code = @intCast(code) })) |value| {

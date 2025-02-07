@@ -118,7 +118,7 @@ pub fn init(frame: *const Frame, stream: *buffered_stream_source.DefaultBuffered
 /// Perform the scan operation.
 /// We assume the AC and DC huffman tables are already set up, and ready to decode.
 /// This should implement section E.2.3 of t-81 1992.
-pub fn performScan(frame: *const Frame, stream: *buffered_stream_source.DefaultBufferedStreamSourceReader) ImageReadError!void {
+pub fn performScan(frame: *const Frame, restart_interval: u16, stream: *buffered_stream_source.DefaultBufferedStreamSourceReader) ImageReadError!void {
     var self = try Self.init(frame, stream);
 
     var skips: u32 = 0;
@@ -127,7 +127,6 @@ pub fn performScan(frame: *const Frame, stream: *buffered_stream_source.DefaultB
 
     const y_step = if (noninterleaved) 1 else frame.vertical_sampling_factor_max;
     const x_step = if (noninterleaved) 1 else frame.horizontal_sampling_factor_max;
-    const restart_interval = frame.restart_interval * y_step * x_step;
 
     var y: usize = 0;
     while (y < self.frame.block_height) : (y += y_step) {
@@ -135,7 +134,7 @@ pub fn performScan(frame: *const Frame, stream: *buffered_stream_source.DefaultB
         while (x < self.frame.block_width) : (x += x_step) {
             const mcu_id = y * self.frame.block_width_actual + x;
 
-            if (frame.restart_interval != 0 and mcu_id % restart_interval == 0) {
+            if (restart_interval != 0 and mcu_id % restart_interval * y_step * x_step == 0) {
                 self.reader.flushBits();
                 self.prediction_values = @splat(0);
                 skips = 0;
@@ -161,6 +160,7 @@ pub fn performScan(frame: *const Frame, stream: *buffered_stream_source.DefaultB
                         const block_id = (y + v) * self.frame.block_width_actual + (x + h);
                         const block = &self.frame.block_storage[block_id][component_index];
 
+                        self.reader.fillBits(24) catch {};
                         if (self.frame.frame_type == Markers.sof0) {
                             self.reader.setHuffmanTable(&self.frame.dc_huffman_tables[component.dc_table_selector].?);
                             try self.decodeDCCoefficient(block, component_index);
