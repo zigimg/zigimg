@@ -152,6 +152,13 @@ Currently, this only supports a subset of PAMs where:
 * Supports reading version 1 and version 2
 * Supports writing version 2
 
+## Supported Pixel formats
+
+* **Indexed**: 1bpp (bit per pixel), 2bpp, 4bpp, 8bpp, 16bpp
+* **Grayscale**: 1bpp, 2bpp, 4bpp, 8bpp, 16bpp, 8bpp with alpha, 16bpp with alpha
+* **Truecolor**: RGB332, RGB555, RGB565, RGB24 (8-bit per channel), RGBA32 (8-bit per channel), BGR555, BGR24 (8-bit per channel), BGRA32 (8-bit per channel), RGB48 (16-bit per channel), RGBA64 (16-bit per channel)
+* **float**: 32-bit float RGBA, this is the neutral format.
+
 # User Guide
 
 ## Design philosophy
@@ -329,6 +336,59 @@ pub fn example() void {
 }
 ```
 
+## Detect image format
+
+You can query the image format used by a file or a memory buffer.
+
+### From a file
+
+You can use either a file path
+
+```zig
+const std = @import("std");
+const zigimg = @import("zigimg");
+
+pub fn main() !void {
+    const image_format = try zigimg.Image.detectFormatFromFilePath(allocator, "my_image.png");
+
+    // Will print png
+    std.log.debug("Image format: {}", .{image_format});
+}
+```
+
+or a `std.fs.File` directly
+
+```zig
+const std = @import("std");
+const zigimg = @import("zigimg");
+
+pub fn main() !void {
+    var file = try std.fs.cwd().openFile("my_image.gif", .{});
+    defer file.close();
+
+    const image_format = try zigimg.Image.detectFormatFromFile(allocator, file);
+
+    // Will print gif
+    std.log.debug("Image format: {}", .{image_format});
+}
+```
+
+### From memory
+
+```zig
+const std = @import("std");
+const zigimg = @import("zigimg");
+
+const image_data = @embedFile("test.bmp");
+
+pub fn main() !void {
+    const image_format = try zigimg.Image.detectFormatFromMemory(allocator, image_data[0..]);
+
+    // Will print bmp
+    std.log.debug("Image format: {}", .{image_format});
+}
+```
+
 ## Write an image
 
 Each 3 functions to write an image take a union of encoder options for the target format. To know the actual options you'll need to consult the source code. The active tag of the union determine the target format, not the file extension.
@@ -453,7 +513,7 @@ pub fn main() !void {
 
     var stream_source = std.io.StreamSource{ .const_buffer = std.io.fixedBufferStream(image_data) };
 
-    var bmp = zigimg.bmp.BMP{};
+    var bmp = zigimg.formats.bmp.BMP{};
 
     const pixels = try bmp.read(allocator, &stream_source);
     defer pixels.deinit(allocator);

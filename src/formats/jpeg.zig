@@ -185,15 +185,10 @@ pub const JPEG = struct {
     // Format interface
     pub fn formatInterface() FormatInterface {
         return FormatInterface{
-            .format = format,
             .formatDetect = formatDetect,
             .readImage = readImage,
             .writeImage = writeImage,
         };
-    }
-
-    fn format() ImageUnmanaged.Format {
-        return ImageUnmanaged.Format.jpg;
     }
 
     fn formatDetect(stream: *ImageUnmanaged.Stream) ImageReadError!bool {

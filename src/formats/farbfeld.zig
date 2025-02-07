@@ -33,15 +33,10 @@ pub const Farbfeld = struct {
 
     pub fn formatInterface() FormatInterface {
         return FormatInterface{
-            .format = format,
             .formatDetect = formatDetect,
             .readImage = readImage,
             .writeImage = writeImage,
         };
-    }
-
-    pub fn format() ImageUnmanaged.Format {
-        return .farbfeld;
     }
 
     /// Taken a stream, Returns true if and only if the stream contains the magic value "fabfeld"

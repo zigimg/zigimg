@@ -167,13 +167,8 @@ pub const ILBM = struct {
         }
     }
 
-    pub fn format() ImageUnmanaged.Format {
-        return ImageUnmanaged.Format.ilbm;
-    }
-
     pub fn formatInterface() FormatInterface {
         return FormatInterface{
-            .format = format,
             .formatDetect = formatDetect,
             .readImage = readImage,
             .writeImage = writeImage,

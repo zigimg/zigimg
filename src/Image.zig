@@ -44,6 +44,21 @@ pub fn deinit(self: *Image) void {
     ImageUnmanaged.deinit(@ptrCast(self), self.allocator);
 }
 
+/// Detect which image format is used by the file path
+pub fn detectFormatFromFilePath(file_path: []const u8) !Format {
+    return ImageUnmanaged.detectFormatFromFilePath(file_path);
+}
+
+/// Detect which image format is used by the file
+pub fn detectFormatFromFile(file: *std.fs.File) !Format {
+    return ImageUnmanaged.detectFormatFromFile(file);
+}
+
+/// Detect which image format is used by the memory buffer
+pub fn detectFormatFromMemory(buffer: []const u8) !Format {
+    return ImageUnmanaged.detectFormatFromMemory(buffer);
+}
+
 /// Load an image from a file path
 pub fn fromFilePath(allocator: std.mem.Allocator, file_path: []const u8) !Image {
     return (try ImageUnmanaged.fromFilePath(allocator, file_path)).toManaged(allocator);

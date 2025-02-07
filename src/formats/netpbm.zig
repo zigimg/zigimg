@@ -232,7 +232,7 @@ fn loadAsciiRgbmap(header: Header, data: []color.Rgb24, reader: buffered_stream_
     }
 }
 
-fn Netpbm(comptime image_format: ImageUnmanaged.Format, comptime header_numbers: []const u8) type {
+fn Netpbm(comptime header_numbers: []const u8) type {
     return struct {
         header: Header = undefined,
 
@@ -244,15 +244,10 @@ fn Netpbm(comptime image_format: ImageUnmanaged.Format, comptime header_numbers:
 
         pub fn formatInterface() FormatInterface {
             return FormatInterface{
-                .format = format,
                 .formatDetect = formatDetect,
                 .readImage = readImage,
                 .writeImage = writeImage,
             };
-        }
-
-        pub fn format() ImageUnmanaged.Format {
-            return image_format;
         }
 
         pub fn formatDetect(stream: *ImageUnmanaged.Stream) ImageReadError!bool {
@@ -497,6 +492,6 @@ fn Netpbm(comptime image_format: ImageUnmanaged.Format, comptime header_numbers:
     };
 }
 
-pub const PBM = Netpbm(ImageUnmanaged.Format.pbm, &[_]u8{ '1', '4' });
-pub const PGM = Netpbm(ImageUnmanaged.Format.pgm, &[_]u8{ '2', '5' });
-pub const PPM = Netpbm(ImageUnmanaged.Format.ppm, &[_]u8{ '3', '6' });
+pub const PBM = Netpbm(&[_]u8{ '1', '4' });
+pub const PGM = Netpbm(&[_]u8{ '2', '5' });
+pub const PPM = Netpbm(&[_]u8{ '3', '6' });

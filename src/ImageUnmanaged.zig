@@ -1,11 +1,45 @@
-const AllImageFormats = @import("formats/all.zig");
-const FormatInterface = @import("FormatInterface.zig");
-const PixelFormat = @import("pixel_format.zig").PixelFormat;
 const color = @import("color.zig");
+const FormatInterface = @import("FormatInterface.zig");
+const formats = @import("formats.zig");
+const Image = @import("Image.zig");
+const PixelFormat = @import("pixel_format.zig").PixelFormat;
+const PixelFormatConverter = @import("PixelFormatConverter.zig");
 const std = @import("std");
 const utils = @import("utils.zig");
-const PixelFormatConverter = @import("PixelFormatConverter.zig");
-const Image = @import("Image.zig");
+
+const SupportedFormats = struct {
+    pub const bmp = formats.bmp.BMP;
+    pub const farbfeld = formats.farbfeld.Farbfeld;
+    pub const gif = formats.gif.GIF;
+    pub const ilbm = formats.ilbm.ILBM;
+    pub const jpeg = formats.jpeg.JPEG;
+    pub const pam = formats.pam.PAM;
+    pub const pbm = formats.netpbm.PBM;
+    pub const pcx = formats.pcx.PCX;
+    pub const pgm = formats.netpbm.PGM;
+    pub const png = formats.png.PNG;
+    pub const ppm = formats.netpbm.PPM;
+    pub const qoi = formats.qoi.QOI;
+    pub const tga = formats.tga.TGA;
+};
+
+pub const Format = std.meta.DeclEnum(SupportedFormats);
+
+pub const EncoderOptions = union(Format) {
+    bmp: SupportedFormats.bmp.EncoderOptions,
+    farbfeld: void,
+    gif: void,
+    ilbm: void,
+    jpeg: void,
+    pam: SupportedFormats.pam.EncoderOptions,
+    pbm: SupportedFormats.pbm.EncoderOptions,
+    pcx: SupportedFormats.pcx.EncoderOptions,
+    pgm: SupportedFormats.pgm.EncoderOptions,
+    png: SupportedFormats.png.EncoderOptions,
+    ppm: SupportedFormats.ppm.EncoderOptions,
+    qoi: SupportedFormats.qoi.EncoderOptions,
+    tga: SupportedFormats.tga.EncoderOptions,
+};
 
 pub const Error = error{
     Unsupported,
@@ -30,25 +64,7 @@ pub const ConvertError = Error ||
     std.mem.Allocator.Error ||
     error{ NoConversionAvailable, NoConversionNeeded, QuantizeError };
 
-pub const Format = enum {
-    bmp,
-    gif,
-    jpg,
-    pbm,
-    pcx,
-    pgm,
-    png,
-    ppm,
-    qoi,
-    tga,
-    pam,
-    farbfeld,
-    ilbm,
-};
-
 pub const Stream = std.io.StreamSource;
-
-pub const EncoderOptions = AllImageFormats.ImageEncoderOptions;
 
 pub const AnimationLoopInfinite = -1;
 
@@ -87,19 +103,20 @@ animation: Animation = .{},
 const ImageUnmanaged = @This();
 
 const FormatInteraceFnType = *const fn () FormatInterface;
+
 const all_interface_funcs = blk: {
-    const allFormatDecls = std.meta.declarations(AllImageFormats);
+    const all_formats_delcs = std.meta.declarations(SupportedFormats);
     var result: []const FormatInteraceFnType = &[0]FormatInteraceFnType{};
-    for (allFormatDecls) |decl| {
-        const decl_value = @field(AllImageFormats, decl.name);
+    for (all_formats_delcs) |decl| {
+        const decl_value = @field(SupportedFormats, decl.name);
         const entry_type = @TypeOf(decl_value);
         if (entry_type == type) {
-            const entryTypeInfo = @typeInfo(decl_value);
-            if (entryTypeInfo == .@"struct") {
-                for (entryTypeInfo.@"struct".decls) |structEntry| {
-                    if (std.mem.eql(u8, structEntry.name, "formatInterface")) {
+            const entry_type_info = @typeInfo(decl_value);
+            if (entry_type_info == .@"struct") {
+                for (entry_type_info.@"struct".decls) |struct_entry| {
+                    if (std.mem.eql(u8, struct_entry.name, "formatInterface")) {
                         result = result ++ [_]FormatInteraceFnType{
-                            @field(decl_value, structEntry.name),
+                            @field(decl_value, struct_entry.name),
                         };
                         break;
                     }
@@ -114,6 +131,26 @@ const all_interface_funcs = blk: {
 pub fn deinit(self: *ImageUnmanaged, allocator: std.mem.Allocator) void {
     self.pixels.deinit(allocator);
     self.animation.deinit(allocator);
+}
+
+/// Detect which image format is used by the file path
+pub fn detectFormatFromFilePath(file_path: []const u8) !Format {
+    var file = try std.fs.cwd().openFile(file_path, .{});
+    defer file.close();
+
+    return detectFormatFromFile(&file);
+}
+
+/// Detect which image format is used by the file
+pub fn detectFormatFromFile(file: *std.fs.File) !Format {
+    var stream_source = std.io.StreamSource{ .file = file.* };
+    return internalDetectFormat(&stream_source);
+}
+
+/// Detect which image format is used by the memory buffer
+pub fn detectFormatFromMemory(buffer: []const u8) !Format {
+    var stream_source = std.io.StreamSource{ .const_buffer = std.io.fixedBufferStream(buffer) };
+    return internalDetectFormat(&stream_source);
 }
 
 /// Load an image from a file path
@@ -271,6 +308,20 @@ pub fn iterator(self: *const ImageUnmanaged) color.PixelStorageIterator {
     return color.PixelStorageIterator.init(&self.pixels);
 }
 
+fn internalDetectFormat(stream: *Stream) !Format {
+    for (all_interface_funcs, 0..) |intefaceFn, format_index| {
+        const formatInterface = intefaceFn();
+
+        try stream.seekTo(0);
+        const found = try formatInterface.formatDetect(stream);
+        if (found) {
+            return @enumFromInt(format_index);
+        }
+    }
+
+    return Error.Unsupported;
+}
+
 fn internalRead(allocator: std.mem.Allocator, stream: *Stream) !ImageUnmanaged {
     const format_interface = try findImageInterfaceFromStream(stream);
 
@@ -302,13 +353,5 @@ fn findImageInterfaceFromStream(stream: *Stream) !FormatInterface {
 }
 
 fn findImageInterfaceFromImageFormat(image_format: Format) !FormatInterface {
-    for (all_interface_funcs) |interface_fn| {
-        const format_interface = interface_fn();
-
-        if (format_interface.format() == image_format) {
-            return format_interface;
-        }
-    }
-
-    return Error.Unsupported;
+    return all_interface_funcs[@intFromEnum(image_format)]();
 }
