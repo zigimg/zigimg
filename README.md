@@ -152,6 +152,13 @@ Currently, this only supports a subset of PAMs where:
 * Supports reading version 1 and version 2
 * Supports writing version 2
 
+## Supported Pixel formats
+
+* **Indexed**: 1bpp (bit per pixel), 2bpp, 4bpp, 8bpp, 16bpp
+* **Grayscale**: 1bpp, 2bpp, 4bpp, 8bpp, 16bpp, 8bpp with alpha, 16bpp with alpha
+* **Truecolor**: RGB332, RGB555, RGB565, RGB24 (8-bit per channel), RGBA32 (8-bit per channel), BGR555, BGR24 (8-bit per channel), BGRA32 (8-bit per channel), RGB48 (16-bit per channel), RGBA64 (16-bit per channel)
+* **float**: 32-bit float RGBA, this is the neutral format.
+
 # User Guide
 
 ## Design philosophy
