@@ -37,7 +37,7 @@ pub fn getILBMFormatId(stream: *ImageUnmanaged.Stream) ImageUnmanaged.ReadError!
     if (!is_iff) {
         return ImageUnmanaged.ReadError.InvalidData;
     }
-    const format = if (std.mem.eql(u8, magic_buffer[8..], PBMMagicHeader[0..])) Format.pbm else Format.pbm;
+    const format = if (std.mem.eql(u8, magic_buffer[8..], PBMMagicHeader[0..])) Format.pbm else Format.ilbm;
 
     return format;
 }
@@ -148,6 +148,7 @@ pub fn decodeByteRun1(stream: *ImageUnmanaged.Stream, tmp_buffer: []u8, length: 
 
 pub const ILBM = struct {
     header: BitmapHeader = undefined,
+    pitch: u16 = 0,
     format_id: Format = undefined,
     palette: utils.FixedStorage(color.Rgba32, 256) = .{},
 
@@ -210,6 +211,7 @@ pub const ILBM = struct {
     pub fn read(self: *ILBM, stream: *ImageUnmanaged.Stream, allocator: std.mem.Allocator) ImageUnmanaged.ReadError!color.PixelStorage {
         self.format_id = try getILBMFormatId(stream);
         self.header = try loadHeader(stream);
+        self.pitch = (std.math.divCeil(u16, self.header.width, 16) catch 0) * 2;
         self.header.debug();
 
         const pixels = try self.decodeChunks(stream, allocator);
@@ -236,6 +238,41 @@ pub const ILBM = struct {
         return ImageUnmanaged.Error.Unsupported;
     }
 
+    pub fn planarToChunky(self: *ILBM, bitplanes: []u8, chunky_buffer: []u8) !void {
+        const header = self.header;
+        const planes = header.planes;
+        const w = header.width;
+        const h = header.height;
+        const pitch = self.pitch;
+        const dest_len = chunky_buffer.len;
+
+        // we already have a chunky buffer: no need to convert to planar
+        if (self.format_id == .pbm) {
+            @memcpy(chunky_buffer[0..dest_len], bitplanes[0..dest_len]);
+            return;
+        }
+
+        @memset(chunky_buffer, 0);
+
+        for (0..h) |y| {
+            for (0..planes) |p| {
+                const plane_mask: u8 = @as(u8, 1) << @intCast(p);
+                for (0..pitch) |i| {
+                    const offset = (pitch * planes * y) + (p * pitch) + i;
+                    const bit = bitplanes[offset];
+
+                    for (0..8) |b| {
+                        const mask = @as(u8, 1) << @intCast((@as(u8, 7) - b));
+                        if ((bit & mask) > 0) {
+                            const x = (i * 8) + b;
+                            chunky_buffer[(y * w) + x] |= plane_mask;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     pub fn decodeCMAPChunk(self: *ILBM, stream: *ImageUnmanaged.Stream, chunk: *const ChunkHeader) !void {
         const num_colors = chunk.length / 3;
         const reader = stream.reader();
@@ -249,12 +286,14 @@ pub const ILBM = struct {
     }
 
     pub fn decodeBODYChunk(self: *ILBM, stream: *ImageUnmanaged.Stream, chunk: *const ChunkHeader, allocator: std.mem.Allocator) !color.PixelStorage {
+        std.debug.assert(self.pitch != 0);
+
         const pixel_format = try self.pixelFormat();
 
         var pixels = try color.PixelStorage.init(allocator, pixel_format, self.width() * self.height());
         errdefer pixels.deinit(allocator);
 
-        var tmp_buffer: []u8 = try allocator.alloc(u8, self.width() * self.height());
+        const tmp_buffer: []u8 = try allocator.alloc(u8, self.pitch * self.height() * self.header.planes);
         defer allocator.free(tmp_buffer);
 
         // first uncompress planes data if needed
@@ -265,9 +304,14 @@ pub const ILBM = struct {
             _ = try reader.readAll(tmp_buffer);
         }
 
+        const chunky_buffer: []u8 = try allocator.alloc(u8, self.width() * self.height());
+        defer allocator.free(chunky_buffer);
+
+        try self.planarToChunky(tmp_buffer, chunky_buffer);
+
         switch (pixels) {
             .indexed8 => |*storage| {
-                @memcpy(storage.indices[0..], tmp_buffer[0..]);
+                @memcpy(storage.indices[0..], chunky_buffer[0..storage.indices.len]);
 
                 storage.resizePalette(self.palette.data.len);
                 for (0..self.palette.data.len) |index| {
