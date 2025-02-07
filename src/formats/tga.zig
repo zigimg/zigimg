@@ -855,9 +855,11 @@ pub const TGA = struct {
                 // Read color map, it is not compressed by RLE so always use the original reader
                 switch (self.header.color_map_spec.bit_depth) {
                     15, 16 => {
+                        pixels.indexed8.resizePalette(self.header.color_map_spec.length);
                         try self.readColorMap16(pixels.indexed8, reader);
                     },
                     24 => {
+                        pixels.indexed8.resizePalette(self.header.color_map_spec.length);
                         try self.readColorMap24(pixels.indexed8, reader);
                     },
                     else => {
