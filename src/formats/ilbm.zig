@@ -251,7 +251,7 @@ pub const ILBM = struct {
     pub fn decodeBODYChunk(self: *ILBM, stream: *ImageUnmanaged.Stream, chunk: *const ChunkHeader, allocator: std.mem.Allocator) !color.PixelStorage {
         const pixel_format = try self.pixelFormat();
 
-        const pixels = try color.PixelStorage.init(allocator, pixel_format, self.width() * self.height());
+        var pixels = try color.PixelStorage.init(allocator, pixel_format, self.width() * self.height());
         errdefer pixels.deinit(allocator);
 
         var tmp_buffer: []u8 = try allocator.alloc(u8, self.width() * self.height());
@@ -266,8 +266,10 @@ pub const ILBM = struct {
         }
 
         switch (pixels) {
-            .indexed8 => |storage| {
+            .indexed8 => |*storage| {
                 @memcpy(storage.indices[0..], tmp_buffer[0..]);
+
+                storage.resizePalette(self.palette.data.len);
                 for (0..self.palette.data.len) |index| {
                     const palette = storage.palette;
                     palette[index] = self.palette.data[index];
