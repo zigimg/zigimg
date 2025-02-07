@@ -95,14 +95,17 @@ zig build test
 
 * Support GIF87a and GIF89a
 * Support animated GIF with Netscape application extension for looping information
-* Supported interlaced
+* Supports interlaced
 * Supports tiled and layered images used to achieve pseudo true color and more.
 * The plain text extension is not supported
 
 ### ILBM - InterLeaved BitMap Format
 
+ * Supports Amiga <= 8-bit planar images
+ * Supports uncompressed & byterun compressed files
  * Supports PBM (Deluxe Paint DOS) encoded files
- * Amiga and Atari planar files are not supported yet
+ * HAM/HAM8/EHB/24-bit images are not supported yet
+ * Atari planar files are not supported yet
  * Most chunks are ignored
 
 ### PAM - Portable Arbitrary Map
@@ -241,7 +244,7 @@ pub fn main() !void {
 
 ## Accessing pixel data
 
-For a single image, they are two ways to get accees to the pixel data.
+For a single image, they are two ways to get access to the pixel data.
 
 ### Accessing a specific format directly
 
@@ -497,7 +500,7 @@ pub fn main() !void {
 
 ## Use image format directly
 
-In the case you want more direct access to the image format, all the image format are accessible from the `zigimg` module. However, you'll need to do a bit more manual steps in order to get the pixel data.
+In the case you want more direct access to the image format, all the image formats are accessible from the `zigimg` module. However, you'll need to do a bit more manual steps in order to retrieve the pixel data.
 
 ```zig
 const std = @import("std");
