@@ -179,3 +179,26 @@ test "Read subsampling images" {
         }
     }
 }
+
+test "Read progressive jpeg with restart intervals" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "jpeg/tuba_restart_prog.jpg");
+    defer file.close();
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    var jpeg_file = jpeg.JPEG.init(helpers.zigimg_test_allocator);
+    defer jpeg_file.deinit();
+
+    var pixels_opt: ?color.PixelStorage = null;
+    const frame = try jpeg_file.read(&stream_source, &pixels_opt);
+
+    _ = frame;
+
+    defer {
+        if (pixels_opt) |pixels| {
+            pixels.deinit(helpers.zigimg_test_allocator);
+        }
+    }
+
+    try testing.expect(pixels_opt != null);
+}

@@ -76,7 +76,7 @@ pub const JPEG = struct {
 
     fn parseScan(self: *JPEG, stream: *buffered_stream_source.DefaultBufferedStreamSourceReader) ImageReadError!void {
         if (self.frame) |frame| {
-            try Scan.performScan(&frame, stream);
+            try Scan.performScan(&frame, self.restart_interval, stream);
         } else return ImageReadError.InvalidData;
     }
 
@@ -122,7 +122,8 @@ pub const JPEG = struct {
                         return ImageError.Unsupported;
                     }
 
-                    self.frame = try Frame.read(self.allocator, @enumFromInt(marker), self.restart_interval, &self.quantization_tables, &self.dc_huffman_tables, &self.ac_huffman_tables, &buffered_stream);
+                    self.frame = try Frame.read(self.allocator, @enumFromInt(marker), &self.quantization_tables, &self.dc_huffman_tables, &self.ac_huffman_tables, &buffered_stream);
+                    try self.initializePixels(pixels_opt);
                 },
 
                 .sof1 => return ImageError.Unsupported, // extended sequential DCT Huffman coding
@@ -140,7 +141,6 @@ pub const JPEG = struct {
                     try self.parseDefineHuffmanTables(reader);
                 },
                 .start_of_scan => {
-                    try self.initializePixels(pixels_opt);
                     try self.parseScan(&buffered_stream);
                 },
 
@@ -264,6 +264,7 @@ pub const JPEG = struct {
         std.debug.assert(segment_length - 4 == 0);
 
         self.restart_interval = try reader.readInt(u16, .big);
-        if (JPEG_DEBUG) std.debug.print("Restart Interval: {}", .{self.restart_interval});
+
+        if (JPEG_DEBUG) std.debug.print("Restart Interval: {}\n", .{self.restart_interval});
     }
 };
