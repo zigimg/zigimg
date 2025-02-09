@@ -134,7 +134,7 @@ pub fn performScan(frame: *const Frame, restart_interval: u16, stream: *buffered
         while (x < self.frame.block_width) : (x += x_step) {
             const mcu_id = y * self.frame.block_width_actual + x;
 
-            if (restart_interval != 0 and mcu_id % restart_interval * y_step * x_step == 0) {
+            if (restart_interval != 0 and mcu_id % (restart_interval * y_step * x_step) == 0) {
                 self.reader.flushBits();
                 self.prediction_values = @splat(0);
                 skips = 0;
@@ -219,7 +219,7 @@ fn decodeBlockProgressive(self: *Self, component: *const ScanComponentSpec, bloc
                         ac += 1;
                     }
                 } else {
-                    for (0..zero_run_length) |_| {
+                    for (0..zero_run_length + 1) |_| {
                         block[ZigzagOffsets[ac]] = 0;
                         ac += 1;
                     }
@@ -273,7 +273,12 @@ fn decodeBlockProgressive(self: *Self, component: *const ScanComponentSpec, bloc
                         }
                     } else {
                         const sign_bit: u32 = try self.reader.readBits(1);
-                        block[ZigzagOffsets[ac]] += if (sign_bit == 1) bit else -bit;
+                        if (sign_bit == 0) {
+                            ac += 1;
+                            continue;
+                        } else {
+                            block[ZigzagOffsets[ac]] += if (block[ZigzagOffsets[ac]] > 0) bit else -bit;
+                        }
                     }
                     ac += 1;
                 }
@@ -284,7 +289,12 @@ fn decodeBlockProgressive(self: *Self, component: *const ScanComponentSpec, bloc
             while (ac <= self.end_of_spectral_selection) {
                 if (block[ZigzagOffsets[ac]] != 0) {
                     const sign_bit: u32 = try self.reader.readBits(1);
-                    block[ZigzagOffsets[ac]] += if (sign_bit == 1) bit else -bit;
+                    if (sign_bit == 0) {
+                        ac += 1;
+                        continue;
+                    } else {
+                        block[ZigzagOffsets[ac]] += if (block[ZigzagOffsets[ac]] > 0) bit else -bit;
+                    }
                 }
                 ac += 1;
             }

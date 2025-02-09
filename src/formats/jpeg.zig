@@ -123,6 +123,7 @@ pub const JPEG = struct {
                     }
 
                     self.frame = try Frame.read(self.allocator, @enumFromInt(marker), &self.quantization_tables, &self.dc_huffman_tables, &self.ac_huffman_tables, &buffered_stream);
+                    try self.initializePixels(pixels_opt);
                 },
 
                 .sof1 => return ImageError.Unsupported, // extended sequential DCT Huffman coding
@@ -140,7 +141,6 @@ pub const JPEG = struct {
                     try self.parseDefineHuffmanTables(reader);
                 },
                 .start_of_scan => {
-                    try self.initializePixels(pixels_opt);
                     try self.parseScan(&buffered_stream);
                 },
 
