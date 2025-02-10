@@ -218,23 +218,13 @@ pub const Reader = struct {
         if (magnitude == 0)
             return 0;
 
-        const bits = try self.peekBits(magnitude);
+        var coeff: i32 = @intCast(try self.peekBits(magnitude));
         self.consumeBits(magnitude);
 
-        // The sign of the read bits value.
-        const bits_sign = (bits >> (magnitude - 1)) & 1;
-        // The mask for clearing the sign bit.
-        const bits_mask = (@as(u32, 1) << (magnitude - 1)) - 1;
-        // The bits without the sign bit.
-        const unsigned_bits = bits & bits_mask;
+        if (coeff < @as(i32, 1) << (magnitude - 1)) {
+            coeff -= (@as(i32, 1) << magnitude) - 1;
+        }
 
-        // The magnitude base value. This is -2^n+1 when bits_sign == 0, and
-        // 2^(n-1) when bits_sign == 1.
-        const base = if (bits_sign == 0)
-            -(@as(i32, 1) << magnitude) + 1
-        else
-            (@as(i32, 1) << (magnitude - 1));
-
-        return base + @as(i32, @bitCast(unsigned_bits));
+        return coeff;
     }
 };
