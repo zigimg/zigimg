@@ -28,7 +28,7 @@ end_of_spectral_selection: u8,
 approximation_high: u4,
 approximation_low: u4,
 
-prediction_values: [3]i12,
+prediction_values: [3]i32,
 
 pub fn init(frame: *const Frame, stream: *buffered_stream_source.DefaultBufferedStreamSourceReader) ImageReadError!Self {
     const reader = stream.reader();
@@ -111,7 +111,7 @@ pub fn init(frame: *const Frame, stream: *buffered_stream_source.DefaultBuffered
         .end_of_spectral_selection = end_of_spectral_selection,
         .approximation_high = approximation_high,
         .approximation_low = approximation_low,
-        .prediction_values = [3]i12{ 0, 0, 0 },
+        .prediction_values = @splat(0),
     };
 }
 
@@ -162,12 +162,9 @@ pub fn performScan(frame: *const Frame, restart_interval: u16, stream: *buffered
 
                         self.reader.fillBits(24) catch {};
                         if (self.frame.frame_type == Markers.sof0) {
-                            self.reader.setHuffmanTable(&self.frame.dc_huffman_tables[component.dc_table_selector].?);
-                            try self.decodeDCCoefficient(block, component_index);
-                            self.reader.setHuffmanTable(&self.frame.ac_huffman_tables[component.ac_table_selector].?);
-                            try self.decodeACCoefficients(block);
+                            try self.decodeBlockBaseline(&component, block, component_index);
                         } else if (self.frame.frame_type == Markers.sof2) {
-                            try decodeBlockProgressive(&self, &component, block, component_index, &skips);
+                            try self.decodeBlockProgressive(&component, block, component_index, &skips);
                         }
                     }
                 }
@@ -177,147 +174,130 @@ pub fn performScan(frame: *const Frame, restart_interval: u16, stream: *buffered
 }
 
 fn decodeBlockProgressive(self: *Self, component: *const ScanComponentSpec, block: *Block, component_index: usize, skips: *u32) ImageReadError!void {
-    if (self.start_of_spectral_selection == 0 and self.approximation_high == 0) {
+    if (self.start_of_spectral_selection == 0) {
         self.reader.setHuffmanTable(&self.frame.dc_huffman_tables[component.dc_table_selector].?);
-        const maybe_magnitude = try self.reader.readCode();
-        if (maybe_magnitude > 11) return ImageReadError.InvalidData;
-        const magnitude: u4 = @intCast(maybe_magnitude);
-
-        const diff: i12 = @intCast(try self.reader.readMagnitudeCoded(magnitude));
-        const dc_coefficient = diff + self.prediction_values[component_index];
-        self.prediction_values[component_index] = dc_coefficient;
-
-        block[0] = dc_coefficient << self.approximation_low;
-    } else if (self.start_of_spectral_selection == 0 and self.approximation_high != 0) {
-        self.reader.setHuffmanTable(&self.frame.dc_huffman_tables[component.dc_table_selector].?);
-
-        const bit: u32 = try self.reader.readBits(1);
-        block[0] |= @bitCast(bit << self.approximation_low);
-    } else if (self.start_of_spectral_selection != 0 and self.approximation_high == 0) {
-        var ac: usize = self.start_of_spectral_selection;
-        if (skips.* > 0) {
-            skips.* -= 1;
-            while (ac <= self.end_of_spectral_selection) {
-                block[ZigzagOffsets[ac]] = 0;
-                ac += 1;
-            }
+        if (self.approximation_high == 0) {
+            const maybe_magnitude = try self.reader.readCode();
+            if (maybe_magnitude > 11) return ImageReadError.InvalidData;
+            const diff = try self.reader.readMagnitudeCoded(@intCast(maybe_magnitude));
+            const dc_coefficient = diff + self.prediction_values[component_index];
+            self.prediction_values[component_index] = dc_coefficient;
+            block[0] = dc_coefficient << self.approximation_low;
+        } else if (self.approximation_high != 0) {
+            const bit: u32 = try self.reader.readBits(1);
+            block[0] += @bitCast(bit << self.approximation_low);
         }
+    } else if (self.start_of_spectral_selection != 0) {
         self.reader.setHuffmanTable(&self.frame.ac_huffman_tables[component.ac_table_selector].?);
-        while (ac <= self.end_of_spectral_selection) {
-            const zero_run_length_and_magnitude = try self.reader.readCode();
+        if (self.approximation_high == 0) {
+            var ac: usize = self.start_of_spectral_selection;
+            if (skips.* == 0) {
+                while (ac <= self.end_of_spectral_selection) {
+                    var coeff: i32 = 0;
+                    const zero_run_length_and_magnitude = try self.reader.readCode();
+                    const zero_run_length = zero_run_length_and_magnitude >> 4;
+                    const maybe_magnitude = zero_run_length_and_magnitude & 0x0F;
 
-            const zero_run_length = zero_run_length_and_magnitude >> 4;
-            const maybe_magnitude = zero_run_length_and_magnitude & 0x0F;
+                    if (maybe_magnitude == 0) {
+                        if (zero_run_length < 15) {
+                            const extra_skips: u32 = try self.reader.readBits(@intCast(zero_run_length));
+                            skips.* = (@as(u32, 1) << @intCast(zero_run_length));
+                            skips.* += extra_skips;
+                            break; // process skips
+                        } // no special case for zrl == 15
+                    } else if (maybe_magnitude != 0) {
+                        if (maybe_magnitude > 10) return ImageReadError.InvalidData;
+                        coeff = try self.reader.readMagnitudeCoded(@intCast(maybe_magnitude));
+                    }
 
-            if (maybe_magnitude == 0) {
-                if (zero_run_length < 15) {
-                    const extra_skips: u32 = try self.reader.readBits(@intCast(zero_run_length));
-                    skips.* = (@as(u32, 1) << @intCast(zero_run_length)) - 1;
-                    skips.* += extra_skips;
-                    while (ac <= self.end_of_spectral_selection) {
+                    for (0..zero_run_length) |_| {
                         block[ZigzagOffsets[ac]] = 0;
                         ac += 1;
                     }
-                } else {
-                    for (0..zero_run_length + 1) |_| {
-                        block[ZigzagOffsets[ac]] = 0;
-                        ac += 1;
-                    }
+                    block[ZigzagOffsets[ac]] = coeff << self.approximation_low;
+                    ac += 1;
                 }
-            } else if (maybe_magnitude != 0) {
-                if (maybe_magnitude > 10) return ImageReadError.InvalidData;
-                const magnitude: u4 = @intCast(maybe_magnitude);
+            }
 
-                for (0..zero_run_length) |_| {
+            if (skips.* > 0) {
+                skips.* -= 1;
+                while (ac <= self.end_of_spectral_selection) {
                     block[ZigzagOffsets[ac]] = 0;
                     ac += 1;
                 }
-                const ac_coefficient: i11 = @intCast(try self.reader.readMagnitudeCoded(magnitude));
-
-                block[ZigzagOffsets[ac]] = ac_coefficient << self.approximation_low;
-                ac += 1;
             }
-        }
-    } else if (self.start_of_spectral_selection != 0 and self.approximation_high != 0) {
-        self.reader.setHuffmanTable(&self.frame.ac_huffman_tables[component.ac_table_selector].?);
-
-        const bit: i32 = @as(i32, 1) << self.approximation_low;
-        var ac: usize = self.start_of_spectral_selection;
-        if (skips.* == 0) {
-            while (ac <= self.end_of_spectral_selection) {
-                var coeff: i32 = 0;
-                const zero_run_length_and_magnitude = try self.reader.readCode();
-                var zero_run_length = zero_run_length_and_magnitude >> 4;
-                const maybe_magnitude = zero_run_length_and_magnitude & 0x0F;
-
-                if (maybe_magnitude == 0) {
-                    if (zero_run_length < 15) {
-                        skips.* = (@as(u32, 1) << @intCast(zero_run_length));
-                        const extra_skips: u32 = try self.reader.readBits(@intCast(zero_run_length));
-                        skips.* += extra_skips;
-                        break; // start processing skips
-                    } // no special treatment for zero_run_length == 15
-                } else if (maybe_magnitude != 0) {
-                    const sign_bit: u32 = try self.reader.readBits(1);
-                    coeff = if (sign_bit == 1) bit else -bit;
-                }
-
+        } else if (self.approximation_high != 0) {
+            const bit: i32 = @as(i32, 1) << self.approximation_low;
+            var ac: usize = self.start_of_spectral_selection;
+            if (skips.* == 0) {
                 while (ac <= self.end_of_spectral_selection) {
-                    if (block[ZigzagOffsets[ac]] == 0) {
-                        if (zero_run_length > 0) {
-                            zero_run_length -= 1;
-                        } else {
-                            block[ZigzagOffsets[ac]] = coeff;
-                            ac += 1;
-                            break;
-                        }
-                    } else {
+                    var coeff: i32 = 0;
+                    const zero_run_length_and_magnitude = try self.reader.readCode();
+                    var zero_run_length = zero_run_length_and_magnitude >> 4;
+                    const maybe_magnitude = zero_run_length_and_magnitude & 0x0F;
+
+                    if (maybe_magnitude == 0) {
+                        if (zero_run_length < 15) {
+                            skips.* = (@as(u32, 1) << @intCast(zero_run_length));
+                            const extra_skips: u32 = try self.reader.readBits(@intCast(zero_run_length));
+                            skips.* += extra_skips;
+                            break; // start processing skips
+                        } // no special treatment for zero_run_length == 15
+                    } else if (maybe_magnitude != 0) {
                         const sign_bit: u32 = try self.reader.readBits(1);
-                        if (sign_bit == 0) {
-                            ac += 1;
-                            continue;
+                        coeff = if (sign_bit == 1) bit else -bit;
+                    }
+
+                    while (ac <= self.end_of_spectral_selection) {
+                        if (block[ZigzagOffsets[ac]] == 0) {
+                            if (zero_run_length > 0) {
+                                zero_run_length -= 1;
+                                ac += 1;
+                            } else {
+                                block[ZigzagOffsets[ac]] = coeff;
+                                ac += 1;
+                                break;
+                            }
                         } else {
+                            const sign_bit: u32 = try self.reader.readBits(1);
+                            if (sign_bit != 0) {
+                                block[ZigzagOffsets[ac]] += if (block[ZigzagOffsets[ac]] > 0) bit else -bit;
+                            }
+                            ac += 1;
+                        }
+                    }
+                }
+            }
+
+            if (skips.* > 0) {
+                while (ac <= self.end_of_spectral_selection) : (ac += 1) {
+                    if (block[ZigzagOffsets[ac]] != 0) {
+                        const sign_bit: u32 = try self.reader.readBits(1);
+                        if (sign_bit != 0) {
                             block[ZigzagOffsets[ac]] += if (block[ZigzagOffsets[ac]] > 0) bit else -bit;
                         }
                     }
-                    ac += 1;
                 }
+                skips.* -= 1;
             }
-        }
-
-        if (skips.* > 0) {
-            while (ac <= self.end_of_spectral_selection) {
-                if (block[ZigzagOffsets[ac]] != 0) {
-                    const sign_bit: u32 = try self.reader.readBits(1);
-                    if (sign_bit == 0) {
-                        ac += 1;
-                        continue;
-                    } else {
-                        block[ZigzagOffsets[ac]] += if (block[ZigzagOffsets[ac]] > 0) bit else -bit;
-                    }
-                }
-                ac += 1;
-            }
-            skips.* -= 1;
         }
     }
 }
 
-fn decodeDCCoefficient(self: *Self, block: *Block, component_destination: usize) ImageReadError!void {
-    const maybe_magnitude = try self.reader.readCode();
+fn decodeBlockBaseline(self: *Self, component: *const ScanComponentSpec, block: *Block, component_destination: usize) ImageReadError!void {
+    // decode DC coefficient
+    self.reader.setHuffmanTable(&self.frame.dc_huffman_tables[component.dc_table_selector].?);
+    var maybe_magnitude = try self.reader.readCode();
     if (maybe_magnitude > 11) return ImageReadError.InvalidData;
-    const magnitude: u4 = @intCast(maybe_magnitude);
-
-    const diff: i12 = @intCast(try self.reader.readMagnitudeCoded(magnitude));
+    const diff: i32 = try self.reader.readMagnitudeCoded(@intCast(maybe_magnitude));
     const dc_coefficient = diff + self.prediction_values[component_destination];
     self.prediction_values[component_destination] = dc_coefficient;
 
     block[0] = dc_coefficient;
-}
 
-fn decodeACCoefficients(self: *Self, block: *Block) ImageReadError!void {
-    var ac: usize = undefined;
-    ac = 1;
+    // decode AC coefficients
+    self.reader.setHuffmanTable(&self.frame.ac_huffman_tables[component.ac_table_selector].?);
+    var ac: usize = 1;
     while (ac < 64) : (ac += 1) {
         const zero_run_length_and_magnitude = try self.reader.readCode();
         // 00 == EOB
@@ -329,15 +309,12 @@ fn decodeACCoefficients(self: *Self, block: *Block) ImageReadError!void {
         }
 
         const zero_run_length = zero_run_length_and_magnitude >> 4;
-
-        const maybe_magnitude = zero_run_length_and_magnitude & 0xF;
+        maybe_magnitude = zero_run_length_and_magnitude & 0xF;
         if (maybe_magnitude > 10) return ImageReadError.InvalidData;
-        const magnitude: u4 = @intCast(maybe_magnitude);
 
-        const ac_coefficient: i11 = @intCast(try self.reader.readMagnitudeCoded(magnitude));
+        const ac_coefficient: i11 = @intCast(try self.reader.readMagnitudeCoded(@intCast(maybe_magnitude)));
 
-        var i: usize = 0;
-        while (i < zero_run_length) : (i += 1) {
+        for (0..zero_run_length) |_| {
             block[ZigzagOffsets[ac]] = 0;
             ac += 1;
         }
