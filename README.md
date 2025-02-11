@@ -102,9 +102,10 @@ zig build test
 ### ILBM - InterLeaved BitMap Format
 
  * Supports Amiga <= 8-bit planar images
+ * Supports EHB view mode
  * Supports uncompressed & byterun compressed files
  * Supports PBM (Deluxe Paint DOS) encoded files
- * HAM/HAM8/EHB/24-bit images are not supported yet
+ * HAM/HAM8/24-bit images are not supported yet
  * Atari planar files are not supported yet
  * Most chunks are ignored
 
@@ -748,7 +749,7 @@ If the target RGB colorspace have a different white point, it will do the [chrom
 
 ### Predefined RGB color spaces
 
-Here the list of predefined RGB color spaces, all acessilbe from `zigimg.color` struct:
+Here the list of predefined RGB color spaces, all accessible from `zigimg.color` struct:
 
 * `BT601_NTSC`
 * `BT601_PAL`
