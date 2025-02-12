@@ -331,9 +331,14 @@ fn RunLengthSimpleEncoder(comptime IntType: type) type {
     };
 }
 
-fn RunLengthSIMDEncoder(comptime IntType: type) type {
+fn RunLengthSIMDEncoder(
+    comptime IntType: type,
+    comptime optional_parameters: struct {
+        vector_length: comptime_int = std.simd.suggestVectorLength(IntType) orelse 4,
+    },
+) type {
     return struct {
-        const VectorLength = std.simd.suggestVectorLength(IntType) orelse 4;
+        const VectorLength = optional_parameters.vector_length;
         const VectorType = @Vector(VectorLength, IntType);
         const BytesPerPixels = (@typeInfo(IntType).int.bits + 7) / 8;
         const IndexStep = VectorLength * BytesPerPixels;
@@ -370,7 +375,7 @@ fn RunLengthSIMDEncoder(comptime IntType: type) type {
                 const inverted_mask = ~@as(MaskType, @bitCast(compare_mask));
                 const current_similar_count = @ctz(inverted_mask);
 
-                if (current_similar_count == VectorLength) {
+                if (current_similar_count == VectorLength and compared_value == read_value) {
                     total_similar_count += current_similar_count;
                     index += current_similar_count * BytesPerPixels;
 
@@ -453,14 +458,22 @@ test "TGA RLE SIMD u8 (bytes) encoder" {
     const uncompressed_data = [_]u8{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 64, 64, 2, 2, 2, 2, 2, 215, 215, 215, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 200, 200, 200, 200, 210, 210 };
     const compressed_data = [_]u8{ 0x88, 0x01, 0x81, 0x40, 0x84, 0x02, 0x82, 0xD7, 0x89, 0x03, 0x83, 0xC8, 0x81, 0xD2 };
 
-    var result_list = std.ArrayList(u8).init(std.testing.allocator);
-    defer result_list.deinit();
+    const Test = struct {
+        pub fn do(comptime vector_length: comptime_int) !void {
+            var result_list = std.ArrayList(u8).init(std.testing.allocator);
+            defer result_list.deinit();
 
-    const writer = result_list.writer();
+            const writer = result_list.writer();
 
-    try RunLengthSIMDEncoder(u8).encode(uncompressed_data[0..], writer);
+            try RunLengthSIMDEncoder(u8, .{ .vector_length = vector_length }).encode(uncompressed_data[0..], writer);
+            try std.testing.expectEqualSlices(u8, compressed_data[0..], result_list.items);
+        }
+    };
 
-    try std.testing.expectEqualSlices(u8, compressed_data[0..], result_list.items);
+    try Test.do(4);
+    try Test.do(8);
+    try Test.do(16);
+    try Test.do(32);
 }
 
 test "TGA RLE SIMD u8 (bytes) encoder should encore more than 128 bytes similar" {
@@ -470,14 +483,23 @@ test "TGA RLE SIMD u8 (bytes) encoder should encore more than 128 bytes similar"
 
     const compressed_data = [_]u8{ 0xFF, 0x45, 0x86, 0x45, 0x83, 0x1 };
 
-    var result_list = std.ArrayList(u8).init(std.testing.allocator);
-    defer result_list.deinit();
+    const Test = struct {
+        pub fn do(comptime vector_length: comptime_int) !void {
+            var result_list = std.ArrayList(u8).init(std.testing.allocator);
+            defer result_list.deinit();
 
-    const writer = result_list.writer();
+            const writer = result_list.writer();
 
-    try RunLengthSIMDEncoder(u8).encode(uncompressed_data[0..], writer);
+            try RunLengthSIMDEncoder(u8, .{ .vector_length = vector_length }).encode(uncompressed_data[0..], writer);
 
-    try std.testing.expectEqualSlices(u8, compressed_data[0..], result_list.items);
+            try std.testing.expectEqualSlices(u8, compressed_data[0..], result_list.items);
+        }
+    };
+
+    try Test.do(4);
+    try Test.do(8);
+    try Test.do(16);
+    try Test.do(32);
 }
 
 test "TGA RLE SIMD u16 encoder" {
@@ -486,14 +508,23 @@ test "TGA RLE SIMD u16 encoder" {
 
     const compressed_data = [_]u8{ 0x87, 0x01, 0x03, 0x00, 0x01, 0x00, 0x00, 0x02, 0x00, 0x00, 0x03, 0x00, 0x00, 0x04, 0x00, 0x00, 0x05, 0x00, 0x00, 0x06, 0x00, 0x00, 0x07, 0x00, 0x00, 0x08, 0x00 };
 
-    var result_list = std.ArrayList(u8).init(std.testing.allocator);
-    defer result_list.deinit();
+    const Test = struct {
+        pub fn do(comptime vector_length: comptime_int, compressed_data_param: []const u8, uncompressed_data_param: []const u8) !void {
+            var result_list = std.ArrayList(u8).init(std.testing.allocator);
+            defer result_list.deinit();
 
-    const writer = result_list.writer();
+            const writer = result_list.writer();
 
-    try RunLengthSIMDEncoder(u16).encode(uncompressed_data[0..], writer);
+            try RunLengthSIMDEncoder(u16, .{ .vector_length = vector_length }).encode(uncompressed_data_param[0..], writer);
 
-    try std.testing.expectEqualSlices(u8, compressed_data[0..], result_list.items);
+            try std.testing.expectEqualSlices(u8, compressed_data_param[0..], result_list.items);
+        }
+    };
+
+    try Test.do(4, compressed_data[0..], uncompressed_data);
+    try Test.do(8, compressed_data[0..], uncompressed_data);
+    try Test.do(16, compressed_data[0..], uncompressed_data);
+    try Test.do(32, compressed_data[0..], uncompressed_data);
 }
 
 test "TGA RLE SIMD u32 encoder" {
@@ -502,14 +533,23 @@ test "TGA RLE SIMD u32 encoder" {
 
     const compressed_data = [_]u8{ 0x87, 0xEF, 0xCD, 0xAB, 0xFF, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00 };
 
-    var result_list = std.ArrayList(u8).init(std.testing.allocator);
-    defer result_list.deinit();
+    const Test = struct {
+        pub fn do(comptime vector_length: comptime_int, compressed_data_param: []const u8, uncompressed_data_param: []const u8) !void {
+            var result_list = std.ArrayList(u8).init(std.testing.allocator);
+            defer result_list.deinit();
 
-    const writer = result_list.writer();
+            const writer = result_list.writer();
 
-    try RunLengthSIMDEncoder(u32).encode(uncompressed_data[0..], writer);
+            try RunLengthSIMDEncoder(u32, .{ .vector_length = vector_length }).encode(uncompressed_data_param[0..], writer);
 
-    try std.testing.expectEqualSlices(u8, compressed_data[0..], result_list.items);
+            try std.testing.expectEqualSlices(u8, compressed_data_param[0..], result_list.items);
+        }
+    };
+
+    try Test.do(4, compressed_data[0..], uncompressed_data);
+    try Test.do(8, compressed_data[0..], uncompressed_data);
+    try Test.do(16, compressed_data[0..], uncompressed_data);
+    try Test.do(32, compressed_data[0..], uncompressed_data);
 }
 
 test "TGA RLE simple u24 encoder" {
@@ -1141,14 +1181,14 @@ pub const TGA = struct {
                             for (0..effective_height) |y| {
                                 const current_scanline = y * pixel_stride;
 
-                                try RunLengthSIMDEncoder(IntType).encode(bytes[current_scanline..(current_scanline + pixel_stride)], writer);
+                                try RunLengthSIMDEncoder(IntType, .{}).encode(bytes[current_scanline..(current_scanline + pixel_stride)], writer);
                             }
                         } else {
                             for (0..effective_height) |y| {
                                 const flipped_y = effective_height - y - 1;
                                 const current_scanline = flipped_y * pixel_stride;
 
-                                try RunLengthSIMDEncoder(IntType).encode(bytes[current_scanline..(current_scanline + pixel_stride)], writer);
+                                try RunLengthSIMDEncoder(IntType, .{}).encode(bytes[current_scanline..(current_scanline + pixel_stride)], writer);
                             }
                         }
                     } else {
