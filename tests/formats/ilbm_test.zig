@@ -88,3 +88,34 @@ test "ILBM indexed8 8 bitplanes uncompressed" {
     try helpers.expectEq(pixels.indexed8.indices[141], 58);
     try helpers.expectEq(pixels.indexed8.indices[25975], 2);
 }
+
+test "ILBM indexed8 6 bitplanes EHB" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ilbm/sample-ehb.iff");
+    defer file.close();
+
+    var the_bitmap = ilbm.ILBM{};
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(the_bitmap.width(), 320);
+    try helpers.expectEq(the_bitmap.height(), 256);
+    try testing.expect(pixels == .indexed8);
+
+    const palette2 = pixels.indexed8.palette[2];
+
+    try helpers.expectEq(palette2.r, 34);
+    try helpers.expectEq(palette2.g, 17);
+    try helpers.expectEq(palette2.b, 34);
+
+    const palette45 = pixels.indexed8.palette[45];
+
+    try helpers.expectEq(palette45.r, 153);
+    try helpers.expectEq(palette45.g, 170);
+    try helpers.expectEq(palette45.b, 153);
+
+    try helpers.expectEq(pixels.indexed8.indices[141], 21);
+    try helpers.expectEq(pixels.indexed8.indices[25975], 61);
+}

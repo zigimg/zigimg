@@ -25,8 +25,9 @@ pub const Chunk = struct {
 
 pub const Chunks = struct {
     pub const BMHD = Chunk.init("BMHD");
-    pub const CMAP = Chunk.init("CMAP");
     pub const BODY = Chunk.init("BODY");
+    pub const CAMG = Chunk.init("CAMG");
+    pub const CMAP = Chunk.init("CMAP");
 };
 
 pub fn getILBMFormatId(stream: *ImageUnmanaged.Stream) ImageUnmanaged.ReadError!Format {
@@ -58,6 +59,16 @@ pub fn loadHeader(stream: *ImageUnmanaged.Stream) ImageUnmanaged.ReadError!Bitma
     return header;
 }
 
+pub fn extend_ehb_palette(palette: *utils.FixedStorage(color.Rgba32, 256)) void {
+    palette.resize(64);
+    const data = palette.data;
+    for (0..32) |i| {
+        const c = data[i];
+        // EHB mode extends the palette to 64 colors by adding 32 darker colors
+        data[i + 32] = color.Rgba32.initRgb(c.r >> 1, c.g >> 1, c.b >> 1);
+    }
+}
+
 pub const ChunkHeader = extern struct {
     type: u32 align(1),
     length: u32 align(1),
@@ -84,6 +95,9 @@ pub const MaskType = enum(u8) {
 pub const ViewportMode = enum(u32) {
     ehb = 0x80,
     ham = 0x800,
+    pub fn isEHB(mode: u32) bool {
+        return (@intFromEnum(ViewportMode.ehb) & mode) != 0;
+    }
 };
 
 pub const Format = enum(u8) {
@@ -147,10 +161,11 @@ pub fn decodeByteRun1(stream: *ImageUnmanaged.Stream, tmp_buffer: []u8, length: 
 }
 
 pub const ILBM = struct {
-    header: BitmapHeader = undefined,
-    pitch: u16 = 0,
     format_id: Format = undefined,
+    header: BitmapHeader = undefined,
     palette: utils.FixedStorage(color.Rgba32, 256) = .{},
+    pitch: u16 = 0,
+    viewportMode: u32 = 0,
 
     pub fn width(self: *ILBM) usize {
         return self.header.width;
@@ -225,8 +240,9 @@ pub const ILBM = struct {
         while (true) {
             const chunk = try utils.readStruct(reader, ChunkHeader, .big);
             switch (chunk.type) {
-                Chunks.CMAP.id => try self.decodeCMAPChunk(stream, &chunk),
                 Chunks.BODY.id => return try self.decodeBODYChunk(stream, &chunk, allocator),
+                Chunks.CAMG.id => try self.decodeCAMGChunk(stream),
+                Chunks.CMAP.id => try self.decodeCMAPChunk(stream, &chunk),
                 // skip unsupported chunks
                 else => try stream.seekBy(chunk.length),
             }
@@ -273,6 +289,11 @@ pub const ILBM = struct {
         }
     }
 
+    pub fn decodeCAMGChunk(self: *ILBM, stream: *ImageUnmanaged.Stream) !void {
+        const reader = stream.reader();
+        self.viewportMode = try reader.readInt(u32, .big);
+    }
+
     pub fn decodeCMAPChunk(self: *ILBM, stream: *ImageUnmanaged.Stream, chunk: *const ChunkHeader) !void {
         const num_colors = chunk.length / 3;
         const reader = stream.reader();
@@ -308,6 +329,10 @@ pub const ILBM = struct {
         defer allocator.free(chunky_buffer);
 
         try self.planarToChunky(tmp_buffer, chunky_buffer);
+
+        if (ViewportMode.isEHB(self.viewportMode) and self.palette.data.len < 64) {
+            extend_ehb_palette(&self.palette);
+        }
 
         switch (pixels) {
             .indexed8 => |*storage| {
