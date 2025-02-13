@@ -59,7 +59,7 @@ pub fn loadHeader(stream: *ImageUnmanaged.Stream) ImageUnmanaged.ReadError!Bitma
     return header;
 }
 
-pub fn extend_ehb_palette(palette: *utils.FixedStorage(color.Rgba32, 256)) void {
+pub fn extendEhbPalette(palette: *utils.FixedStorage(color.Rgba32, 256)) void {
     palette.resize(64);
     const data = palette.data;
     for (0..32) |i| {
@@ -95,8 +95,11 @@ pub const MaskType = enum(u8) {
 pub const ViewportMode = enum(u32) {
     ehb = 0x80,
     ham = 0x800,
-    pub fn isEHB(mode: u32) bool {
+    pub fn isEhb(mode: u32) bool {
         return (@intFromEnum(ViewportMode.ehb) & mode) != 0;
+    }
+    pub fn isHam(mode: u32) bool {
+        return (@intFromEnum(ViewportMode.ham) & mode) != 0;
     }
 };
 
@@ -161,6 +164,7 @@ pub fn decodeByteRun1(stream: *ImageUnmanaged.Stream, tmp_buffer: []u8, length: 
 }
 
 pub const ILBM = struct {
+    cmap_bits: u8 = 0,
     format_id: Format = undefined,
     header: BitmapHeader = undefined,
     palette: utils.FixedStorage(color.Rgba32, 256) = .{},
@@ -176,7 +180,9 @@ pub const ILBM = struct {
     }
 
     pub fn pixelFormat(self: *ILBM) ImageUnmanaged.Error!PixelFormat {
-        if (self.header.planes <= 8) {
+        if (ViewportMode.isHam(self.viewportMode) or self.header.planes == 24) {
+            return PixelFormat.rgba32;
+        } else if (self.header.planes <= 8) {
             return PixelFormat.indexed8;
         } else {
             return ImageUnmanaged.Error.Unsupported;
@@ -261,6 +267,10 @@ pub const ILBM = struct {
         const h = header.height;
         const pitch = self.pitch;
         const dest_len = chunky_buffer.len;
+        // pixel_size in bytes in the buffer:
+        // 1 (the cmap index) for indexed mode
+        // 3 (r, g, b components) for 24bit mode
+        const pixel_size: u8 = @max(1, planes / 8);
 
         // we already have a chunky buffer: no need to convert to planar
         if (self.format_id == .pbm) {
@@ -271,17 +281,20 @@ pub const ILBM = struct {
         @memset(chunky_buffer, 0);
 
         for (0..h) |y| {
+            const scanline = y * w;
             for (0..planes) |p| {
-                const plane_mask: u8 = @as(u8, 1) << @intCast(p);
+                const plane_mask: u8 = @as(u8, 1) << @intCast(p % 8);
+                const offset_base = (pitch * planes * y) + (p * pitch);
                 for (0..pitch) |i| {
-                    const offset = (pitch * planes * y) + (p * pitch) + i;
-                    const bit = bitplanes[offset];
+                    const bit = bitplanes[offset_base + i];
+                    const rgb_shift = p / 8;
 
                     for (0..8) |b| {
                         const mask = @as(u8, 1) << @intCast((@as(u8, 7) - b));
                         if ((bit & mask) > 0) {
                             const x = (i * 8) + b;
-                            chunky_buffer[(y * w) + x] |= plane_mask;
+                            const offset = (scanline * pixel_size) + (x * pixel_size) + rgb_shift;
+                            chunky_buffer[offset] |= plane_mask;
                         }
                     }
                 }
@@ -304,6 +317,21 @@ pub const ILBM = struct {
             const c = try utils.readStruct(reader, color.Rgb24, .little);
             palette[i] = color.Rgba32.fromU32Rgb(c.toU32Rgb());
         }
+        self.cmap_bits = std.math.log2_int_ceil(usize, palette.len);
+    }
+
+    pub fn reduceHamPalette(self: *ILBM) void {
+        var bits = self.cmap_bits;
+        const planes = self.header.planes;
+
+        if (bits > planes) {
+            bits -= (bits - planes) + 2;
+            // bits shouldn't theorically be less than 4 bits in HAM mode.
+            std.debug.assert(bits >= 4);
+
+            self.palette.resize(self.palette.data.len >> @truncate(bits));
+            self.cmap_bits = bits;
+        }
     }
 
     pub fn decodeBODYChunk(self: *ILBM, stream: *ImageUnmanaged.Stream, chunk: *const ChunkHeader, allocator: std.mem.Allocator) !color.PixelStorage {
@@ -325,23 +353,68 @@ pub const ILBM = struct {
             _ = try reader.readAll(tmp_buffer);
         }
 
-        const chunky_buffer: []u8 = try allocator.alloc(u8, self.width() * self.height());
+        var buffer_size = self.width() * self.height();
+        if (self.header.planes == 24)
+            buffer_size *= 3;
+        const chunky_buffer: []u8 = try allocator.alloc(u8, buffer_size);
         defer allocator.free(chunky_buffer);
 
         try self.planarToChunky(tmp_buffer, chunky_buffer);
 
-        if (ViewportMode.isEHB(self.viewportMode) and self.palette.data.len < 64) {
-            extend_ehb_palette(&self.palette);
+        if (ViewportMode.isEhb(self.viewportMode) and self.palette.data.len < 64) {
+            extendEhbPalette(&self.palette);
+        } else if (ViewportMode.isHam((self.viewportMode))) {
+            self.reduceHamPalette();
         }
 
         switch (pixels) {
             .indexed8 => |*storage| {
                 @memcpy(storage.indices[0..], chunky_buffer[0..storage.indices.len]);
-
                 storage.resizePalette(self.palette.data.len);
                 for (0..self.palette.data.len) |index| {
                     const palette = storage.palette;
                     palette[index] = self.palette.data[index];
+                }
+            },
+            .rgba32 => |storage| {
+                const is_ham = ViewportMode.isHam(self.viewportMode);
+                const planes = self.header.planes;
+                const cmap_bits: u3 = @truncate(self.cmap_bits);
+                const pad_bits: u3 = @truncate(8 - self.cmap_bits);
+                const palette = self.palette.data;
+
+                const pixel_size: u8 = @max(1, planes / 8);
+                for (0..self.height()) |row| {
+                    // Keep color: in HAM mode, current color
+                    // may be based on previous color instead of coming from
+                    // the palette.
+                    var previous_color = color.Rgba32.initRgb(0, 0, 0);
+                    for (0..self.width()) |col| {
+                        const index = (self.width() * row * pixel_size) + (col * pixel_size);
+                        if (planes == 24) {
+                            previous_color = color.Rgba32.initRgb(chunky_buffer[index], chunky_buffer[index + 1], chunky_buffer[index + 2]);
+                        } else if (chunky_buffer[index] < palette.len) {
+                            previous_color = palette[chunky_buffer[index]];
+                            if (self.header.mask_type == MaskType.has_transparent_color and chunky_buffer[index] == self.header.transparent_color)
+                                previous_color.a = 0;
+                        } else if (is_ham) {
+                            // Get the control bit which will tell use how current pixel should be calculated
+                            const control: u8 = (chunky_buffer[index] >> cmap_bits) & 0x3;
+                            // Since we only have (cmap_bits - 2) bits to define the component,
+                            // we need to pad it to 8 bits.
+                            const component: u8 = (chunky_buffer[index] % @as(u8, @truncate(palette.len))) << pad_bits;
+
+                            if (control == 1) {
+                                previous_color.b = component;
+                            } else if (control == 2) {
+                                previous_color.r = component;
+                            } else {
+                                previous_color.g = component;
+                            }
+                        } else unreachable;
+
+                        storage[row * self.width() + col] = previous_color;
+                    }
                 }
             },
             else => unreachable,
