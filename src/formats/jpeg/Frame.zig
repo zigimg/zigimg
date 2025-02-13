@@ -290,6 +290,8 @@ pub fn yCbCrToRgb(self: *Self) ImageReadError!void {
                 var h: usize = h_max;
                 while (h > 0) {
                     h -= 1;
+                    if (y + v >= self.block_height or x + h >= self.block_width) continue;
+
                     const y_block = &self.block_storage[(y + v) * self.block_width_actual + (x + h)];
                     yCbCrToRgbBlock(self, y_block, cbcr_block, v, h);
                 }
@@ -321,8 +323,12 @@ pub fn dequantizeMCUs(self: *Self) ImageReadError!void {
                     for (0..h_max) |h| {
                         const block_id = (y + v) * self.block_width_actual + (x + h);
                         const block = &self.block_storage[block_id][component_id];
-                        for (0..64) |sample_id| {
-                            block[sample_id] = block[sample_id] * quantization_table.q8[sample_id];
+                        if (y + v >= self.block_height) {
+                            @memset(block, 0);
+                        } else {
+                            for (0..64) |sample_id| {
+                                block[sample_id] = block[sample_id] * quantization_table.q8[sample_id];
+                            }
                         }
                     }
                 }
