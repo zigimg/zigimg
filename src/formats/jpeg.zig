@@ -24,9 +24,6 @@ const HuffmanTable = @import("./jpeg/huffman.zig").Table;
 const Frame = @import("./jpeg/Frame.zig");
 const Scan = @import("./jpeg/Scan.zig");
 
-// TODO: Chroma subsampling
-// TODO: Progressive scans
-// TODO: Non-baseline sequential DCT
 // TODO: Precisions other than 8-bit
 
 // TODO: Hierarchical mode of JPEG compression.
@@ -175,8 +172,8 @@ pub const JPEG = struct {
             }
         }
 
-        try self.frame.?.dequantizeMCUs();
-        self.frame.?.idctMCUs();
+        try self.frame.?.dequantizeBlocks();
+        self.frame.?.idctBlocks();
         try self.frame.?.renderToPixels(&pixels_opt.*.?);
 
         return if (self.frame) |frame| frame else ImageReadError.InvalidData;

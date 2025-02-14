@@ -300,7 +300,7 @@ pub fn yCbCrToRgb(self: *Self) ImageReadError!void {
     }
 }
 
-pub fn dequantizeMCUs(self: *Self) ImageReadError!void {
+pub fn dequantizeBlocks(self: *Self) ImageReadError!void {
     for (self.frame_header.components) |component| {
         if (self.quantization_tables[component.quantization_table_id] == null) {
             return ImageReadError.InvalidData;
@@ -337,7 +337,7 @@ pub fn dequantizeMCUs(self: *Self) ImageReadError!void {
     }
 }
 
-pub fn idctMCUs(self: *Self) void {
+pub fn idctBlocks(self: *Self) void {
     const y_step = self.vertical_sampling_factor_max;
     const x_step = self.horizontal_sampling_factor_max;
 
