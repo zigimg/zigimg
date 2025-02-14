@@ -162,112 +162,28 @@ pub fn yCbCrToRgbBlock(self: *Self, y_block: *[3]Block, cbcr_block: *[3]Block, v
     var y: usize = 8;
     while (y > 0) {
         y -= 1;
-        const cbcr_y: usize = y / y_step + (8 / y_step) * v;
-
         const pixel_index: usize = y * 8;
-        const Y0: f32 = @floatFromInt(y_block[0][pixel_index + 0]);
-        const Y1: f32 = @floatFromInt(y_block[0][pixel_index + 1]);
-        const Y2: f32 = @floatFromInt(y_block[0][pixel_index + 2]);
-        const Y3: f32 = @floatFromInt(y_block[0][pixel_index + 3]);
-        const Y4: f32 = @floatFromInt(y_block[0][pixel_index + 4]);
-        const Y5: f32 = @floatFromInt(y_block[0][pixel_index + 5]);
-        const Y6: f32 = @floatFromInt(y_block[0][pixel_index + 6]);
-        const Y7: f32 = @floatFromInt(y_block[0][pixel_index + 7]);
+        comptime var x: usize = 8;
+        inline while (x > 0) {
+            x -= 1;
+            const Y: f32 = @floatFromInt(y_block[0][pixel_index + x]);
 
-        const cbcr_x0: usize = (0 / x_step) + (8 / x_step) * h;
-        const cbcr_x1: usize = (1 / x_step) + (8 / x_step) * h;
-        const cbcr_x2: usize = (2 / x_step) + (8 / x_step) * h;
-        const cbcr_x3: usize = (3 / x_step) + (8 / x_step) * h;
-        const cbcr_x4: usize = (4 / x_step) + (8 / x_step) * h;
-        const cbcr_x5: usize = (5 / x_step) + (8 / x_step) * h;
-        const cbcr_x6: usize = (6 / x_step) + (8 / x_step) * h;
-        const cbcr_x7: usize = (7 / x_step) + (8 / x_step) * h;
+            const cbcr_y: usize = y / y_step + (8 / y_step) * v;
+            const cbcr_x: usize = x / x_step + (8 / x_step) * h;
 
-        const cbcr_pixel0: usize = cbcr_y * 8 + cbcr_x0;
-        const cbcr_pixel1: usize = cbcr_y * 8 + cbcr_x1;
-        const cbcr_pixel2: usize = cbcr_y * 8 + cbcr_x2;
-        const cbcr_pixel3: usize = cbcr_y * 8 + cbcr_x3;
-        const cbcr_pixel4: usize = cbcr_y * 8 + cbcr_x4;
-        const cbcr_pixel5: usize = cbcr_y * 8 + cbcr_x5;
-        const cbcr_pixel6: usize = cbcr_y * 8 + cbcr_x6;
-        const cbcr_pixel7: usize = cbcr_y * 8 + cbcr_x7;
+            const cbcr_pixel: usize = cbcr_y * 8 + cbcr_x;
 
-        const Cb0: f32 = @floatFromInt(cbcr_block[1][cbcr_pixel0]);
-        const Cb1: f32 = @floatFromInt(cbcr_block[1][cbcr_pixel1]);
-        const Cb2: f32 = @floatFromInt(cbcr_block[1][cbcr_pixel2]);
-        const Cb3: f32 = @floatFromInt(cbcr_block[1][cbcr_pixel3]);
-        const Cb4: f32 = @floatFromInt(cbcr_block[1][cbcr_pixel4]);
-        const Cb5: f32 = @floatFromInt(cbcr_block[1][cbcr_pixel5]);
-        const Cb6: f32 = @floatFromInt(cbcr_block[1][cbcr_pixel6]);
-        const Cb7: f32 = @floatFromInt(cbcr_block[1][cbcr_pixel7]);
+            const Cb: f32 = @floatFromInt(cbcr_block[1][cbcr_pixel]);
+            const Cr: f32 = @floatFromInt(cbcr_block[2][cbcr_pixel]);
 
-        const Cr0: f32 = @floatFromInt(cbcr_block[2][cbcr_pixel0]);
-        const Cr1: f32 = @floatFromInt(cbcr_block[2][cbcr_pixel1]);
-        const Cr2: f32 = @floatFromInt(cbcr_block[2][cbcr_pixel2]);
-        const Cr3: f32 = @floatFromInt(cbcr_block[2][cbcr_pixel3]);
-        const Cr4: f32 = @floatFromInt(cbcr_block[2][cbcr_pixel4]);
-        const Cr5: f32 = @floatFromInt(cbcr_block[2][cbcr_pixel5]);
-        const Cr6: f32 = @floatFromInt(cbcr_block[2][cbcr_pixel6]);
-        const Cr7: f32 = @floatFromInt(cbcr_block[2][cbcr_pixel7]);
+            const r = Cr * (2 - 2 * 0.299) + Y;
+            const b = Cb * (2 - 2 * 0.114) + Y;
+            const g = (Y - 0.114 * b - 0.299 * r) / 0.587;
 
-        const r0 = Cr0 * (2 - 2 * 0.299) + Y0;
-        const r1 = Cr1 * (2 - 2 * 0.299) + Y1;
-        const r2 = Cr2 * (2 - 2 * 0.299) + Y2;
-        const r3 = Cr3 * (2 - 2 * 0.299) + Y3;
-        const r4 = Cr4 * (2 - 2 * 0.299) + Y4;
-        const r5 = Cr5 * (2 - 2 * 0.299) + Y5;
-        const r6 = Cr6 * (2 - 2 * 0.299) + Y6;
-        const r7 = Cr7 * (2 - 2 * 0.299) + Y7;
-
-        const b0 = Cb0 * (2 - 2 * 0.114) + Y0;
-        const b1 = Cb1 * (2 - 2 * 0.114) + Y1;
-        const b2 = Cb2 * (2 - 2 * 0.114) + Y2;
-        const b3 = Cb3 * (2 - 2 * 0.114) + Y3;
-        const b4 = Cb4 * (2 - 2 * 0.114) + Y4;
-        const b5 = Cb5 * (2 - 2 * 0.114) + Y5;
-        const b6 = Cb6 * (2 - 2 * 0.114) + Y6;
-        const b7 = Cb7 * (2 - 2 * 0.114) + Y7;
-
-        const g0 = (Y0 - 0.114 * b0 - 0.299 * r0) / 0.587;
-        const g1 = (Y1 - 0.114 * b1 - 0.299 * r1) / 0.587;
-        const g2 = (Y2 - 0.114 * b2 - 0.299 * r2) / 0.587;
-        const g3 = (Y3 - 0.114 * b3 - 0.299 * r3) / 0.587;
-        const g4 = (Y4 - 0.114 * b4 - 0.299 * r4) / 0.587;
-        const g5 = (Y5 - 0.114 * b5 - 0.299 * r5) / 0.587;
-        const g6 = (Y6 - 0.114 * b6 - 0.299 * r6) / 0.587;
-        const g7 = (Y7 - 0.114 * b7 - 0.299 * r7) / 0.587;
-
-        y_block[0][pixel_index + 0] = @intFromFloat(std.math.clamp(r0 + 128.0, 0.0, 255.0));
-        y_block[1][pixel_index + 0] = @intFromFloat(std.math.clamp(g0 + 128.0, 0.0, 255.0));
-        y_block[2][pixel_index + 0] = @intFromFloat(std.math.clamp(b0 + 128.0, 0.0, 255.0));
-
-        y_block[0][pixel_index + 1] = @intFromFloat(std.math.clamp(r1 + 128.0, 0.0, 255.0));
-        y_block[1][pixel_index + 1] = @intFromFloat(std.math.clamp(g1 + 128.0, 0.0, 255.0));
-        y_block[2][pixel_index + 1] = @intFromFloat(std.math.clamp(b1 + 128.0, 0.0, 255.0));
-
-        y_block[0][pixel_index + 2] = @intFromFloat(std.math.clamp(r2 + 128.0, 0.0, 255.0));
-        y_block[1][pixel_index + 2] = @intFromFloat(std.math.clamp(g2 + 128.0, 0.0, 255.0));
-        y_block[2][pixel_index + 2] = @intFromFloat(std.math.clamp(b2 + 128.0, 0.0, 255.0));
-
-        y_block[0][pixel_index + 3] = @intFromFloat(std.math.clamp(r3 + 128.0, 0.0, 255.0));
-        y_block[1][pixel_index + 3] = @intFromFloat(std.math.clamp(g3 + 128.0, 0.0, 255.0));
-        y_block[2][pixel_index + 3] = @intFromFloat(std.math.clamp(b3 + 128.0, 0.0, 255.0));
-
-        y_block[0][pixel_index + 4] = @intFromFloat(std.math.clamp(r4 + 128.0, 0.0, 255.0));
-        y_block[1][pixel_index + 4] = @intFromFloat(std.math.clamp(g4 + 128.0, 0.0, 255.0));
-        y_block[2][pixel_index + 4] = @intFromFloat(std.math.clamp(b4 + 128.0, 0.0, 255.0));
-
-        y_block[0][pixel_index + 5] = @intFromFloat(std.math.clamp(r5 + 128.0, 0.0, 255.0));
-        y_block[1][pixel_index + 5] = @intFromFloat(std.math.clamp(g5 + 128.0, 0.0, 255.0));
-        y_block[2][pixel_index + 5] = @intFromFloat(std.math.clamp(b5 + 128.0, 0.0, 255.0));
-
-        y_block[0][pixel_index + 6] = @intFromFloat(std.math.clamp(r6 + 128.0, 0.0, 255.0));
-        y_block[1][pixel_index + 6] = @intFromFloat(std.math.clamp(g6 + 128.0, 0.0, 255.0));
-        y_block[2][pixel_index + 6] = @intFromFloat(std.math.clamp(b6 + 128.0, 0.0, 255.0));
-
-        y_block[0][pixel_index + 7] = @intFromFloat(std.math.clamp(r7 + 128.0, 0.0, 255.0));
-        y_block[1][pixel_index + 7] = @intFromFloat(std.math.clamp(g7 + 128.0, 0.0, 255.0));
-        y_block[2][pixel_index + 7] = @intFromFloat(std.math.clamp(b7 + 128.0, 0.0, 255.0));
+            y_block[0][pixel_index + x] = @intFromFloat(std.math.clamp(r + 128.0, 0.0, 255.0));
+            y_block[1][pixel_index + x] = @intFromFloat(std.math.clamp(g + 128.0, 0.0, 255.0));
+            y_block[2][pixel_index + x] = @intFromFloat(std.math.clamp(b + 128.0, 0.0, 255.0));
+        }
     }
 }
 
