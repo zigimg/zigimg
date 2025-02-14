@@ -101,13 +101,11 @@ zig build test
 
 ### ILBM - InterLeaved BitMap Format
 
- * Supports Amiga <= 8-bit planar images
- * Supports EHB view mode
+ * Supports 1-8 bit, 24 bit, HAM6/8, EHB files
  * Supports uncompressed & byterun compressed files
  * Supports PBM (Deluxe Paint DOS) encoded files
- * HAM/HAM8/24-bit images are not supported yet
  * Atari planar files are not supported yet
- * Most chunks are ignored
+ * Color cycle chunks are ignored
 
 ### PAM - Portable Arbitrary Map
 

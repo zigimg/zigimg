@@ -119,3 +119,87 @@ test "ILBM indexed8 6 bitplanes EHB" {
     try helpers.expectEq(pixels.indexed8.indices[141], 21);
     try helpers.expectEq(pixels.indexed8.indices[25975], 61);
 }
+
+test "ILBM indexed8 4 bitplanes HAM" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ilbm/sample-ham.iff");
+    defer file.close();
+
+    var the_bitmap = ilbm.ILBM{};
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(the_bitmap.width(), 640);
+    try helpers.expectEq(the_bitmap.height(), 480);
+
+    try testing.expect(pixels == .rgba32);
+
+    const indexes = [_]usize{ 26_505, 193_174, 244_089 };
+    const expected_colors = [_]u32{
+        0x91885f,
+        0x44502b,
+        0x808060,
+    };
+
+    for (expected_colors, indexes) |hex_color, index| {
+        try helpers.expectEq(pixels.rgba32[index].toU32Rgb(), hex_color);
+    }
+}
+
+test "ILBM indexed8 6 bitplanes HAM8" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ilbm/sample-ham8.iff");
+    defer file.close();
+
+    var the_bitmap = ilbm.ILBM{};
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(the_bitmap.width(), 640);
+    try helpers.expectEq(the_bitmap.height(), 480);
+
+    try testing.expect(pixels == .rgba32);
+
+    const indexes = [_]usize{ 26_505, 193_174, 244_089 };
+    const expected_colors = [_]u32{
+        0x8a9379,
+        0x40441d,
+        0x888068,
+    };
+
+    for (expected_colors, indexes) |hex_color, index| {
+        try helpers.expectEq(pixels.rgba32[index].toU32Rgb(), hex_color);
+    }
+}
+
+test "ILBM 24bit" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ilbm/sample-24bit.iff");
+    defer file.close();
+
+    var the_bitmap = ilbm.ILBM{};
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(the_bitmap.width(), 640);
+    try helpers.expectEq(the_bitmap.height(), 480);
+
+    try testing.expect(pixels == .rgba32);
+
+    const indexes = [_]usize{ 26_505, 193_174, 244_089 };
+    const expected_colors = [_]u32{
+        0x8c9378,
+        0x454115,
+        0x888068,
+    };
+
+    for (expected_colors, indexes) |hex_color, index| {
+        try helpers.expectEq(pixels.rgba32[index].toU32Rgb(), hex_color);
+    }
+}
