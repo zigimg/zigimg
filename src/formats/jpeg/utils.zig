@@ -1,6 +1,10 @@
 //! general utilizies and constants
 const std = @import("std");
 
+pub const MAX_COMPONENTS = 3;
+pub const MAX_BLOCKS = 8;
+pub const Block = [64]i32;
+
 // See figure A.6 in T.81.
 // zig fmt: off
 pub const ZigzagOffsets: [64]usize  = .{
@@ -14,36 +18,6 @@ pub const ZigzagOffsets: [64]usize  = .{
     53, 60, 61, 54, 47, 55, 62, 63
 };
 // zig fmt: on
-
-/// The precalculated IDCT multipliers. This is possible because the only part of
-/// the IDCT calculation that changes between runs is the coefficients.
-/// see A.3.3 of t.81 1992
-pub const IDCTMultipliers = blk: {
-    var multipliers: [8][8][8][8]f32 = undefined;
-    @setEvalBranchQuota(4700);
-
-    var y: usize = 0;
-    while (y < 8) : (y += 1) {
-        var x: usize = 0;
-        while (x < 8) : (x += 1) {
-            var u: usize = 0;
-            while (u < 8) : (u += 1) {
-                var v: usize = 0;
-                while (v < 8) : (v += 1) {
-                    const C_u: f32 = if (u == 0) 1.0 / @sqrt(2.0) else 1.0;
-                    const C_v: f32 = if (v == 0) 1.0 / @sqrt(2.0) else 1.0;
-
-                    const x_cosine = @cos(((2 * @as(f32, @floatFromInt(x)) + 1) * @as(f32, @floatFromInt(u)) * std.math.pi) / 16.0);
-                    const y_cosine = @cos(((2 * @as(f32, @floatFromInt(y)) + 1) * @as(f32, @floatFromInt(v)) * std.math.pi) / 16.0);
-                    const uv_value = C_u * C_v * x_cosine * y_cosine;
-                    multipliers[y][x][u][v] = uv_value;
-                }
-            }
-        }
-    }
-
-    break :blk multipliers;
-};
 
 /// Marker codes, see t-81 section B.1.1.3
 pub const Markers = enum(u16) {
@@ -114,7 +88,3 @@ pub const Markers = enum(u16) {
 
     // reserved markers from 0xFF01-0xFFBF, add as needed
 };
-
-pub const MAX_COMPONENTS = 3;
-pub const MAX_BLOCKS = 8;
-pub const Block = [64]i32;
