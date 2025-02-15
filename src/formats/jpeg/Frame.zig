@@ -1,7 +1,6 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
-const builtin = @import("builtin");
 const simd = @import("../../simd.zig");
 extern fn @"llvm.x86.avx2.permd"(v: @Vector(8, i32), mask: @Vector(8, i32)) @Vector(8, i32);
 
@@ -159,17 +158,6 @@ pub fn renderToPixelsRgb(self: *Self, pixels: []color.Rgb24) ImageReadError!void
     }
 }
 
-fn vpermd(v: @Vector(8, i32), mask: @Vector(8, i32)) @Vector(8, i32) {
-    const has_avx2 = std.Target.x86.featureSetHas(builtin.cpu.features, .avx2);
-    if (has_avx2) {
-        return @"llvm.x86.avx2.permd"(v, mask);
-    } else {
-        var res: @Vector(8, i32) = undefined;
-        inline for (0..8) |i| res[i] = v[@as(u32, @bitCast(mask[i]))];
-        return res;
-    }
-}
-
 pub fn yCbCrToRgbBlock(self: *Self, y_block: *[3]Block, cbcr_block: *[3]Block, v: usize, h: usize) void {
     const Co_1: @Vector(8, f32) = @splat(@as(f32, 1.402));
     const Co_2: @Vector(8, f32) = @splat(@as(f32, 1.772));
@@ -195,10 +183,10 @@ pub fn yCbCrToRgbBlock(self: *Self, y_block: *[3]Block, cbcr_block: *[3]Block, v
         const cbcr_y: usize = y / y_step + (8 / y_step) * v;
 
         var cb_vec_i32: @Vector(8, i32) = cbcr_block[1][cbcr_y * 8 ..][0..8].*;
-        const cb_vec: @Vector(8, f32) = @floatFromInt(vpermd(cb_vec_i32, mask));
+        const cb_vec: @Vector(8, f32) = @floatFromInt(simd.vpermd(cb_vec_i32, mask));
 
         var cr_vec_i32: @Vector(8, i32) = cbcr_block[2][cbcr_y * 8 ..][0..8].*;
-        const cr_vec: @Vector(8, f32) = @floatFromInt(vpermd(cr_vec_i32, mask));
+        const cr_vec: @Vector(8, f32) = @floatFromInt(simd.vpermd(cr_vec_i32, mask));
 
         var r_vec = y_vec + cr_vec * Co_1 + vec_128;
         var b_vec = y_vec + cb_vec * Co_2 + vec_128;
