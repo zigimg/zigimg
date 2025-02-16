@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 pub fn load(comptime SourceType: type, source: []const SourceType, comptime VectorType: type, comptime length: u32) VectorType {
     var result: VectorType = @splat(@as(vectorInnerType(VectorType), 0));
@@ -66,4 +67,19 @@ fn vectorInnerType(comptime VectorType: type) type {
         .array => |info| info.child,
         else => @compileError("Invalid type " ++ @typeName(VectorType)),
     };
+}
+
+pub fn vpermd(v: @Vector(8, i32), mask: @Vector(8, i32)) @Vector(8, i32) {
+    const has_avx2 = comptime std.Target.x86.featureSetHas(builtin.cpu.features, .avx2);
+    if (has_avx2) {
+        return asm ("vpermd %[v], %[mask], %[dest]"
+            : [dest] "=x" (-> @Vector(8, i32)),
+            : [mask] "x" (mask),
+              [v] "x" (v),
+        );
+    } else {
+        var res: @Vector(8, i32) = undefined;
+        inline for (0..8) |i| res[i] = v[@as(u32, @bitCast(mask[i]))];
+        return res;
+    }
 }
