@@ -2,7 +2,6 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 
 const simd = @import("../../simd.zig");
-extern fn @"llvm.x86.avx2.permd"(v: @Vector(8, i32), mask: @Vector(8, i32)) @Vector(8, i32);
 
 const buffered_stream_source = @import("../../buffered_stream_source.zig");
 const Image = @import("../../Image.zig");
