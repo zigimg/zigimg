@@ -203,3 +203,34 @@ test "ILBM 24bit" {
         try helpers.expectEq(pixels.rgba32[index].toU32Rgb(), hex_color);
     }
 }
+
+test "ILBM indexed8 4 bitplanes Atari ST" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ilbm/sample-ilbm-4bit-compressed-atari.iff");
+    defer file.close();
+
+    var the_bitmap = ilbm.ILBM{};
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(the_bitmap.width(), 320);
+    try helpers.expectEq(the_bitmap.height(), 200);
+    try testing.expect(pixels == .indexed8);
+
+    const palette4 = pixels.indexed8.palette[4];
+
+    try helpers.expectEq(palette4.r, 255);
+    try helpers.expectEq(palette4.g, 146);
+    try helpers.expectEq(palette4.b, 0);
+
+    const palette6 = pixels.indexed8.palette[6];
+
+    try helpers.expectEq(palette6.r, 183);
+    try helpers.expectEq(palette6.g, 183);
+    try helpers.expectEq(palette6.b, 183);
+
+    try helpers.expectEq(pixels.indexed8.indices[29_898], 5);
+    try helpers.expectEq(pixels.indexed8.indices[31_207], 6);
+}
