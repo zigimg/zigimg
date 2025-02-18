@@ -69,7 +69,7 @@ zig build test
 | Farbfeld      | ✔️            | ✔️            |
 | GIF           | ✔️            | ❌            |
 | ICO           | ❌            | ❌            |
-| ILBM          | ✔️ (Partial)   | ❌            |
+| ILBM          | ✔️             | ❌            |
 | JPEG          | ❌            | ❌            |
 | PAM           | ✔️            | ✔️            |
 | PBM           | ✔️            | ✔️            |
@@ -102,10 +102,10 @@ zig build test
 ### ILBM - InterLeaved BitMap Format
 
  * Supports 1-8 bit, 24 bit, HAM6/8, EHB files
- * Supports uncompressed & byterun compressed files
+ * Supports uncompressed, byterun 1 & 2 (Atari) compressed files
  * Supports PBM (Deluxe Paint DOS) encoded files
- * Atari planar files are not supported yet
  * Color cycle chunks are ignored
+ * Mask is not supported (skipped)
 
 ### PAM - Portable Arbitrary Map
 
