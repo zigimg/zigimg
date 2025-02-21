@@ -298,11 +298,48 @@ pub fn idctBlocks(self: *Self) void {
 // directly from stb_image.h
 // https://github.com/nothings/stb/blob/5c205738c191bcb0abc65c4febfa9bd25ff35234/stb_image.h#L2430C9-L2430C22
 fn f2f(comptime x: f32) i32 {
+    // 4096 = 1 << 12
     return @intFromFloat(x * 4096 + 0.5);
 }
 
-fn fsh(x: i32) i32 {
-    return x * 4096;
+fn idct1D(s0: i32, s1: i32, s2: i32, s3: i32, s4: i32, s5: i32, s6: i32, s7: i32) struct { i32, i32, i32, i32, i32, i32, i32, i32 } {
+    var p2 = s2;
+    var p3 = s6;
+
+    var p1 = (p2 + p3) * f2f(0.5411961);
+    var t2 = p1 + p3 * f2f(-1.847759065);
+    var t3 = p1 + p2 * f2f(0.765366865);
+    p2 = s0;
+    p3 = s4;
+    var t0 = (p2 + p3) * 4096;
+    var t1 = (p2 - p3) * 4096;
+    const x0 = t0 + t3;
+    const x3 = t0 - t3;
+    const x1 = t1 + t2;
+    const x2 = t1 - t2;
+    t0 = s7;
+    t1 = s5;
+    t2 = s3;
+    t3 = s1;
+    p3 = t0 + t2;
+    var p4 = t1 + t3;
+    p1 = t0 + t3;
+    p2 = t1 + t2;
+    const p5 = (p3 + p4) * f2f(1.175875602);
+    t0 = t0 * f2f(0.298631336);
+    t1 = t1 * f2f(2.053119869);
+    t2 = t2 * f2f(3.072711026);
+    t3 = t3 * f2f(1.501321110);
+    p1 = p5 + p1 * f2f(-0.899976223);
+    p2 = p5 + p2 * f2f(-2.562915447);
+    p3 = p3 * f2f(-1.961570560);
+    p4 = p4 * f2f(-0.390180644);
+    t3 += p1 + p4;
+    t2 += p2 + p3;
+    t1 += p2 + p4;
+    t0 += p1 + p3;
+
+    return .{ x0, x1, x2, x3, t0, t1, t2, t3 };
 }
 
 fn idctBlock(block: *Block) void {
@@ -316,41 +353,16 @@ fn idctBlock(block: *Block) void {
         const s6 = block[6 * 8 + x];
         const s7 = block[7 * 8 + x];
 
-        var p2 = s2;
-        var p3 = s6;
+        var x0: i32 = 0;
+        var x1: i32 = 0;
+        var x2: i32 = 0;
+        var x3: i32 = 0;
+        var t0: i32 = 0;
+        var t1: i32 = 0;
+        var t2: i32 = 0;
+        var t3: i32 = 0;
 
-        var p1 = (p2 + p3) * f2f(0.5411961);
-        var t2 = p1 + p3 * f2f(-1.847759065);
-        var t3 = p1 + p2 * f2f(0.765366865);
-        p2 = s0;
-        p3 = s4;
-        var t0 = fsh(p2 + p3);
-        var t1 = fsh(p2 - p3);
-        var x0 = t0 + t3;
-        var x3 = t0 - t3;
-        var x1 = t1 + t2;
-        var x2 = t1 - t2;
-        t0 = s7;
-        t1 = s5;
-        t2 = s3;
-        t3 = s1;
-        p3 = t0 + t2;
-        var p4 = t1 + t3;
-        p1 = t0 + t3;
-        p2 = t1 + t2;
-        const p5 = (p3 + p4) * f2f(1.175875602);
-        t0 = t0 * f2f(0.298631336);
-        t1 = t1 * f2f(2.053119869);
-        t2 = t2 * f2f(3.072711026);
-        t3 = t3 * f2f(1.501321110);
-        p1 = p5 + p1 * f2f(-0.899976223);
-        p2 = p5 + p2 * f2f(-2.562915447);
-        p3 = p3 * f2f(-1.961570560);
-        p4 = p4 * f2f(-0.390180644);
-        t3 += p1 + p4;
-        t2 += p2 + p3;
-        t1 += p2 + p4;
-        t0 += p1 + p3;
+        x0, x1, x2, x3, t0, t1, t2, t3 = idct1D(s0, s1, s2, s3, s4, s5, s6, s7);
 
         x0 += 512;
         x1 += 512;
@@ -377,43 +389,18 @@ fn idctBlock(block: *Block) void {
         const s6 = block[y * 8 + 6];
         const s7 = block[y * 8 + 7];
 
-        var p2 = s2;
-        var p3 = s6;
+        var x0: i32 = 0;
+        var x1: i32 = 0;
+        var x2: i32 = 0;
+        var x3: i32 = 0;
+        var t0: i32 = 0;
+        var t1: i32 = 0;
+        var t2: i32 = 0;
+        var t3: i32 = 0;
 
-        var p1 = (p2 + p3) * f2f(0.5411961);
-        var t2 = p1 + p3 * f2f(-1.847759065);
-        var t3 = p1 + p2 * f2f(0.765366865);
-        p2 = s0;
-        p3 = s4;
-        var t0 = fsh(p2 + p3);
-        var t1 = fsh(p2 - p3);
-        var x0 = t0 + t3;
-        var x3 = t0 - t3;
-        var x1 = t1 + t2;
-        var x2 = t1 - t2;
-        t0 = s7;
-        t1 = s5;
-        t2 = s3;
-        t3 = s1;
-        p3 = t0 + t2;
-        var p4 = t1 + t3;
-        p1 = t0 + t3;
-        p2 = t1 + t2;
-        const p5 = (p3 + p4) * f2f(1.175875602);
-        t0 = t0 * f2f(0.298631336);
-        t1 = t1 * f2f(2.053119869);
-        t2 = t2 * f2f(3.072711026);
-        t3 = t3 * f2f(1.501321110);
-        p1 = p5 + p1 * f2f(-0.899976223);
-        p2 = p5 + p2 * f2f(-2.562915447);
-        p3 = p3 * f2f(-1.961570560);
-        p4 = p4 * f2f(-0.390180644);
-        t3 += p1 + p4;
-        t2 += p2 + p3;
-        t1 += p2 + p4;
-        t0 += p1 + p3;
+        x0, x1, x2, x3, t0, t1, t2, t3 = idct1D(s0, s1, s2, s3, s4, s5, s6, s7);
 
-        // add 0.5 by scaled up
+        // add 0.5 scaled up by factor
         x0 += (1 << 17) / 2;
         x1 += (1 << 17) / 2;
         x2 += (1 << 17) / 2;
