@@ -200,7 +200,7 @@ pub const Reader = struct {
 
         var code: u32 = 0;
 
-        var length: u5 = 1;
+        var length: u5 = if (self.bit_count < fast_bits) 1 else fast_bits + 1;
         while (length <= 16) : (length += 1) {
             code = try self.peekBits(length);
             if (self.table.?.code_map.get(.{ .length_minus_one = @intCast(length - 1), .code = @intCast(code) })) |value| {
