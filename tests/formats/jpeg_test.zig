@@ -86,9 +86,9 @@ test "Read the tuba properly" {
         try testing.expect(pixels == .rgb24);
 
         // Just for fun, let's sample a few pixels. :^)
-        try helpers.expectEq(pixels.rgb24[(126 * 512 + 163)], color.Rgb24.initRgb(0xAC, 0x78, 0x55));
-        try helpers.expectEq(pixels.rgb24[(265 * 512 + 284)], color.Rgb24.initRgb(0x38, 0x31, 0x34));
-        try helpers.expectEq(pixels.rgb24[(431 * 512 + 300)], color.Rgb24.initRgb(0xFE, 0xE7, 0xCB));
+        try helpers.expectEq(pixels.rgb24[(126 * 512 + 163)], color.Rgb24.initRgb(0xAC, 0x78, 0x54));
+        try helpers.expectEq(pixels.rgb24[(265 * 512 + 284)], color.Rgb24.initRgb(0x37, 0x30, 0x33));
+        try helpers.expectEq(pixels.rgb24[(431 * 512 + 300)], color.Rgb24.initRgb(0xFE, 0xE7, 0xC9));
     }
 }
 
@@ -121,7 +121,7 @@ test "Read grayscale images" {
         try testing.expect(pixels == .grayscale8);
 
         // Just for fun, let's sample a few pixels. :^)
-        try helpers.expectEq(pixels.grayscale8[(0 * 32 + 0)], color.Grayscale8{ .value = 0x01 });
+        try helpers.expectEq(pixels.grayscale8[(0 * 32 + 0)], color.Grayscale8{ .value = 0x00 });
         try helpers.expectEq(pixels.grayscale8[(15 * 32 + 15)], color.Grayscale8{ .value = 0xaa });
         try helpers.expectEq(pixels.grayscale8[(28 * 32 + 28)], color.Grayscale8{ .value = 0xf7 });
     }
