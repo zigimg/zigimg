@@ -295,158 +295,124 @@ pub fn idctBlocks(self: *Self) void {
     }
 }
 
+// directly from stb_image.h
+// https://github.com/nothings/stb/blob/5c205738c191bcb0abc65c4febfa9bd25ff35234/stb_image.h#L2430C9-L2430C22
+fn f2f(comptime x: f32) i32 {
+    // 4096 = 1 << 12
+    return @intFromFloat(x * 4096 + 0.5);
+}
+
+fn idct1D(s0: i32, s1: i32, s2: i32, s3: i32, s4: i32, s5: i32, s6: i32, s7: i32) struct { i32, i32, i32, i32, i32, i32, i32, i32 } {
+    var p2 = s2;
+    var p3 = s6;
+
+    var p1 = (p2 + p3) * f2f(0.5411961);
+    var t2 = p1 + p3 * f2f(-1.847759065);
+    var t3 = p1 + p2 * f2f(0.765366865);
+    p2 = s0;
+    p3 = s4;
+    var t0 = (p2 + p3) * 4096;
+    var t1 = (p2 - p3) * 4096;
+    const x0 = t0 + t3;
+    const x3 = t0 - t3;
+    const x1 = t1 + t2;
+    const x2 = t1 - t2;
+    t0 = s7;
+    t1 = s5;
+    t2 = s3;
+    t3 = s1;
+    p3 = t0 + t2;
+    var p4 = t1 + t3;
+    p1 = t0 + t3;
+    p2 = t1 + t2;
+    const p5 = (p3 + p4) * f2f(1.175875602);
+    t0 = t0 * f2f(0.298631336);
+    t1 = t1 * f2f(2.053119869);
+    t2 = t2 * f2f(3.072711026);
+    t3 = t3 * f2f(1.501321110);
+    p1 = p5 + p1 * f2f(-0.899976223);
+    p2 = p5 + p2 * f2f(-2.562915447);
+    p3 = p3 * f2f(-1.961570560);
+    p4 = p4 * f2f(-0.390180644);
+    t3 += p1 + p4;
+    t2 += p2 + p3;
+    t1 += p2 + p4;
+    t0 += p1 + p3;
+
+    return .{ x0, x1, x2, x3, t0, t1, t2, t3 };
+}
+
 fn idctBlock(block: *Block) void {
-    var result: [64]f32 = undefined;
-
-    const m0: f32 = 2.0 * @cos(1.0 / 16.0 * 2.0 * std.math.pi);
-    const m1: f32 = 2.0 * @cos(2.0 / 16.0 * 2.0 * std.math.pi);
-    const m3: f32 = 2.0 * @cos(2.0 / 16.0 * 2.0 * std.math.pi);
-    const m5: f32 = 2.0 * @cos(3.0 / 16.0 * 2.0 * std.math.pi);
-    const m2: f32 = m0 - m5;
-    const m4: f32 = m0 + m5;
-
-    const s0: f32 = @cos(0.0 / 16.0 * std.math.pi) / @sqrt(8.0);
-    const s1: f32 = @cos(1.0 / 16.0 * std.math.pi) / 2.0;
-    const s2: f32 = @cos(2.0 / 16.0 * std.math.pi) / 2.0;
-    const s3: f32 = @cos(3.0 / 16.0 * std.math.pi) / 2.0;
-    const s4: f32 = @cos(4.0 / 16.0 * std.math.pi) / 2.0;
-    const s5: f32 = @cos(5.0 / 16.0 * std.math.pi) / 2.0;
-    const s6: f32 = @cos(6.0 / 16.0 * std.math.pi) / 2.0;
-    const s7: f32 = @cos(7.0 / 16.0 * std.math.pi) / 2.0;
-
     for (0..8) |x| {
-        const a0 = @as(f32, @floatFromInt(block[0 * 8 + x])) * s0;
-        const a1 = @as(f32, @floatFromInt(block[4 * 8 + x])) * s4;
-        const a2 = @as(f32, @floatFromInt(block[2 * 8 + x])) * s2;
-        const a3 = @as(f32, @floatFromInt(block[6 * 8 + x])) * s6;
-        const a4 = @as(f32, @floatFromInt(block[5 * 8 + x])) * s5;
-        const a5 = @as(f32, @floatFromInt(block[1 * 8 + x])) * s1;
-        const a6 = @as(f32, @floatFromInt(block[7 * 8 + x])) * s7;
-        const a7 = @as(f32, @floatFromInt(block[3 * 8 + x])) * s3;
+        const s0 = block[0 * 8 + x];
+        const s1 = block[1 * 8 + x];
+        const s2 = block[2 * 8 + x];
+        const s3 = block[3 * 8 + x];
+        const s4 = block[4 * 8 + x];
+        const s5 = block[5 * 8 + x];
+        const s6 = block[6 * 8 + x];
+        const s7 = block[7 * 8 + x];
 
-        const b0 = a0;
-        const b1 = a1;
-        const b2 = a2;
-        const b3 = a3;
-        const b4 = a4 - a7;
-        const b5 = a5 + a6;
-        const b6 = a5 - a6;
-        const b7 = a4 + a7;
+        var x0: i32 = 0;
+        var x1: i32 = 0;
+        var x2: i32 = 0;
+        var x3: i32 = 0;
+        var t0: i32 = 0;
+        var t1: i32 = 0;
+        var t2: i32 = 0;
+        var t3: i32 = 0;
 
-        const c0 = b0;
-        const c1 = b1;
-        const c2 = b2 - b3;
-        const c3 = b2 + b3;
-        const c4 = b4;
-        const c5 = b5 - b7;
-        const c6 = b6;
-        const c7 = b5 + b7;
-        const c8 = b4 + b6;
+        x0, x1, x2, x3, t0, t1, t2, t3 = idct1D(s0, s1, s2, s3, s4, s5, s6, s7);
 
-        const d0 = c0;
-        const d1 = c1;
-        const d2 = c2 * m1;
-        const d3 = c3;
-        const d4 = c4 * m2;
-        const d5 = c5 * m3;
-        const d6 = c6 * m4;
-        const d7 = c7;
-        const d8 = c8 * m5;
+        x0 += 512;
+        x1 += 512;
+        x2 += 512;
+        x3 += 512;
 
-        const e0 = d0 + d1;
-        const e1 = d0 - d1;
-        const e2 = d2 - d3;
-        const e3 = d3;
-        const e4 = d4 + d8;
-        const e5 = d5 + d7;
-        const e6 = d6 - d8;
-        const e7 = d7;
-        const e8 = e5 - e6;
-
-        const f0 = e0 + e3;
-        const f1 = e1 + e2;
-        const f2 = e1 - e2;
-        const f3 = e0 - e3;
-        const f4 = e4 - e8;
-        const f5 = e8;
-        const f6 = e6 - e7;
-        const f7 = e7;
-
-        result[0 * 8 + x] = f0 + f7;
-        result[1 * 8 + x] = f1 + f6;
-        result[2 * 8 + x] = f2 + f5;
-        result[3 * 8 + x] = f3 + f4;
-        result[4 * 8 + x] = f3 - f4;
-        result[5 * 8 + x] = f2 - f5;
-        result[6 * 8 + x] = f1 - f6;
-        result[7 * 8 + x] = f0 - f7;
+        block[0 * 8 + x] = (x0 + t3) >> 10;
+        block[1 * 8 + x] = (x1 + t2) >> 10;
+        block[2 * 8 + x] = (x2 + t1) >> 10;
+        block[3 * 8 + x] = (x3 + t0) >> 10;
+        block[4 * 8 + x] = (x3 - t0) >> 10;
+        block[5 * 8 + x] = (x2 - t1) >> 10;
+        block[6 * 8 + x] = (x1 - t2) >> 10;
+        block[7 * 8 + x] = (x0 - t3) >> 10;
     }
 
     for (0..8) |y| {
-        const a0 = result[y * 8 + 0] * s0;
-        const a1 = result[y * 8 + 4] * s4;
-        const a2 = result[y * 8 + 2] * s2;
-        const a3 = result[y * 8 + 6] * s6;
-        const a4 = result[y * 8 + 5] * s5;
-        const a5 = result[y * 8 + 1] * s1;
-        const a6 = result[y * 8 + 7] * s7;
-        const a7 = result[y * 8 + 3] * s3;
+        const s0 = block[y * 8 + 0];
+        const s1 = block[y * 8 + 1];
+        const s2 = block[y * 8 + 2];
+        const s3 = block[y * 8 + 3];
+        const s4 = block[y * 8 + 4];
+        const s5 = block[y * 8 + 5];
+        const s6 = block[y * 8 + 6];
+        const s7 = block[y * 8 + 7];
 
-        const b0 = a0;
-        const b1 = a1;
-        const b2 = a2;
-        const b3 = a3;
-        const b4 = a4 - a7;
-        const b5 = a5 + a6;
-        const b6 = a5 - a6;
-        const b7 = a4 + a7;
+        var x0: i32 = 0;
+        var x1: i32 = 0;
+        var x2: i32 = 0;
+        var x3: i32 = 0;
+        var t0: i32 = 0;
+        var t1: i32 = 0;
+        var t2: i32 = 0;
+        var t3: i32 = 0;
 
-        const c0 = b0;
-        const c1 = b1;
-        const c2 = b2 - b3;
-        const c3 = b2 + b3;
-        const c4 = b4;
-        const c5 = b5 - b7;
-        const c6 = b6;
-        const c7 = b5 + b7;
-        const c8 = b4 + b6;
+        x0, x1, x2, x3, t0, t1, t2, t3 = idct1D(s0, s1, s2, s3, s4, s5, s6, s7);
 
-        const d0 = c0;
-        const d1 = c1;
-        const d2 = c2 * m1;
-        const d3 = c3;
-        const d4 = c4 * m2;
-        const d5 = c5 * m3;
-        const d6 = c6 * m4;
-        const d7 = c7;
-        const d8 = c8 * m5;
+        // add 0.5 scaled up by factor
+        x0 += (1 << 17) / 2;
+        x1 += (1 << 17) / 2;
+        x2 += (1 << 17) / 2;
+        x3 += (1 << 17) / 2;
 
-        const e0 = d0 + d1;
-        const e1 = d0 - d1;
-        const e2 = d2 - d3;
-        const e3 = d3;
-        const e4 = d4 + d8;
-        const e5 = d5 + d7;
-        const e6 = d6 - d8;
-        const e7 = d7;
-        const e8 = e5 - e6;
-
-        const f0 = e0 + e3;
-        const f1 = e1 + e2;
-        const f2 = e1 - e2;
-        const f3 = e0 - e3;
-        const f4 = e4 - e8;
-        const f5 = e8;
-        const f6 = e6 - e7;
-        const f7 = e7;
-
-        block[y * 8 + 0] = @intFromFloat(std.math.clamp(f0 + f7 + 0.5, -128.0, 127.0));
-        block[y * 8 + 1] = @intFromFloat(std.math.clamp(f1 + f6 + 0.5, -128.0, 127.0));
-        block[y * 8 + 2] = @intFromFloat(std.math.clamp(f2 + f5 + 0.5, -128.0, 127.0));
-        block[y * 8 + 3] = @intFromFloat(std.math.clamp(f3 + f4 + 0.5, -128.0, 127.0));
-        block[y * 8 + 4] = @intFromFloat(std.math.clamp(f3 - f4 + 0.5, -128.0, 127.0));
-        block[y * 8 + 5] = @intFromFloat(std.math.clamp(f2 - f5 + 0.5, -128.0, 127.0));
-        block[y * 8 + 6] = @intFromFloat(std.math.clamp(f1 - f6 + 0.5, -128.0, 127.0));
-        block[y * 8 + 7] = @intFromFloat(std.math.clamp(f0 - f7 + 0.5, -128.0, 127.0));
+        block[y * 8 + 0] = (x0 + t3) >> 17;
+        block[y * 8 + 1] = (x1 + t2) >> 17;
+        block[y * 8 + 2] = (x2 + t1) >> 17;
+        block[y * 8 + 3] = (x3 + t0) >> 17;
+        block[y * 8 + 4] = (x3 - t0) >> 17;
+        block[y * 8 + 5] = (x2 - t1) >> 17;
+        block[y * 8 + 6] = (x1 - t2) >> 17;
+        block[y * 8 + 7] = (x0 - t3) >> 17;
     }
 }
