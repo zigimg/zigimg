@@ -1,5 +1,6 @@
 .{
-    .name = "zigimg",
+    .name = .zigimg,
     .version = "0.1.0",
+    .fingerprint = 0x6d2b443c3bbe5c96,
     .paths = .{""},
 }
