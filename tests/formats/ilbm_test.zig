@@ -134,7 +134,7 @@ test "ILBM indexed8 4 bitplanes HAM" {
     try helpers.expectEq(the_bitmap.width(), 640);
     try helpers.expectEq(the_bitmap.height(), 480);
 
-    try testing.expect(pixels == .rgba32);
+    try testing.expect(pixels == .rgb24);
 
     const indexes = [_]usize{ 26_505, 193_174, 244_089 };
     const expected_colors = [_]u32{
@@ -144,7 +144,7 @@ test "ILBM indexed8 4 bitplanes HAM" {
     };
 
     for (expected_colors, indexes) |hex_color, index| {
-        try helpers.expectEq(pixels.rgba32[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(pixels.rgb24[index].toU32Rgb(), hex_color);
     }
 }
 
@@ -162,7 +162,7 @@ test "ILBM indexed8 6 bitplanes HAM8" {
     try helpers.expectEq(the_bitmap.width(), 640);
     try helpers.expectEq(the_bitmap.height(), 480);
 
-    try testing.expect(pixels == .rgba32);
+    try testing.expect(pixels == .rgb24);
 
     const indexes = [_]usize{ 26_505, 193_174, 244_089 };
     const expected_colors = [_]u32{
@@ -172,7 +172,7 @@ test "ILBM indexed8 6 bitplanes HAM8" {
     };
 
     for (expected_colors, indexes) |hex_color, index| {
-        try helpers.expectEq(pixels.rgba32[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(pixels.rgb24[index].toU32Rgb(), hex_color);
     }
 }
 
@@ -190,7 +190,7 @@ test "ILBM 24bit" {
     try helpers.expectEq(the_bitmap.width(), 640);
     try helpers.expectEq(the_bitmap.height(), 480);
 
-    try testing.expect(pixels == .rgba32);
+    try testing.expect(pixels == .rgb24);
 
     const indexes = [_]usize{ 26_505, 193_174, 244_089 };
     const expected_colors = [_]u32{
@@ -200,7 +200,7 @@ test "ILBM 24bit" {
     };
 
     for (expected_colors, indexes) |hex_color, index| {
-        try helpers.expectEq(pixels.rgba32[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(pixels.rgb24[index].toU32Rgb(), hex_color);
     }
 }
 

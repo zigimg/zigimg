@@ -183,7 +183,7 @@ pub const ILBM = struct {
 
     pub fn pixelFormat(self: *ILBM) ImageUnmanaged.Error!PixelFormat {
         if (ViewportMode.isHam(self.viewportMode) or self.header.planes == 24) {
-            return PixelFormat.rgba32;
+            return PixelFormat.rgb24;
         } else if (self.header.planes <= 8) {
             return PixelFormat.indexed8;
         } else {
@@ -442,7 +442,7 @@ pub const ILBM = struct {
                     palette[index] = self.palette.data[index];
                 }
             },
-            .rgba32 => |storage| {
+            .rgb24 => |storage| {
                 const is_ham = ViewportMode.isHam(self.viewportMode);
                 const planes = self.header.planes;
                 const cmap_bits: u3 = @truncate(self.cmap_bits);
@@ -454,15 +454,13 @@ pub const ILBM = struct {
                     // Keep color: in HAM mode, current color
                     // may be based on previous color instead of coming from
                     // the palette.
-                    var previous_color = color.Rgba32.initRgb(0, 0, 0);
+                    var previous_color = color.Rgb24.initRgb(0, 0, 0);
                     for (0..self.width()) |col| {
                         const index = (self.width() * row * pixel_size) + (col * pixel_size);
                         if (planes == 24) {
-                            previous_color = color.Rgba32.initRgb(chunky_buffer[index], chunky_buffer[index + 1], chunky_buffer[index + 2]);
+                            previous_color = color.Rgb24.initRgb(chunky_buffer[index], chunky_buffer[index + 1], chunky_buffer[index + 2]);
                         } else if (chunky_buffer[index] < palette.len) {
-                            previous_color = palette[chunky_buffer[index]];
-                            if (self.header.mask_type == MaskType.has_transparent_color and chunky_buffer[index] == self.header.transparent_color)
-                                previous_color.a = 0;
+                            previous_color = color.Rgb24.fromU32Rgba(palette[chunky_buffer[index]].toU32Rgba());
                         } else if (is_ham) {
                             // Get the control bit which will tell use how current pixel should be calculated
                             const control: u8 = (chunky_buffer[index] >> cmap_bits) & 0x3;
