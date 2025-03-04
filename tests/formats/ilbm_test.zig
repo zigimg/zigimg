@@ -234,3 +234,34 @@ test "ILBM indexed8 4 bitplanes Atari ST" {
     try helpers.expectEq(pixels.indexed8.indices[29_898], 5);
     try helpers.expectEq(pixels.indexed8.indices[31_207], 6);
 }
+
+test "ACBM indexed8 3 bitplanes uncompressed" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ilbm/sample-8bit.acbm");
+    defer file.close();
+
+    var the_bitmap = ilbm.ILBM{};
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(the_bitmap.width(), 320);
+    try helpers.expectEq(the_bitmap.height(), 200);
+    try testing.expect(pixels == .indexed8);
+
+    const palette0 = pixels.indexed8.palette[0];
+
+    try helpers.expectEq(palette0.r, 204);
+    try helpers.expectEq(palette0.g, 204);
+    try helpers.expectEq(palette0.b, 204);
+
+    const palette2 = pixels.indexed8.palette[2];
+
+    try helpers.expectEq(palette2.r, 255);
+    try helpers.expectEq(palette2.g, 255);
+    try helpers.expectEq(palette2.b, 255);
+
+    try helpers.expectEq(pixels.indexed8.indices[141], 0);
+    try helpers.expectEq(pixels.indexed8.indices[15975], 6);
+}
