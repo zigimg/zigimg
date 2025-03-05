@@ -69,7 +69,7 @@ zig build test
 | Farbfeld      | ✔️            | ✔️            |
 | GIF           | ✔️            | ❌            |
 | ICO           | ❌            | ❌            |
-| ILBM          | ✔️             | ❌            |
+| IFF           | ✔️             | ❌            |
 | JPEG          | ❌            | ❌            |
 | PAM           | ✔️            | ✔️            |
 | PBM           | ✔️            | ✔️            |
@@ -99,11 +99,12 @@ zig build test
 * Supports tiled and layered images used to achieve pseudo true color and more.
 * The plain text extension is not supported
 
-### ILBM - InterLeaved BitMap Format
+### IFF - InterchangeFileFormat
 
- * Supports 1-8 bit, 24 bit, HAM6/8, EHB files
- * Supports uncompressed, byterun 1 & 2 (Atari) compressed files
+ * Supports 1-8 bit, 24 bit, HAM6/8, EHB ILBM files
+ * Supports uncompressed, byterun 1 & 2 (Atari) compressed ILBM files
  * Supports PBM (Deluxe Paint DOS) encoded files
+ * Supports ACBM (Amiga Basic) files
  * Color cycle chunks are ignored
  * Mask is not supported (skipped)
 

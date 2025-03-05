@@ -1,6 +1,6 @@
 const PixelFormat = @import("../../src/pixel_format.zig").PixelFormat;
 const assert = std.debug.assert;
-const ilbm = @import("../../src/formats/ilbm.zig");
+const iff = @import("../../src/formats/iff.zig");
 const color = @import("../../src/color.zig");
 const ImageReadError = Image.ReadError;
 const std = @import("std");
@@ -8,11 +8,11 @@ const testing = std.testing;
 const Image = @import("../../src/Image.zig");
 const helpers = @import("../helpers.zig");
 
-test "ILBM indexed8 PBM (chunky Deluxe Paint DOS file)" {
+test "IFF-PBM indexed8 (chunky Deluxe Paint DOS file)" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ilbm/sample-pbm.iff");
     defer file.close();
 
-    var the_bitmap = ilbm.ILBM{};
+    var the_bitmap = iff.IFF{};
 
     var stream_source = std.io.StreamSource{ .file = file };
 
@@ -39,11 +39,11 @@ test "ILBM indexed8 PBM (chunky Deluxe Paint DOS file)" {
     try helpers.expectEq(palette58.b, 148);
 }
 
-test "ILBM indexed8 8 bitplanes" {
+test "IFF-ILBM indexed8 8 bitplanes" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ilbm/sample-ilbm-8bit-compressed.iff");
     defer file.close();
 
-    var the_bitmap = ilbm.ILBM{};
+    var the_bitmap = iff.IFF{};
 
     var stream_source = std.io.StreamSource{ .file = file };
 
@@ -64,11 +64,11 @@ test "ILBM indexed8 8 bitplanes" {
     try helpers.expectEq(pixels.indexed8.indices[25975], 2);
 }
 
-test "ILBM indexed8 8 bitplanes uncompressed" {
+test "IFF-ILBM indexed8 8 bitplanes uncompressed" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ilbm/sample-ilbm-8bit-uncompressed.iff");
     defer file.close();
 
-    var the_bitmap = ilbm.ILBM{};
+    var the_bitmap = iff.IFF{};
 
     var stream_source = std.io.StreamSource{ .file = file };
 
@@ -89,11 +89,11 @@ test "ILBM indexed8 8 bitplanes uncompressed" {
     try helpers.expectEq(pixels.indexed8.indices[25975], 2);
 }
 
-test "ILBM indexed8 6 bitplanes EHB" {
+test "IFF-ILBM indexed8 6 bitplanes EHB" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ilbm/sample-ehb.iff");
     defer file.close();
 
-    var the_bitmap = ilbm.ILBM{};
+    var the_bitmap = iff.IFF{};
 
     var stream_source = std.io.StreamSource{ .file = file };
 
@@ -120,11 +120,11 @@ test "ILBM indexed8 6 bitplanes EHB" {
     try helpers.expectEq(pixels.indexed8.indices[25975], 61);
 }
 
-test "ILBM indexed8 4 bitplanes HAM" {
+test "IFF-ILBM indexed8 4 bitplanes HAM" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ilbm/sample-ham.iff");
     defer file.close();
 
-    var the_bitmap = ilbm.ILBM{};
+    var the_bitmap = iff.IFF{};
 
     var stream_source = std.io.StreamSource{ .file = file };
 
@@ -148,11 +148,11 @@ test "ILBM indexed8 4 bitplanes HAM" {
     }
 }
 
-test "ILBM indexed8 6 bitplanes HAM8" {
+test "IFF-ILBM indexed8 6 bitplanes HAM8" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ilbm/sample-ham8.iff");
     defer file.close();
 
-    var the_bitmap = ilbm.ILBM{};
+    var the_bitmap = iff.IFF{};
 
     var stream_source = std.io.StreamSource{ .file = file };
 
@@ -176,11 +176,11 @@ test "ILBM indexed8 6 bitplanes HAM8" {
     }
 }
 
-test "ILBM 24bit" {
+test "IFF-ILBM 24bit" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ilbm/sample-24bit.iff");
     defer file.close();
 
-    var the_bitmap = ilbm.ILBM{};
+    var the_bitmap = iff.IFF{};
 
     var stream_source = std.io.StreamSource{ .file = file };
 
@@ -204,11 +204,11 @@ test "ILBM 24bit" {
     }
 }
 
-test "ILBM indexed8 4 bitplanes Atari ST" {
+test "IFF-ILBM indexed8 4 bitplanes Atari ST" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ilbm/sample-ilbm-4bit-compressed-atari.iff");
     defer file.close();
 
-    var the_bitmap = ilbm.ILBM{};
+    var the_bitmap = iff.IFF{};
 
     var stream_source = std.io.StreamSource{ .file = file };
 
@@ -235,11 +235,11 @@ test "ILBM indexed8 4 bitplanes Atari ST" {
     try helpers.expectEq(pixels.indexed8.indices[31_207], 6);
 }
 
-test "ACBM indexed8 3 bitplanes uncompressed" {
+test "IFF-ACBM indexed8 3 bitplanes uncompressed" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ilbm/sample-8bit.acbm");
     defer file.close();
 
-    var the_bitmap = ilbm.ILBM{};
+    var the_bitmap = iff.IFF{};
 
     var stream_source = std.io.StreamSource{ .file = file };
 

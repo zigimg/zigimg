@@ -11,7 +11,7 @@ const SupportedFormats = struct {
     pub const bmp = formats.bmp.BMP;
     pub const farbfeld = formats.farbfeld.Farbfeld;
     pub const gif = formats.gif.GIF;
-    pub const ilbm = formats.ilbm.ILBM;
+    pub const iff = formats.iff.IFF;
     pub const jpeg = formats.jpeg.JPEG;
     pub const pam = formats.pam.PAM;
     pub const pbm = formats.netpbm.PBM;
@@ -29,7 +29,7 @@ pub const EncoderOptions = union(Format) {
     bmp: SupportedFormats.bmp.EncoderOptions,
     farbfeld: void,
     gif: void,
-    ilbm: void,
+    iff: void,
     jpeg: void,
     pam: SupportedFormats.pam.EncoderOptions,
     pbm: SupportedFormats.pbm.EncoderOptions,
