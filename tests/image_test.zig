@@ -373,7 +373,7 @@ test "Should detect IFF/PBM properly" {
 
     for (image_tests) |image_path| {
         const format = try ImageUnmanaged.detectFormatFromFilePath(image_path);
-        try std.testing.expect(format == .ilbm);
+        try std.testing.expect(format == .iff);
 
         var test_image = try helpers.testImageFromFile(image_path);
         defer test_image.deinit();

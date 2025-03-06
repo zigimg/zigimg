@@ -1,7 +1,7 @@
 pub const bmp = @import("formats/bmp.zig");
 pub const farbfeld = @import("formats/farbfeld.zig");
 pub const gif = @import("formats/gif.zig");
-pub const ilbm = @import("formats/ilbm.zig");
+pub const iff = @import("formats/iff.zig");
 pub const jpeg = @import("formats/jpeg.zig");
 pub const pam = @import("formats/pam.zig");
 pub const netpbm = @import("formats/netpbm.zig");
