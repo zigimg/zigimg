@@ -845,24 +845,8 @@ pub const PlteProcessor = struct {
 
     pub fn processChunk(self: *Self, data: *ChunkProcessData) ImageUnmanaged.ReadError!PixelFormat {
         // This is critical chunk so it is already read and there is no need to read it here
-        var result_format = data.current_format;
-        if (self.processed or !result_format.isIndexed()) {
-            self.processed = true;
-            return result_format;
-        }
-
-        const palette_size = data.chunk_length / 3;
-        if (palette_size <= 2) {
-            return .indexed1;
-        } else if (palette_size <= 4) {
-            return .indexed2;
-        } else if (palette_size <= 16) {
-            return .indexed4;
-        } else if (palette_size <= 256) {
-            return .indexed8;
-        } else {
-            return .indexed16;
-        }
+        _ = self;
+        return data.current_format;
     }
 
     pub fn processPalette(self: *Self, data: *PaletteProcessData) ImageUnmanaged.ReadError!void {
