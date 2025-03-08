@@ -156,7 +156,7 @@ pub fn testWithDir(directory: []const u8, testMd5Sig: bool) !void {
                 continue;
             }
 
-            var default_options = png.DefaultOptions{};
+            var default_options = png.DefaultOptions.init(.{});
             var header = try png.loadHeader(&stream);
             if (entry.name[0] == 'x') {
                 const error_result = png.loadWithHeader(&stream, &header, std.testing.allocator, default_options.get());
@@ -230,9 +230,7 @@ test "InfoProcessor on Png Test suite" {
                 continue;
             }
 
-            var options = InfoProcessor.PngInfoOptions{
-                .processor = InfoProcessor.init(info_stream.writer()),
-            };
+            var options = InfoProcessor.PngInfoOptions.init(InfoProcessor.init(info_stream.writer()));
 
             var tst_file = try idir.openFile(entry.name, .{ .mode = .read_only });
             defer tst_file.close();
