@@ -1,3 +1,5 @@
+//! InfoProcessor can be used with png reader to write the information about png file data into the given Writer
+
 const std = @import("std");
 const Image = @import("../../Image.zig");
 const png_reader = @import("reader.zig");
@@ -7,16 +9,9 @@ const ReaderProcessor = png_reader.ReaderProcessor;
 const ChunkProcessData = png_reader.ChunkProcessData;
 const PaletteProcessData = png_reader.PaletteProcessData;
 const isChunkCritical = png_reader.isChunkCritical;
+const CustomReaderOptions1 = png_reader.CustomReaderOptions1;
 
-pub const PngInfoOptions = struct {
-    processor: Self,
-    processors: [1]png_reader.ReaderProcessor = undefined,
-
-    pub fn get(self: *@This()) png_reader.ReaderOptions {
-        self.processors[0] = self.processor.processor();
-        return .{ .temp_allocator = .{ .ptr = undefined, .vtable = &png_reader.NoopAllocator }, .processors = self.processors[0..] };
-    }
-};
+pub const PngInfoOptions = CustomReaderOptions1(Self);
 
 const Self = @This();
 
@@ -39,13 +34,13 @@ pub fn processor(self: *Self) ReaderProcessor {
 }
 
 fn processChunk(self: *Self, data: *ChunkProcessData) Image.ReadError!PixelFormat {
-    // This is critical chunk so it is already read and there is no need to read it here
     const result_format = data.current_format;
 
     var reader = data.stream.reader();
     var buffer: [1024]u8 = undefined;
 
     if (!isChunkCritical(data.chunk_id)) {
+        // This is critical chunk so it is already read and there is no need to read it here
         switch (data.chunk_id) {
             png.Chunks.gAMA.id => {
                 if (data.chunk_length != 4) {

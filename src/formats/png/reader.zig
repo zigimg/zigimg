@@ -133,6 +133,7 @@ const IDatChunksReader = struct {
 
 const IDATReader = std.io.Reader(*IDatChunksReader, ImageUnmanaged.ReadError, IDatChunksReader.read);
 
+/// Loads only the png header from the stream. Useful when you only metadata.
 pub fn loadHeader(stream: *ImageUnmanaged.Stream) ImageUnmanaged.ReadError!png.HeaderData {
     var reader = stream.reader();
     var signature: [png.magic_header.len]u8 = undefined;
@@ -166,12 +167,10 @@ pub fn loadHeader(stream: *ImageUnmanaged.Stream) ImageUnmanaged.ReadError!png.H
 /// Loads the png image using the given allocator and options.
 /// The options allow you to pass in a custom allocator for temporary allocations.
 /// By default it will also use the main allocator for temporary allocations.
-/// You can also pass in an array of chunk processors. You can use def_processors
-/// array if you want to use these default set of processors:
+/// You can also pass in an optional array of chunk processors. Provided processors are:
 /// 1. tRNS processor that decodes the tRNS chunk if it exists into an alpha channel
 /// 2. PLTE processor that decodes the indexed image with a palette into a RGB image.
-/// If you want default processors with default temp allocator you can just pass
-/// predefined default_options. If you just pass .{} no processors will be used.
+/// If you pass DefaultOptions.init(.{}) it will only use the tRNS processor.
 pub fn load(stream: *ImageUnmanaged.Stream, allocator: Allocator, options: ReaderOptions) ImageUnmanaged.ReadError!ImageUnmanaged {
     const header = try loadHeader(stream);
     var result = ImageUnmanaged{};
@@ -616,6 +615,7 @@ pub const RowProcessData = struct {
     temp_allocator: Allocator,
 };
 
+/// This is the interface that custom processors must implement to be able to process chunks.
 pub const ReaderProcessor = struct {
     id: u32,
     context: *anyopaque,
@@ -683,6 +683,7 @@ pub const ReaderProcessor = struct {
     }
 };
 
+/// This processor is used to process the tRNS chunk and add alpha channel to grayscale, indexed or RGB images from it.
 pub const TrnsProcessor = struct {
     const Self = @This();
     const TRNSData = union(enum) { unset: void, gray: u16, rgb: color.Rgb48, index_alpha: []u8 };
@@ -827,6 +828,8 @@ pub const TrnsProcessor = struct {
     }
 };
 
+/// This processor is used to process the PLTE chunk. It will convert indexed pixel data to RGBA32 format
+/// as it is being loaded. If the image is not indexed or the palette is not set it will do nothing.
 pub const PlteProcessor = struct {
     const Self = @This();
 
@@ -845,8 +848,13 @@ pub const PlteProcessor = struct {
 
     pub fn processChunk(self: *Self, data: *ChunkProcessData) ImageUnmanaged.ReadError!PixelFormat {
         // This is critical chunk so it is already read and there is no need to read it here
-        _ = self;
-        return data.current_format;
+        var result_format = data.current_format;
+        if (self.processed or !result_format.isIndexed()) {
+            self.processed = true;
+            return result_format;
+        }
+
+        return .rgba32;
     }
 
     pub fn processPalette(self: *Self, data: *PaletteProcessData) ImageUnmanaged.ReadError!void {
@@ -897,10 +905,10 @@ pub const PlteProcessor = struct {
 };
 
 /// The options you need to pass to PNG reader. If you want default options
-/// that use main allocator for temporary allocations and default set of
-/// processors just use this:
-/// var default_options = DefaultOptions{};
-/// png.reader.load(main_allocator, default_options.get());
+/// that use main allocator for temporary allocations and tRNS processor
+/// just use this:
+/// var options = DefaultOptions.init(.{});
+/// png.reader.load(main_allocator, options.get());
 /// Note that application can define its own DefaultPngOptions in the root file
 /// and all the code that uses DefaultOptions will actually use that.
 pub const ReaderOptions = struct {
@@ -908,13 +916,9 @@ pub const ReaderOptions = struct {
     /// on the image size so they will use the main allocator since we can't guarantee
     /// they are bounded. They will be allocated after the destination image to
     /// reduce memory fragmentation and freed internally.
-    temp_allocator: Allocator,
+    temp_allocator: Allocator = .{ .ptr = undefined, .vtable = &NoopAllocator },
 
     /// Default is no processors so they are not even compiled in if not used.
-    /// If you want a default set of processors create a DefaultProcessors object
-    /// call get() on it and pass that here.
-    /// Note that application can define its own DefPngProcessors and all the
-    /// code that uses DefaultProcessors will actually use that.
     processors: []ReaderProcessor = &[_]ReaderProcessor{},
 
     pub fn init(temp_allocator: Allocator) ReaderOptions {
@@ -926,25 +930,53 @@ pub const ReaderOptions = struct {
     }
 };
 
-const root = @import("root");
-
-/// Applications can override this by defining DefPngProcessors struct in their root source file.
-pub const DefaultProcessors = if (@hasDecl(root, "DefPngProcessors"))
-    root.DefPngProcessors
-else
-    struct {
-        trns_processor: TrnsProcessor = .{},
-        plte_processor: PlteProcessor = .{},
-        processors_buffer: [2]ReaderProcessor = undefined,
+pub fn CustomReaderOptions1(Processor: type) type {
+    return struct {
+        processor: Processor,
+        processors: [1]ReaderProcessor = undefined,
 
         const Self = @This();
 
-        pub fn get(self: *Self) []ReaderProcessor {
-            self.processors_buffer[0] = self.trns_processor.processor();
-            self.processors_buffer[1] = self.plte_processor.processor();
-            return self.processors_buffer[0..];
+        pub fn init(processor: Processor) Self {
+            return .{ .processor = processor };
+        }
+
+        pub fn get(self: *Self) ReaderOptions {
+            return self.getWithTempAllocator(.{ .ptr = undefined, .vtable = &NoopAllocator });
+        }
+
+        pub fn getWithTempAllocator(self: *Self, temp_allocator: Allocator) ReaderOptions {
+            self.processors[0] = self.processor.processor();
+            return .{ .temp_allocator = temp_allocator, .processors = self.processors[0..] };
         }
     };
+}
+
+pub fn CustomReaderOptions2(Processor1: type, Processor2: type) type {
+    return struct {
+        processor1: Processor1,
+        processor2: Processor2,
+        processors: [2]ReaderProcessor = undefined,
+
+        const Self = @This();
+
+        pub fn init(processor1: Processor1, processor2: Processor2) Self {
+            return .{ .processor1 = processor1, .processor2 = processor2 };
+        }
+
+        pub fn get(self: *Self) ReaderOptions {
+            return self.getWithTempAllocator(.{ .ptr = undefined, .vtable = &NoopAllocator });
+        }
+
+        pub fn getWithTempAllocator(self: *Self, temp_allocator: Allocator) ReaderOptions {
+            self.processors[0] = self.processor1.processor();
+            self.processors[1] = self.processor2.processor();
+            return .{ .temp_allocator = temp_allocator, .processors = self.processors[0..] };
+        }
+    };
+}
+
+const root = @import("root");
 
 pub const NoopAllocator = Allocator.VTable{ .alloc = undefined, .free = undefined, .resize = undefined };
 
@@ -955,15 +987,7 @@ pub const NoopAllocator = Allocator.VTable{ .alloc = undefined, .free = undefine
 pub const DefaultOptions = if (@hasDecl(root, "DefaultPngOptions"))
     root.DefaultPngOptions
 else
-    struct {
-        def_processors: DefaultProcessors = .{},
-
-        const Self = @This();
-
-        pub fn get(self: *Self) ReaderOptions {
-            return .{ .temp_allocator = .{ .ptr = undefined, .vtable = &NoopAllocator }, .processors = self.def_processors.get() };
-        }
-    };
+    CustomReaderOptions1(TrnsProcessor);
 
 // ********************* TESTS *********************
 

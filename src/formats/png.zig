@@ -33,8 +33,9 @@ pub const ReaderProcessor = reader.ReaderProcessor;
 pub const TrnsProcessor = reader.TrnsProcessor;
 pub const PlteProcessor = reader.PlteProcessor;
 pub const ReaderOptions = reader.ReaderOptions;
-pub const DefaultProcessors = reader.DefaultProcessors;
 pub const DefaultOptions = reader.DefaultOptions;
+pub const CustomReaderOptions1 = reader.CustomReaderOptions1;
+pub const CustomReaderOptions2 = reader.CustomReaderOptions2;
 
 pub const PNG = struct {
     const Self = @This();
@@ -63,8 +64,8 @@ pub const PNG = struct {
     }
 
     pub fn readImage(allocator: Allocator, stream: *ImageUnmanaged.Stream) ImageReadError!ImageUnmanaged {
-        var default_options = DefaultOptions{};
-        return load(stream, allocator, default_options.get());
+        var options = DefaultOptions.init(.{});
+        return load(stream, allocator, options.get());
     }
 
     pub fn writeImage(_: Allocator, write_stream: *ImageUnmanaged.Stream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageWriteError!void {
