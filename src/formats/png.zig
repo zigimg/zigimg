@@ -197,12 +197,9 @@ pub const PNG = struct {
     fn writeTransparencyInfo(writer: anytype, pixels: color.PixelStorage) ImageWriteError!void {
         // TODO: For pixel format with alpha, try to check if the pixel with alpha are all the same color, if yes, we can change the format to their non-alpha counterpart with a tRNS chunk
         // TODO: For pixel format without alpha, add a write option to force which color should be consider transparent
-        switch (pixels) {
-            .indexed1,
-            .indexed2,
-            .indexed4,
-            .indexed8,
-            => |indexed| {
+
+        const TrnsIndexedWriter = struct {
+            pub fn write(writer_param: anytype, indexed: anytype) ImageWriteError!void {
                 var write_trns: bool = false;
 
                 for (indexed.palette) |entry| {
@@ -216,7 +213,7 @@ pub const PNG = struct {
                     return;
                 }
 
-                var chunk = chunk_writer.chunkWriter(writer, "tRNS");
+                var chunk = chunk_writer.chunkWriter(writer_param, "tRNS");
                 var chunk_wr = chunk.writer();
 
                 for (indexed.palette) |col| {
@@ -224,6 +221,21 @@ pub const PNG = struct {
                 }
 
                 try chunk.flush();
+            }
+        };
+
+        switch (pixels) {
+            .indexed1 => |indexed| {
+                return TrnsIndexedWriter.write(writer, indexed);
+            },
+            .indexed2 => |indexed| {
+                return TrnsIndexedWriter.write(writer, indexed);
+            },
+            .indexed4 => |indexed| {
+                return TrnsIndexedWriter.write(writer, indexed);
+            },
+            .indexed8 => |indexed| {
+                return TrnsIndexedWriter.write(writer, indexed);
             },
             .indexed16 => {
                 return ImageWriteError.Unsupported;
