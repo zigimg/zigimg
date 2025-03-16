@@ -8,7 +8,7 @@ const color = @import("../color.zig");
 const PNG = @import("./png.zig").PNG;
 const BMP = @import("./bmp.zig").BMP;
 
-const pngReader = @import("./png/reader.zig");
+const png_reader = @import("./png/reader.zig");
 
 pub const Kind = enum(u16) {
     icon = 1, // .ico
@@ -142,9 +142,9 @@ pub const ICO = struct {
         try stream.seekTo(only_entry.data_offset);
 
         if (is_png) {
-            var options = pngReader.DefaultOptions.init(.{});
-            const png_header = try pngReader.loadHeader(stream);
-            const png_pixels = try pngReader.loadWithHeader(stream, &png_header, allocator, options.get());
+            var options = png_reader.DefaultOptions.init(.{});
+            const png_header = try png_reader.loadHeader(stream);
+            const png_pixels = try png_reader.loadWithHeader(stream, &png_header, allocator, options.get());
 
             return png_pixels;
         }
