@@ -281,6 +281,15 @@ pub const BMP = struct {
             return ImageUnmanaged.ReadError.InvalidData;
         }
 
+        try stream.seekTo(try buffered_stream.getPos());
+
+        return readInfoHeader(self, allocator, stream);
+    }
+
+    pub fn readInfoHeader(self: *BMP, allocator: std.mem.Allocator, stream: *ImageUnmanaged.Stream) ImageUnmanaged.ReadError!color.PixelStorage {
+        var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
+        const reader = buffered_stream.reader();
+
         const header_size = try reader.readInt(u32, .little);
         try buffered_stream.seekBy(-@sizeOf(u32));
 
@@ -296,6 +305,7 @@ pub const BMP = struct {
 
         // Read pixel data
         _ = switch (self.info_header) {
+            .windows31 => |win31Header| {},
             .v4 => |v4Header| {
                 const pixel_width = v4Header.width;
                 const pixel_height = v4Header.height;
