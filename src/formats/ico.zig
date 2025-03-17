@@ -65,25 +65,39 @@ pub const ICO = struct {
         var ico = ICO{};
 
         const pixels = try ico.read(allocator, stream);
+        const largest_entry_idx = ico.largestEntryIdx() orelse return ImageUnmanaged.ReadError.Unsupported;
 
         result.width = ico.width();
         result.height = ico.height();
-        result.pixels = pixels;
+        result.pixels = pixels[largest_entry_idx];
 
         return result;
     }
 
+    pub fn largestEntryIdx(self: ICO) ?usize {
+        var largest_area: usize = 0;
+        var largest_entry_idx: ?usize = null;
+        for (0.., self.dir.entries) |i, entry| {
+            const area: usize = @as(usize, @intCast(entry.image_width)) * @as(usize, @intCast(entry.image_height));
+            if (area > largest_area) {
+                largest_area = area;
+                largest_entry_idx = i;
+            }
+        }
+        return largest_entry_idx;
+    }
+
     pub fn width(self: ICO) usize {
-        // todo: support more frames
-        return @intCast(self.dir.entries[0].image_width);
+        const largest_entry_idx = self.largestEntryIdx() orelse return 0;
+        return @intCast(self.dir.entries[largest_entry_idx].image_width);
     }
 
     pub fn height(self: ICO) usize {
-        // todo: support more frames
-        return @intCast(self.dir.entries[0].image_height);
+        const largest_entry_idx = self.largestEntryIdx() orelse return 0;
+        return @intCast(self.dir.entries[largest_entry_idx].image_height);
     }
 
-    pub fn read(self: *ICO, allocator: std.mem.Allocator, stream: *ImageUnmanaged.Stream) !color.PixelStorage {
+    pub fn read(self: *ICO, allocator: std.mem.Allocator, stream: *ImageUnmanaged.Stream) ![]color.PixelStorage {
         var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
         const reader = buffered_stream.reader();
 
@@ -97,10 +111,10 @@ pub const ICO = struct {
         // todo: support more frames
         if (num_images != 1) return ImageUnmanaged.ReadError.Unsupported;
 
-        var entries_list = try std.ArrayListUnmanaged(IconDirEntry).initCapacity(allocator, num_images);
-        errdefer entries_list.deinit(allocator);
+        const entries = try allocator.alloc(IconDirEntry, num_images);
+        errdefer allocator.free(entries);
 
-        for (0..num_images) |_| {
+        for (0..num_images) |i| {
             var entry: IconDirEntry = undefined;
 
             entry.image_width = try reader.readInt(u8, .little);
@@ -130,16 +144,29 @@ pub const ICO = struct {
             entry.image_data_size = try reader.readInt(u32, .little);
             entry.data_offset = try reader.readInt(u32, .little);
 
-            entries_list.appendAssumeCapacity(entry);
+            entries[i] = entry;
         }
 
-        self.dir.entries = try entries_list.toOwnedSlice(allocator);
-        errdefer allocator.free(self.dir.entries);
-        const only_entry = &self.dir.entries[0]; // todo: support more frames
+        self.dir.entries = entries;
 
-        try stream.seekTo(only_entry.data_offset);
+        var results = try std.ArrayListUnmanaged(color.PixelStorage).initCapacity(allocator, self.dir.entries.len);
+        errdefer results.deinit(allocator);
+        errdefer for (results.items) |inner_data| {
+            inner_data.deinit(allocator);
+        };
+
+        for (self.dir.entries) |entry| {
+            const inner_data = try readInnerData(allocator, stream, entry);
+            results.appendAssumeCapacity(inner_data);
+        }
+
+        return results.toOwnedSlice(allocator);
+    }
+
+    pub fn readInnerData(allocator: std.mem.Allocator, stream: anytype, entry: IconDirEntry) !color.PixelStorage {
+        try stream.seekTo(entry.data_offset);
         const is_png = try PNG.formatDetect(stream);
-        try stream.seekTo(only_entry.data_offset);
+        try stream.seekTo(entry.data_offset);
 
         if (is_png) {
             var options = png_reader.DefaultOptions.init(.{});
@@ -149,17 +176,17 @@ pub const ICO = struct {
             return png_pixels;
         }
 
-        var buffered_stream2 = buffered_stream_source.bufferedStreamSourceReader(stream);
+        var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
 
         // .ICO, .CUR modifies BMP slightly- the height in the header is always double, as the mask follows the actual data
         // normally BMP could read this fine, however the mask is always stored in grayscale, which is in contrast with the
         // actual image data. So we need to read that separately.
-        var info_header = try BMP.readInfoHeader(&buffered_stream2);
+        var info_header = try BMP.readInfoHeader(&buffered_stream);
         switch (info_header) {
             inline .windows31, .v4, .v5 => |*inner_header| {
                 inner_header.height = std.math.divExact(i32, inner_header.height, 2) catch return ImageUnmanaged.ReadError.InvalidData;
 
-                const actual_bytes = try BMP.readPixelsFromHeader(allocator, buffered_stream2.reader(), info_header);
+                const actual_bytes = try BMP.readPixelsFromHeader(allocator, buffered_stream.reader(), info_header);
                 // TODO: read mask
                 return actual_bytes;
             },
