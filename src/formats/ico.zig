@@ -135,7 +135,7 @@ pub const ICO = struct {
 
         self.dir.entries = try entries_list.toOwnedSlice(allocator);
         errdefer allocator.free(self.dir.entries);
-        const only_entry = self.dir.entries[0]; // todo: support more frames
+        const only_entry = &self.dir.entries[0]; // todo: support more frames
 
         try stream.seekTo(only_entry.data_offset);
         const is_png = try PNG.formatDetect(stream);
@@ -149,8 +149,21 @@ pub const ICO = struct {
             return png_pixels;
         }
 
-        var bmp: BMP = .{};
-        return try bmp.readInfoHeader(allocator, stream);
+        var buffered_stream2 = buffered_stream_source.bufferedStreamSourceReader(stream);
+
+        // .ICO, .CUR modifies BMP slightly- the height in the header is always double, as the mask follows the actual data
+        // normally BMP could read this fine, however the mask is always stored in grayscale, which is in contrast with the
+        // actual image data. So we need to read that separately.
+        var info_header = try BMP.readInfoHeader(&buffered_stream2);
+        switch (info_header) {
+            inline .windows31, .v4, .v5 => |*inner_header| {
+                inner_header.height = std.math.divExact(i32, inner_header.height, 2) catch return ImageUnmanaged.ReadError.InvalidData;
+
+                const actual_bytes = try BMP.readPixelsFromHeader(allocator, buffered_stream2.reader(), info_header);
+                // TODO: read mask
+                return actual_bytes;
+            },
+        }
     }
 
     pub fn writeImage(allocator: std.mem.Allocator, write_stream: *ImageUnmanaged.Stream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageUnmanaged.WriteError!void {

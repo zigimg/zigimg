@@ -283,53 +283,40 @@ pub const BMP = struct {
 
         try stream.seekTo(try buffered_stream.getPos());
 
-        return readInfoHeader(self, allocator, stream);
+        self.info_header = try readInfoHeader(&buffered_stream);
+        return try readPixelsFromHeader(allocator, reader, self.info_header);
     }
 
-    pub fn readInfoHeader(self: *BMP, allocator: std.mem.Allocator, stream: *ImageUnmanaged.Stream) ImageUnmanaged.ReadError!color.PixelStorage {
-        var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
-        const reader = buffered_stream.reader();
+    pub fn readInfoHeader(stream: anytype) ImageUnmanaged.ReadError!BitmapInfoHeader {
+        const reader = stream.reader();
 
         const header_size = try reader.readInt(u32, .little);
-        try buffered_stream.seekBy(-@sizeOf(u32));
+        try stream.seekBy(-@sizeOf(u32));
 
         // Read info header
-        self.info_header = switch (header_size) {
-            BitmapInfoHeaderWindows31.HeaderSize => BitmapInfoHeader{ .windows31 = try utils.readStruct(reader, BitmapInfoHeaderWindows31, .little) },
-            BitmapInfoHeaderV4.HeaderSize => BitmapInfoHeader{ .v4 = try utils.readStruct(reader, BitmapInfoHeaderV4, .little) },
-            BitmapInfoHeaderV5.HeaderSize => BitmapInfoHeader{ .v5 = try utils.readStruct(reader, BitmapInfoHeaderV5, .little) },
+        return switch (header_size) {
+            BitmapInfoHeaderWindows31.HeaderSize => .{ .windows31 = try utils.readStruct(reader, BitmapInfoHeaderWindows31, .little) },
+            BitmapInfoHeaderV4.HeaderSize => .{ .v4 = try utils.readStruct(reader, BitmapInfoHeaderV4, .little) },
+            BitmapInfoHeaderV5.HeaderSize => .{ .v5 = try utils.readStruct(reader, BitmapInfoHeaderV5, .little) },
             else => return ImageUnmanaged.Error.Unsupported,
         };
+    }
 
-        var pixels: color.PixelStorage = undefined;
+    pub fn readPixelsFromHeader(allocator: std.mem.Allocator, reader: anytype, header: BitmapInfoHeader) ImageUnmanaged.ReadError!color.PixelStorage {
+        return switch (header) {
+            inline .windows31, .v4, .v5 => |inner_header| read_header: {
+                const pixel_width = inner_header.width;
+                const pixel_height = inner_header.height;
+                const pixel_format = try findPixelFormat(inner_header.bit_count, inner_header.compression_method);
 
-        // Read pixel data
-        _ = switch (self.info_header) {
-            .windows31 => |win31Header| {},
-            .v4 => |v4Header| {
-                const pixel_width = v4Header.width;
-                const pixel_height = v4Header.height;
-                const pixel_format = try findPixelFormat(v4Header.bit_count, v4Header.compression_method);
-
-                pixels = try color.PixelStorage.init(allocator, pixel_format, @intCast(pixel_width * pixel_height));
+                var pixels = try color.PixelStorage.init(allocator, pixel_format, @intCast(pixel_width * pixel_height));
                 errdefer pixels.deinit(allocator);
 
                 try readPixels(reader, pixel_width, pixel_height, &pixels);
-            },
-            .v5 => |v5Header| {
-                const pixel_width = v5Header.width;
-                const pixel_height = v5Header.height;
-                const pixel_format = try findPixelFormat(v5Header.bit_count, v5Header.compression_method);
 
-                pixels = try color.PixelStorage.init(allocator, pixel_format, @intCast(pixel_width * pixel_height));
-                errdefer pixels.deinit(allocator);
-
-                try readPixels(reader, pixel_width, pixel_height, &pixels);
+                break :read_header pixels;
             },
-            else => return ImageUnmanaged.Error.Unsupported,
         };
-
-        return pixels;
     }
 
     pub fn write(self: BMP, stream: *ImageUnmanaged.Stream, pixels: color.PixelStorage) ImageUnmanaged.WriteError!void {
@@ -361,6 +348,8 @@ pub const BMP = struct {
             return PixelFormat.bgra32;
         } else if (bit_count == 24 and compression == CompressionMethod.none) {
             return PixelFormat.bgr24;
+        } else if (bit_count == 32 and compression == CompressionMethod.none) {
+            return PixelFormat.bgra32;
         } else {
             return ImageUnmanaged.Error.Unsupported;
         }
@@ -368,11 +357,8 @@ pub const BMP = struct {
 
     fn readPixels(reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader, pixel_width: i32, pixel_height: i32, pixels: *color.PixelStorage) ImageUnmanaged.ReadError!void {
         return switch (pixels.*) {
-            .bgr24 => {
-                return readPixelsInternal(pixels.bgr24, reader, pixel_width, pixel_height);
-            },
-            .bgra32 => {
-                return readPixelsInternal(pixels.bgra32, reader, pixel_width, pixel_height);
+            inline .bgr24, .bgra32 => |pixel_format| {
+                return readPixelsInternal(pixel_format, reader, pixel_width, pixel_height);
             },
             else => {
                 return ImageUnmanaged.Error.Unsupported;
@@ -390,18 +376,16 @@ pub const BMP = struct {
 
             x = 0;
             while (x < pixel_width) : (x += 1) {
-                pixels[@intCast(scanline + x)] = try utils.readStruct(reader, ColorBufferType, .little);
+                const pixel = try utils.readStruct(reader, ColorBufferType, .little);
+                pixels[@intCast(scanline + x)] = pixel;
             }
         }
     }
 
     fn writePixels(writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, pixels: color.PixelStorage, pixel_width: i32, pixel_height: i32) ImageUnmanaged.WriteError!void {
         return switch (pixels) {
-            .bgr24 => {
-                return writePixelsInternal(pixels.bgr24, writer, pixel_width, pixel_height);
-            },
-            .bgra32 => {
-                return writePixelsInternal(pixels.bgra32, writer, pixel_width, pixel_height);
+            inline .bgr24, .bgra32, .rgba32 => |pixel_format| {
+                return writePixelsInternal(pixel_format, writer, pixel_width, pixel_height);
             },
             else => {
                 return ImageUnmanaged.WriteError.InvalidData;
