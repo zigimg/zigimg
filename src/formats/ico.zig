@@ -187,9 +187,38 @@ pub const ICO = struct {
                 inner_header.height = std.math.divExact(i32, inner_header.height, 2) catch return ImageUnmanaged.ReadError.InvalidData;
 
                 const actual_bytes = try BMP.readPixelsFromHeader(allocator, buffered_stream.reader(), info_header);
-                // TODO: read mask
+                // TODO: read mask properly
+                switch (actual_bytes) {
+                    .bgra32 => |pixels| {
+                        try readBmpMask(pixels, buffered_stream.reader(), inner_header.width, inner_header.height, .{ .r = 0, .g = 0, .b = 0, .a = 0 });
+                    },
+                    else => return ImageUnmanaged.ReadError.Unsupported,
+                }
                 return actual_bytes;
             },
+        }
+    }
+
+    pub fn readBmpMask(
+        pixels: anytype,
+        reader: anytype,
+        pixel_width: i32,
+        pixel_height: i32,
+        exclude_pixel: @typeInfo(@TypeOf(pixels)).pointer.child,
+    ) !void {
+        var bit_reader = std.io.bitReader(.big, reader);
+        var x: i32 = 0;
+        var y: i32 = pixel_height - 1;
+        while (y >= 0) : (y -= 1) {
+            const scanline = y * pixel_width;
+
+            x = 0;
+            while (x < pixel_width) : (x += 1) {
+                const do_exclude = try bit_reader.readBitsNoEof(u1, 1) == 1;
+                if (do_exclude) {
+                    pixels[@intCast(scanline + x)] = exclude_pixel;
+                }
+            }
         }
     }
 
