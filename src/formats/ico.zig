@@ -108,8 +108,6 @@ pub const ICO = struct {
         self.dir.kind = std.meta.intToEnum(Kind, image_kind_int) catch return ImageUnmanaged.ReadError.InvalidData;
 
         const num_images = try reader.readInt(u16, .little);
-        // todo: support more frames
-        if (num_images != 1) return ImageUnmanaged.ReadError.Unsupported;
 
         const entries = try allocator.alloc(IconDirEntry, num_images);
         errdefer allocator.free(entries);
