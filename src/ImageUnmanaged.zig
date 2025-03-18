@@ -30,7 +30,7 @@ pub const EncoderOptions = union(Format) {
     bmp: SupportedFormats.bmp.EncoderOptions,
     farbfeld: void,
     gif: void,
-    ico: void,
+    ico: SupportedFormats.ico.EncoderOptions,
     iff: void,
     jpeg: void,
     pam: SupportedFormats.pam.EncoderOptions,

@@ -325,22 +325,18 @@ pub const BMP = struct {
         const writer = buffered_stream.writer();
 
         try utils.writeStruct(writer, self.file_header, .little);
-
-        switch (self.info_header) {
-            .v4 => |v4| {
-                try utils.writeStruct(writer, v4, .little);
-            },
-            .v5 => |v5| {
-                try utils.writeStruct(writer, v5, .little);
-            },
-            else => {
-                return ImageUnmanaged.WriteError.InvalidData;
-            },
-        }
-
+        try writeInfoHeader(writer, self.info_header);
         try writePixels(writer, pixels, self.width(), self.height());
 
         try buffered_stream.flush();
+    }
+
+    pub fn writeInfoHeader(writer: anytype, info_header: BitmapInfoHeader) ImageUnmanaged.WriteError!void {
+        switch (info_header) {
+            inline .windows31, .v4, .v5 => |inner_header| {
+                try utils.writeStruct(writer, inner_header, .little);
+            },
+        }
     }
 
     fn findPixelFormat(bit_count: u32, compression: CompressionMethod) ImageUnmanaged.Error!PixelFormat {
@@ -382,7 +378,12 @@ pub const BMP = struct {
         }
     }
 
-    fn writePixels(writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, pixels: color.PixelStorage, pixel_width: i32, pixel_height: i32) ImageUnmanaged.WriteError!void {
+    pub fn writePixels(
+        writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer,
+        pixels: color.PixelStorage,
+        pixel_width: i32,
+        pixel_height: i32,
+    ) ImageUnmanaged.WriteError!void {
         return switch (pixels) {
             inline .bgr24, .bgra32, .rgba32 => |pixel_format| {
                 return writePixelsInternal(pixel_format, writer, pixel_width, pixel_height);

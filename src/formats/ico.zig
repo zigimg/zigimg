@@ -5,8 +5,11 @@ const FormatInterface = @import("../FormatInterface.zig");
 const buffered_stream_source = @import("../buffered_stream_source.zig");
 const color = @import("../color.zig");
 
-const PNG = @import("./png.zig").PNG;
-const BMP = @import("./bmp.zig").BMP;
+const png = @import("./png.zig");
+const PNG = png.PNG;
+const bmp = @import("./bmp.zig");
+const BMP = bmp.BMP;
+const png_types = @import("./png/types.zig");
 
 const png_reader = @import("./png/reader.zig");
 
@@ -27,6 +30,14 @@ pub const IconDirEntry = struct {
     hotspot_y: u16, // in .CUR format
     image_data_size: u32,
     data_offset: u32,
+
+    pub fn width(self: IconDirEntry) usize {
+        return if (self.image_width == 256) 0 else self.image_width;
+    }
+
+    pub fn height(self: IconDirEntry) usize {
+        return if (self.image_height == 256) 0 else self.image_height;
+    }
 };
 
 pub const IconDir = struct {
@@ -36,6 +47,24 @@ pub const IconDir = struct {
 
 pub const ICO = struct {
     dir: IconDir = undefined,
+
+    pub const EncoderOptions = struct {
+        pub const Cursor = struct {
+            hotspot_x: u16,
+            hotspot_y: u16,
+        };
+
+        pub const Inner = union(enum) {
+            bmp: BMP.EncoderOptions,
+            png: PNG.EncoderOptions,
+        };
+
+        kind: union(enum) {
+            icon: void,
+            cursor: Cursor,
+        } = .icon,
+        inner: Inner = .bmp,
+    };
 
     pub fn formatInterface() FormatInterface {
         return FormatInterface{
@@ -62,7 +91,7 @@ pub const ICO = struct {
         var result = ImageUnmanaged{};
         errdefer result.deinit(allocator);
 
-        var ico = ICO{};
+        var ico: ICO = .{};
 
         const pixels = try ico.read(allocator, stream);
         const largest_entry_idx = ico.largestEntryIdx() orelse return ImageUnmanaged.ReadError.Unsupported;
@@ -220,10 +249,152 @@ pub const ICO = struct {
         }
     }
 
-    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *ImageUnmanaged.Stream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageUnmanaged.WriteError!void {
-        _ = allocator;
-        _ = write_stream;
-        _ = image;
-        _ = encoder_options;
+    pub fn writeImage(
+        allocator: std.mem.Allocator,
+        write_stream: *ImageUnmanaged.Stream,
+        image: ImageUnmanaged,
+        encoder_options: ImageUnmanaged.EncoderOptions,
+    ) ImageUnmanaged.WriteError!void {
+        var ico: ICO = .{};
+
+        ico.dir.kind = switch (encoder_options.ico.kind) {
+            .icon => .icon,
+            .cursor => .cursor,
+        };
+
+        const entry = try allocator.create(IconDirEntry);
+        errdefer allocator.destroy(entry);
+
+        entry.* = switch (encoder_options.ico.kind) {
+            .icon => .{
+                .image_width = if (image.width == 256) 0 else @intCast(image.width),
+                .image_height = if (image.height == 256) 0 else @intCast(image.height),
+                .color_palette_size = 0,
+                .color_planes = 1,
+                .bits_per_pixel = switch (encoder_options.ico.inner) {
+                    .bmp => switch (image.pixels) {
+                        .bgra32 => @bitSizeOf(color.Bgra32),
+                        else => return ImageUnmanaged.WriteError.Unsupported,
+                    },
+                    .png => 0,
+                },
+                .hotspot_x = 0,
+                .hotspot_y = 0,
+                .image_data_size = 0,
+                .data_offset = 0,
+            },
+            .cursor => |cursor_options| .{
+                .image_width = if (image.width == 256) 0 else @intCast(image.width),
+                .image_height = if (image.height == 256) 0 else @intCast(image.height),
+                .color_palette_size = 0,
+                .color_planes = 0,
+                .bits_per_pixel = 0,
+                .hotspot_x = cursor_options.hotspot_x,
+                .hotspot_y = cursor_options.hotspot_y,
+                .image_data_size = 0,
+                .data_offset = 0,
+            },
+        };
+
+        ico.dir.entries = entry[0..1];
+
+        try ico.write(write_stream, &.{image.pixels}, encoder_options.ico.inner);
+    }
+
+    pub fn write(
+        self: *ICO,
+        stream: *ImageUnmanaged.Stream,
+        entry_pixels: []const color.PixelStorage,
+        inner_options: EncoderOptions.Inner,
+    ) ImageUnmanaged.WriteError!void {
+        var buffered_stream = buffered_stream_source.bufferedStreamSourceWriter(stream);
+        const entries_start = try self.writeHeader(&buffered_stream);
+
+        const writer = buffered_stream.writer();
+
+        for (0.., self.dir.entries, entry_pixels) |i, entry_info, pixels| {
+            const start_pos = try buffered_stream.getPos();
+
+            switch (inner_options) {
+                .png => |png_options| {
+                    const pixel_format = std.meta.activeTag(pixels);
+                    const header: png.HeaderData = .{
+                        .width = @intCast(entry_info.width()),
+                        .height = @intCast(entry_info.height()),
+                        .bit_depth = pixel_format.bitsPerChannel(),
+                        .color_type = try png_types.ColorType.fromPixelFormat(pixel_format),
+                        .compression_method = .deflate,
+                        .filter_method = .adaptive,
+                        .interlace_method = if (png_options.interlaced) .adam7 else .none,
+                    };
+
+                    try PNG.write(writer, pixels, header, png_options.filter_choice);
+                },
+                .bmp => {
+                    try BMP.writeInfoHeader(writer, .{
+                        .windows31 = .{
+                            .header_size = bmp.BitmapInfoHeaderWindows31.HeaderSize,
+                            .width = @intCast(entry_info.width()),
+                            .height = @intCast(entry_info.height()),
+                            .color_plane = 0,
+                            .bit_count = 32,
+                            .compression_method = .none,
+                            .image_raw_size = 0,
+                            .horizontal_resolution = 0,
+                            .vertical_resolution = 0,
+                            .palette_size = 0,
+                            .important_colors = 0,
+                        },
+                    });
+                    try BMP.writePixels(writer, pixels, @intCast(entry_info.width()), @intCast(entry_info.height()));
+                },
+            }
+
+            const end_pos = try buffered_stream.getPos();
+            const image_size = end_pos - start_pos;
+
+            const entry_info_data_size_offset = entries_start + (@sizeOf(u8) * 4 + @sizeOf(u16) * 2 + @sizeOf(u32) * 2) * @as(u64, @intCast(i + 1)) - @sizeOf(u32) * 2;
+            buffered_stream.seekTo(entry_info_data_size_offset) catch unreachable; // TODO: handle error properly
+
+            std.log.info("writing {} at {}", .{ image_size, entry_info_data_size_offset });
+
+            try writer.writeInt(u32, @intCast(image_size), .little);
+            try writer.writeInt(u32, @intCast(start_pos), .little);
+        }
+
+        try buffered_stream.flush();
+    }
+
+    pub fn writeHeader(self: *ICO, buffered_stream: anytype) !u64 {
+        const writer = buffered_stream.writer();
+
+        try writer.writeInt(u16, 0, .little); // reserved
+        try writer.writeInt(u16, @intFromEnum(self.dir.kind), .little);
+        try writer.writeInt(u16, @intCast(self.dir.entries.len), .little);
+
+        const entries_start = try buffered_stream.getPos();
+
+        for (self.dir.entries) |entry| {
+            try writer.writeInt(u8, entry.image_width, .little);
+            try writer.writeInt(u8, entry.image_height, .little);
+            try writer.writeInt(u8, entry.color_palette_size, .little);
+            try writer.writeInt(u8, 0, .little); // reserved
+
+            switch (self.dir.kind) {
+                .icon => {
+                    try writer.writeInt(u16, entry.color_planes, .little);
+                    try writer.writeInt(u16, entry.bits_per_pixel, .little);
+                },
+                .cursor => {
+                    try writer.writeInt(u16, entry.hotspot_x, .little);
+                    try writer.writeInt(u16, entry.hotspot_y, .little);
+                },
+            }
+
+            try writer.writeInt(u32, 0, .little); // image data size
+            try writer.writeInt(u32, 0, .little); // image data offset
+        }
+
+        return entries_start;
     }
 };

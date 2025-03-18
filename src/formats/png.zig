@@ -85,18 +85,17 @@ pub const PNG = struct {
 
         std.debug.assert(header.isValid());
 
-        try write(write_stream, image.pixels, header, options.filter_choice);
+        const writer = write_stream.writer();
+        try write(writer, image.pixels, header, options.filter_choice);
     }
 
-    pub fn write(write_stream: *ImageUnmanaged.Stream, pixels: color.PixelStorage, header: HeaderData, filter_choice: filter.FilterChoice) ImageWriteError!void {
+    pub fn write(writer: anytype, pixels: color.PixelStorage, header: HeaderData, filter_choice: filter.FilterChoice) ImageWriteError!void {
         if (header.interlace_method != .none)
             return ImageWriteError.Unsupported;
         if (header.compression_method != .deflate)
             return ImageWriteError.Unsupported;
         if (header.filter_method != .adaptive)
             return ImageWriteError.Unsupported;
-
-        const writer = write_stream.writer();
 
         try writeSignature(writer);
         try writeHeader(writer, header);
