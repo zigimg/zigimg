@@ -83,7 +83,7 @@ pub const ICO = struct {
         const image_kind_int = try buffered_stream.reader().readInt(u16, .little);
         _ = std.meta.intToEnum(Kind, image_kind_int) catch return false;
 
-        // todo: more checks
+        // TODO: more checks
         return true;
     }
 
@@ -214,7 +214,6 @@ pub const ICO = struct {
                 inner_header.height = std.math.divExact(i32, inner_header.height, 2) catch return ImageUnmanaged.ReadError.InvalidData;
 
                 const actual_bytes = try BMP.readPixelsFromHeader(allocator, buffered_stream.reader(), info_header);
-                // TODO: read mask properly
                 switch (actual_bytes) {
                     .bgra32 => |pixels| {
                         try readBmpMask(pixels, buffered_stream.reader(), inner_header.width, inner_header.height, .{ .r = 0, .g = 0, .b = 0, .a = 0 });
@@ -331,13 +330,17 @@ pub const ICO = struct {
                     try PNG.write(writer, pixels, header, png_options.filter_choice);
                 },
                 .bmp => {
+                    // TODO: accept different BMP versions
                     try BMP.writeInfoHeader(writer, .{
                         .windows31 = .{
                             .header_size = bmp.BitmapInfoHeaderWindows31.HeaderSize,
                             .width = @intCast(entry_info.width()),
                             .height = @intCast(entry_info.height() * 2),
                             .color_plane = 0,
-                            .bit_count = 32,
+                            .bit_count = switch (pixels) {
+                                .bgra32 => @bitSizeOf(color.Bgra32),
+                                else => return ImageUnmanaged.WriteError.Unsupported,
+                            },
                             .compression_method = .none,
                             .image_raw_size = 0,
                             .horizontal_resolution = 0,
