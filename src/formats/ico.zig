@@ -331,20 +331,21 @@ pub const ICO = struct {
                 },
                 .bmp => {
                     // TODO: accept different BMP versions
+                    const bit_count: u16, const byte_count: usize = switch (pixels) {
+                        .bgra32 => .{ @bitSizeOf(color.Bgra32), @sizeOf(color.Bgra32) },
+                        else => return ImageUnmanaged.WriteError.Unsupported,
+                    };
                     try BMP.writeInfoHeader(writer, .{
                         .windows31 = .{
                             .header_size = bmp.BitmapInfoHeaderWindows31.HeaderSize,
                             .width = @intCast(entry_info.width()),
                             .height = @intCast(entry_info.height() * 2),
-                            .color_plane = 0,
-                            .bit_count = switch (pixels) {
-                                .bgra32 => @bitSizeOf(color.Bgra32),
-                                else => return ImageUnmanaged.WriteError.Unsupported,
-                            },
+                            .color_plane = 1,
+                            .bit_count = bit_count,
                             .compression_method = .none,
-                            .image_raw_size = 0,
-                            .horizontal_resolution = 0,
-                            .vertical_resolution = 0,
+                            .image_raw_size = @intCast(pixels.len() * byte_count),
+                            .horizontal_resolution = 3779, // not sure what to put here
+                            .vertical_resolution = 3779,
                             .palette_size = 0,
                             .important_colors = 0,
                         },
