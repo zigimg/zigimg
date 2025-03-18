@@ -8,6 +8,7 @@ pub const netpbm = @import("formats/netpbm.zig");
 pub const pcx = @import("formats/pcx.zig");
 pub const png = @import("formats/png.zig");
 pub const qoi = @import("formats/qoi.zig");
+pub const ras = @import("formats/ras.zig");
 pub const tga = @import("formats/tga.zig");
 
 test {

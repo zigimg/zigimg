@@ -20,6 +20,7 @@ const SupportedFormats = struct {
     pub const png = formats.png.PNG;
     pub const ppm = formats.netpbm.PPM;
     pub const qoi = formats.qoi.QOI;
+    pub const ras = formats.ras.RAS;
     pub const tga = formats.tga.TGA;
 };
 
@@ -38,6 +39,7 @@ pub const EncoderOptions = union(Format) {
     png: SupportedFormats.png.EncoderOptions,
     ppm: SupportedFormats.ppm.EncoderOptions,
     qoi: SupportedFormats.qoi.EncoderOptions,
+    ras: void,
     tga: SupportedFormats.tga.EncoderOptions,
 };
 
