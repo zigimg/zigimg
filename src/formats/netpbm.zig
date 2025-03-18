@@ -232,7 +232,7 @@ fn loadAsciiRgbmap(header: Header, data: []color.Rgb24, reader: buffered_stream_
     }
 }
 
-fn Netpbm(comptime header_numbers: []const u8) type {
+fn Netpbm(comptime header_numbers: []const u8, comptime supported_format: Format) type {
     return struct {
         header: Header = undefined,
 
@@ -365,6 +365,10 @@ fn Netpbm(comptime header_numbers: []const u8) type {
         pub fn write(self: *Self, write_stream: *ImageUnmanaged.Stream, pixels: color.PixelStorage) ImageWriteError!void {
             var buffered_stream = buffered_stream_source.bufferedStreamSourceWriter(write_stream);
 
+            if (self.header.format != supported_format) {
+                return ImageError.Unsupported;
+            }
+
             const image_type = if (self.header.binary) header_numbers[1] else header_numbers[0];
             const writer = buffered_stream.writer();
             try writer.print("P{c}\n", .{image_type});
@@ -492,6 +496,6 @@ fn Netpbm(comptime header_numbers: []const u8) type {
     };
 }
 
-pub const PBM = Netpbm(&[_]u8{ '1', '4' });
-pub const PGM = Netpbm(&[_]u8{ '2', '5' });
-pub const PPM = Netpbm(&[_]u8{ '3', '6' });
+pub const PBM = Netpbm(&[_]u8{ '1', '4' }, .bitmap);
+pub const PGM = Netpbm(&[_]u8{ '2', '5' }, .grayscale);
+pub const PPM = Netpbm(&[_]u8{ '3', '6' }, .rgb);

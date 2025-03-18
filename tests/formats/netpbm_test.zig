@@ -481,3 +481,110 @@ test "Writing Rgb24 binary PPM format" {
         try helpers.expectEq(read_image_pixels.rgb24[index].toU32Rgb(), hex_color);
     }
 }
+
+test "Trying to write a bitmap or grayscale Netpbm with an true color pixel format will error" {
+    const image_file_name = "zigimg_ppm_rgb24_error_test.ppm";
+
+    var source_image = try Image.create(helpers.zigimg_test_allocator, 8, 1, PixelFormat.rgb24);
+    defer source_image.deinit();
+
+    defer {
+        std.fs.cwd().deleteFile(image_file_name) catch unreachable;
+    }
+
+    const pixels = source_image.pixels;
+
+    // R, G, B
+    pixels.rgb24[0] = color.Rgb24.initRgb(255, 0, 0);
+    pixels.rgb24[1] = color.Rgb24.initRgb(0, 255, 0);
+    pixels.rgb24[2] = color.Rgb24.initRgb(0, 0, 255);
+
+    // Black, white
+    pixels.rgb24[3] = color.Rgb24.initRgb(0, 0, 0);
+    pixels.rgb24[4] = color.Rgb24.initRgb(255, 255, 255);
+
+    // Cyan, Magenta, Yellow
+    pixels.rgb24[5] = color.Rgb24.initRgb(0, 255, 255);
+    pixels.rgb24[6] = color.Rgb24.initRgb(255, 0, 255);
+    pixels.rgb24[7] = color.Rgb24.initRgb(255, 255, 0);
+
+    {
+        const write_error = source_image.writeToFilePath(image_file_name, .{ .pbm = .{} });
+        try std.testing.expectError(Image.WriteError.Unsupported, write_error);
+    }
+
+    {
+        const write_error = source_image.writeToFilePath(image_file_name, .{ .pgm = .{} });
+        try std.testing.expectError(Image.WriteError.Unsupported, write_error);
+    }
+}
+
+test "Trying to write a bitmap or true color Netpbm with a 8-bit grayscale pixel format will error" {
+    const grayscales = [_]u8{
+        0,   29,  56,  85,  113, 142, 170, 199, 227, 255,
+        227, 199, 170, 142, 113, 85,  56,  29,  0,
+    };
+
+    const image_file_name = "zigimg_pgm_error_test.pgm";
+    const width = grayscales.len;
+    const height = 1;
+
+    var source_image = try Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale8);
+    defer source_image.deinit();
+
+    defer {
+        std.fs.cwd().deleteFile(image_file_name) catch unreachable;
+    }
+
+    const source = source_image.pixels;
+    for (grayscales, 0..) |value, index| {
+        source.grayscale8[index].value = value;
+    }
+
+    {
+        const write_error = source_image.writeToFilePath(image_file_name, .{ .pbm = .{} });
+        try std.testing.expectError(Image.WriteError.Unsupported, write_error);
+    }
+
+    {
+        const write_error = source_image.writeToFilePath(image_file_name, .{ .ppm = .{} });
+        try std.testing.expectError(Image.WriteError.Unsupported, write_error);
+    }
+}
+
+test "Trying to write a grayscale or true color Netbpm with a 1-bit grayscale pixel format will error" {
+    const grayscales = [_]u1{
+        1, 0, 0, 1,
+        1, 0, 1, 0,
+        0, 1, 0, 1,
+        1, 1, 1, 0,
+        1, 1,
+    };
+
+    const image_file_name = "zigimg_pbm_error_test.pbm";
+    const width = grayscales.len;
+    const height = 1;
+
+    var source_image = try Image.create(helpers.zigimg_test_allocator, width, height, PixelFormat.grayscale1);
+    defer source_image.deinit();
+
+    defer {
+        std.fs.cwd().deleteFile(image_file_name) catch unreachable;
+    }
+
+    const source = source_image.pixels;
+
+    for (grayscales, 0..) |value, index| {
+        source.grayscale1[index].value = value;
+    }
+
+    {
+        const write_error = source_image.writeToFilePath(image_file_name, .{ .pgm = .{} });
+        try std.testing.expectError(Image.WriteError.Unsupported, write_error);
+    }
+
+    {
+        const write_error = source_image.writeToFilePath(image_file_name, .{ .ppm = .{} });
+        try std.testing.expectError(Image.WriteError.Unsupported, write_error);
+    }
+}
