@@ -354,9 +354,7 @@ pub const ICO = struct {
             const image_size = end_pos - start_pos;
 
             const entry_info_data_size_offset = entries_start + (@sizeOf(u8) * 4 + @sizeOf(u16) * 2 + @sizeOf(u32) * 2) * @as(u64, @intCast(i + 1)) - @sizeOf(u32) * 2;
-            buffered_stream.seekTo(entry_info_data_size_offset) catch unreachable; // TODO: handle error properly
-
-            std.log.info("writing {} at {}", .{ image_size, entry_info_data_size_offset });
+            try buffered_stream.seekTo(entry_info_data_size_offset);
 
             try writer.writeInt(u32, @intCast(image_size), .little);
             try writer.writeInt(u32, @intCast(start_pos), .little);
