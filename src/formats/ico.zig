@@ -335,7 +335,7 @@ pub const ICO = struct {
                         .windows31 = .{
                             .header_size = bmp.BitmapInfoHeaderWindows31.HeaderSize,
                             .width = @intCast(entry_info.width()),
-                            .height = @intCast(entry_info.height()),
+                            .height = @intCast(entry_info.height() * 2),
                             .color_plane = 0,
                             .bit_count = 32,
                             .compression_method = .none,
@@ -347,6 +347,7 @@ pub const ICO = struct {
                         },
                     });
                     try BMP.writePixels(writer, pixels, @intCast(entry_info.width()), @intCast(entry_info.height()));
+                    try writeBmpMaskNoOp(writer, @intCast(entry_info.width()), @intCast(entry_info.height()));
                 },
             }
 
@@ -394,5 +395,22 @@ pub const ICO = struct {
         }
 
         return entries_start;
+    }
+
+    pub fn writeBmpMaskNoOp(
+        writer: anytype,
+        pixel_width: i32,
+        pixel_height: i32,
+    ) !void {
+        var bit_writer = std.io.bitWriter(.big, writer);
+        var x: i32 = 0;
+        var y: i32 = pixel_height - 1;
+        while (y >= 0) : (y -= 1) {
+            x = 0;
+            while (x < pixel_width) : (x += 1) {
+                try bit_writer.writeBits(@as(u1, 1), 1);
+            }
+        }
+        try bit_writer.flushBits();
     }
 };
