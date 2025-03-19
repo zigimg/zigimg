@@ -70,7 +70,7 @@ zig build test
 | GIF           | ✔️            | ❌            |
 | ICO           | ❌            | ❌            |
 | IFF           | ✔️             | ❌            |
-| JPEG          | ❌            | ❌            |
+| JPEG          | ✔️ (Partial)  | ❌            |
 | PAM           | ✔️            | ✔️            |
 | PBM           | ✔️            | ✔️            |
 | PCX           | ✔️            | ✔️            |
@@ -107,6 +107,10 @@ zig build test
  * Supports ACBM (Amiga Basic) files
  * Color cycle chunks are ignored
  * Mask is not supported (skipped)
+
+### JPEG - Joint Photographic Experts Group
+
+ * 8-bit baseline and progressive
 
 ### PAM - Portable Arbitrary Map
 
