@@ -4,6 +4,7 @@ const color = @import("../color.zig");
 const FormatInterface = @import("../FormatInterface.zig");
 const ImageUnmanaged = @import("../ImageUnmanaged.zig");
 const ImageReadError = ImageUnmanaged.ReadError;
+const ImageError = ImageUnmanaged.Error;
 const utils = @import("../utils.zig");
 const std = @import("std");
 const PixelStorage = color.PixelStorage;
@@ -13,6 +14,7 @@ pub const Type = enum(u32) {
     old = 0x0,
     standard = 0x0001,
     byte_encoded = 0x0002,
+    // (X)RGB instead of (X)BGR (and not compressed)
     rgb = 0x0003,
     tiff = 0x0004,
     iff = 0x0005,
@@ -31,7 +33,10 @@ const Header = extern struct {
 
     width: u32 align(1),
     height: u32 align(1),
+    // valid depths are: 1,8,24,32
     depth: u32 align(1),
+    // very old files apparently put 0 here so we cannot rely on it
+    // but need to compute the length instead
     length: u32 align(1),
     type: Type align(1),
     color_map_type: ColorMapType align(1),
@@ -73,14 +78,34 @@ pub const RAS = struct {
         return std.mem.eql(u8, magic_buffer[0..], Header.ras_magic_number[0..]);
     }
 
-    pub fn readImage(allocator: std.mem.Allocator, _: *ImageUnmanaged.Stream) ImageUnmanaged.ReadError!ImageUnmanaged {
+    pub fn pixelFormat(self: *RAS) ImageReadError!PixelFormat {
+        if (self.header.depth == 24) {
+            switch (self.header.type) {
+                .rgb => return PixelFormat.rgb24,
+                .old, .standard => return PixelFormat.bgr24,
+                else => return ImageError.Unsupported,
+            }
+        } else {
+            return ImageError.Unsupported;
+        }
+    }
+
+    pub fn readImage(allocator: std.mem.Allocator, stream: *ImageUnmanaged.Stream) ImageUnmanaged.ReadError!ImageUnmanaged {
         var result = ImageUnmanaged{};
         errdefer result.deinit(allocator);
+
+        var ras = RAS{};
+
+        const pixels = try ras.read(stream, allocator);
+
+        result.pixels = pixels;
+        result.width = ras.width();
+        result.height = ras.height();
 
         return result;
     }
 
-    pub fn read(self: *RAS, stream: *ImageUnmanaged.Stream, _: std.mem.Allocator) ImageUnmanaged.ReadError!color.PixelStorage {
+    pub fn read(self: *RAS, stream: *ImageUnmanaged.Stream, allocator: std.mem.Allocator) ImageUnmanaged.ReadError!color.PixelStorage {
         if (!try formatDetect(stream)) {
             return ImageReadError.InvalidData;
         }
@@ -92,7 +117,23 @@ pub const RAS = struct {
 
         self.header.debug();
 
-        return ImageUnmanaged.ReadError.InvalidData;
+        const pixel_format = try self.pixelFormat();
+
+        const image_width = self.width();
+        const image_height = self.height();
+
+        var pixels = try color.PixelStorage.init(allocator, pixel_format, image_width * image_height);
+        errdefer pixels.deinit(allocator);
+
+        switch (pixels) {
+            .rgb24, .bgr24 => {
+                const pixel_array = pixels.asBytes();
+                _ = try reader.readAll(pixel_array);
+            },
+            else => return ImageError.Unsupported,
+        }
+
+        return pixels;
     }
 
     pub fn writeImage(allocator: std.mem.Allocator, write_stream: *ImageUnmanaged.Stream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageUnmanaged.Stream.WriteError!void {
