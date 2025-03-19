@@ -115,8 +115,6 @@ pub const RAS = struct {
 
         self.header = utils.readStruct(reader, Header, .big) catch return ImageReadError.InvalidData;
 
-        self.header.debug();
-
         const pixel_format = try self.pixelFormat();
 
         const image_width = self.width();

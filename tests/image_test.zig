@@ -382,7 +382,7 @@ test "Should detect IFF/PBM properly" {
 
 test "Should detect RAS properly" {
     const image_tests = &[_][]const u8{
-        helpers.fixtures_path ++ "ras/sample-640x426.ras",
+        helpers.fixtures_path ++ "ras/sample-rgb24.ras",
     };
 
     for (image_tests) |image_path| {

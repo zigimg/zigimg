@@ -19,8 +19,8 @@ test "Should error on non RAS images" {
     try helpers.expectError(invalid_file, Image.ReadError.InvalidData);
 }
 
-test "RAS test file" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ras/sample-640x426.ras");
+test "Sun-Raster 24bit RGB24 uncompressed" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ras/sample-rgb24.ras");
     defer file.close();
 
     var the_bitmap = ras.RAS{};
@@ -29,34 +29,46 @@ test "RAS test file" {
 
     const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(the_bitmap.width(), 664);
+    try helpers.expectEq(the_bitmap.height(), 248);
+    try testing.expect(pixels == .rgb24);
+
+    const indexes = [_]usize{ 8_754, 43_352, 42_224 };
+    const expected_colors = [_]u32{
+        0x21282e,
+        0xe4ad38,
+        0xffffff,
+    };
+
+    for (expected_colors, indexes) |hex_color, index| {
+        try helpers.expectEq(pixels.rgb24[index].toU32Rgb(), hex_color);
+    }
 }
-// test "IFF-PBM indexed8 (chunky Deluxe Paint DOS file)" {
-//     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ilbm/sample-pbm.iff");
-//     defer file.close();
 
-//     var the_bitmap = iff.IFF{};
+test "Sun-Raster 24bit BGR24 uncompressed" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ras/sample-bgr24.ras");
+    defer file.close();
 
-//     var stream_source = std.io.StreamSource{ .file = file };
+    var the_bitmap = ras.RAS{};
 
-//     const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
-//     defer pixels.deinit(helpers.zigimg_test_allocator);
+    var stream_source = std.io.StreamSource{ .file = file };
 
-//     try helpers.expectEq(the_bitmap.width(), 380);
-//     try helpers.expectEq(the_bitmap.height(), 133);
-//     try testing.expect(pixels == .indexed8);
+    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
 
-//     try helpers.expectEq(pixels.indexed8.indices[0], 0);
-//     try helpers.expectEq(pixels.indexed8.indices[141], 58);
+    try helpers.expectEq(the_bitmap.width(), 664);
+    try helpers.expectEq(the_bitmap.height(), 248);
+    try testing.expect(pixels == .bgr24);
 
-//     const palette0 = pixels.indexed8.palette[0];
+    const indexes = [_]usize{ 8_754, 43_352, 42_224 };
+    const expected_colors = [_]u32{
+        0x21292e,
+        0xdeb231,
+        0xffffff,
+    };
 
-//     try helpers.expectEq(palette0.r, 255);
-//     try helpers.expectEq(palette0.g, 255);
-//     try helpers.expectEq(palette0.b, 255);
-
-//     const palette58 = pixels.indexed8.palette[58];
-
-//     try helpers.expectEq(palette58.r, 251);
-//     try helpers.expectEq(palette58.g, 209);
-//     try helpers.expectEq(palette58.b, 148);
-// }
+    for (expected_colors, indexes) |hex_color, index| {
+        try helpers.expectEq(pixels.bgr24[index].toU32Rgb(), hex_color);
+    }
+}
