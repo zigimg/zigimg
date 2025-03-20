@@ -94,36 +94,36 @@ pub const ICO = struct {
         var ico: ICO = .{};
 
         const pixels = try ico.read(allocator, stream);
-        const largest_entry_idx = ico.largestEntryIdx() orelse return ImageUnmanaged.ReadError.Unsupported;
+        const largest_entry_index = ico.largestEntryIndex() orelse return ImageUnmanaged.ReadError.Unsupported;
 
         result.width = ico.width();
         result.height = ico.height();
-        result.pixels = pixels[largest_entry_idx];
+        result.pixels = pixels[largest_entry_index];
 
         return result;
     }
 
-    pub fn largestEntryIdx(self: ICO) ?usize {
+    pub fn largestEntryIndex(self: ICO) ?usize {
         var largest_area: usize = 0;
-        var largest_entry_idx: ?usize = null;
+        var largest_entry_index: ?usize = null;
         for (0.., self.dir.entries) |i, entry| {
             const area: usize = @as(usize, @intCast(entry.image_width)) * @as(usize, @intCast(entry.image_height));
             if (area > largest_area) {
                 largest_area = area;
-                largest_entry_idx = i;
+                largest_entry_index = i;
             }
         }
-        return largest_entry_idx;
+        return largest_entry_index;
     }
 
     pub fn width(self: ICO) usize {
-        const largest_entry_idx = self.largestEntryIdx() orelse return 0;
-        return @intCast(self.dir.entries[largest_entry_idx].image_width);
+        const largest_entry_index = self.largestEntryIndex() orelse return 0;
+        return @intCast(self.dir.entries[largest_entry_index].image_width);
     }
 
     pub fn height(self: ICO) usize {
-        const largest_entry_idx = self.largestEntryIdx() orelse return 0;
-        return @intCast(self.dir.entries[largest_entry_idx].image_height);
+        const largest_entry_index = self.largestEntryIndex() orelse return 0;
+        return @intCast(self.dir.entries[largest_entry_index].image_height);
     }
 
     pub fn read(self: *ICO, allocator: std.mem.Allocator, stream: *ImageUnmanaged.Stream) ![]color.PixelStorage {
