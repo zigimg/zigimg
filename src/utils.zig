@@ -118,7 +118,7 @@ fn swapFieldBytes(data: anytype) StructReadError!void {
             .@"enum" => {
                 const value = @intFromEnum(@field(data, entry.name));
                 if (@bitSizeOf(@TypeOf(value)) > 8) {
-                    @field(data, entry.name) = try std.meta.intToEnum(entry.type, @byteSwap(value));
+                    @field(data, entry.name) = std.meta.intToEnum(entry.type, @byteSwap(value)) catch return StructReadError.InvalidData;
                 } else {
                     _ = std.meta.intToEnum(entry.type, value) catch return StructReadError.InvalidData;
                 }
