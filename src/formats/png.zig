@@ -89,6 +89,7 @@ pub const PNG = struct {
     }
 
     pub fn write(write_stream: *ImageUnmanaged.Stream, pixels: color.PixelStorage, header: HeaderData, filter_choice: filter.FilterChoice) ImageWriteError!void {
+        // TODO: Use buffered writer
         if (header.interlace_method != .none)
             return ImageWriteError.Unsupported;
         if (header.compression_method != .deflate)
@@ -102,8 +103,9 @@ pub const PNG = struct {
         try writeHeader(writer, header);
         if (PixelFormat.isIndexed(pixels)) {
             try writePalette(writer, pixels);
-            try writeTransparencyInfo(writer, pixels); // TODO: pixel format where there is no transparency
         }
+        // Write tRNS chunk if the pixel format can support it
+        try writeTransparencyInfo(writer, pixels);
         try writeData(writer, pixels, header, filter_choice);
         try writeTrailer(writer);
     }
@@ -191,26 +193,57 @@ pub const PNG = struct {
         try chunk.flush();
     }
 
-    // tRNS (if indexed storage with transparency (there may be other uses later))
+    // tRNS (Transparency information)
     fn writeTransparencyInfo(writer: anytype, pixels: color.PixelStorage) ImageWriteError!void {
-        var chunk = chunk_writer.chunkWriter(writer, "tRNS");
-        var chunk_wr = chunk.writer();
+        // TODO: For pixel format with alpha, try to check if the pixel with alpha are all the same color, if yes, we can change the format to their non-alpha counterpart with a tRNS chunk
+        // TODO: For pixel format without alpha, add a write option to force which color should be consider transparent
 
-        const palette = switch (pixels) {
-            .indexed1 => |d| d.palette,
-            .indexed2 => |d| d.palette,
-            .indexed4 => |d| d.palette,
-            .indexed8 => |d| d.palette,
-            .indexed16 => return ImageWriteError.Unsupported,
-            // TODO: png support transparency info for other formats?
-            else => unreachable,
+        const TrnsIndexedWriter = struct {
+            pub fn write(writer_param: anytype, indexed: anytype) ImageWriteError!void {
+                var write_trns: bool = false;
+
+                for (indexed.palette) |entry| {
+                    if (entry.a < std.math.maxInt(u8)) {
+                        write_trns = true;
+                        break;
+                    }
+                }
+
+                if (!write_trns) {
+                    return;
+                }
+
+                var chunk = chunk_writer.chunkWriter(writer_param, "tRNS");
+                var chunk_wr = chunk.writer();
+
+                for (indexed.palette) |col| {
+                    try chunk_wr.writeByte(col.a);
+                }
+
+                try chunk.flush();
+            }
         };
 
-        for (palette) |col| {
-            try chunk_wr.writeByte(col.a);
+        switch (pixels) {
+            .indexed1 => |indexed| {
+                return TrnsIndexedWriter.write(writer, indexed);
+            },
+            .indexed2 => |indexed| {
+                return TrnsIndexedWriter.write(writer, indexed);
+            },
+            .indexed4 => |indexed| {
+                return TrnsIndexedWriter.write(writer, indexed);
+            },
+            .indexed8 => |indexed| {
+                return TrnsIndexedWriter.write(writer, indexed);
+            },
+            .indexed16 => {
+                return ImageWriteError.Unsupported;
+            },
+            else => {
+                // Do nothing
+            },
         }
-
-        try chunk.flush();
     }
 };
 

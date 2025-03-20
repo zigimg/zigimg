@@ -686,7 +686,12 @@ pub const ReaderProcessor = struct {
 /// This processor is used to process the tRNS chunk and add alpha channel to grayscale, indexed or RGB images from it.
 pub const TrnsProcessor = struct {
     const Self = @This();
-    const TRNSData = union(enum) { unset: void, gray: u16, rgb: color.Rgb48, index_alpha: []u8 };
+    const TRNSData = union(enum) {
+        unset: void,
+        gray: u16,
+        rgb: color.Rgb48,
+        index_alpha: []u8,
+    };
 
     trns_data: TRNSData = .unset,
     processed: bool = false,

@@ -7,6 +7,7 @@ const png = @import("../../src/formats/png.zig");
 const types = @import("../../src/formats/png/types.zig");
 const color = @import("../../src/color.zig");
 const Image = @import("../../src/Image.zig");
+const ImageUnmanaged = @import("../../src/ImageUnmanaged.zig");
 const PixelFormat = @import("../../src/pixel_format.zig").PixelFormat;
 const InfoProcessor = @import("../../src/formats/png/InfoProcessor.zig");
 const ImageReadError = Image.ReadError;
@@ -104,7 +105,7 @@ fn testHeaderWithInvalidValue(buf: []u8, position: usize, val: u8) !void {
     buf[position] = origin;
 }
 
-test "Indexed PNG with transparency (Aseprite output)" {
+test "png: Indexed PNG with transparency (Aseprite output)" {
     // mlarouche: While the full test suite already test this image, I like having a smaller test that I can verify
     // some specific info myself
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "png/aseprite_indexed_transparent.png");
@@ -130,6 +131,112 @@ test "Indexed PNG with transparency (Aseprite output)" {
     try helpers.expectEq(pixels8_indexed.palette[1].g, 0x20);
     try helpers.expectEq(pixels8_indexed.palette[1].b, 0x34);
     try helpers.expectEq(pixels8_indexed.palette[1].a, 255);
+}
+
+pub const CheckTrnsPresentProcessor = struct {
+    const Self = @This();
+
+    present: bool = false,
+    trns_processor: png.TrnsProcessor = .{},
+
+    pub fn processor(self: *Self) png.ReaderProcessor {
+        return png.ReaderProcessor.init(
+            png.Chunks.tRNS.id,
+            self,
+            processChunk,
+            processPalette,
+            processDataRow,
+        );
+    }
+
+    pub fn processChunk(self: *Self, data: *png.ChunkProcessData) ImageUnmanaged.ReadError!PixelFormat {
+        self.present = true;
+        return self.trns_processor.processChunk(data);
+    }
+
+    pub fn processPalette(self: *Self, data: *png.PaletteProcessData) ImageUnmanaged.ReadError!void {
+        return self.trns_processor.processPalette(data);
+    }
+
+    pub fn processDataRow(self: *Self, data: *png.RowProcessData) ImageUnmanaged.ReadError!PixelFormat {
+        return self.trns_processor.processDataRow(data);
+    }
+};
+
+test "png: Don't write tRNS chunk in indexed format when there is no alpha" {
+    var source_image = try Image.create(helpers.zigimg_test_allocator, 8, 1, .indexed8);
+    defer source_image.deinit();
+
+    source_image.pixels.indexed8.palette[0] = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
+    source_image.pixels.indexed8.palette[1] = .{ .r = 255, .g = 255, .b = 255, .a = 255 };
+
+    source_image.pixels.indexed8.indices[0] = 0;
+    for (1..source_image.width) |index| {
+        source_image.pixels.indexed8.indices[index] = 1;
+    }
+
+    const image_file_name = "zigimg_png_indexed_no_trns.png";
+    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+        .png = .{},
+    });
+    defer {
+        std.fs.cwd().deleteFile(image_file_name) catch {};
+    }
+
+    const read_file = try helpers.testOpenFile(image_file_name);
+    defer read_file.close();
+
+    var stream_source = std.io.StreamSource{ .file = read_file };
+
+    var check_trns_processor: CheckTrnsPresentProcessor = .{};
+
+    var processors: [1]png.ReaderProcessor = undefined;
+    processors[0] = check_trns_processor.processor();
+
+    const png_reader_options = png.ReaderOptions.initWithProcessors(helpers.zigimg_test_allocator, processors[0..]);
+
+    var read_image = try png.load(&stream_source, helpers.zigimg_test_allocator, png_reader_options);
+    defer read_image.deinit(helpers.zigimg_test_allocator);
+
+    try std.testing.expect(!check_trns_processor.present);
+}
+
+test "png: Write tRNS chunk in indexed format only when alpha is present" {
+    var source_image = try Image.create(helpers.zigimg_test_allocator, 8, 1, .indexed8);
+    defer source_image.deinit();
+
+    source_image.pixels.indexed8.palette[0] = .{ .r = 0, .g = 0, .b = 0, .a = 0 };
+    source_image.pixels.indexed8.palette[1] = .{ .r = 255, .g = 255, .b = 255, .a = 255 };
+
+    source_image.pixels.indexed8.indices[0] = 0;
+    for (1..source_image.width) |index| {
+        source_image.pixels.indexed8.indices[index] = 1;
+    }
+
+    const image_file_name = "zigimg_png_indexed_trns.png";
+    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+        .png = .{},
+    });
+    defer {
+        std.fs.cwd().deleteFile(image_file_name) catch {};
+    }
+
+    const read_file = try helpers.testOpenFile(image_file_name);
+    defer read_file.close();
+
+    var stream_source = std.io.StreamSource{ .file = read_file };
+
+    var check_trns_processor: CheckTrnsPresentProcessor = .{};
+
+    var processors: [1]png.ReaderProcessor = undefined;
+    processors[0] = check_trns_processor.processor();
+
+    const png_reader_options = png.ReaderOptions.initWithProcessors(helpers.zigimg_test_allocator, processors[0..]);
+
+    var read_image = try png.load(&stream_source, helpers.zigimg_test_allocator, png_reader_options);
+    defer read_image.deinit(helpers.zigimg_test_allocator);
+
+    try std.testing.expect(check_trns_processor.present);
 }
 
 test "PNG Official Test Suite" {
