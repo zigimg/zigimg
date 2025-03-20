@@ -70,7 +70,7 @@ zig build test
 | GIF           | ✔️            | ❌            |
 | ICO           | ✔️ (Partial)  | ✔️ (Partial)  |
 | IFF           | ✔️            | ❌            |
-| JPEG          | ❌            | ❌            |
+| JPEG          | ✔️ (Partial)  | ❌            |
 | PAM           | ✔️            | ✔️            |
 | PBM           | ✔️            | ✔️            |
 | PCX           | ✔️            | ✔️            |
@@ -78,6 +78,7 @@ zig build test
 | PNG           | ✔️            | ✔️ (Partial)  |
 | PPM           | ✔️ (Partial)  | ✔️ (Partial)  |
 | QOI           | ✔️            | ✔️            |
+| SUN           | ✔️ (Partial)  | ❌            |
 | TGA           | ✔️            | ✔️            |
 | TIFF          | ❌            | ❌            |
 | XBM           | ❌            | ❌            |
@@ -113,6 +114,10 @@ zig build test
  * Supports ACBM (Amiga Basic) files
  * Color cycle chunks are ignored
  * Mask is not supported (skipped)
+
+### JPEG - Joint Photographic Experts Group
+
+ * 8-bit baseline and progressive
 
 ### PAM - Portable Arbitrary Map
 
@@ -151,9 +156,13 @@ Currently, this only supports a subset of PAMs where:
 * Support 24-bit RGB (8-bit per channel)
 * Missing 48-bit RGB (16-bit per channel)
 
-### QOI - Quite OK Image Format
+### QOI - Quite OK Image format
 
 * Imported from https://github.com/MasterQ32/zig-qoi with blessing of the author
+
+### SUN - Sun Raster format
+
+* Only supports uncompressed 24-bit (RGB24/BGR24)
 
 ### TGA - Truevision TGA format
 
