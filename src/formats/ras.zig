@@ -79,14 +79,10 @@ pub const RAS = struct {
     }
 
     pub fn pixelFormat(self: *RAS) ImageReadError!PixelFormat {
-        if (self.header.depth == 24) {
-            switch (self.header.type) {
-                .rgb => return PixelFormat.rgb24,
-                .old, .standard => return PixelFormat.bgr24,
-                else => return ImageError.Unsupported,
-            }
-        } else {
-            return ImageError.Unsupported;
+        switch (self.header.depth) {
+            24 => return if (self.header.type == .rgb) PixelFormat.rgb24 else PixelFormat.bgr24,
+            32 => return PixelFormat.rgba32,
+            else => return ImageError.Unsupported,
         }
     }
 
@@ -105,13 +101,21 @@ pub const RAS = struct {
         return result;
     }
 
+    pub fn uncompressBitmap(self: *RAS, stream: *ImageUnmanaged.Stream, buffer: []u8) !void {
+        const reader = stream.reader();
+        switch (self.header.type) {
+            // no compression for these types
+            .old, .standard, .rgb => _ = try reader.readAll(buffer[0..]),
+            else => return ImageError.Unsupported,
+        }
+    }
+
     pub fn read(self: *RAS, stream: *ImageUnmanaged.Stream, allocator: std.mem.Allocator) ImageUnmanaged.ReadError!color.PixelStorage {
         if (!try formatDetect(stream)) {
             return ImageReadError.InvalidData;
         }
 
-        var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
-        const reader = buffered_stream.reader();
+        const reader = stream.reader();
 
         self.header = utils.readStruct(reader, Header, .big) catch return ImageReadError.InvalidData;
 
@@ -123,10 +127,33 @@ pub const RAS = struct {
         var pixels = try color.PixelStorage.init(allocator, pixel_format, image_width * image_height);
         errdefer pixels.deinit(allocator);
 
+        const pixel_size = @max(1, (self.header.depth / 8));
+        const buffer: []u8 = try allocator.alloc(u8, image_width * image_height * pixel_size);
+        defer allocator.free(buffer);
+
+        try self.uncompressBitmap(stream, buffer);
+
         switch (pixels) {
             .rgb24, .bgr24 => {
                 const pixel_array = pixels.asBytes();
-                _ = try reader.readAll(pixel_array);
+                @memcpy(pixel_array[0..], buffer[0..]);
+            },
+            .rgba32 => |*storage| {
+                if (self.header.type == .rgb) {
+                    for (0..image_height) |y| {
+                        for (0..image_width) |x| {
+                            const offset = y * image_width + x;
+                            storage.*[offset] = color.Rgba32.initRgb(buffer[offset * pixel_size + 1], buffer[offset * pixel_size + 2], buffer[offset * pixel_size + 3]);
+                        }
+                    }
+                } else {
+                    for (0..image_height) |y| {
+                        for (0..image_width) |x| {
+                            const offset = y * image_width + x;
+                            storage.*[offset] = color.Rgba32.initRgb(buffer[offset * pixel_size + 3], buffer[offset * pixel_size + 2], buffer[offset * pixel_size + 1]);
+                        }
+                    }
+                }
             },
             else => return ImageError.Unsupported,
         }

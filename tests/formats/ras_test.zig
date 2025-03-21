@@ -19,7 +19,7 @@ test "Should error on non RAS images" {
     try helpers.expectError(invalid_file, Image.ReadError.InvalidData);
 }
 
-test "Sun-Raster 24bit RGB24 uncompressed" {
+test "Sun-Raster 24-bit RGB24 uncompressed" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ras/sample-rgb24.ras");
     defer file.close();
 
@@ -46,7 +46,7 @@ test "Sun-Raster 24bit RGB24 uncompressed" {
     }
 }
 
-test "Sun-Raster 24bit BGR24 uncompressed" {
+test "Sun-Raster 24-bit BGR24 uncompressed" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ras/sample-bgr24.ras");
     defer file.close();
 
@@ -70,5 +70,28 @@ test "Sun-Raster 24bit BGR24 uncompressed" {
 
     for (expected_colors, indexes) |hex_color, index| {
         try helpers.expectEq(pixels.bgr24[index].toU32Rgb(), hex_color);
+    }
+}
+
+test "Sun-Raster 32-bit xRGB uncompressed" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ras/sample-xrgb32.ras");
+    defer file.close();
+
+    var the_bitmap = ras.RAS{};
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(the_bitmap.width(), 1250);
+    try helpers.expectEq(the_bitmap.height(), 438);
+    try testing.expect(pixels == .rgba32);
+
+    const indexes = [_]usize{ 25_100, 125_060, 261_940 };
+    const expected_colors = [_]u32{ 0x0, 0xf7a41d, 0x121212 };
+
+    for (expected_colors, indexes) |hex_color, index| {
+        try helpers.expectEq(pixels.rgba32[index].toU32Rgb(), hex_color);
     }
 }
