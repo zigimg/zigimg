@@ -320,7 +320,7 @@ pub fn flipVertically(self: *const ImageUnmanaged, allocator: std.mem.Allocator)
     defer allocator.free(temp);
     while (row < self.height / 2) : (row += 1) {
         const row1_data = image_data[row * row_size .. (row + 1) * row_size - 1];
-        const row2_data = image_data[(self.height - 1 - row) * row_size .. (self.height - 1 - row + 1) * row_size - 1];
+        const row2_data = image_data[(self.height - 1 - row) * row_size .. (self.height - row) * row_size - 1];
         @memcpy(temp, row1_data);
         @memcpy(row1_data, row2_data);
         @memcpy(row2_data, temp);
