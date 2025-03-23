@@ -313,14 +313,13 @@ pub fn iterator(self: *const ImageUnmanaged) color.PixelStorageIterator {
 /// Flip the image vertically, along the X axis.
 pub fn flipVertically(self: *const ImageUnmanaged, allocator: std.mem.Allocator) !void {
     const row_size: usize = self.rowByteSize();
-    const image_data = self.pixels.asBytes();
+    var image_data = self.pixels.asBytes();
 
-    var row: usize = 0;
-    const temp = try allocator.alloc(u8, row_size - 1);
+    const temp = try allocator.alloc(u8, row_size);
     defer allocator.free(temp);
-    while (row < self.height / 2) : (row += 1) {
-        const row1_data = image_data[row * row_size .. (row + 1) * row_size - 1];
-        const row2_data = image_data[(self.height - 1 - row) * row_size .. (self.height - row) * row_size - 1];
+    while (image_data.len > row_size) : (image_data = image_data[row_size..(image_data.len - row_size)]) {
+        const row1_data = image_data[0..row_size];
+        const row2_data = image_data[image_data.len - row_size .. image_data.len];
         @memcpy(temp, row1_data);
         @memcpy(row1_data, row2_data);
         @memcpy(row2_data, temp);
