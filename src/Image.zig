@@ -152,6 +152,11 @@ pub fn iterator(self: *const Image) color.PixelStorageIterator {
     return color.PixelStorageIterator.init(&self.pixels);
 }
 
+/// Flip the image vertically, along the X axis.
+pub fn flipVertically(self: *const Image) void {
+    try ImageUnmanaged.flipVertically(@ptrCast(self), self.allocator);
+}
+
 /// Convert to unmanaged version
 pub fn toUnmanaged(self: Image) ImageUnmanaged {
     return .{

@@ -310,6 +310,23 @@ pub fn iterator(self: *const ImageUnmanaged) color.PixelStorageIterator {
     return color.PixelStorageIterator.init(&self.pixels);
 }
 
+/// Flip the image vertically, along the X axis.
+pub fn flipVertically(self: *const ImageUnmanaged, allocator: std.mem.Allocator) !void {
+    const row_size: usize = self.rowByteSize();
+    const image_data = self.pixels.asBytes();
+
+    var row: usize = 0;
+    const temp = try allocator.alloc(u8, row_size - 1);
+    defer allocator.free(temp);
+    while (row < self.height / 2) : (row += 1) {
+        const row1_data = image_data[row * row_size .. (row + 1) * row_size - 1];
+        const row2_data = image_data[(self.height - 1 - row) * row_size .. (self.height - 1 - row + 1) * row_size - 1];
+        @memcpy(temp, row1_data);
+        @memcpy(row1_data, row2_data);
+        @memcpy(row2_data, temp);
+    }
+}
+
 fn internalDetectFormat(stream: *Stream) !Format {
     for (all_interface_funcs, 0..) |intefaceFn, format_index| {
         const formatInterface = intefaceFn();
