@@ -162,6 +162,7 @@ pub fn flipHorizontally(self: *const Image) ImageEditor.Error!void {
 pub fn iterator(self: *const Image) color.PixelStorageIterator {
     return color.PixelStorageIterator.init(&self.pixels);
 }
+
 /// Convert to unmanaged version
 pub fn toUnmanaged(self: Image) ImageUnmanaged {
     return .{
