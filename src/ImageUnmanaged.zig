@@ -4,6 +4,7 @@ const formats = @import("formats.zig");
 const Image = @import("Image.zig");
 const PixelFormat = @import("pixel_format.zig").PixelFormat;
 const PixelFormatConverter = @import("PixelFormatConverter.zig");
+const ImageEditor = @import("ImageEditor.zig");
 const std = @import("std");
 const utils = @import("utils.zig");
 
@@ -305,25 +306,19 @@ pub fn convertNoFree(self: *ImageUnmanaged, allocator: std.mem.Allocator, destin
     self.pixels = new_pixels;
 }
 
+/// Flip the image vertically, along the X axis.
+pub fn flipVertically(self: *const ImageUnmanaged, allocator: std.mem.Allocator) ImageEditor.Error!void {
+    ImageEditor.flipVertically(self, allocator);
+}
+
+/// Flip the image horizontally, along the Y axis.
+pub fn flipHorizontally(self: *const ImageUnmanaged, allocator: std.mem.Allocator) ImageEditor.Error!void {
+    ImageEditor.flipHorizontally(self, allocator);
+}
+
 /// Iterate the pixel in pixel-format agnostic way. In the case of an animation, it returns an iterator for the first frame. The iterator is read-only.
 pub fn iterator(self: *const ImageUnmanaged) color.PixelStorageIterator {
     return color.PixelStorageIterator.init(&self.pixels);
-}
-
-/// Flip the image vertically, along the X axis.
-pub fn flipVertically(self: *const ImageUnmanaged, allocator: std.mem.Allocator) !void {
-    const row_size: usize = self.rowByteSize();
-    var image_data = self.pixels.asBytes();
-
-    const temp = try allocator.alloc(u8, row_size);
-    defer allocator.free(temp);
-    while (image_data.len > row_size) : (image_data = image_data[row_size..(image_data.len - row_size)]) {
-        const row1_data = image_data[0..row_size];
-        const row2_data = image_data[image_data.len - row_size .. image_data.len];
-        @memcpy(temp, row1_data);
-        @memcpy(row1_data, row2_data);
-        @memcpy(row2_data, temp);
-    }
 }
 
 fn internalDetectFormat(stream: *Stream) !Format {

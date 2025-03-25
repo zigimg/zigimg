@@ -2,6 +2,7 @@ const std = @import("std");
 const color = @import("color.zig");
 const ImageUnmanaged = @import("ImageUnmanaged.zig");
 const PixelFormat = @import("pixel_format.zig").PixelFormat;
+const ImageEditor = @import("ImageEditor.zig");
 
 pub const Error = ImageUnmanaged.Error;
 
@@ -145,18 +146,22 @@ pub fn convert(self: *Image, destination_format: PixelFormat) ConvertError!void 
     return ImageUnmanaged.convert(@ptrCast(self), self.allocator, destination_format);
 }
 
+/// Flip the image vertically, along the X axis.
+pub fn flipVertically(self: *const Image) ImageEditor.Error!void {
+    try ImageUnmanaged.flipVertically(@ptrCast(self), self.allocator);
+}
+
+/// Flip the image horizontally, along the Y axis.
+pub fn flipHorizontally(self: *const Image) ImageEditor.Error!void {
+    try ImageUnmanaged.flipHorizontally(@ptrCast(self), self.allocator);
+}
+
 /// Iterate the pixel in pixel-format agnostic way. In the case of an animation, it returns an iterator for the first frame. The iterator is read-only.
 // FIXME: *const Image is a workaround for a stage2 bug because determining the pass a parameter by value or pointer depending of the size is not mature yet
 // and fails. For now we are explictly requesting to access only a const pointer.
 pub fn iterator(self: *const Image) color.PixelStorageIterator {
     return color.PixelStorageIterator.init(&self.pixels);
 }
-
-/// Flip the image vertically, along the X axis.
-pub fn flipVertically(self: *const Image) void {
-    try ImageUnmanaged.flipVertically(@ptrCast(self), self.allocator);
-}
-
 /// Convert to unmanaged version
 pub fn toUnmanaged(self: Image) ImageUnmanaged {
     return .{
