@@ -4,7 +4,7 @@ const ImageUnmanaged = @import("ImageUnmanaged.zig");
 pub const Error = std.mem.Allocator.Error;
 
 /// Flip the image vertically, along the X axis.
-pub fn flipVertically(image: *const ImageUnmanaged, allocator: std.mem.Allocator) ImageUnmanaged.EditError!void {
+pub fn flipVertically(image: *const ImageUnmanaged, allocator: std.mem.Allocator) Error!void {
     const row_size: usize = image.rowByteSize();
     var image_data = image.pixels.asBytes();
 
@@ -20,7 +20,7 @@ pub fn flipVertically(image: *const ImageUnmanaged, allocator: std.mem.Allocator
 }
 
 /// Flip the image horizontally, along the Y axis.
-pub fn flipHorizontally(image: *const ImageUnmanaged, allocator: std.mem.Allocator) ImageUnmanaged.EditError!void {
+pub fn flipHorizontally(image: *const ImageUnmanaged, allocator: std.mem.Allocator) Error!void {
     _ = image;
     _ = allocator;
 }
