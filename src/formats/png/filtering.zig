@@ -82,7 +82,7 @@ fn fillScanline(pixels: color.PixelStorage, scanline_bytes: []u8, y: usize, widt
     const pixel_format: PixelFormat = std.meta.activeTag(pixels);
     const bit_depth = pixel_format.bitsPerChannel();
     switch (bit_depth) {
-        4 => {
+        2, 4 => {
             const source_row_bytes = pixels_scanline.asConstBytes();
 
             @memset(scanline_bytes, 0);
@@ -99,6 +99,9 @@ fn fillScanline(pixels: color.PixelStorage, scanline_bytes: []u8, y: usize, widt
                 shift -= bit_depth_reduced;
                 if (shift < 0) {
                     destination_index += 1;
+                    if (destination_index >= scanline_bytes.len) {
+                        break;
+                    }
                     shift = @intCast(8 - bit_depth);
                 }
             }
