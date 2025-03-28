@@ -1,12 +1,13 @@
 // Implement PNG image format according to W3C Portable Network Graphics (PNG) specification second edition (ISO/IEC 15948:2003 (E))
 // Last version: https://www.w3.org/TR/PNG/
 
+const buffered_stream_source = @import("../buffered_stream_source.zig");
 const chunk_writer = @import("png/chunk_writer.zig");
 const color = @import("../color.zig");
 const filter = @import("png/filtering.zig");
 const FormatInterface = @import("../FormatInterface.zig");
-const ImageUnmanaged = @import("../ImageUnmanaged.zig");
 const ImageReadError = ImageUnmanaged.ReadError;
+const ImageUnmanaged = @import("../ImageUnmanaged.zig");
 const ImageWriteError = ImageUnmanaged.WriteError;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const reader = @import("png/reader.zig");
@@ -88,7 +89,8 @@ pub const PNG = struct {
     }
 
     pub fn write(allocator: std.mem.Allocator, write_stream: *ImageUnmanaged.Stream, pixels: color.PixelStorage, header: HeaderData, filter_choice: filter.FilterChoice) ImageWriteError!void {
-        // TODO: Use buffered writer
+        var buffered_stream = buffered_stream_source.bufferedStreamSourceWriter(write_stream);
+
         if (header.interlace_method != .none)
             return ImageWriteError.Unsupported;
         if (header.compression_method != .deflate)
@@ -96,7 +98,7 @@ pub const PNG = struct {
         if (header.filter_method != .adaptive)
             return ImageWriteError.Unsupported;
 
-        const writer = write_stream.writer();
+        const writer = buffered_stream.writer();
 
         try writeSignature(writer);
         try writeHeader(writer, header);
@@ -107,6 +109,8 @@ pub const PNG = struct {
         try writeTransparencyInfo(writer, pixels);
         try writeData(allocator, writer, pixels, header, filter_choice);
         try writeTrailer(writer);
+
+        try buffered_stream.flush();
     }
 
     pub fn ensureWritable(image: ImageUnmanaged) !void {
