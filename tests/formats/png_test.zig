@@ -239,45 +239,57 @@ test "png: Write tRNS chunk in indexed format only when alpha is present" {
     try std.testing.expect(check_trns_processor.present);
 }
 
-// test "png: Write indexed4 format" {
-//     const SOURCE_WIDTH = 16;
-//     const SOURCE_HEIGHT = 16;
+test "png: Write indexed4 format" {
+    const SOURCE_WIDTH = 513;
+    const SOURCE_HEIGHT = 486;
 
-//     var source_image = try Image.create(helpers.zigimg_test_allocator, SOURCE_WIDTH, SOURCE_HEIGHT, .indexed4);
-//     defer source_image.deinit();
+    var source_image = try Image.create(helpers.zigimg_test_allocator, SOURCE_WIDTH, SOURCE_HEIGHT, .indexed4);
+    defer source_image.deinit();
 
-//     for (0..16) |index| {
-//         source_image.pixels.indexed4.palette[index] = .{ .r = @truncate(index * 16), .g = @truncate(index * 16), .b = @truncate(index * 16), .a = 255 };
-//     }
+    for (0..16) |palette_index| {
+        source_image.pixels.indexed4.palette[palette_index] = .{
+            .r = @truncate(palette_index % 16),
+            .g = @truncate(palette_index % 8),
+            .b = @truncate(palette_index % 4),
+            .a = 255,
+        };
+    }
 
-//     for (0..(SOURCE_WIDTH * SOURCE_HEIGHT)) |index| {
-//         source_image.pixels.indexed4.indices[index] = @truncate(index % 16);
-//     }
+    for (0..(SOURCE_WIDTH * SOURCE_HEIGHT)) |index| {
+        source_image.pixels.indexed4.indices[index] = @truncate(index % 16);
+    }
 
-//     const image_file_name = "zigimg_png_indexed4.png";
-//     try source_image.writeToFilePath(image_file_name, .{ .png = .{} });
-//     defer {
-//         std.fs.cwd().deleteFile(image_file_name) catch {};
-//     }
+    const image_file_name = "zigimg_png_indexed4.png";
+    try source_image.writeToFilePath(image_file_name, .{ .png = .{} });
+    defer {
+        std.fs.cwd().deleteFile(image_file_name) catch {};
+    }
 
-//     const read_file = try helpers.testOpenFile(image_file_name);
-//     defer read_file.close();
+    const read_file = try helpers.testOpenFile(image_file_name);
+    defer read_file.close();
 
-//     var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.io.StreamSource{ .file = read_file };
 
-//     var options = png.DefaultOptions.init(.{});
+    var options = png.DefaultOptions.init(.{});
 
-//     var read_image = try png.load(&stream_source, helpers.zigimg_test_allocator, options.get());
-//     defer read_image.deinit(helpers.zigimg_test_allocator);
+    var read_image = try png.load(&stream_source, helpers.zigimg_test_allocator, options.get());
+    defer read_image.deinit(helpers.zigimg_test_allocator);
 
-//     try std.testing.expect(read_image.pixels == .indexed4);
-//     try helpers.expectEq(read_image.width, SOURCE_WIDTH);
-//     try helpers.expectEq(read_image.height, SOURCE_HEIGHT);
+    try std.testing.expect(read_image.pixels == .indexed4);
+    try helpers.expectEq(read_image.width, SOURCE_WIDTH);
+    try helpers.expectEq(read_image.height, SOURCE_HEIGHT);
 
-//     for (0..(SOURCE_WIDTH * SOURCE_HEIGHT)) |index| {
-//         try helpers.expectEq(read_image.pixels.indexed4.indices[index], @as(u4, @truncate(index % 16)));
-//     }
-// }
+    for (0..16) |palette_index| {
+        try helpers.expectEq(read_image.pixels.indexed4.palette[palette_index].r, @as(u8, @truncate(palette_index % 16)));
+        try helpers.expectEq(read_image.pixels.indexed4.palette[palette_index].g, @as(u8, @truncate(palette_index % 8)));
+        try helpers.expectEq(read_image.pixels.indexed4.palette[palette_index].b, @as(u8, @truncate(palette_index % 4)));
+        try helpers.expectEq(read_image.pixels.indexed4.palette[palette_index].a, 255);
+    }
+
+    for (0..(SOURCE_WIDTH * SOURCE_HEIGHT)) |index| {
+        try helpers.expectEq(read_image.pixels.indexed4.indices[index], @as(u4, @truncate(index % 16)));
+    }
+}
 
 test "png: Write indexed8 format" {
     const SOURCE_WIDTH = 513;
@@ -328,6 +340,42 @@ test "png: Write indexed8 format" {
 
     for (0..(SOURCE_WIDTH * SOURCE_HEIGHT)) |index| {
         try helpers.expectEq(read_image.pixels.indexed8.indices[index], @as(u8, @truncate(index % 256)));
+    }
+}
+
+test "png: Write grayscale4 format" {
+    const SOURCE_WIDTH = 457;
+    const SOURCE_HEIGHT = 568;
+
+    var source_image = try Image.create(helpers.zigimg_test_allocator, SOURCE_WIDTH, SOURCE_HEIGHT, .grayscale4);
+    defer source_image.deinit();
+
+    for (0..(SOURCE_WIDTH * SOURCE_HEIGHT)) |index| {
+        source_image.pixels.grayscale4[index].value = @truncate(index % 16);
+    }
+
+    const image_file_name = "zigimg_png_grayscale4.png";
+    try source_image.writeToFilePath(image_file_name, .{ .png = .{} });
+    defer {
+        std.fs.cwd().deleteFile(image_file_name) catch {};
+    }
+
+    const read_file = try helpers.testOpenFile(image_file_name);
+    defer read_file.close();
+
+    var stream_source = std.io.StreamSource{ .file = read_file };
+
+    var options = png.DefaultOptions.init(.{});
+
+    var read_image = try png.load(&stream_source, helpers.zigimg_test_allocator, options.get());
+    defer read_image.deinit(helpers.zigimg_test_allocator);
+
+    try std.testing.expect(read_image.pixels == .grayscale4);
+    try helpers.expectEq(read_image.width, SOURCE_WIDTH);
+    try helpers.expectEq(read_image.height, SOURCE_HEIGHT);
+
+    for (0..(SOURCE_WIDTH * SOURCE_HEIGHT)) |index| {
+        try helpers.expectEq(read_image.pixels.grayscale4[index].value, @as(u4, @truncate(index % 16)));
     }
 }
 

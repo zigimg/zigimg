@@ -116,9 +116,23 @@ pub const PNG = struct {
             return error.Unsupported;
 
         switch (image.pixels) {
-            .rgb24, .rgb48, .rgba32, .rgba64, .grayscale8, .grayscale16, .grayscale8Alpha, .grayscale16Alpha, .indexed4, .indexed8 => {},
-
-            .grayscale1, .grayscale2, .grayscale4, .indexed1, .indexed2 => return error.Unsupported, // TODO
+            .indexed4,
+            .indexed8,
+            .grayscale4,
+            .grayscale8,
+            .grayscale16,
+            .grayscale8Alpha,
+            .grayscale16Alpha,
+            .rgb24,
+            .rgb48,
+            .rgba32,
+            .rgba64,
+            => {},
+            .grayscale1,
+            .grayscale2,
+            .indexed1,
+            .indexed2,
+            => return error.Unsupported, // TODO
 
             // Should bgr be supported with swapping operations during the filtering?
 
