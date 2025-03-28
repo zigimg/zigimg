@@ -116,9 +116,11 @@ pub const PNG = struct {
             return error.Unsupported;
 
         switch (image.pixels) {
+            .indexed1,
             .indexed2,
             .indexed4,
             .indexed8,
+            .grayscale1,
             .grayscale2,
             .grayscale4,
             .grayscale8,
@@ -130,13 +132,7 @@ pub const PNG = struct {
             .rgba32,
             .rgba64,
             => {},
-            .grayscale1,
-
-            .indexed1,
-            => return error.Unsupported, // TODO
-
-            // Should bgr be supported with swapping operations during the filtering?
-
+            // TODO: Support other formats when the write options ask for conversion.
             else => return error.Unsupported,
         }
     }
