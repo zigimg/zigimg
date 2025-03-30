@@ -149,7 +149,7 @@ Currently, this only supports a subset of PAMs where:
 
 * Support all pixel formats supported by PNG (grayscale, grayscale+alpha, indexed, truecolor, truecolor with alpha) in 8-bit or 16-bit.
 * Support the mininal chunks in order to decode the image.
-* Not all images in Png Test Suite is covered but should be good enough for now.
+* Can write all supported pixel formats but writing interlaced images is not supported yet.
 
 ### PPM - Portable Pixmap format
 

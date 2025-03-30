@@ -25,36 +25,42 @@ pub const FilterChoice = union(FilterChoiceStrategies) {
     specified: FilterType,
 };
 
-pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: FilterChoice, header: HeaderData) Image.WriteError!void {
-    var scanline: color.PixelStorage = undefined;
-    var previous_scanline: ?color.PixelStorage = null;
+pub fn filter(allocator: std.mem.Allocator, writer: anytype, pixels: color.PixelStorage, filter_choice: FilterChoice, header: HeaderData) Image.WriteError!void {
+    const line_bytes = header.lineBytes();
+    const scanline_allocation_size = 2 * line_bytes;
+
+    const scanline_buffer = try allocator.alloc(u8, scanline_allocation_size);
+    defer allocator.free(scanline_buffer);
+
+    const previous_scanline_row = scanline_buffer[0..line_bytes];
+    const current_scanline_row = scanline_buffer[line_bytes..(2 * line_bytes)];
+
+    // Fill previous scanline with 0
+    @memset(previous_scanline_row, 0);
 
     const format: PixelFormat = pixels;
-
-    if (format.bitsPerChannel() < 8)
-        return Image.WriteError.Unsupported;
 
     const pixel_len = format.pixelStride();
 
     var y: usize = 0;
     while (y < header.height) : (y += 1) {
-        scanline = pixels.slice(y * header.width, (y + 1) * header.width);
+        fillScanline(pixels, current_scanline_row, y, header.width);
 
         const filter_type: FilterType = switch (filter_choice) {
             .try_all => @panic("Unimplemented"),
-            .heuristic => filterChoiceHeuristic(scanline, previous_scanline),
+            .heuristic => filterChoiceHeuristic(current_scanline_row, previous_scanline_row),
             .specified => |f| f,
         };
 
         writer.writeByte(@intFromEnum(filter_type)) catch return Image.WriteError.InvalidData;
 
-        for (0..scanline.asBytes().len) |byte_index| {
-            const i = if (builtin.target.cpu.arch.endian() == .little) pixelByteSwappedIndex(scanline, byte_index) else byte_index;
+        for (0..current_scanline_row.len) |byte_index| {
+            const i = byte_index;
 
-            const sample = scanline.asBytes()[i];
-            const previous: u8 = if (byte_index >= pixel_len) scanline.asBytes()[i - pixel_len] else 0;
-            const above: u8 = if (previous_scanline) |b| b.asBytes()[i] else 0;
-            const above_previous = if (previous_scanline) |b| (if (byte_index >= pixel_len) b.asBytes()[i - pixel_len] else 0) else 0;
+            const sample = current_scanline_row[i];
+            const previous: u8 = if (byte_index >= pixel_len) current_scanline_row[i - pixel_len] else 0;
+            const above: u8 = previous_scanline_row[i];
+            const above_previous = if (byte_index >= pixel_len) previous_scanline_row[i - pixel_len] else 0;
 
             const byte: u8 = switch (filter_type) {
                 .none => sample,
@@ -66,43 +72,64 @@ pub fn filter(writer: anytype, pixels: color.PixelStorage, filter_choice: Filter
 
             writer.writeByte(byte) catch return Image.WriteError.InvalidData;
         }
-        previous_scanline = scanline;
+
+        @memcpy(previous_scanline_row, current_scanline_row);
     }
 }
 
-// Map the index of a byte to what it would be if each struct element was byte swapped
-fn pixelByteSwappedIndex(storage: color.PixelStorage, index: usize) usize {
-    return switch (storage) {
-        .invalid => index,
-        inline .indexed1, .indexed2, .indexed4, .indexed8, .indexed16 => |data| byteSwappedIndex(@typeInfo(@TypeOf(data.indices)).pointer.child, index),
-        inline else => |data| byteSwappedIndex(@typeInfo(@TypeOf(data)).pointer.child, index),
-    };
-}
+fn fillScanline(pixels: color.PixelStorage, scanline_bytes: []u8, y: usize, width: usize) void {
+    const pixels_scanline = pixels.slice(y * width, (y + 1) * width);
+    const pixel_format: PixelFormat = std.meta.activeTag(pixels);
+    const bit_depth = pixel_format.bitsPerChannel();
+    switch (bit_depth) {
+        1, 2, 4 => {
+            const source_row_bytes = pixels_scanline.asConstBytes();
 
-// Map the index of a byte to what it would be if each struct element was byte swapped
-fn byteSwappedIndex(comptime T: type, byte_index: usize) usize {
-    const element_index = byte_index / @sizeOf(T);
-    const element_offset = element_index * @sizeOf(T);
-    const index = byte_index % @sizeOf(T);
-    switch (@typeInfo(T)) {
-        .int => {
-            if (@sizeOf(T) == 1) return byte_index;
-            return element_offset + @sizeOf(T) - 1 - index;
-        },
-        .@"struct" => |info| {
-            inline for (info.fields) |field| {
-                if (index >= @offsetOf(T, field.name) or index <= @offsetOf(T, field.name) + @sizeOf(field.type)) {
-                    if (@sizeOf(field.type) == 1) return byte_index;
-                    return element_offset + @sizeOf(field.type) - 1 - index;
+            @memset(scanline_bytes, 0);
+
+            var destination_index: usize = 0;
+
+            const bit_depth_reduced: u3 = @intCast(bit_depth);
+
+            var shift: i8 = @intCast(8 - bit_depth);
+            const mask: u8 = (@as(u8, 1) << bit_depth_reduced) - 1;
+
+            for (source_row_bytes) |source_byte| {
+                scanline_bytes[destination_index] |= (source_byte & mask) << @as(u3, @intCast(shift));
+                shift -= bit_depth_reduced;
+                if (shift < 0) {
+                    destination_index += 1;
+                    if (destination_index >= scanline_bytes.len) {
+                        break;
+                    }
+                    shift = @intCast(8 - bit_depth);
                 }
             }
         },
-        else => @compileError("type " ++ @typeName(T) ++ " not supported"),
+        8 => {
+            const source_row_bytes = pixels_scanline.asConstBytes();
+
+            @memcpy(scanline_bytes, source_row_bytes);
+        },
+        16 => {
+            const source_row_bytes = pixels_scanline.asConstBytes();
+
+            const source_row_u16 = std.mem.bytesAsSlice(u16, source_row_bytes);
+            var destination_scanline_u16 = std.mem.bytesAsSlice(u16, scanline_bytes);
+
+            const need_byteswap = builtin.target.cpu.arch.endian() == .little;
+
+            const length = scanline_bytes.len / 2;
+            for (0..length) |index| {
+                destination_scanline_u16[index] = if (need_byteswap) @byteSwap(source_row_u16[index]) else source_row_u16[index];
+            }
+        },
+        else => {},
     }
 }
 
-fn filterChoiceHeuristic(scanline: color.PixelStorage, previous_scanline: ?color.PixelStorage) FilterType {
-    const pixel_len = @as(PixelFormat, scanline).pixelStride();
+fn filterChoiceHeuristic(scanline: []const u8, previous_scanline: []const u8) FilterType {
+    const pixel_len = scanline.len;
 
     const filter_types = [_]FilterType{ .none, .sub, .up, .average, .paeth };
 
@@ -110,10 +137,10 @@ fn filterChoiceHeuristic(scanline: color.PixelStorage, previous_scanline: ?color
     var combos: [filter_types.len]usize = @splat(0);
     var scores: [filter_types.len]usize = @splat(0);
 
-    for (scanline.asBytes(), 0..) |sample, i| {
-        const previous: u8 = if (i >= pixel_len) scanline.asBytes()[i - pixel_len] else 0;
-        const above: u8 = if (previous_scanline) |b| b.asBytes()[i] else 0;
-        const above_previous = if (previous_scanline) |b| (if (i >= pixel_len) b.asBytes()[i - pixel_len] else 0) else 0;
+    for (scanline, 0..) |sample, i| {
+        const previous: u8 = if (i >= pixel_len) scanline[i - pixel_len] else 0;
+        const above: u8 = previous_scanline[i];
+        const above_previous = if (i >= pixel_len) previous_scanline[i - pixel_len] else 0;
 
         inline for (filter_types, &previous_bytes, &combos, &scores) |filter_type, *previous_byte, *combo, *score| {
             const byte: u8 = switch (filter_type) {
@@ -181,7 +208,7 @@ test "filtering 16-bit grayscale pixels uses correct endianess" {
     defer std.testing.allocator.free(pixels);
 
     // We specify the endianess as none to simplify the test
-    try filter(output_bytes.writer(), .{ .grayscale16 = pixels }, .{ .specified = .none }, .{
+    try filter(std.testing.allocator, output_bytes.writer(), .{ .grayscale16 = pixels }, .{ .specified = .none }, .{
         .width = 4,
         .height = 2,
         .bit_depth = 16,

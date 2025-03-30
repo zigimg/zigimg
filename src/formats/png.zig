@@ -1,13 +1,13 @@
 // Implement PNG image format according to W3C Portable Network Graphics (PNG) specification second edition (ISO/IEC 15948:2003 (E))
 // Last version: https://www.w3.org/TR/PNG/
 
-const Allocator = std.mem.Allocator;
+const buffered_stream_source = @import("../buffered_stream_source.zig");
 const chunk_writer = @import("png/chunk_writer.zig");
 const color = @import("../color.zig");
 const filter = @import("png/filtering.zig");
 const FormatInterface = @import("../FormatInterface.zig");
-const ImageUnmanaged = @import("../ImageUnmanaged.zig");
 const ImageReadError = ImageUnmanaged.ReadError;
+const ImageUnmanaged = @import("../ImageUnmanaged.zig");
 const ImageWriteError = ImageUnmanaged.WriteError;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const reader = @import("png/reader.zig");
@@ -63,12 +63,12 @@ pub const PNG = struct {
         return std.mem.eql(u8, magic_buffer[0..], types.magic_header[0..]);
     }
 
-    pub fn readImage(allocator: Allocator, stream: *ImageUnmanaged.Stream) ImageReadError!ImageUnmanaged {
+    pub fn readImage(allocator: std.mem.Allocator, stream: *ImageUnmanaged.Stream) ImageReadError!ImageUnmanaged {
         var options = DefaultOptions.init(.{});
         return load(stream, allocator, options.get());
     }
 
-    pub fn writeImage(_: Allocator, write_stream: *ImageUnmanaged.Stream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageWriteError!void {
+    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *ImageUnmanaged.Stream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageWriteError!void {
         const options = encoder_options.png;
 
         try ensureWritable(image);
@@ -85,11 +85,12 @@ pub const PNG = struct {
 
         std.debug.assert(header.isValid());
 
-        const writer = write_stream.writer();
-        try write(writer, image.pixels, header, options.filter_choice);
+        var buffered_stream = buffered_stream_source.bufferedStreamSourceWriter(write_stream);
+        try write(allocator, buffered_stream.writer(), image.pixels, header, options.filter_choice);
+        try buffered_stream.flush();
     }
 
-    pub fn write(writer: anytype, pixels: color.PixelStorage, header: HeaderData, filter_choice: filter.FilterChoice) ImageWriteError!void {
+    pub fn write(allocator: std.mem.Allocator, writer: anytype, pixels: color.PixelStorage, header: HeaderData, filter_choice: filter.FilterChoice) ImageWriteError!void {
         if (header.interlace_method != .none)
             return ImageWriteError.Unsupported;
         if (header.compression_method != .deflate)
@@ -104,7 +105,7 @@ pub const PNG = struct {
         }
         // Write tRNS chunk if the pixel format can support it
         try writeTransparencyInfo(writer, pixels);
-        try writeData(writer, pixels, header, filter_choice);
+        try writeData(allocator, writer, pixels, header, filter_choice);
         try writeTrailer(writer);
     }
 
@@ -115,12 +116,23 @@ pub const PNG = struct {
             return error.Unsupported;
 
         switch (image.pixels) {
-            .rgb24, .rgb48, .rgba32, .rgba64, .grayscale8, .grayscale16, .grayscale8Alpha, .grayscale16Alpha, .indexed8 => {},
-
-            .grayscale1, .grayscale2, .grayscale4, .indexed1, .indexed2, .indexed4 => return error.Unsupported, // TODO
-
-            // Should bgr be supported with swapping operations during the filtering?
-
+            .indexed1,
+            .indexed2,
+            .indexed4,
+            .indexed8,
+            .grayscale1,
+            .grayscale2,
+            .grayscale4,
+            .grayscale8,
+            .grayscale16,
+            .grayscale8Alpha,
+            .grayscale16Alpha,
+            .rgb24,
+            .rgb48,
+            .rgba32,
+            .rgba64,
+            => {},
+            // TODO: Support other formats when the write options ask for conversion.
             else => return error.Unsupported,
         }
     }
@@ -146,7 +158,7 @@ pub const PNG = struct {
     }
 
     // IDAT (multiple maybe)
-    fn writeData(writer: anytype, pixels: color.PixelStorage, header: HeaderData, filter_choice: filter.FilterChoice) ImageWriteError!void {
+    fn writeData(allocator: std.mem.Allocator, writer: anytype, pixels: color.PixelStorage, header: HeaderData, filter_choice: filter.FilterChoice) ImageWriteError!void {
         // Note: there may be more than 1 chunk
         // TODO: provide choice of how much it buffers (how much data per idat chunk)
         var chunks = chunk_writer.chunkWriter(writer, "IDAT");
@@ -156,7 +168,7 @@ pub const PNG = struct {
         try zlib.init(chunk_wr);
 
         try zlib.begin();
-        try filter.filter(zlib.writer(), pixels, filter_choice, header);
+        try filter.filter(allocator, zlib.writer(), pixels, filter_choice, header);
         try zlib.end();
 
         try chunks.flush();
