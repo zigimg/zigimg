@@ -297,11 +297,12 @@ pub const ICO = struct {
 
         ico.dir.entries = entry[0..1];
 
-        try ico.write(write_stream, &.{image.pixels}, encoder_options.ico.inner);
+        try ico.write(allocator, write_stream, &.{image.pixels}, encoder_options.ico.inner);
     }
 
     pub fn write(
         self: *ICO,
+        allocator: std.mem.Allocator,
         stream: *ImageUnmanaged.Stream,
         entry_pixels: []const color.PixelStorage,
         inner_options: EncoderOptions.Inner,
@@ -327,7 +328,7 @@ pub const ICO = struct {
                         .interlace_method = if (png_options.interlaced) .adam7 else .none,
                     };
 
-                    try PNG.write(writer, pixels, header, png_options.filter_choice);
+                    try PNG.write(allocator, writer, pixels, header, png_options.filter_choice);
                 },
                 .bmp => {
                     // TODO: accept different BMP versions
