@@ -53,6 +53,7 @@ const Header = extern struct {
 
 pub const RAS = struct {
     header: Header = undefined,
+    palette: utils.FixedStorage(color.Rgba32, 256) = .{},
 
     pub fn width(self: *RAS) usize {
         return self.header.width;
@@ -82,6 +83,8 @@ pub const RAS = struct {
         switch (self.header.depth) {
             24 => return if (self.header.type == .rgb) PixelFormat.rgb24 else PixelFormat.bgr24,
             32 => return PixelFormat.rgba32,
+            // TODO: no colormap = grayscale?
+            8 => return if (self.header.color_map_length > 0) PixelFormat.indexed8 else ImageError.Unsupported,
             else => return ImageError.Unsupported,
         }
     }
@@ -110,6 +113,27 @@ pub const RAS = struct {
         }
     }
 
+    pub fn readPalette(self: *RAS, stream: *ImageUnmanaged.Stream, allocator: std.mem.Allocator) !void {
+        const reader = stream.reader();
+        const header = self.header;
+        switch (header.color_map_type) {
+            .rgb_color_map => {
+                const colors = header.color_map_length / 3;
+                self.palette.resize(colors);
+                const palette = self.palette.data;
+                const buffer: []u8 = try allocator.alloc(u8, header.color_map_length);
+                defer allocator.free(buffer);
+                _ = try reader.readAll(buffer);
+
+                for (0..colors) |index| {
+                    // palette components are stored in a separate plane
+                    palette[index] = color.Rgba32.initRgb(buffer[index], buffer[index + colors], buffer[index + 2 * colors]);
+                }
+            },
+            else => return ImageError.Unsupported,
+        }
+    }
+
     pub fn read(self: *RAS, stream: *ImageUnmanaged.Stream, allocator: std.mem.Allocator) ImageUnmanaged.ReadError!color.PixelStorage {
         if (!try formatDetect(stream)) {
             return ImageReadError.InvalidData;
@@ -124,6 +148,10 @@ pub const RAS = struct {
         const image_width = self.width();
         const image_height = self.height();
 
+        if (self.header.color_map_type != .no_color_map and self.header.color_map_length > 0) {
+            try self.readPalette(stream, allocator);
+        }
+
         var pixels = try color.PixelStorage.init(allocator, pixel_format, image_width * image_height);
         errdefer pixels.deinit(allocator);
 
@@ -134,6 +162,14 @@ pub const RAS = struct {
         try self.uncompressBitmap(stream, buffer);
 
         switch (pixels) {
+            .indexed8 => |*storage| {
+                @memcpy(storage.indices[0..], buffer[0..storage.indices.len]);
+                storage.resizePalette(self.palette.data.len);
+                for (0..self.palette.data.len) |index| {
+                    const palette = storage.palette;
+                    palette[index] = self.palette.data[index];
+                }
+            },
             .rgb24, .bgr24 => {
                 const pixel_array = pixels.asBytes();
                 @memcpy(pixel_array[0..], buffer[0..]);

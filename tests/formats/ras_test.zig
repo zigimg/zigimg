@@ -95,3 +95,28 @@ test "Sun-Raster 32-bit xRGB uncompressed" {
         try helpers.expectEq(pixels.rgba32[index].toU32Rgb(), hex_color);
     }
 }
+
+test "Sun-Raster 8-bit with palette uncompressed" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ras/sample-8bit.ras");
+    defer file.close();
+
+    var the_bitmap = ras.RAS{};
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(the_bitmap.width(), 1250);
+    try helpers.expectEq(the_bitmap.height(), 438);
+    try testing.expect(pixels == .indexed8);
+
+    const palette2 = pixels.indexed8.palette[2];
+
+    try helpers.expectEq(palette2.r, 72);
+    try helpers.expectEq(palette2.g, 0);
+    try helpers.expectEq(palette2.b, 0);
+
+    try helpers.expectEq(pixels.indexed8.indices[141], 255);
+    try helpers.expectEq(pixels.indexed8.indices[25975], 255);
+}
