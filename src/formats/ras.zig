@@ -83,8 +83,7 @@ pub const RAS = struct {
         switch (self.header.depth) {
             24 => return if (self.header.type == .rgb) PixelFormat.rgb24 else PixelFormat.bgr24,
             32 => return PixelFormat.rgba32,
-            // TODO: no colormap = grayscale?
-            8 => return if (self.header.color_map_length > 0) PixelFormat.indexed8 else ImageError.Unsupported,
+            8 => return if (self.header.color_map_length > 0) PixelFormat.indexed8 else PixelFormat.grayscale8,
             else => return ImageError.Unsupported,
         }
     }
@@ -162,6 +161,10 @@ pub const RAS = struct {
         try self.uncompressBitmap(stream, buffer);
 
         switch (pixels) {
+            .grayscale8 => {
+                const pixel_array = pixels.asBytes();
+                @memcpy(pixel_array[0..], buffer[0..]);
+            },
             .indexed8 => |*storage| {
                 @memcpy(storage.indices[0..], buffer[0..storage.indices.len]);
                 storage.resizePalette(self.palette.data.len);
