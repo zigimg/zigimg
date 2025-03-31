@@ -139,3 +139,22 @@ test "Sun-Raster 8-bit grayscale uncompressed" {
     try helpers.expectEq(pixels.grayscale8[141].value, 255);
     try helpers.expectEq(pixels.grayscale8[191_545].value, 173);
 }
+
+test "Sun-Raster 1-bit black & white uncompressed" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ras/sample-blackwhite.ras");
+    defer file.close();
+
+    var the_bitmap = ras.RAS{};
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(the_bitmap.width(), 1250);
+    try helpers.expectEq(the_bitmap.height(), 438);
+    try testing.expect(pixels == .grayscale1);
+
+    try helpers.expectEq(pixels.grayscale1[141].value, 1);
+    try helpers.expectEq(pixels.grayscale1[1_716].value, 0);
+}
