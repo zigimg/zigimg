@@ -158,3 +158,30 @@ test "Sun-Raster 1-bit black & white uncompressed" {
     try helpers.expectEq(pixels.grayscale1[141].value, 1);
     try helpers.expectEq(pixels.grayscale1[1_716].value, 0);
 }
+
+test "Sun-Raster bgr24 rle compressed" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ras/sample-24bit-bgr-rle.ras");
+    defer file.close();
+
+    var the_bitmap = ras.RAS{};
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(the_bitmap.width(), 664);
+    try helpers.expectEq(the_bitmap.height(), 248);
+    try testing.expect(pixels == .bgr24);
+
+    const indexes = [_]usize{ 8_754, 43_352, 42_224 };
+    const expected_colors = [_]u32{
+        0x21282e,
+        0xe4ad38,
+        0xffffff,
+    };
+
+    for (expected_colors, indexes) |hex_color, index| {
+        try helpers.expectEq(pixels.bgr24[index].toU32Rgb(), hex_color);
+    }
+}

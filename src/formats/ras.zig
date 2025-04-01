@@ -11,11 +11,14 @@ const PixelStorage = color.PixelStorage;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 
 pub const Type = enum(u32) {
+    // bgr uncompressed data
     old = 0x0,
     standard = 0x0001,
+    // data ois rle compressed
     byte_encoded = 0x0002,
     // (X)RGB instead of (X)BGR (and not compressed)
     rgb = 0x0003,
+    // these are not supported
     tiff = 0x0004,
     iff = 0x0005,
     experimental = 0xffff,
@@ -84,7 +87,7 @@ pub const RAS = struct {
             24 => return if (self.header.type == .rgb) PixelFormat.rgb24 else PixelFormat.bgr24,
             32 => return PixelFormat.rgba32,
             8 => return if (self.header.color_map_length > 0) PixelFormat.indexed8 else PixelFormat.grayscale8,
-            // some apps use a (2-color, or event worse: 256-colors) color map when storing 1-bit files
+            // some apps may use (2-color) color map when storing 1-bit files
             1 => return if (self.header.color_map_length > 0) PixelFormat.indexed8 else PixelFormat.grayscale1,
             else => return ImageError.Unsupported,
         }
@@ -107,9 +110,36 @@ pub const RAS = struct {
 
     pub fn uncompressBitmap(self: *RAS, stream: *ImageUnmanaged.Stream, buffer: []u8) !void {
         const reader = stream.reader();
+        const max_size = try stream.getEndPos() - try stream.getPos();
         switch (self.header.type) {
             // no compression for these types
             .old, .standard, .rgb => _ = try reader.readAll(buffer[0..]),
+            // rle encoding with x80 trigger byte
+            .byte_encoded => {
+                var position: usize = 0;
+                while (position < buffer.len) {
+                    const flag: u8 = try reader.readByte();
+                    if (flag == 0x80) {
+                        const count: u16 = try reader.readByte();
+                        if (count == 0) {
+                            buffer[position] = flag;
+                            position += 1;
+                        } else {
+                            const run = try reader.readByte();
+                            for (0..count + 1) |_| {
+                                buffer[position] = run;
+                                position += 1;
+                                if (position >= buffer.len)
+                                    break;
+                            }
+                        }
+                    } else {
+                        buffer[position] = flag;
+                        position += 1;
+                    }
+                }
+                std.debug.print("position end of uncompress = {} (buf_len={} max_size={})\n", .{ position, buffer.len, max_size });
+            },
             else => return ImageError.Unsupported,
         }
     }
@@ -162,8 +192,8 @@ pub const RAS = struct {
         const line_size = calc_line_width: {
             if (self.header.depth == 1) {
                 const bytes_needed = (std.math.divCeil(usize, image_width, 8) catch 0);
-                // need to add padding
-                break :calc_line_width bytes_needed + (bytes_needed % 2);
+                // add padding if needed to make line width multiple of 16
+                break :calc_line_width bytes_needed + (bytes_needed & 1);
             }
             break :calc_line_width image_width;
         };
