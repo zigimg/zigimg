@@ -84,6 +84,8 @@ pub const RAS = struct {
             24 => return if (self.header.type == .rgb) PixelFormat.rgb24 else PixelFormat.bgr24,
             32 => return PixelFormat.rgba32,
             8 => return if (self.header.color_map_length > 0) PixelFormat.indexed8 else PixelFormat.grayscale8,
+            // some apps use a (2-color, or event worse: 256-colors) color map when storing 1-bit files
+            1 => return if (self.header.color_map_length > 0) PixelFormat.indexed8 else PixelFormat.grayscale1,
             else => return ImageError.Unsupported,
         }
     }
@@ -155,12 +157,33 @@ pub const RAS = struct {
         errdefer pixels.deinit(allocator);
 
         const pixel_size = @max(1, (self.header.depth / 8));
-        const buffer: []u8 = try allocator.alloc(u8, image_width * image_height * pixel_size);
+        // calc line size, adding padding byte so that scanline
+        // is multiple of 16 bits
+        const line_size = calc_line_width: {
+            if (self.header.depth == 1) {
+                const bytes_needed = (std.math.divCeil(usize, image_width, 8) catch 0);
+                // need to add padding
+                break :calc_line_width bytes_needed + (bytes_needed % 2);
+            }
+            break :calc_line_width image_width;
+        };
+        const buffer_size = line_size * image_height * pixel_size;
+        const buffer: []u8 = try allocator.alloc(u8, buffer_size);
         defer allocator.free(buffer);
 
         try self.uncompressBitmap(stream, buffer);
 
         switch (pixels) {
+            .grayscale1 => |*storage| {
+                for (0..image_height) |y| {
+                    for (0..image_width) |x| {
+                        const offset: usize = y * line_size + x / 8;
+                        const bit_index = (x + 8) % 8;
+                        const mask: u8 = @as(u8, 1) << @intCast((@as(u8, 7) - bit_index));
+                        storage.*[y * image_width + x].value = if ((buffer[offset] & mask) != 0) 0 else 1;
+                    }
+                }
+            },
             .grayscale8 => {
                 const pixel_array = pixels.asBytes();
                 @memcpy(pixel_array[0..], buffer[0..]);
