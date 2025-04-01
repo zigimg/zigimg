@@ -14,7 +14,7 @@ pub const Type = enum(u32) {
     // bgr uncompressed data
     old = 0x0,
     standard = 0x0001,
-    // data ois rle compressed
+    // data is rle compressed
     byte_encoded = 0x0002,
     // (X)RGB instead of (X)BGR (and not compressed)
     rgb = 0x0003,
