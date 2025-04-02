@@ -78,7 +78,7 @@ zig build test
 | PNG           | ✔️            | ✔️ (Partial)  |
 | PPM           | ✔️ (Partial)  | ✔️ (Partial)  |
 | QOI           | ✔️            | ✔️            |
-| SUN           | ✔️ (Partial)  | ❌            |
+| SUN           | ✔️            | ❌            |
 | TGA           | ✔️            | ✔️            |
 | TIFF          | ❌            | ❌            |
 | XBM           | ❌            | ❌            |
@@ -156,7 +156,10 @@ Currently, this only supports a subset of PAMs where:
 
 ### SUN - Sun Raster format
 
-* Only supports uncompressed 24-bit (RGB24/BGR24)
+* Supports 1/8/24/32-bit files
+* Supports uncompressed & RLE files
+* Supports BGR/RGB encoding
+* TIFF/IFF/Experimental encoding is not supported
 
 ### TGA - Truevision TGA format
 
