@@ -45,3 +45,22 @@ test "SGI 24-bit uncompressed" {
         try helpers.expectEq(pixels.rgb24[index].toU32Rgb(), hex_color);
     }
 }
+
+test "SGI black&white uncompressed" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "sgi/sample-blackwhite.sgi");
+    defer file.close();
+
+    var the_bitmap = sgi.SGI{};
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(the_bitmap.width(), 1250);
+    try helpers.expectEq(the_bitmap.height(), 438);
+    try testing.expect(pixels == .grayscale8);
+
+    try helpers.expectEq(pixels.grayscale8[141].value, 255);
+    try helpers.expectEq(pixels.grayscale8[1_716].value, 0);
+}

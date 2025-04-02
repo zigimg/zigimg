@@ -94,6 +94,7 @@ pub const SGI = struct {
             .normal => {
                 switch (self.header.dimension) {
                     .multi_channel => return PixelFormat.rgb24,
+                    .single_channel => return PixelFormat.grayscale8,
                     else => return ImageError.Unsupported,
                 }
             },
@@ -147,7 +148,7 @@ pub const SGI = struct {
 
         const image_width = self.width();
         const image_height = self.height();
-        const pixel_size = self.header.z_size;
+        const pixel_size = self.header.z_size * self.header.bpc;
 
         var pixels = try color.PixelStorage.init(allocator, pixel_format, image_width * image_height);
         errdefer pixels.deinit(allocator);
@@ -167,6 +168,15 @@ pub const SGI = struct {
                         // scanlines are stored bottom-up in sgi files
                         const offset = (image_height - y - 1) * image_width + x;
                         storage[y * image_width + x] = color.Rgb24{ .r = buffer[offset], .g = buffer[offset + channel_size], .b = buffer[offset + channel_size * 2] };
+                    }
+                }
+            },
+            .grayscale8 => |storage| {
+                for (0..image_height) |y| {
+                    for (0..image_width) |x| {
+                        // scanlines are stored bottom-up in sgi files
+                        const offset = (image_height - y - 1) * image_width + x;
+                        storage[y * image_width + x].value = buffer[offset];
                     }
                 }
             },
