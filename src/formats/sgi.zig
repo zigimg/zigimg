@@ -93,7 +93,7 @@ pub const SGI = struct {
         switch (self.header.pixel_format) {
             .normal => {
                 switch (self.header.dimension) {
-                    .multi_channel => return PixelFormat.rgb24,
+                    .multi_channel => return if (self.header.z_size == 4) PixelFormat.rgba32 else PixelFormat.rgb24,
                     .single_channel => return PixelFormat.grayscale8,
                     else => return ImageError.Unsupported,
                 }
@@ -162,6 +162,15 @@ pub const SGI = struct {
         const channel_size = image_height * image_width;
 
         switch (pixels) {
+            .rgba32 => |storage| {
+                for (0..image_height) |y| {
+                    for (0..image_width) |x| {
+                        // scanlines are stored bottom-up in sgi files
+                        const offset = (image_height - y - 1) * image_width + x;
+                        storage[y * image_width + x] = color.Rgba32{ .r = buffer[offset], .g = buffer[offset + channel_size], .b = buffer[offset + channel_size * 2], .a = buffer[offset + channel_size * 3] };
+                    }
+                }
+            },
             .rgb24 => |storage| {
                 for (0..image_height) |y| {
                     for (0..image_width) |x| {

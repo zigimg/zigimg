@@ -64,3 +64,30 @@ test "SGI black&white uncompressed" {
     try helpers.expectEq(pixels.grayscale8[141].value, 255);
     try helpers.expectEq(pixels.grayscale8[1_716].value, 0);
 }
+
+test "SGI 32-bit RGBA uncompressed" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "sgi/sample-rgba.sgi");
+    defer file.close();
+
+    var the_bitmap = sgi.SGI{};
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(the_bitmap.width(), 240);
+    try helpers.expectEq(the_bitmap.height(), 160);
+    try testing.expect(pixels == .rgba32);
+
+    const indexes = [_]usize{ 8_754, 3, 28_224 };
+    const expected_colors = [_]u32{
+        0xffffff,
+        0xff,
+        0x0,
+    };
+
+    for (expected_colors, indexes) |hex_color, index| {
+        try helpers.expectEq(pixels.rgba32[index].toU32Rgb(), hex_color);
+    }
+}
