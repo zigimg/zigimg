@@ -9,6 +9,7 @@ const utils = @import("../utils.zig");
 const std = @import("std");
 const PixelStorage = color.PixelStorage;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
+const bigToNative = std.mem.bigToNative;
 
 pub const CompressionFlag = enum(u8) {
     uncompressed = 0x0,
@@ -93,7 +94,12 @@ pub const SGI = struct {
         switch (self.header.pixel_format) {
             .normal => {
                 switch (self.header.dimension) {
-                    .multi_channel => return if (self.header.z_size == 4) PixelFormat.rgba32 else PixelFormat.rgb24,
+                    .multi_channel => switch (self.header.z_size) {
+                        3 => return if (self.header.bpc == 1) PixelFormat.rgb24 else PixelFormat.rgb48,
+                        4 => return if (self.header.bpc == 1) PixelFormat.rgba32 else PixelFormat.rgba64,
+                        else => return ImageError.Unsupported,
+                    },
+                    // TODO: add support for 16bit channel ie: grayscale16
                     .single_channel => return PixelFormat.grayscale8,
                     else => return ImageError.Unsupported,
                 }
@@ -148,7 +154,8 @@ pub const SGI = struct {
 
         const image_width = self.width();
         const image_height = self.height();
-        const pixel_size = self.header.z_size * self.header.bpc;
+        const bpc = self.header.bpc;
+        const pixel_size = self.header.z_size * bpc;
 
         var pixels = try color.PixelStorage.init(allocator, pixel_format, image_width * image_height);
         errdefer pixels.deinit(allocator);
@@ -159,6 +166,7 @@ pub const SGI = struct {
 
         try self.uncompressBitmap(stream, buffer);
 
+        // channel_size in pixels, not in bytes
         const channel_size = image_height * image_width;
 
         switch (pixels) {
@@ -168,6 +176,24 @@ pub const SGI = struct {
                         // scanlines are stored bottom-up in sgi files
                         const offset = (image_height - y - 1) * image_width + x;
                         storage[y * image_width + x] = color.Rgba32{ .r = buffer[offset], .g = buffer[offset + channel_size], .b = buffer[offset + channel_size * 2], .a = buffer[offset + channel_size * 3] };
+                    }
+                }
+            },
+            .rgba64 => |storage| {
+                const u16_buffer: []u16 = @as(*const []u16, @ptrCast(&buffer[0..])).*;
+                for (0..image_height) |y| {
+                    for (0..image_width) |x| {
+                        const offset = (image_height - y - 1) * image_width + x;
+                        storage[y * image_width + x] = color.Rgba64{ .r = bigToNative(u16, u16_buffer[offset]), .g = bigToNative(u16, u16_buffer[offset + channel_size]), .b = bigToNative(u16, u16_buffer[offset + channel_size * 2]), .a = bigToNative(u16, buffer[offset + channel_size * 3]) };
+                    }
+                }
+            },
+            .rgb48 => |storage| {
+                const u16_buffer: []u16 = @as(*const []u16, @ptrCast(&buffer[0..])).*;
+                for (0..image_height) |y| {
+                    for (0..image_width) |x| {
+                        const offset = (image_height - y - 1) * image_width + x;
+                        storage[y * image_width + x] = color.Rgb48{ .r = bigToNative(u16, u16_buffer[offset]), .g = bigToNative(u16, u16_buffer[offset + channel_size]), .b = bigToNative(u16, u16_buffer[offset + channel_size * 2]) };
                     }
                 }
             },
