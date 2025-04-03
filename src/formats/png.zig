@@ -85,20 +85,18 @@ pub const PNG = struct {
 
         std.debug.assert(header.isValid());
 
-        try write(allocator, write_stream, image.pixels, header, options.filter_choice);
+        var buffered_stream = buffered_stream_source.bufferedStreamSourceWriter(write_stream);
+        try write(allocator, buffered_stream.writer(), image.pixels, header, options.filter_choice);
+        try buffered_stream.flush();
     }
 
-    pub fn write(allocator: std.mem.Allocator, write_stream: *ImageUnmanaged.Stream, pixels: color.PixelStorage, header: HeaderData, filter_choice: filter.FilterChoice) ImageWriteError!void {
-        var buffered_stream = buffered_stream_source.bufferedStreamSourceWriter(write_stream);
-
+    pub fn write(allocator: std.mem.Allocator, writer: anytype, pixels: color.PixelStorage, header: HeaderData, filter_choice: filter.FilterChoice) ImageWriteError!void {
         if (header.interlace_method != .none)
             return ImageWriteError.Unsupported;
         if (header.compression_method != .deflate)
             return ImageWriteError.Unsupported;
         if (header.filter_method != .adaptive)
             return ImageWriteError.Unsupported;
-
-        const writer = buffered_stream.writer();
 
         try writeSignature(writer);
         try writeHeader(writer, header);
@@ -109,8 +107,6 @@ pub const PNG = struct {
         try writeTransparencyInfo(writer, pixels);
         try writeData(allocator, writer, pixels, header, filter_choice);
         try writeTrailer(writer);
-
-        try buffered_stream.flush();
     }
 
     pub fn ensureWritable(image: ImageUnmanaged) !void {

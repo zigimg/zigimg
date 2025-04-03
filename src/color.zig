@@ -457,7 +457,7 @@ fn BgraColor(comptime T: type) type {
         b: T align(1),
         g: T align(1),
         r: T align(1),
-        a: T = std.math.maxInt(T),
+        a: T align(1) = std.math.maxInt(T),
 
         pub usingnamespace RgbMethods(@This(), T, T, T, T);
         pub usingnamespace RgbaMethods(@This());

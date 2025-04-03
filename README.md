@@ -68,7 +68,7 @@ zig build test
 | BMP           | ✔️ (Partial)  | ✔️ (Partial)  |
 | Farbfeld      | ✔️            | ✔️            |
 | GIF           | ✔️            | ❌            |
-| ICO           | ❌            | ❌            |
+| ICO           | ✔️ (Partial)  | ✔️ (Partial)  |
 | IFF           | ✔️            | ❌            |
 | JPEG          | ✔️ (Partial)  | ❌            |
 | PAM           | ✔️            | ✔️            |
@@ -99,6 +99,12 @@ zig build test
 * Supports interlaced
 * Supports tiled and layered images used to achieve pseudo true color and more.
 * The plain text extension is not supported
+
+### ICO - Microsoft Icon Format
+
+* Supports both PNGs and BMPs (see BMP and PNG limitations)
+* Reads the largest entry in the image directory
+* Reading and writing multiples entries is not supported
 
 ### IFF - InterchangeFileFormat
 

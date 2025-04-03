@@ -129,10 +129,12 @@ pub fn bufferedStreamSourceReaderWithSize(comptime buffer_size: usize, stream: *
 // An buffered stream that can writer and seek StreamSource
 pub fn BufferedStreamSourceWriter(comptime BufferSize: usize) type {
     return struct {
-        buffered_writer: std.io.BufferedWriter(BufferSize, std.io.StreamSource.Writer),
+        pub const BufferedWriter = std.io.BufferedWriter(BufferSize, std.io.StreamSource.Writer);
+
+        buffered_writer: BufferedWriter,
 
         pub const WriteError = std.io.StreamSource.WriteError;
-        pub const SeekError = std.io.StreamSource.SeekError;
+        pub const SeekError = std.io.StreamSource.SeekError || BufferedWriter.Error;
         pub const GetSeekPosError = std.io.StreamSource.GetSeekPosError;
 
         const Self = @This();
@@ -166,7 +168,7 @@ pub fn BufferedStreamSourceWriter(comptime BufferSize: usize) type {
                 },
                 .file => {
                     try self.buffered_writer.flush();
-                    try self.buffered_writer.buffered_writer.context.seekTo(pos);
+                    try self.buffered_writer.unbuffered_writer.context.seekTo(pos);
                 },
             }
         }
