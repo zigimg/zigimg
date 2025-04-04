@@ -112,7 +112,7 @@ pub const BmhdHeader = extern struct {
     pub const HeaderSize = @sizeOf(BmhdHeader);
 
     pub fn debug(self: *const Self) void {
-        std.debug.print("Width: {}, Height: {}, planes: {}, compression: {}\n", .{ self.width, self.height, self.planes, self.compression_type });
+        std.log.debug("{}", .{self});
     }
 };
 
@@ -126,7 +126,7 @@ pub const DgblHeader = extern struct {
     const Self = @This();
 
     pub fn debug(self: *const Self) void {
-        std.debug.print("Width: {}, Height: {}, compression: {}\n", .{ self.width, self.height, self.compression_type });
+        std.log.debug("{}", .{self});
     }
 };
 
@@ -318,7 +318,6 @@ pub const IFF = struct {
         self.form_id = try getIffFormId(stream);
         self.header = try loadHeader(stream, self.form_id);
         self.pitch = (std.math.divCeil(u16, self.header.width(), 16) catch 0) * 2;
-        self.header.debug();
 
         const pixels = try self.decodeChunks(stream, allocator);
 

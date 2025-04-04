@@ -41,20 +41,20 @@ const Header = extern struct {
     const magic_number = [2]u8{ 0x1, 0xda };
 
     compression: CompressionFlag align(1),
-    bpc: u8 align(1),
+    bits_per_channel: u8 align(1),
     dimension: Dimensions align(1),
     x_size: u16 align(1),
     y_size: u16 align(1),
     z_size: u16 align(1),
     pix_min: u32 align(1),
     pix_max: u32 align(1),
-    dwnmy1: u32 align(1),
+    dummy1: u32 align(1),
     image_name: [80]u8 align(1),
     pixel_format: SgiPixelFormat align(1),
     dummy2: [404]u8 align(1),
 
     pub fn debug(self: *const Header) void {
-        std.debug.print("size: {}x{} (bpc={})\nlen={}\ntype={}\ndimension={}\ncompression={}\n", .{ self.x_size, self.y_size, self.bpc, self.z_size, self.pixel_format, self.dimension, self.compression });
+        std.log.debug("{}", .{self});
     }
 
     comptime {
@@ -95,8 +95,8 @@ pub const SGI = struct {
             .normal => {
                 switch (self.header.dimension) {
                     .multi_channel => switch (self.header.z_size) {
-                        3 => return if (self.header.bpc == 1) PixelFormat.rgb24 else PixelFormat.rgb48,
-                        4 => return if (self.header.bpc == 1) PixelFormat.rgba32 else PixelFormat.rgba64,
+                        3 => return if (self.header.bits_per_channel == 1) PixelFormat.rgb24 else PixelFormat.rgb48,
+                        4 => return if (self.header.bits_per_channel == 1) PixelFormat.rgba32 else PixelFormat.rgba64,
                         else => return ImageError.Unsupported,
                     },
                     // TODO: add support for 16bit channel ie: grayscale16
@@ -148,14 +148,12 @@ pub const SGI = struct {
 
         self.header = utils.readStruct(reader, Header, .big) catch return ImageReadError.InvalidData;
 
-        self.header.debug();
-
         const pixel_format = try self.pixelFormat();
 
         const image_width = self.width();
         const image_height = self.height();
-        const bpc = self.header.bpc;
-        const pixel_size = self.header.z_size * bpc;
+        const bits_per_channel = self.header.bits_per_channel;
+        const pixel_size = self.header.z_size * bits_per_channel;
 
         var pixels = try color.PixelStorage.init(allocator, pixel_format, image_width * image_height);
         errdefer pixels.deinit(allocator);
