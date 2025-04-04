@@ -4,6 +4,7 @@ const formats = @import("formats.zig");
 const Image = @import("Image.zig");
 const PixelFormat = @import("pixel_format.zig").PixelFormat;
 const PixelFormatConverter = @import("PixelFormatConverter.zig");
+const ImageEditor = @import("ImageEditor.zig");
 const std = @import("std");
 const utils = @import("utils.zig");
 
@@ -303,6 +304,16 @@ pub fn convertNoFree(self: *ImageUnmanaged, allocator: std.mem.Allocator, destin
     errdefer new_pixels.deinit(allocator);
 
     self.pixels = new_pixels;
+}
+
+/// Flip the image vertically, along the X axis.
+pub fn flipVertically(self: *const ImageUnmanaged, allocator: std.mem.Allocator) ImageEditor.Error!void {
+    ImageEditor.flipVertically(self, allocator);
+}
+
+/// Flip the image horizontally, along the Y axis.
+pub fn flipHorizontally(self: *const ImageUnmanaged, allocator: std.mem.Allocator) ImageEditor.Error!void {
+    ImageEditor.flipHorizontally(self, allocator);
 }
 
 /// Iterate the pixel in pixel-format agnostic way. In the case of an animation, it returns an iterator for the first frame. The iterator is read-only.
