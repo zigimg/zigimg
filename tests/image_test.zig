@@ -394,6 +394,20 @@ test "Should detect RAS properly" {
     }
 }
 
+test "Should detect SGI properly" {
+    const image_tests = &[_][]const u8{
+        helpers.fixtures_path ++ "sgi/sample-rgb24.sgi",
+    };
+
+    for (image_tests) |image_path| {
+        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path);
+        try std.testing.expect(format == .sgi);
+
+        var test_image = try helpers.testImageFromFile(image_path);
+        defer test_image.deinit();
+    }
+}
+
 test "Should error on invalid file" {
     const invalidFile = helpers.testImageFromFile("tests/helpers.zig");
     try helpers.expectError(invalidFile, ImageError.Unsupported);

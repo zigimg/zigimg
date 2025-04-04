@@ -21,6 +21,7 @@ const SupportedFormats = struct {
     pub const ppm = formats.netpbm.PPM;
     pub const qoi = formats.qoi.QOI;
     pub const ras = formats.ras.RAS;
+    pub const sgi = formats.sgi.SGI;
     pub const tga = formats.tga.TGA;
 };
 
@@ -40,6 +41,7 @@ pub const EncoderOptions = union(Format) {
     ppm: SupportedFormats.ppm.EncoderOptions,
     qoi: SupportedFormats.qoi.EncoderOptions,
     ras: void,
+    sgi: void,
     tga: SupportedFormats.tga.EncoderOptions,
 };
 
