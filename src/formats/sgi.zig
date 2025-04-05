@@ -41,7 +41,7 @@ const Header = extern struct {
     const magic_number = [2]u8{ 0x1, 0xda };
 
     compression: CompressionFlag align(1),
-    bits_per_channel: u8 align(1),
+    bytes_per_channel: u8 align(1),
     dimension: Dimensions align(1),
     x_size: u16 align(1),
     y_size: u16 align(1),
@@ -95,11 +95,11 @@ pub const SGI = struct {
             .normal => {
                 switch (self.header.dimension) {
                     .multi_channel => switch (self.header.z_size) {
-                        3 => return if (self.header.bits_per_channel == 1) PixelFormat.rgb24 else PixelFormat.rgb48,
-                        4 => return if (self.header.bits_per_channel == 1) PixelFormat.rgba32 else PixelFormat.rgba64,
+                        3 => return if (self.header.bytes_per_channel == 1) PixelFormat.rgb24 else PixelFormat.rgb48,
+                        4 => return if (self.header.bytes_per_channel == 1) PixelFormat.rgba32 else PixelFormat.rgba64,
                         else => return ImageError.Unsupported,
                     },
-                    // TODO: add support for 16bit channel ie: grayscale16
+                    // TODO: add support for 16-bit channel ie: grayscale16
                     .single_channel => return PixelFormat.grayscale8,
                     else => return ImageError.Unsupported,
                 }
@@ -130,12 +130,99 @@ pub const SGI = struct {
         return result;
     }
 
-    pub fn uncompressBitmap(self: *SGI, stream: *ImageUnmanaged.Stream, buffer: []u8) !void {
+    pub fn uncompressBitmap(self: *SGI, stream: *ImageUnmanaged.Stream, buffer: []u8, allocator: std.mem.Allocator) !void {
         const reader = stream.reader();
 
         switch (self.header.compression) {
             .uncompressed => _ = try reader.readAll(buffer[0..]),
-            else => return ImageError.Unsupported,
+            .rle => {
+                const image_width = self.width();
+                const image_height = self.height();
+
+                // read both data tables first
+                const tables_buffer: []u8 = try allocator.alloc(u8, self.header.y_size * self.header.z_size * 2 * 4);
+                defer allocator.free(tables_buffer);
+
+                _ = try reader.readAll(tables_buffer[0..]);
+
+                const offsets: []u32 = @as(*const []u32, @ptrCast(&tables_buffer[0 .. self.header.y_size * self.header.z_size * 4])).*[0 .. self.header.y_size * self.header.z_size];
+
+                const sizes: []u32 = @as(*const []u32, @ptrCast(&tables_buffer[self.header.y_size * self.header.z_size * 4 ..])).*[0 .. self.header.y_size * self.header.z_size];
+
+                // then read compressed_data that's following the tables
+                const data_buffer: []u8 = try allocator.alloc(u8, try stream.getEndPos() - try stream.getPos());
+                defer allocator.free(data_buffer);
+
+                const data_start = 512 + tables_buffer.len;
+
+                _ = try reader.readAll(data_buffer[0..]);
+
+                if (self.header.bytes_per_channel == 1) {
+                    for (0..self.header.z_size) |z| {
+                        for (z * image_height..(z * image_height) + image_height) |index| {
+                            const offset = offsets[index];
+                            var scanline_offset = std.mem.bigToNative(u32, offset) - data_start;
+                            const scanline_size = std.mem.bigToNative(u32, sizes[index]);
+                            const max_offset = scanline_offset + scanline_size;
+                            var pixel_pos = index * image_width;
+                            while (scanline_offset < max_offset) {
+                                const run_count = data_buffer[scanline_offset];
+                                scanline_offset += 1;
+                                if (run_count & 128 == 128) {
+                                    // copy run_count items from stream to output
+                                    for (0..run_count & 127) |_| {
+                                        buffer[pixel_pos] = data_buffer[scanline_offset];
+                                        pixel_pos += 1;
+                                        scanline_offset += 1;
+                                    }
+                                } else if (run_count > 0) {
+                                    const value = data_buffer[scanline_offset];
+                                    scanline_offset += 1;
+                                    for (0..run_count) |_| {
+                                        buffer[pixel_pos] = value;
+                                        pixel_pos += 1;
+                                    }
+                                } else break;
+                            }
+                        }
+                    }
+                } else {
+                    // 16-bit per channel
+                    for (0..self.header.z_size) |z| {
+                        for (z * image_height..(z * image_height) + image_height) |index| {
+                            const offset = offsets[index];
+                            var scanline_offset = std.mem.bigToNative(u32, offset) - data_start;
+                            const scanline_size = std.mem.bigToNative(u32, sizes[index]);
+                            const max_offset = scanline_offset + scanline_size;
+                            var pixel_pos = index * image_width * 2;
+                            while (scanline_offset < max_offset) {
+                                // get low order byte: rle command is also stored as 16-bit,
+                                // just like the compressed data
+                                const run_count = data_buffer[scanline_offset + 1];
+                                scanline_offset += 2;
+                                if (run_count & 128 == 128) {
+                                    // copy run_count items from stream to output
+                                    for (0..run_count & 127) |_| {
+                                        buffer[pixel_pos] = data_buffer[scanline_offset];
+                                        buffer[pixel_pos + 1] = data_buffer[scanline_offset + 1];
+                                        pixel_pos += 2;
+                                        scanline_offset += 2;
+                                    }
+                                } else if (run_count > 0) {
+                                    const hi_byte = data_buffer[scanline_offset];
+                                    const low_byte = data_buffer[scanline_offset + 1];
+                                    scanline_offset += 2;
+                                    for (0..run_count) |_| {
+                                        buffer[pixel_pos] = hi_byte;
+                                        buffer[pixel_pos + 1] = low_byte;
+                                        pixel_pos += 2;
+                                    }
+                                } else break;
+                            }
+                        }
+                    }
+                }
+            },
         }
     }
 
@@ -152,8 +239,8 @@ pub const SGI = struct {
 
         const image_width = self.width();
         const image_height = self.height();
-        const bits_per_channel = self.header.bits_per_channel;
-        const pixel_size = self.header.z_size * bits_per_channel;
+        const bytes_per_channel = self.header.bytes_per_channel;
+        const pixel_size = self.header.z_size * bytes_per_channel;
 
         var pixels = try color.PixelStorage.init(allocator, pixel_format, image_width * image_height);
         errdefer pixels.deinit(allocator);
@@ -162,7 +249,7 @@ pub const SGI = struct {
         const buffer: []u8 = try allocator.alloc(u8, buffer_size);
         defer allocator.free(buffer);
 
-        try self.uncompressBitmap(stream, buffer);
+        try self.uncompressBitmap(stream, buffer, allocator);
 
         // channel_size in pixels, not in bytes
         const channel_size = image_height * image_width;
