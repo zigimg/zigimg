@@ -110,7 +110,7 @@ pub const RAS = struct {
 
     pub fn uncompressBitmap(self: *RAS, stream: *ImageUnmanaged.Stream, buffer: []u8) !void {
         const reader = stream.reader();
-        const max_size = try stream.getEndPos() - try stream.getPos();
+
         switch (self.header.type) {
             // no compression for these types
             .old, .standard, .rgb => _ = try reader.readAll(buffer[0..]),
@@ -138,7 +138,6 @@ pub const RAS = struct {
                         position += 1;
                     }
                 }
-                std.debug.print("position end of uncompress = {} (buf_len={} max_size={})\n", .{ position, buffer.len, max_size });
             },
             else => return ImageError.Unsupported,
         }
