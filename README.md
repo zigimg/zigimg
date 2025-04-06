@@ -78,7 +78,7 @@ zig build test
 | PNG           | ✔️            | ✔️ (Partial)  |
 | PPM           | ✔️ (Partial)  | ✔️ (Partial)  |
 | QOI           | ✔️            | ✔️            |
-| SGI           | ✔️ (Partial)  | ❌            |
+| SGI           | ✔️            | ❌            |
 | SUN           | ✔️            | ❌            |
 | TGA           | ✔️            | ✔️            |
 | TIFF          | ❌            | ❌            |
@@ -158,7 +158,7 @@ Currently, this only supports a subset of PAMs where:
 ### SGI - Silicon Graphics Image
 
 * Supports 8-bit, RGB (24/48-bit), RGBA(32/64-bit) files
-* RLE Compressed files are not supported yet
+* Supports RLE and uncompressed files
 
 ### SUN - Sun Raster format
 
