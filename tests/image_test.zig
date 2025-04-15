@@ -410,7 +410,8 @@ test "Should detect SGI properly" {
 
 test "Should detect TIFF properly" {
     const image_tests = &[_][]const u8{
-        helpers.fixtures_path ++ "tiff/sample-uncompressed.tiff",
+        // helpers.fixtures_path ++ "tiff/sample-uncompressed.tiff",
+        helpers.fixtures_path ++ "tiff/sample-monob-raw.tiff",
     };
 
     for (image_tests) |image_path| {
