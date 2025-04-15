@@ -11,8 +11,8 @@ const PixelStorage = color.PixelStorage;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 
 const CompressionType = enum(u16) {
-    // some encoders (eg. ffmpeg) use 0 for raw images
-    // also it's not mentionned in the TIFF specs
+    // Some encoders (eg. ffmpeg) use 0 for raw images
+    // although it's not mentionned in the TIFF specs.
     raw = 0,
     uncompressed = 1,
     ccit_1d = 2,
@@ -26,12 +26,15 @@ const CompressionType = enum(u16) {
 };
 
 const ResolutionUnit = enum(u16) {
+    // Some encoders (eg. ffmpeg) use 0 for resolution_unit
+    // although it's not mentionned in the TIFF specs.
+    not_specified = 0,
     no_unit = 1,
     inch = 2,
     cm = 3,
 };
 
-const TagId = enum(u16) { new_subfile_type = 254, image_width = 256, image_height = 257, bits_per_sample = 258, compression = 259, photometric_interpretation = 262, fill_order = 266, strip_offsets = 273, orientation = 274, samples_per_pixel = 277, rows_per_strip = 278, stripe_byte_counts = 279, x_resolution = 282, y_resolution = 283, planar_configuration = 284, resolution_unit = 296, software = 305, extra_samples = 338, sample_format = 339, unknown_1 = 700, unknown_2 = 34665, unknown_3 = 34675 };
+const TagId = enum(u16) { new_subfile_type = 254, image_width = 256, image_height = 257, bits_per_sample = 258, compression = 259, photometric_interpretation = 262, fill_order = 266, strip_offsets = 273, orientation = 274, samples_per_pixel = 277, rows_per_strip = 278, strip_byte_counts = 279, x_resolution = 282, y_resolution = 283, planar_configuration = 284, resolution_unit = 296, software = 305, extra_samples = 338, sample_format = 339, unknown_1 = 700, unknown_2 = 34665, unknown_3 = 34675 };
 
 // We'll store all tags required for
 // grayscale, color, and rgb encoded files
@@ -47,10 +50,10 @@ const BitmapDescriptor = struct {
     photometric_interpretation: u16 = 0,
     // can be u16/u32: number of rows in each but the last strip
     rows_per_strip: u32 = 0,
-    // byte offset in each stripe, can be u16/u32
-    strip_offsets: u32 = 0,
+    // byte offset in each strip, can be u16/u32
+    strip_offsets: ?[]u8 = null,
     // for each strip, number of bytes (after compression)
-    stripe_byte_counts: u32 = 0,
+    strip_byte_counts: ?[]u8 = null,
     // number of pixels per resolution unit in image_width
     x_resolution: [2]u32 = .{ 0, 0 },
     // number of pixels per resolution unit in image_height
@@ -60,19 +63,49 @@ const BitmapDescriptor = struct {
     // - b & w:
     // - grayscale: 4 / 8 allowed for grayscale images (16/256 shades)
     // - rgb: 8,8,8 (count == 3)
-    bits_per_sample: u16 = 0,
+    // TODO: should be [samples_per_pixel]u16
+    bits_per_sample: u16 = 1,
     // flags describing the image type
     new_subfile_type: u32 = 0,
     // palette class needs previous tags and:
     // color_map: utils.FixedStorage(color.Rgba32, 0) = .{},
     // rgb class needs previous tags and:
     // number of components per pixel
-    samples_per_pixel: u16 = 0,
-    // planar_configuration: xx,
+    samples_per_pixel: u16 = 1,
+    // Default fill_order: pixels are arranged within a byte such that
+    // pixels with lower column values are stored in the higher-order bits of the byte.
+    fill_order: u16 = 1,
 
     pub fn debug(self: *BitmapDescriptor) void {
         inline for (std.meta.fields(BitmapDescriptor)) |f| {
             std.debug.print(f.name ++ "={any}\n", .{@as(f.type, @field(self, f.name))});
+        }
+        if (self.strip_byte_counts != null) {
+            const offsets: []u32 = @as(*const []u32, @ptrCast(&self.strip_byte_counts.?[0..])).*;
+            // const hex = std.fmt.bytesToHex(offsets, .upper);
+            // for (0..self.strip_byte_counts.?.len) |index| {
+            //     std.debug.print("{x} ", .{self.strip_byte_counts.?[index]});
+            // }
+            // std.debug.print("\n", .{});
+            std.debug.print("*** first byte count = {}\n", .{std.mem.toNative(u32, offsets[0], .little)});
+        }
+    }
+
+    pub fn guessPixelFormat(self: *BitmapDescriptor) ImageReadError!PixelFormat {
+        if (self.bits_per_sample == 1) {
+            return PixelFormat.grayscale1;
+        }
+
+        return ImageError.Unsupported;
+    }
+
+    pub fn deinit(self: *BitmapDescriptor, allocator: std.mem.Allocator) void {
+        if (self.strip_offsets != null) {
+            allocator.free(self.strip_offsets.?);
+        }
+
+        if (self.strip_byte_counts != null) {
+            allocator.free(self.strip_byte_counts.?);
         }
     }
 };
@@ -122,7 +155,31 @@ const TagField = struct {
     }
 
     pub inline fn toShort(self: *const TagField) u16 {
+        // smaller than 32-bit values are left-aligned
         return @truncate(self.data_offset >> 16);
+    }
+
+    // not sure what to do about these two values yet
+    pub fn readRational(self: *const TagField, stream: *ImageUnmanaged.Stream, endianess: std.builtin.Endian) ![2]u32 {
+        try stream.seekTo(self.data_offset);
+        const reader = stream.reader();
+
+        return [2]u32{
+            try reader.readInt(u32, endianess),
+            try reader.readInt(u32, endianess),
+        };
+    }
+
+    pub fn readU16orU32Array(self: *const TagField, stream: *ImageUnmanaged.Stream, allocator: std.mem.Allocator) ![]u8 {
+        const byte_size = if (self.data_type == 3) self.data_count * 2 else self.data_count * 4;
+        const data = try allocator.alloc(u8, byte_size);
+
+        std.debug.print("++ seeking to {}\n", .{self.data_offset});
+
+        try stream.seekTo(self.data_offset);
+        _ = try stream.read(data[0..]);
+
+        return data;
     }
 };
 
@@ -166,9 +223,9 @@ pub const TIFF = struct {
             current_idf_offset = 0;
             const num_tag_entries = try reader.readInt(u16, self.endianess);
             const tags_array: []u8 = try allocator.alloc(u8, @sizeOf(PackedTag) * num_tag_entries);
-            errdefer allocator.free(tags_array);
+            defer allocator.free(tags_array);
             _ = try reader.readAll(tags_array);
-            const next_ifd_offset = try reader.readInt(u16, self.endianess);
+            const next_ifd_offset = try reader.readInt(u32, self.endianess);
             var tags_map = std.AutoHashMap(TagId, TagField).init(allocator);
             const tags_list = @as(*const []PackedTag, @ptrCast(&tags_array[0..])).*;
             // We should iterate through all IFD, but since we support
@@ -189,8 +246,8 @@ pub const TIFF = struct {
         }
     }
 
-    pub fn decodeTags(_: *TIFF, _: *ImageUnmanaged.Stream, _: std.mem.Allocator, ifd: *IFD) !void {
-        // const endianess = self.endianess;
+    pub fn decodeTags(self: *TIFF, stream: *ImageUnmanaged.Stream, allocator: std.mem.Allocator, ifd: *IFD) !void {
+        const endianess = self.endianess;
         var bitmap = BitmapDescriptor{};
 
         var iterator = ifd.tag_map.keyIterator();
@@ -205,14 +262,25 @@ pub const TIFF = struct {
                     bitmap.image_height = tag.toLongOrShort();
                 },
                 .compression => {
-                    std.debug.print("setting bitmap compression {}\n", .{tag.toShort()});
                     bitmap.compression = @enumFromInt(tag.toShort());
+                },
+                .strip_byte_counts => {
+                    bitmap.strip_byte_counts = try tag.readU16orU32Array(stream, allocator);
+                },
+                .strip_offsets => {
+                    bitmap.strip_offsets = try tag.readU16orU32Array(stream, allocator);
+                },
+                .rows_per_strip => {
+                    bitmap.rows_per_strip = tag.toLongOrShort();
                 },
                 .photometric_interpretation => {
                     bitmap.photometric_interpretation = tag.toShort();
                 },
                 .samples_per_pixel => {
                     bitmap.samples_per_pixel = tag.toShort();
+                },
+                .resolution_unit => {
+                    bitmap.resolution_unit = @enumFromInt(tag.toShort());
                 },
                 .new_subfile_type => {
                     bitmap.new_subfile_type = tag.toLong();
@@ -224,6 +292,12 @@ pub const TIFF = struct {
                     }
                     std.debug.print("{}\n", .{tag});
                 },
+                .x_resolution => {
+                    bitmap.x_resolution = try tag.readRational(stream, endianess);
+                },
+                .y_resolution => {
+                    bitmap.y_resolution = try tag.readRational(stream, endianess);
+                },
                 else => {
                     std.debug.print("Skipping tag id={} {}\n", .{ key, tag });
                 },
@@ -231,6 +305,8 @@ pub const TIFF = struct {
         }
 
         bitmap.debug();
+
+        bitmap.deinit(allocator);
     }
 
     pub fn read(self: *TIFF, stream: *ImageUnmanaged.Stream, allocator: std.mem.Allocator) ImageUnmanaged.ReadError!color.PixelStorage {
@@ -250,6 +326,8 @@ pub const TIFF = struct {
         try self.readIFD(stream, allocator);
 
         try self.decodeTags(stream, allocator, &self.first_ifd);
+
+        self.first_ifd.tag_map.deinit();
 
         var pixels = try color.PixelStorage.init(allocator, PixelFormat.bgr24, 320 * 200);
         errdefer pixels.deinit(allocator);
