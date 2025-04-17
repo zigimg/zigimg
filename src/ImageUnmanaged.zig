@@ -23,6 +23,7 @@ const SupportedFormats = struct {
     pub const ras = formats.ras.RAS;
     pub const sgi = formats.sgi.SGI;
     pub const tga = formats.tga.TGA;
+    pub const tiff = formats.tiff.TIFF;
 };
 
 pub const Format = std.meta.DeclEnum(SupportedFormats);
@@ -43,6 +44,7 @@ pub const EncoderOptions = union(Format) {
     ras: void,
     sgi: void,
     tga: SupportedFormats.tga.EncoderOptions,
+    tiff: void,
 };
 
 pub const Error = error{
