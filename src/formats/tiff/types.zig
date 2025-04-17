@@ -7,9 +7,6 @@ const builtin = @import("builtin");
 const native_endian = builtin.target.cpu.arch.endian();
 
 pub const CompressionType = enum(u16) {
-    // Some encoders (eg. ffmpeg) use 0 for raw images
-    // although it's not mentionned in the TIFF specs.
-    raw = 0,
     uncompressed = 1,
     ccit_1d = 2,
     gp_3_fax = 3,
@@ -22,9 +19,6 @@ pub const CompressionType = enum(u16) {
 };
 
 pub const ResolutionUnit = enum(u16) {
-    // Some encoders (eg. ffmpeg) use 0 for resolution_unit
-    // although it's not mentionned in the TIFF specs.
-    not_specified = 0,
     no_unit = 1,
     inch = 2,
     cm = 3,
@@ -77,10 +71,19 @@ pub const BitmapDescriptor = struct {
     }
 
     pub fn guessPixelFormat(self: *BitmapDescriptor) ImageReadError!PixelFormat {
-        if (self.bits_per_sample == 0) {
-            return PixelFormat.grayscale1;
+        switch (self.photometric_interpretation) {
+            0, 1 => {
+                switch (self.bits_per_sample) {
+                    // lower column values are stored in lower-order bits
+                    1 => return if (self.fill_order == 1) PixelFormat.grayscale1 else ImageError.Unsupported,
+                    // TODO
+                    4 => return ImageError.Unsupported,
+                    8 => return PixelFormat.grayscale8,
+                    else => return ImageError.Unsupported,
+                }
+            },
+            else => return ImageError.Unsupported,
         }
-
         return ImageError.Unsupported;
     }
 
@@ -145,8 +148,7 @@ pub const TagField = extern struct {
     }
 
     pub inline fn toShort(self: *const TagField) u16 {
-        // Smaller than 32-bit values are left-aligned
-        return @truncate(self.data_offset >> 16);
+        return if (comptime native_endian == .big) @truncate(self.data_offset >> 16) else @truncate(self.data_offset & 0xFFFF);
     }
 
     pub fn readRational(self: *const TagField, stream: *ImageUnmanaged.Stream, endianess: std.builtin.Endian) ![2]u32 {
@@ -222,8 +224,6 @@ pub const IFD = struct {
         _ = try reader.readAll(tags_array);
         const next_ifd_offset = try reader.readInt(u32, endianess);
         const tags_list = @as(*const []PackedTag, @ptrCast(&tags_array[0..])).*;
-        // We should iterate through all IFD, but since we support
-        // only one right now, we just set next offset to 0.
 
         for (0..num_tag_entries) |index| {
             const tag = tags_list[index];

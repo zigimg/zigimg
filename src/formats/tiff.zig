@@ -100,7 +100,7 @@ pub const TIFF = struct {
         }
     }
 
-    pub fn readMono(self: *TIFF, pixels: []color.Grayscale1, stream: *ImageUnmanaged.Stream, allocator: std.mem.Allocator) ImageUnmanaged.ReadError!void {
+    pub fn readStrips(self: *TIFF, pixel_storage: *PixelStorage, stream: *ImageUnmanaged.Stream, allocator: std.mem.Allocator) ImageUnmanaged.ReadError!void {
         const bitmap = &self.bitmap;
         const total_strips = (bitmap.image_height + bitmap.rows_per_strip - 1) / bitmap.rows_per_strip;
         const byte_counts_array = bitmap.strip_byte_counts.?;
@@ -117,13 +117,28 @@ pub const TIFF = struct {
             defer allocator.free(strip_buffer);
             _ = try stream.seekTo(offset);
             _ = try stream.read(strip_buffer[0..]);
-            for (0..byte_count) |strip_index| {
-                const byte = strip_buffer[strip_index];
-                for (0..8) |bit_index| {
-                    const value: u1 = @truncate(byte >> @intCast(@as(u3, 7) - bit_index) & 1);
-                    pixels[pixel_index + bit_index].value = if (photometric_interpretation == 0) value else value ^ 1;
-                }
-                pixel_index += 8;
+            blk: switch (pixel_storage.*) {
+                .grayscale1 => |pixels| {
+                    for (0..byte_count) |strip_index| {
+                        const byte = strip_buffer[strip_index];
+                        for (0..8) |bit_index| {
+                            const value: u1 = @truncate(byte >> @intCast(@as(u3, 7) - bit_index) & 1);
+                            pixels[pixel_index].value = if (photometric_interpretation == 1) value else value ^ 1;
+                            pixel_index += 1;
+                            if (pixel_index >= pixels.len)
+                                break :blk;
+                        }
+                    }
+                },
+                .grayscale8 => |pixels| {
+                    for (0..byte_count) |strip_index| {
+                        pixels[pixel_index].value = strip_buffer[strip_index];
+                        pixel_index += 1;
+                        if (pixel_index >= pixels.len)
+                            break :blk;
+                    }
+                },
+                else => return,
             }
         }
     }
@@ -156,17 +171,8 @@ pub const TIFF = struct {
         errdefer pixels.deinit(allocator);
 
         switch (pixels) {
-            .grayscale1 => |data| {
-                if (self.bitmap.fill_order == 1) {
-                    try self.readMono(data, stream, allocator);
-                } else {
-                    // lower column values are stored in lower-order bits
-                    return ImageUnmanaged.Error.Unsupported;
-                }
-            },
-            else => {
-                return ImageUnmanaged.Error.Unsupported;
-            },
+            .grayscale1, .grayscale8 => try self.readStrips(&pixels, stream, allocator),
+            else => return ImageUnmanaged.Error.Unsupported,
         }
 
         return pixels;
