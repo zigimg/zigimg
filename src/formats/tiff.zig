@@ -205,11 +205,11 @@ pub const TIFF = struct {
             return std.builtin.Endian.big;
         }
 
-        return ImageReadError.Unsupported;
+        return ImageReadError.InvalidData;
     }
 
     pub fn formatDetect(stream: *ImageUnmanaged.Stream) !bool {
-        _ = try endianessDetect(stream);
+        _ = endianessDetect(stream) catch return false;
 
         return true;
     }
