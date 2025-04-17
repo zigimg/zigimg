@@ -115,7 +115,7 @@ pub const TagType = enum(u16) {
 };
 
 // Tag as found inside the TIFF file
-pub const PackedTag = struct {
+pub const PackedTag = extern struct {
     const size = 12;
 
     tag_id: u16 align(1),
@@ -128,7 +128,7 @@ pub const PackedTag = struct {
     }
 };
 
-pub const TagField = struct {
+pub const TagField = extern struct {
     data_type: u16 align(1),
     data_count: u32 align(1),
     data_offset: u32 align(1),
