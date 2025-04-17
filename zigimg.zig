@@ -29,6 +29,7 @@ test {
         @import("tests/formats/ras_test.zig"),
         @import("tests/formats/sgi_test.zig"),
         @import("tests/formats/tga_test.zig"),
+        @import("tests/formats/tiff_test.zig"),
         @import("tests/formats/farbfeld_test.zig"),
         @import("tests/image_test.zig"),
         @import("tests/math_test.zig"),
