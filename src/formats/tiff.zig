@@ -60,6 +60,23 @@ pub const TIFF = struct {
                 .compression => {
                     bitmap.compression = @enumFromInt(tag.toShort());
                 },
+                .color_map => {
+                    // get color_map data: TIFF stores components as 16-bit values
+                    // and stores each component first.
+                    // RRRRRRRRRR
+                    // GGGGGGGGGG
+                    // BBBBBBBBBB
+                    const palette = try tag.readTagData(stream, allocator, endianess);
+                    defer allocator.free(palette);
+                    const num_colors: u16 = std.math.pow(u16, 2, bitmap.bits_per_sample);
+
+                    var color_map = &bitmap.color_map;
+                    color_map.resize(num_colors);
+                    for (0..num_colors) |color_index| {
+                        // TIFF colors are stored as 16-bit components
+                        color_map.data[color_index] = color.Rgba32.initRgb(@truncate(palette[color_index] / 256), @truncate(palette[color_index + num_colors] / 256), @truncate(palette[color_index + num_colors * 2] / 256));
+                    }
+                },
                 .strip_byte_counts => {
                     bitmap.strip_byte_counts = try tag.readTagData(stream, allocator, endianess);
                 },
@@ -138,6 +155,19 @@ pub const TIFF = struct {
                             break :blk;
                     }
                 },
+                .indexed8 => |*storage| {
+                    const tiff_color_map = bitmap.color_map;
+                    const palette = storage.palette;
+                    for (0..bitmap.color_map.data.len) |color_index| {
+                        palette[color_index] = tiff_color_map.data[color_index];
+                    }
+                    for (0..byte_count) |strip_index| {
+                        storage.indices[pixel_index] = strip_buffer[strip_index];
+                        pixel_index += 1;
+                        if (pixel_index >= storage.indices.len)
+                            break :blk;
+                    }
+                },
                 else => return,
             }
         }
@@ -171,7 +201,7 @@ pub const TIFF = struct {
         errdefer pixels.deinit(allocator);
 
         switch (pixels) {
-            .grayscale1, .grayscale8 => try self.readStrips(&pixels, stream, allocator),
+            .grayscale1, .grayscale8, .indexed8 => try self.readStrips(&pixels, stream, allocator),
             else => return ImageUnmanaged.Error.Unsupported,
         }
 

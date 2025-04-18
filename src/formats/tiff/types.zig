@@ -3,6 +3,8 @@ const ImageUnmanaged = @import("../../ImageUnmanaged.zig");
 const ImageReadError = ImageUnmanaged.ReadError;
 const ImageError = ImageUnmanaged.Error;
 const PixelFormat = @import("../../pixel_format.zig").PixelFormat;
+const color = @import("../../color.zig");
+const utils = @import("../../utils.zig");
 const builtin = @import("builtin");
 const native_endian = builtin.target.cpu.arch.endian();
 
@@ -24,7 +26,7 @@ pub const ResolutionUnit = enum(u16) {
     cm = 3,
 };
 
-pub const TagId = enum(u16) { new_subfile_type = 254, image_width = 256, image_height = 257, bits_per_sample = 258, compression = 259, photometric_interpretation = 262, fill_order = 266, strip_offsets = 273, orientation = 274, samples_per_pixel = 277, rows_per_strip = 278, strip_byte_counts = 279, x_resolution = 282, y_resolution = 283, planar_configuration = 284, resolution_unit = 296, software = 305, extra_samples = 338, sample_format = 339, unknown_1 = 700, unknown_2 = 34665, unknown_3 = 34675 };
+pub const TagId = enum(u16) { new_subfile_type = 254, image_width = 256, image_height = 257, bits_per_sample = 258, compression = 259, photometric_interpretation = 262, fill_order = 266, strip_offsets = 273, orientation = 274, samples_per_pixel = 277, rows_per_strip = 278, strip_byte_counts = 279, x_resolution = 282, y_resolution = 283, planar_configuration = 284, resolution_unit = 296, software = 305, color_map = 320, extra_samples = 338, sample_format = 339, unknown_1 = 700, unknown_2 = 34665, unknown_3 = 34675 };
 
 // We'll store all tags required for
 // grayscale, color, and rgb encoded files
@@ -44,6 +46,7 @@ pub const BitmapDescriptor = struct {
     strip_offsets: ?[]u32 = null,
     // for each strip, number of bytes (after compression)
     strip_byte_counts: ?[]u32 = null,
+    color_map: utils.FixedStorage(color.Rgba32, 256) = .{},
     // number of pixels per resolution unit in image_width
     x_resolution: [2]u32 = .{ 0, 0 },
     // number of pixels per resolution unit in image_height
@@ -79,6 +82,14 @@ pub const BitmapDescriptor = struct {
                     // TODO
                     4 => return ImageError.Unsupported,
                     8 => return PixelFormat.grayscale8,
+                    else => return ImageError.Unsupported,
+                }
+            },
+            3 => {
+                switch (self.bits_per_sample) {
+                    8 => return PixelFormat.indexed8,
+                    // TODO
+                    4 => return ImageError.Unsupported,
                     else => return ImageError.Unsupported,
                 }
             },
@@ -181,12 +192,14 @@ pub const TagField = extern struct {
                 }
             }
         } else {
-            if (endianess == native_endian) {
-                @memcpy(std.mem.sliceAsBytes(long_data)[0..], std.mem.sliceAsBytes(data)[0..]);
-            } else {
-                const slice_to_swap = std.mem.bytesAsSlice(u16, data);
+            const slice_to_swap = std.mem.bytesAsSlice(u16, data);
+            if (native_endian != endianess) {
                 for (slice_to_swap, 0..self.data_count) |value, index| {
                     long_data[index] = @byteSwap(value);
+                }
+            } else {
+                for (slice_to_swap, 0..self.data_count) |value, index| {
+                    long_data[index] = value;
                 }
             }
         }
