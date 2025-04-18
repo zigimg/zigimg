@@ -180,7 +180,16 @@ pub const TIFF = struct {
                             break :blk;
                     }
                 },
-                else => return,
+                .rgb24 => |storage| {
+                    var strip_index: usize = 0;
+                    while (strip_index < byte_count) : (strip_index += 3) {
+                        storage[pixel_index] = color.Rgb24.initRgb(strip_buffer[strip_index], strip_buffer[strip_index + 1], strip_buffer[strip_index + 2]);
+                        pixel_index += 1;
+                        if (pixel_index >= storage.len)
+                            break :blk;
+                    }
+                },
+                else => return ImageUnmanaged.Error.Unsupported,
             }
         }
     }
@@ -214,7 +223,7 @@ pub const TIFF = struct {
         errdefer pixels.deinit(allocator);
 
         switch (pixels) {
-            .grayscale1, .grayscale8, .indexed8 => try self.readStrips(&pixels, stream, allocator),
+            .grayscale1, .grayscale8, .indexed8, .rgb24 => try self.readStrips(&pixels, stream, allocator),
             else => return ImageUnmanaged.Error.Unsupported,
         }
 

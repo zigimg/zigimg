@@ -53,7 +53,7 @@ pub const BitmapDescriptor = struct {
     resolution_unit: ResolutionUnit = .no_unit,
     // Fields required for grayscale images
     // - b & w: [1] (default value)
-    // - grayscale: [4] or [8] allowed for graysxcale images (16/256 shades)
+    // - grayscale: [4] or [8] allowed for grayscale images (16/256 shades)
     // - rgb: [8,8,8]
     bits_per_sample: utils.FixedStorage(u16, 8) = .{},
     // flags describing the image type
@@ -73,6 +73,7 @@ pub const BitmapDescriptor = struct {
 
     pub fn guessPixelFormat(self: *BitmapDescriptor) ImageReadError!PixelFormat {
         switch (self.photometric_interpretation) {
+            // bi-level/grayscale pictures
             0, 1 => {
                 const bits_per_sample = self.bits_per_sample.data[0];
                 switch (bits_per_sample) {
@@ -84,6 +85,7 @@ pub const BitmapDescriptor = struct {
                     else => return ImageError.Unsupported,
                 }
             },
+            // pictures with color_map
             3 => {
                 const bits_per_sample = self.bits_per_sample.data[0];
                 switch (bits_per_sample) {
@@ -92,6 +94,15 @@ pub const BitmapDescriptor = struct {
                     4 => return ImageError.Unsupported,
                     else => return ImageError.Unsupported,
                 }
+            },
+            // RGB pictures
+            2 => {
+                const bits = self.bits_per_sample.data;
+                // 3 channels, 8-bit per each channel: rgb24
+                if (bits.len == 3 and bits[0] == 0x8 and bits[1] == 0x8 and bits[2] == 8)
+                    return PixelFormat.rgb24;
+
+                return ImageError.Unsupported;
             },
             else => return ImageError.Unsupported,
         }
