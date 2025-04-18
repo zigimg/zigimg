@@ -46,22 +46,20 @@ pub const BitmapDescriptor = struct {
     strip_offsets: ?[]u32 = null,
     // for each strip, number of bytes (after compression)
     strip_byte_counts: ?[]u32 = null,
-    color_map: utils.FixedStorage(color.Rgba32, 256) = .{},
     // number of pixels per resolution unit in image_width
     x_resolution: [2]u32 = .{ 0, 0 },
     // number of pixels per resolution unit in image_height
     y_resolution: [2]u32 = .{ 0, 0 },
     resolution_unit: ResolutionUnit = .no_unit,
     // Fields required for grayscale images
-    // - b & w:
-    // - grayscale: 4 / 8 allowed for grayscale images (16/256 shades)
-    // - rgb: 8,8,8 (count == 3)
-    // TODO: should be [samples_per_pixel]u16
-    bits_per_sample: u16 = 1,
+    // - b & w: [1] (default value)
+    // - grayscale: [4] or [8] allowed for graysxcale images (16/256 shades)
+    // - rgb: [8,8,8]
+    bits_per_sample: utils.FixedStorage(u16, 8) = .{},
     // flags describing the image type
     new_subfile_type: u32 = 0,
     // palette class needs previous tags and:
-    // color_map: utils.FixedStorage(color.Rgba32, 0) = .{},
+    color_map: utils.FixedStorage(color.Rgba32, 256) = .{},
     // rgb class needs previous tags and:
     // number of components per pixel
     samples_per_pixel: u16 = 1,
@@ -76,7 +74,8 @@ pub const BitmapDescriptor = struct {
     pub fn guessPixelFormat(self: *BitmapDescriptor) ImageReadError!PixelFormat {
         switch (self.photometric_interpretation) {
             0, 1 => {
-                switch (self.bits_per_sample) {
+                const bits_per_sample = self.bits_per_sample.data[0];
+                switch (bits_per_sample) {
                     // lower column values are stored in lower-order bits
                     1 => return if (self.fill_order == 1) PixelFormat.grayscale1 else ImageError.Unsupported,
                     // TODO
@@ -86,7 +85,8 @@ pub const BitmapDescriptor = struct {
                 }
             },
             3 => {
-                switch (self.bits_per_sample) {
+                const bits_per_sample = self.bits_per_sample.data[0];
+                switch (bits_per_sample) {
                     8 => return PixelFormat.indexed8,
                     // TODO
                     4 => return ImageError.Unsupported,
