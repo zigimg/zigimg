@@ -59,3 +59,28 @@ test "TIFF/LE grayscale8 uncompressed" {
     try helpers.expectEq(pixels.grayscale8[90].value, 0);
     try helpers.expectEq(pixels.grayscale8[128 * 66 + 72].value, 149);
 }
+
+test "TIFF/LE 8-bit with colormap uncompressed" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tiff/sample-pal8-raw.tiff");
+    defer file.close();
+
+    var the_bitmap = tiff.TIFF{};
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(the_bitmap.width(), 128);
+    try helpers.expectEq(the_bitmap.height(), 128);
+    try testing.expect(pixels == .indexed8);
+
+    const palette64 = pixels.indexed8.palette[64];
+
+    try helpers.expectEq(palette64.r, 255);
+    try helpers.expectEq(palette64.g, 0);
+    try helpers.expectEq(palette64.b, 0);
+
+    try helpers.expectEq(pixels.indexed8.indices[0], 64);
+    try helpers.expectEq(pixels.indexed8.indices[12], 128);
+}
