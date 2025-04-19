@@ -46,6 +46,9 @@ pub const TIFF = struct {
         const tags_map = ifd.tags_map;
         const bitmap = &self.bitmap;
 
+        bitmap.bits_per_sample.resize(1);
+        bitmap.bits_per_sample.data[0] = 1;
+
         var iterator = tags_map.keyIterator();
 
         while (iterator.next()) |key| {
@@ -68,7 +71,7 @@ pub const TIFF = struct {
                     // BBBBBBBBBB
                     const palette = try tag.readTagData(stream, allocator, endianess);
                     defer allocator.free(palette);
-                    const num_colors: u16 = std.math.pow(u16, 2, bitmap.bits_per_sample);
+                    const num_colors: u16 = std.math.pow(u16, 2, bitmap.bits_per_sample.data[0]);
 
                     var color_map = &bitmap.color_map;
                     color_map.resize(num_colors);
@@ -99,8 +102,17 @@ pub const TIFF = struct {
                     bitmap.new_subfile_type = tag.toLong();
                 },
                 .bits_per_sample => {
+                    var bits_per_sample = &bitmap.bits_per_sample;
+                    bits_per_sample.resize(tag.data_count);
                     switch (tag.data_count) {
-                        1 => bitmap.bits_per_sample = tag.toShort(),
+                        1 => bits_per_sample.data[0] = tag.toShort(),
+                        3 => {
+                            const components_bits_per_sample = try tag.readTagData(stream, allocator, endianess);
+                            defer allocator.free(components_bits_per_sample);
+                            for (0..tag.data_count) |index| {
+                                bits_per_sample.data[index] = @truncate(components_bits_per_sample[index]);
+                            }
+                        },
                         else => return ImageError.Unsupported,
                     }
                 },
@@ -168,7 +180,16 @@ pub const TIFF = struct {
                             break :blk;
                     }
                 },
-                else => return,
+                .rgb24 => |storage| {
+                    var strip_index: usize = 0;
+                    while (strip_index < byte_count) : (strip_index += 3) {
+                        storage[pixel_index] = color.Rgb24.initRgb(strip_buffer[strip_index], strip_buffer[strip_index + 1], strip_buffer[strip_index + 2]);
+                        pixel_index += 1;
+                        if (pixel_index >= storage.len)
+                            break :blk;
+                    }
+                },
+                else => return ImageUnmanaged.Error.Unsupported,
             }
         }
     }
@@ -184,6 +205,7 @@ pub const TIFF = struct {
         };
 
         self.bitmap = BitmapDescriptor{};
+
         defer self.bitmap.deinit(allocator);
 
         self.ifd = try IFD.init(stream, allocator, self.header.idf_offset);
@@ -201,7 +223,7 @@ pub const TIFF = struct {
         errdefer pixels.deinit(allocator);
 
         switch (pixels) {
-            .grayscale1, .grayscale8, .indexed8 => try self.readStrips(&pixels, stream, allocator),
+            .grayscale1, .grayscale8, .indexed8, .rgb24 => try self.readStrips(&pixels, stream, allocator),
             else => return ImageUnmanaged.Error.Unsupported,
         }
 
