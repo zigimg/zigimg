@@ -1,28 +1,19 @@
 const std = @import("std");
+
 const color = @import("color.zig");
-const ImageUnmanaged = @import("ImageUnmanaged.zig");
-const PixelFormat = @import("pixel_format.zig").PixelFormat;
 const ImageEditor = @import("ImageEditor.zig");
-
+const ImageUnmanaged = @import("ImageUnmanaged.zig");
 pub const Error = ImageUnmanaged.Error;
-
 pub const ReadError = ImageUnmanaged.ReadError;
-
 pub const WriteError = ImageUnmanaged.WriteError;
-
 pub const ConvertError = ImageUnmanaged.ConvertError;
-
 pub const Format = ImageUnmanaged.Format;
-
 pub const Stream = ImageUnmanaged.Stream;
-
 pub const EncoderOptions = ImageUnmanaged.EncoderOptions;
-
 pub const AnimationLoopInfinite = ImageUnmanaged.AnimationLoopInfinite;
-
 pub const AnimationFrame = ImageUnmanaged.AnimationFrame;
-
 pub const Animation = ImageUnmanaged.Animation;
+const PixelFormat = @import("pixel_format.zig").PixelFormat;
 
 // This layout must match the one in ImageUnmanaged
 width: usize = 0,
@@ -149,11 +140,6 @@ pub fn convert(self: *Image, destination_format: PixelFormat) ConvertError!void 
 /// Flip the image vertically, along the X axis.
 pub fn flipVertically(self: *const Image) ImageEditor.Error!void {
     try ImageUnmanaged.flipVertically(@ptrCast(self), self.allocator);
-}
-
-/// Flip the image horizontally, along the Y axis.
-pub fn flipHorizontally(self: *const Image) ImageEditor.Error!void {
-    try ImageUnmanaged.flipHorizontally(@ptrCast(self), self.allocator);
 }
 
 /// Iterate the pixel in pixel-format agnostic way. In the case of an animation, it returns an iterator for the first frame. The iterator is read-only.

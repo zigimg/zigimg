@@ -1,11 +1,13 @@
+const std = @import("std");
+pub const Stream = std.io.StreamSource;
+
 const color = @import("color.zig");
 const FormatInterface = @import("FormatInterface.zig");
 const formats = @import("formats.zig");
 const Image = @import("Image.zig");
+const ImageEditor = @import("ImageEditor.zig");
 const PixelFormat = @import("pixel_format.zig").PixelFormat;
 const PixelFormatConverter = @import("PixelFormatConverter.zig");
-const ImageEditor = @import("ImageEditor.zig");
-const std = @import("std");
 const utils = @import("utils.zig");
 
 const SupportedFormats = struct {
@@ -66,8 +68,6 @@ pub const WriteError = Error ||
 pub const ConvertError = Error ||
     std.mem.Allocator.Error ||
     error{ NoConversionAvailable, NoConversionNeeded, QuantizeError };
-
-pub const Stream = std.io.StreamSource;
 
 pub const AnimationLoopInfinite = -1;
 
@@ -308,12 +308,7 @@ pub fn convertNoFree(self: *ImageUnmanaged, allocator: std.mem.Allocator, destin
 
 /// Flip the image vertically, along the X axis.
 pub fn flipVertically(self: *const ImageUnmanaged, allocator: std.mem.Allocator) ImageEditor.Error!void {
-    ImageEditor.flipVertically(self, allocator);
-}
-
-/// Flip the image horizontally, along the Y axis.
-pub fn flipHorizontally(self: *const ImageUnmanaged, allocator: std.mem.Allocator) ImageEditor.Error!void {
-    ImageEditor.flipHorizontally(self, allocator);
+    try ImageEditor.flipVertically(self, allocator);
 }
 
 /// Iterate the pixel in pixel-format agnostic way. In the case of an animation, it returns an iterator for the first frame. The iterator is read-only.
