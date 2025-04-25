@@ -1,5 +1,4 @@
 pub const color = @import("src/color.zig");
-pub const Colors = @import("src/predefined_colors.zig").Colors;
 pub const FormatInterface = @import("src/FormatInterface.zig");
 pub const formats = @import("src/formats.zig");
 pub const Image = @import("src/Image.zig");
@@ -8,6 +7,7 @@ pub const math = @import("src/math.zig");
 pub const OctTreeQuantizer = @import("src/OctTreeQuantizer.zig");
 pub const PixelFormat = @import("src/pixel_format.zig").PixelFormat;
 pub const PixelFormatConverter = @import("src/PixelFormatConverter.zig");
+pub const Colors = @import("src/predefined_colors.zig").Colors;
 
 test {
     const std = @import("std");
@@ -29,6 +29,7 @@ test {
         @import("tests/formats/ras_test.zig"),
         @import("tests/formats/tga_test.zig"),
         @import("tests/formats/farbfeld_test.zig"),
+        @import("tests/image_editor_test.zig"),
         @import("tests/image_test.zig"),
         @import("tests/math_test.zig"),
         @import("tests/octree_quantizer_test.zig"),

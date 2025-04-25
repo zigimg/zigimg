@@ -1,12 +1,12 @@
 const std = @import("std");
 pub const Error = std.mem.Allocator.Error;
 
-const ImageUnmanaged = @import("ImageUnmanaged.zig");
+const color = @import("color.zig");
 
 /// Flip the image vertically, along the X axis.
-pub fn flipVertically(image: *const ImageUnmanaged, allocator: std.mem.Allocator) Error!void {
-    const row_size = image.rowByteSize();
-    var image_data = image.pixels.asBytes();
+pub fn flipVertically(pixels: *const color.PixelStorage, height: usize, allocator: std.mem.Allocator) Error!void {
+    var image_data = pixels.asBytes();
+    const row_size = image_data.len / height;
 
     const temp = try allocator.alloc(u8, row_size);
     defer allocator.free(temp);
