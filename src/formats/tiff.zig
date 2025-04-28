@@ -55,13 +55,13 @@ pub const TIFF = struct {
             const tag: TagField = tags_map.get(key.*).?;
             switch (key.*) {
                 .image_width => {
-                    bitmap.image_width = tag.toLongOrShort();
+                    bitmap.image_width = tag.toLongOrShort(endianess);
                 },
                 .image_height => {
-                    bitmap.image_height = tag.toLongOrShort();
+                    bitmap.image_height = tag.toLongOrShort(endianess);
                 },
                 .compression => {
-                    bitmap.compression = @enumFromInt(tag.toShort());
+                    bitmap.compression = @enumFromInt(tag.toShort(endianess));
                 },
                 .color_map => {
                     // get color_map data: TIFF stores components as 16-bit values
@@ -87,16 +87,16 @@ pub const TIFF = struct {
                     bitmap.strip_offsets = try tag.readTagData(stream, allocator, endianess);
                 },
                 .rows_per_strip => {
-                    bitmap.rows_per_strip = tag.toLongOrShort();
+                    bitmap.rows_per_strip = tag.toLongOrShort(endianess);
                 },
                 .photometric_interpretation => {
-                    bitmap.photometric_interpretation = tag.toShort();
+                    bitmap.photometric_interpretation = tag.toShort(endianess);
                 },
                 .samples_per_pixel => {
-                    bitmap.samples_per_pixel = tag.toShort();
+                    bitmap.samples_per_pixel = tag.toShort(endianess);
                 },
                 .resolution_unit => {
-                    bitmap.resolution_unit = @enumFromInt(tag.toShort());
+                    bitmap.resolution_unit = @enumFromInt(tag.toShort(endianess));
                 },
                 .new_subfile_type => {
                     bitmap.new_subfile_type = tag.toLong();
@@ -105,7 +105,7 @@ pub const TIFF = struct {
                     var bits_per_sample = &bitmap.bits_per_sample;
                     bits_per_sample.resize(tag.data_count);
                     switch (tag.data_count) {
-                        1 => bits_per_sample.data[0] = tag.toShort(),
+                        1 => bits_per_sample.data[0] = tag.toShort(endianess),
                         3 => {
                             const components_bits_per_sample = try tag.readTagData(stream, allocator, endianess);
                             defer allocator.free(components_bits_per_sample);
