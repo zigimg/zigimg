@@ -165,12 +165,12 @@ pub const TagField = extern struct {
     // Some fields (eg. image_width) can be encoded as long or short:
     // this function either returns an u16 casted to u32, or an u32
     // based on the tag data_type
-    pub inline fn toLongOrShort(self: *const TagField) u32 {
-        return if (self.data_type == @intFromEnum(TagType.short)) self.toShort() else self.data_offset;
+    pub inline fn toLongOrShort(self: *const TagField, endianess: std.builtin.Endian) u32 {
+        return if (self.data_type == @intFromEnum(TagType.short)) self.toShort(endianess) else self.data_offset;
     }
 
-    pub inline fn toShort(self: *const TagField) u16 {
-        return if (comptime native_endian == .big) @truncate(self.data_offset >> 16) else @truncate(self.data_offset & 0xFFFF);
+    pub inline fn toShort(self: *const TagField, endianess: std.builtin.Endian) u16 {
+        return if (endianess == .big) @truncate(self.data_offset >> 16) else @truncate(self.data_offset & 0xFFFF);
     }
 
     pub fn readRational(self: *const TagField, stream: *ImageUnmanaged.Stream, endianess: std.builtin.Endian) ![2]u32 {
@@ -185,10 +185,17 @@ pub const TagField = extern struct {
 
     pub fn readTagData(self: *const TagField, stream: *ImageUnmanaged.Stream, allocator: std.mem.Allocator, endianess: std.builtin.Endian) ![]u32 {
         const byte_size = if (self.data_type == @intFromEnum(TagType.short)) self.data_count * 2 else self.data_count * 4;
+        const long_data: []u32 = try allocator.alloc(u32, self.data_count);
+
+        // the offset is enough to hold the data so
+        // the offset already holds the data
+        if (self.data_count == 1) {
+            long_data[0] = self.data_offset;
+            return long_data;
+        }
+
         const data: []u8 = try allocator.alloc(u8, byte_size);
         defer allocator.free(data);
-
-        const long_data: []u32 = try allocator.alloc(u32, self.data_count);
 
         try stream.seekTo(self.data_offset);
         _ = try stream.read(data[0..]);

@@ -111,3 +111,84 @@ test "TIFF/LE 24-bit uncompressed" {
         try helpers.expectEq(pixels.rgb24[index].toU32Rgb(), hex_color);
     }
 }
+
+test "TIFF/BE rgb24 gray single strip uncompressed" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tiff/big-endian/sample-rgb24-single-strip.tiff");
+    defer file.close();
+
+    var the_bitmap = tiff.TIFF{};
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(the_bitmap.width(), 128);
+    try helpers.expectEq(the_bitmap.height(), 128);
+    try testing.expect(pixels == .rgb24);
+
+    const indexes = [_]usize{ 0, 12, 24 };
+    const expected_colors = [_]u32{
+        0x4c4c4c,
+        0x959595,
+        0x0,
+    };
+
+    for (expected_colors, indexes) |hex_color, index| {
+        try helpers.expectEq(pixels.rgb24[index].toU32Rgb(), hex_color);
+    }
+}
+
+test "TIFF/BE rgb24 color single strip uncompressed" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tiff/big-endian/sample-pal8-raw.tiff");
+    defer file.close();
+
+    var the_bitmap = tiff.TIFF{};
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(the_bitmap.width(), 128);
+    try helpers.expectEq(the_bitmap.height(), 128);
+    try testing.expect(pixels == .rgb24);
+
+    const indexes = [_]usize{ 0, 12, 24 };
+    const expected_colors = [_]u32{
+        0xff021d,
+        0xff37,
+        0x0,
+    };
+
+    for (expected_colors, indexes) |hex_color, index| {
+        try helpers.expectEq(pixels.rgb24[index].toU32Rgb(), hex_color);
+    }
+}
+
+test "TIFF/BE 24-bit uncompressed" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tiff/big-endian/sample-rgb24-raw.tiff");
+    defer file.close();
+
+    var the_bitmap = tiff.TIFF{};
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(the_bitmap.width(), 664);
+    try helpers.expectEq(the_bitmap.height(), 248);
+    try testing.expect(pixels == .rgb24);
+
+    const indexes = [_]usize{ 8_754, 43_352, 42_224 };
+    const expected_colors = [_]u32{
+        0x21282e,
+        0xe4ad38,
+        0xffffff,
+    };
+
+    for (expected_colors, indexes) |hex_color, index| {
+        try helpers.expectEq(pixels.rgb24[index].toU32Rgb(), hex_color);
+    }
+}
