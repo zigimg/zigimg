@@ -266,7 +266,7 @@ For a single image, they are two ways to get access to the pixel data.
 
 ### Accessing a specific format directly
 
-Yu can access the pixel data directly using `Image.pixels`. `pixels` is an union of all supported pixel formats.
+You can access the pixel data directly using `Image.pixels`. `pixels` is an union of all supported pixel formats.
 
 For RGB pixel formats, just use the pixel format enum value and addresss the data directly.
 ```zig
