@@ -106,13 +106,21 @@ pub const TIFF = struct {
                     bits_per_sample.resize(tag.data_count);
                     switch (tag.data_count) {
                         1 => bits_per_sample.data[0] = tag.toShort(endianess),
-                        3 => {
+                        3, 4 => {
                             const components_bits_per_sample = try tag.readTagData(stream, allocator, endianess);
                             defer allocator.free(components_bits_per_sample);
                             for (0..tag.data_count) |index| {
                                 bits_per_sample.data[index] = @truncate(components_bits_per_sample[index]);
                             }
                         },
+                        else => return ImageError.Unsupported,
+                    }
+                },
+                .extra_samples => {
+                    var extra_samples = &bitmap.extra_samples;
+                    extra_samples.resize(tag.data_count);
+                    switch (tag.data_count) {
+                        1 => extra_samples.data[0] = tag.toShort(endianess),
                         else => return ImageError.Unsupported,
                     }
                 },
@@ -189,6 +197,15 @@ pub const TIFF = struct {
                             break :blk;
                     }
                 },
+                .rgba32 => |storage| {
+                    var strip_index: usize = 0;
+                    while (strip_index < byte_count) : (strip_index += 4) {
+                        storage[pixel_index] = color.Rgba32.initRgba(strip_buffer[strip_index], strip_buffer[strip_index + 1], strip_buffer[strip_index + 2], strip_buffer[strip_index + 3]);
+                        pixel_index += 1;
+                        if (pixel_index >= storage.len)
+                            break :blk;
+                    }
+                },
                 else => return ImageUnmanaged.Error.Unsupported,
             }
         }
@@ -223,7 +240,7 @@ pub const TIFF = struct {
         errdefer pixels.deinit(allocator);
 
         switch (pixels) {
-            .grayscale1, .grayscale8, .indexed8, .rgb24 => try self.readStrips(&pixels, stream, allocator),
+            .grayscale1, .grayscale8, .indexed8, .rgb24, .rgba32 => try self.readStrips(&pixels, stream, allocator),
             else => return ImageUnmanaged.Error.Unsupported,
         }
 

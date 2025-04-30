@@ -1,4 +1,3 @@
-const PixelFormat = zigimg.PixelFormat;
 const tiff = zigimg.formats.tiff;
 const color = zigimg.color;
 const zigimg = @import("../../zigimg.zig");
@@ -190,5 +189,28 @@ test "TIFF/BE 24-bit uncompressed" {
 
     for (expected_colors, indexes) |hex_color, index| {
         try helpers.expectEq(pixels.rgb24[index].toU32Rgb(), hex_color);
+    }
+}
+
+test "TIFF/LE RGBA uncompressed" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tiff/sample-rgba-raw.tiff");
+    defer file.close();
+
+    var the_bitmap = tiff.TIFF{};
+
+    var stream_source = std.io.StreamSource{ .file = file };
+
+    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(the_bitmap.width(), 32);
+    try helpers.expectEq(the_bitmap.height(), 32);
+    try testing.expect(pixels == .rgba32);
+
+    const indexes = [_]usize{ 100, 1000, 1018 };
+    const expected_colors = [_]u32{ 0xf6ff00, 0xbe0042, 0x2900d7 };
+
+    for (expected_colors, indexes) |hex_color, index| {
+        try helpers.expectEq(pixels.rgba32[index].toU32Rgb(), hex_color);
     }
 }

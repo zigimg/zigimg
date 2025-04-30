@@ -66,6 +66,8 @@ pub const BitmapDescriptor = struct {
     // Default fill_order: pixels are arranged within a byte such that
     // pixels with lower column values are stored in the higher-order bits of the byte.
     fill_order: u16 = 1,
+    // contains extra_samples description
+    extra_samples: utils.FixedStorage(u16, 8) = .{},
 
     pub fn debug(self: *BitmapDescriptor) void {
         std.log.debug("{}\n", .{self});
@@ -98,11 +100,25 @@ pub const BitmapDescriptor = struct {
             // RGB pictures
             2 => {
                 const bits = self.bits_per_sample.data;
-                // 3 channels, 8-bit per each channel: rgb24
-                if (bits.len == 3 and bits[0] == 0x8 and bits[1] == 0x8 and bits[2] == 8)
-                    return PixelFormat.rgb24;
+                switch (bits.len) {
+                    3 => {
+                        // 3 channels, 8-bit per each channel: rgb24
+                        if (bits[0] == 8 and bits[1] == 8 and bits[2] == 8)
+                            return PixelFormat.rgb24;
 
-                return ImageError.Unsupported;
+                        return ImageError.Unsupported;
+                    },
+                    4 => {
+                        // 4 channels: RGBA or RGB/pre-multiplied
+                        const extra_sample_format = self.extra_samples.data[0];
+                        // only support RGBA and not pre-multiplied for now
+                        if (bits[0] == 8 and bits[1] == 8 and bits[2] == 8 and bits[3] == 8 and extra_sample_format == 2)
+                            return PixelFormat.rgba32;
+
+                        return ImageError.Unsupported;
+                    },
+                    else => return ImageError.Unsupported,
+                }
             },
             else => return ImageError.Unsupported,
         }
