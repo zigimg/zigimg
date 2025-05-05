@@ -130,11 +130,58 @@ pub const TIFF = struct {
                 .y_resolution => {
                     bitmap.y_resolution = try tag.readRational(stream, endianess);
                 },
+                .planar_configuration => {
+                    bitmap.planar_configuration = tag.toShort(endianess);
+                },
                 else => {
                     // skip optional tags
                 },
             }
         }
+    }
+
+    pub fn uncompressPackBits(_: *TIFF, stream: *ImageUnmanaged.Stream, tmp_buffer: []u8, length: usize) !void {
+        const reader = stream.reader();
+        var input_offset: u32 = 0;
+        var output_offset: u32 = 0;
+
+        while (output_offset < length - 1) {
+            const control: i8 = @bitCast(try reader.readByte());
+            if (control <= -1) {
+                const value = try reader.readByte();
+                input_offset += 1;
+                for (0..@abs(control) + 1) |_| {
+                    tmp_buffer[output_offset] = value;
+                    output_offset += 1;
+                }
+            } else if (control <= 127) {
+                for (0..@as(usize, @intCast(control)) + 1) |_| {
+                    if (output_offset >= length) {
+                        return;
+                    }
+                    tmp_buffer[output_offset] = try reader.readByte();
+                    output_offset += 1;
+                    input_offset += 1;
+                }
+            }
+        }
+    }
+
+    pub fn calRowByteSize(self: *TIFF) !usize {
+        const bitmap = &self.bitmap;
+        var total_bits: usize = 0;
+
+        for (0..bitmap.samples_per_pixel) |index| {
+            total_bits += bitmap.bits_per_sample.data[index];
+        }
+
+        if (total_bits == 1) {
+            return bitmap.image_width >> 3;
+        } else if (total_bits >= 8) {
+            return bitmap.image_width * (total_bits / 8);
+        }
+
+        return ImageUnmanaged.Error.Unsupported;
     }
 
     pub fn readStrips(self: *TIFF, pixel_storage: *PixelStorage, stream: *ImageUnmanaged.Stream, allocator: std.mem.Allocator) ImageUnmanaged.ReadError!void {
@@ -143,17 +190,38 @@ pub const TIFF = struct {
         const byte_counts_array = bitmap.strip_byte_counts.?;
         const offsets_array = bitmap.strip_offsets.?;
         const image_width = bitmap.image_width;
-        const row_per_strips = bitmap.rows_per_strip;
+        const image_height = bitmap.image_height;
+        const rows_per_strip = @min(bitmap.rows_per_strip, bitmap.image_height);
         const photometric_interpretation = bitmap.photometric_interpretation;
+        const compression = bitmap.compression;
+        const row_remainder = image_height % rows_per_strip;
+        // Note: not sure why but row_per_strip may be bigger than the image_height
+        const last_strip_row_count = if (image_height > rows_per_strip and row_remainder > 0) row_remainder else rows_per_strip;
+        const row_byte_size = try self.calRowByteSize();
 
         for (0..total_strips) |index| {
-            const byte_count = byte_counts_array[index];
+            const byte_count = blk: {
+                if (compression == .uncompressed)
+                    break :blk byte_counts_array[index];
+                // If image is compressed, byte_count is the count *after* compression
+                if (total_strips > 1 and index < total_strips - 1)
+                    break :blk rows_per_strip * row_byte_size;
+
+                break :blk last_strip_row_count * row_byte_size;
+            };
             const offset = offsets_array[index];
+            // allocate buffer for the uncompressed strip_buffer
             const strip_buffer: []u8 = try allocator.alloc(u8, byte_count);
-            var pixel_index = index * row_per_strips * image_width;
+            var pixel_index = index * rows_per_strip * image_width;
             defer allocator.free(strip_buffer);
             _ = try stream.seekTo(offset);
-            _ = try stream.read(strip_buffer[0..]);
+
+            switch (compression) {
+                .uncompressed => _ = try stream.read(strip_buffer[0..]),
+                .packbits => _ = try self.uncompressPackBits(stream, strip_buffer, byte_count),
+                else => return ImageUnmanaged.Error.Unsupported,
+            }
+
             blk: switch (pixel_storage.*) {
                 .grayscale1 => |pixels| {
                     for (0..byte_count) |strip_index| {

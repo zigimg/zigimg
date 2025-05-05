@@ -69,11 +69,17 @@ pub const BitmapDescriptor = struct {
     // contains extra_samples description
     extra_samples: utils.FixedStorage(u16, 8) = .{},
 
+    planar_configuration: u16 = 1,
+
     pub fn debug(self: *BitmapDescriptor) void {
         std.log.debug("{}\n", .{self});
     }
 
     pub fn guessPixelFormat(self: *BitmapDescriptor) ImageReadError!PixelFormat {
+        // only raw and packbits compression supported for now
+        if (self.compression != .uncompressed and self.compression != .packbits)
+            return ImageError.Unsupported;
+
         switch (self.photometric_interpretation) {
             // bi-level/grayscale pictures
             0, 1 => {
