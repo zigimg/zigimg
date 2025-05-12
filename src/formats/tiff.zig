@@ -10,6 +10,7 @@ const std = @import("std");
 const PixelStorage = color.PixelStorage;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const types = @import("tiff/types.zig");
+const ccitt = @import("../compressions/ccitt.zig");
 
 pub const Header = types.Header;
 pub const IFD = types.IFD;
@@ -140,6 +141,14 @@ pub const TIFF = struct {
         }
     }
 
+    pub fn uncompressCCITT(self: *TIFF, read_stream: *ImageUnmanaged.Stream, dest_buffer: []u8, image_width: usize, num_rows: usize) !void {
+        var write_stream = std.io.fixedBufferStream(dest_buffer);
+        var ccitt_decoder = try ccitt.Decoder.init(image_width, num_rows, @truncate(self.bitmap.photometric_interpretation));
+        ccitt_decoder.decode(read_stream.reader(), write_stream.writer()) catch {
+            return ImageUnmanaged.ReadError.InvalidData;
+        };
+    }
+
     pub fn uncompressPackBits(_: *TIFF, stream: *ImageUnmanaged.Stream, tmp_buffer: []u8, length: usize) !void {
         const reader = stream.reader();
         var input_offset: u32 = 0;
@@ -200,15 +209,9 @@ pub const TIFF = struct {
         const row_byte_size = try self.calRowByteSize();
 
         for (0..total_strips) |index| {
-            const byte_count = blk: {
-                if (compression == .uncompressed)
-                    break :blk byte_counts_array[index];
-                // If image is compressed, byte_count is the count *after* compression
-                if (total_strips > 1 and index < total_strips - 1)
-                    break :blk rows_per_strip * row_byte_size;
-
-                break :blk last_strip_row_count * row_byte_size;
-            };
+            // last strip may have less rows than rows_per_strip
+            const current_row_size = if (total_strips > 1 and index < total_strips - 1) rows_per_strip else last_strip_row_count;
+            const byte_count = if (compression == .uncompressed) byte_counts_array[index] else current_row_size * row_byte_size;
             const offset = offsets_array[index];
             // allocate buffer for the uncompressed strip_buffer
             const strip_buffer: []u8 = try allocator.alloc(u8, byte_count);
@@ -219,6 +222,7 @@ pub const TIFF = struct {
             switch (compression) {
                 .uncompressed => _ = try stream.read(strip_buffer[0..]),
                 .packbits => _ = try self.uncompressPackBits(stream, strip_buffer, byte_count),
+                .ccitt_rle => _ = try self.uncompressCCITT(stream, strip_buffer, image_width, current_row_size),
                 else => return ImageUnmanaged.Error.Unsupported,
             }
 

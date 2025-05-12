@@ -10,7 +10,7 @@ const native_endian = builtin.target.cpu.arch.endian();
 
 pub const CompressionType = enum(u16) {
     uncompressed = 1,
-    ccit_1d = 2,
+    ccitt_rle = 2,
     gp_3_fax = 3,
     gp_4_fax = 4,
     lzw = 5,
@@ -26,7 +26,37 @@ pub const ResolutionUnit = enum(u16) {
     cm = 3,
 };
 
-pub const TagId = enum(u16) { new_subfile_type = 254, image_width = 256, image_height = 257, bits_per_sample = 258, compression = 259, photometric_interpretation = 262, fill_order = 266, strip_offsets = 273, orientation = 274, samples_per_pixel = 277, rows_per_strip = 278, strip_byte_counts = 279, x_resolution = 282, y_resolution = 283, planar_configuration = 284, resolution_unit = 296, software = 305, color_map = 320, extra_samples = 338, sample_format = 339, unknown_1 = 700, unknown_2 = 34665, unknown_3 = 34675 };
+// zig fmt: off
+pub const TagId = enum(u16) {
+    new_subfile_type = 254,
+    image_width = 256,
+    image_height = 257,
+    bits_per_sample = 258,
+    compression = 259,
+    photometric_interpretation = 262,
+    fill_order = 266,
+    document_name = 269,
+    image_description = 270,
+    strip_offsets = 273,
+    orientation = 274,
+    samples_per_pixel = 277,
+    rows_per_strip = 278,
+    strip_byte_counts = 279,
+    x_resolution = 282,
+    y_resolution = 283,
+    planar_configuration = 284,
+    t4_options = 292,
+    resolution_unit = 296,
+    page_number = 297,
+    software = 305,
+    color_map = 320,
+    extra_samples = 338,
+    sample_format = 339,
+    unknown_1 = 700,
+    unknown_2 = 34665,
+    unknown_3 = 34675
+};
+// zig fmt: on
 
 // We'll store all tags required for
 // grayscale, color, and rgb encoded files
@@ -76,8 +106,8 @@ pub const BitmapDescriptor = struct {
     }
 
     pub fn guessPixelFormat(self: *BitmapDescriptor) ImageReadError!PixelFormat {
-        // only raw and packbits compression supported for now
-        if (self.compression != .uncompressed and self.compression != .packbits)
+        // only raw, packbits and ccitt_rle compression supported for now
+        if (self.compression != .uncompressed and self.compression != .packbits and self.compression != .ccitt_rle)
             return ImageError.Unsupported;
 
         switch (self.photometric_interpretation) {
