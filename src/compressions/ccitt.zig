@@ -242,13 +242,13 @@ pub const Decoder = struct {
         var bit_writer = std.io.bitWriter(std.builtin.Endian.big, writer);
         const max_row = self.num_rows;
         var current_row: usize = 0;
-        var pixels_to_decode = self.width;
         var code_length: u8 = 0;
         var code: u13 = 0;
         var decoded_bits: u16 = 0;
         var bits_read: u16 = 0;
 
         while (current_row < max_row) {
+            var pixels_to_decode = self.width;
             // Max code_length is 13 bits long
             while (pixels_to_decode > 0 and code_length < 14) {
                 code <<= 1;
@@ -272,10 +272,15 @@ pub const Decoder = struct {
                 }
             }
             current_row += 1;
-            const bits_reminder: u16 = decoded_bits % 8;
+            const bits_remainder: u16 = decoded_bits % 8;
             // Align to byte boundary
-            if (bits_reminder > 0) {
-                _ = try bit_reader.readBits(u1, 8 - bits_reminder, &bits_read);
+            if (bits_remainder > 0) {
+                _ = try bit_reader.readBits(u1, 8 - bits_remainder, &bits_read);
+            }
+
+            // malfornmed file
+            if (pixels_to_decode != 0) {
+                return ImageUnmanaged.ReadError.InvalidData;
             }
         }
     }
