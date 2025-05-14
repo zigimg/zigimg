@@ -81,7 +81,7 @@ zig build test
 | SGI           | ✔️            | ❌            |
 | SUN           | ✔️            | ❌            |
 | TGA           | ✔️            | ✔️            |
-| TIFF          | ❌            | ❌            |
+| TIFF          | ✔️ (Partial)  | ❌            |
 | XBM           | ❌            | ❌            |
 | XPM           | ❌            | ❌            |
 
@@ -172,6 +172,23 @@ Currently, this only supports a subset of PAMs where:
 * Supports uncompressed and compressed 8-bit grayscale, indexed with 16-bit and 24-bit colormap, truecolor with 16-bit(RGB555), 24-bit or 32-bit bit depth.
 * Supports reading version 1 and version 2
 * Supports writing version 2
+
+### TIFF - Tagged Image File Format
+
+#### What's supported:
+* bilevel, grayscale, palette and RGB(A) files
+* most _baseline_ tags
+* raw, PackBits, CCITT 1D files
+* big-endian (MM) and little-endian (II) files should both be decoded fine
+
+#### What's missing:
+* Tile-based files are not supported
+* YCbCr, CMJN and CIE Lab files are not supported
+* LZW, JPEG, CCITT Fax 3 / 4 are not supported yet
+
+#### Notes
+* Only the first IFD is decoded
+* Orientation tag is not supported yet
 
 ## Supported Pixel formats
 
