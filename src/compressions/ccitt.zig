@@ -14,7 +14,6 @@ pub const Color = enum(u1) {
 };
 
 pub const white_terminating_codes = [_]Code{
-    // zig fmt: off
     .{ .run_length = 0, .code = 0b00110101, .code_length = 8 },
     .{ .run_length = 1, .code = 0b000111, .code_length = 6 },
     .{ .run_length = 2, .code = 0b0111, .code_length = 4 },
@@ -78,7 +77,7 @@ pub const white_terminating_codes = [_]Code{
     .{ .run_length = 60, .code = 0b01001011, .code_length = 8 },
     .{ .run_length = 61, .code = 0b00110010, .code_length = 8 },
     .{ .run_length = 62, .code = 0b00110011, .code_length = 8 },
-    .{ .run_length = 63, .code = 0b00110100, .code_length = 8 }
+    .{ .run_length = 63, .code = 0b00110100, .code_length = 8 },
 };
 
 pub const black_terminating_codes = [_]Code{
@@ -145,7 +144,7 @@ pub const black_terminating_codes = [_]Code{
     .{ .run_length = 60, .code = 0b000000101100, .code_length = 12 },
     .{ .run_length = 61, .code = 0b000001011010, .code_length = 12 },
     .{ .run_length = 62, .code = 0b000001100110, .code_length = 12 },
-    .{ .run_length = 63, .code = 0b000001100111, .code_length = 12 }
+    .{ .run_length = 63, .code = 0b000001100111, .code_length = 12 },
 };
 
 pub const white_make_up_codes = [_]Code{
@@ -175,10 +174,9 @@ pub const white_make_up_codes = [_]Code{
     .{ .run_length = 1536, .code = 0b010011001, .code_length = 9 },
     .{ .run_length = 1600, .code = 0b010011010, .code_length = 9 },
     .{ .run_length = 1664, .code = 0b011000, .code_length = 6 },
-    .{ .run_length = 1728, .code = 0b010011011, .code_length = 9 }
+    .{ .run_length = 1728, .code = 0b010011011, .code_length = 9 },
 };
 
-// zig fmt: off
 pub const black_make_up_codes = [_]Code{
     .{ .run_length = 64, .code = 0b0000001111, .code_length = 10 },
     .{ .run_length = 128, .code = 0b000011001000, .code_length = 12 },
@@ -206,7 +204,7 @@ pub const black_make_up_codes = [_]Code{
     .{ .run_length = 1536, .code = 0b0000001011010, .code_length = 13 },
     .{ .run_length = 1600, .code = 0b0000001011011, .code_length = 13 },
     .{ .run_length = 1664, .code = 0b0000001100100, .code_length = 13 },
-    .{ .run_length = 1728, .code = 0b0000001100101, .code_length = 13 }
+    .{ .run_length = 1728, .code = 0b0000001100101, .code_length = 13 },
 };
 
 pub const additional_make_up_codes = [_]Code{
@@ -215,19 +213,18 @@ pub const additional_make_up_codes = [_]Code{
     .{ .run_length = 1920, .code = 0b00000001101, .code_length = 11 },
     .{ .run_length = 1984, .code = 0b000000010010, .code_length = 12 },
     .{ .run_length = 2048, .code = 0b000000010011, .code_length = 12 },
-    .{ .run_length = 2112, .code = 0b000000010100, .code_length = 12 }, 
-    .{ .run_length = 2176, .code = 0b000000010101, .code_length = 12 },  
-    .{ .run_length = 2240, .code = 0b000000010110, .code_length = 12 },   
-    .{ .run_length = 2304, .code = 0b000000010111, .code_length = 12 },    
-    .{ .run_length = 2368, .code = 0b000000011100, .code_length = 12 },     
-    .{ .run_length = 2432, .code = 0b000000011101, .code_length = 12 },      
-    .{ .run_length = 2496, .code = 0b000000011110, .code_length = 12 },       
-    .{ .run_length = 2560, .code = 0b000000011111, .code_length = 12 }
+    .{ .run_length = 2112, .code = 0b000000010100, .code_length = 12 },
+    .{ .run_length = 2176, .code = 0b000000010101, .code_length = 12 },
+    .{ .run_length = 2240, .code = 0b000000010110, .code_length = 12 },
+    .{ .run_length = 2304, .code = 0b000000010111, .code_length = 12 },
+    .{ .run_length = 2368, .code = 0b000000011100, .code_length = 12 },
+    .{ .run_length = 2432, .code = 0b000000011101, .code_length = 12 },
+    .{ .run_length = 2496, .code = 0b000000011110, .code_length = 12 },
+    .{ .run_length = 2560, .code = 0b000000011111, .code_length = 12 },
 };
-// zig fmt: on
 
 pub const Decoder = struct {
-    current_color: Color = Color.white,
+    current_color: Color = .white,
     should_reverse: bool = false,
     width: usize = 0,
     num_rows: usize = 0,
@@ -261,12 +258,12 @@ pub const Decoder = struct {
                     pixels_to_decode -= run_length.?;
                     decoded_bits += code_length;
                     for (0..run_length.?) |_| {
-                        _ = try bit_writer.writeBits(if (self.current_color == Color.white) @as(u1, self.white_value) else @as(u1, self.white_value ^ 1), 1);
+                        _ = try bit_writer.writeBits(if (self.current_color == .white) @as(u1, self.white_value) else @as(u1, self.white_value ^ 1), 1);
                     }
                     code = 0;
                     code_length = 0;
                     if (self.should_reverse) {
-                        self.current_color = if (self.current_color == Color.white) Color.black else Color.white;
+                        self.current_color = if (self.current_color == .white) Color.black else .white;
                         self.should_reverse = false;
                     }
                 }
@@ -301,7 +298,7 @@ pub const Decoder = struct {
                 return makeup.run_length;
         }
 
-        const make_up_codes = if (self.current_color == Color.white) &white_make_up_codes else &black_make_up_codes;
+        const make_up_codes = if (self.current_color == .white) &white_make_up_codes else &black_make_up_codes;
 
         for (make_up_codes) |makeup| {
             if (makeup.code == code and makeup.code_length == length)
@@ -312,7 +309,7 @@ pub const Decoder = struct {
     }
 
     pub fn get_terminating_code(self: *Decoder, code: u13, length: u8) ?u16 {
-        const terminating_codes = if (self.current_color == Color.white) &white_terminating_codes else &black_terminating_codes;
+        const terminating_codes = if (self.current_color == .white) &white_terminating_codes else &black_terminating_codes;
 
         for (terminating_codes) |makeup| {
             if (makeup.code == code and makeup.code_length == length) {

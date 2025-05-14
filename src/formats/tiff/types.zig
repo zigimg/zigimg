@@ -26,7 +26,6 @@ pub const ResolutionUnit = enum(u16) {
     cm = 3,
 };
 
-// zig fmt: off
 pub const TagId = enum(u16) {
     new_subfile_type = 254,
     image_width = 256,
@@ -54,9 +53,8 @@ pub const TagId = enum(u16) {
     sample_format = 339,
     unknown_1 = 700,
     unknown_2 = 34665,
-    unknown_3 = 34675
+    unknown_3 = 34675,
 };
-// zig fmt: on
 
 // We'll store all tags required for
 // grayscale, color, and rgb encoded files
