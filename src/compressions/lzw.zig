@@ -16,11 +16,14 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
         remaining_data: ?u13 = null,
         remaining_bits: u4 = 0,
 
+        // Some LZW encoders (eg. TIFF) increase the code size too early
+        early_change: u8 = 0,
+
         const MaxCodeSize = 12;
 
         const Self = @This();
 
-        pub fn init(allocator: std.mem.Allocator, initial_code_size: u8) !Self {
+        pub fn init(allocator: std.mem.Allocator, initial_code_size: u8, early_change: u8) !Self {
             var result = Self{
                 .area_allocator = std.heap.ArenaAllocator.init(allocator),
                 .code_size = initial_code_size,
@@ -29,6 +32,7 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
                 .clear_code = @as(u13, 1) << @intCast(initial_code_size),
                 .end_information_code = (@as(u13, 1) << @intCast(initial_code_size)) + 1,
                 .next_code = (@as(u13, 1) << @intCast(initial_code_size)) + 2,
+                .early_change = early_change,
             };
 
             // Reset dictionary and code to its default state
@@ -52,6 +56,7 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
 
             if (self.remaining_data) |remaining_data| {
                 const rest_of_data = try bit_reader.readBits(u13, self.remaining_bits, &read_size);
+
                 if (read_size > 0) {
                     switch (endian) {
                         .little => {
@@ -83,7 +88,7 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
                             self.next_code += 1;
 
                             const max_code = @as(u13, 1) << @intCast(self.code_size + 1);
-                            if (self.next_code == max_code and (self.code_size + 1) < MaxCodeSize) {
+                            if (self.next_code == (max_code - self.early_change) and (self.code_size + 1) < MaxCodeSize) {
                                 self.code_size += 1;
                                 bits_to_read += 1;
                             }
@@ -109,7 +114,7 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
                                 self.next_code += 1;
 
                                 const max_code = @as(u13, 1) << @intCast(self.code_size + 1);
-                                if (self.next_code == max_code and (self.code_size + 1) < MaxCodeSize) {
+                                if (self.next_code == (max_code - self.early_change) and (self.code_size + 1) < MaxCodeSize) {
                                     self.code_size += 1;
                                     bits_to_read += 1;
                                 }
@@ -166,7 +171,7 @@ test "Should decode a simple LZW little-endian stream" {
         .buffer = std.io.fixedBufferStream(&out_data_storage),
     };
 
-    var lzw = try Decoder(.little).init(std.testing.allocator, initial_code_size);
+    var lzw = try Decoder(.little).init(std.testing.allocator, initial_code_size, 0);
     defer lzw.deinit();
 
     try lzw.decode(reader.reader(), out_data_buffer.writer());
