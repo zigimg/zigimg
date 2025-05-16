@@ -178,13 +178,13 @@ Currently, this only supports a subset of PAMs where:
 #### What's supported:
 * bilevel, grayscale, palette and RGB(A) files
 * most _baseline_ tags
-* raw, PackBits, CCITT 1D files
+* Raw, LZW, PackBits, CCITT 1D files
 * big-endian (MM) and little-endian (II) files should both be decoded fine
 
 #### What's missing:
 * Tile-based files are not supported
 * YCbCr, CMJN and CIE Lab files are not supported
-* LZW, JPEG, CCITT Fax 3 / 4 are not supported yet
+* JPEG, CCITT Fax 3 / 4 are not supported yet
 
 #### Notes
 * Only the first IFD is decoded

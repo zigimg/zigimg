@@ -547,7 +547,7 @@ pub const GIF = struct {
                 return ImageUnmanaged.ReadError.InvalidData;
             }
 
-            var lzw_decoder = try lzw.Decoder(.little).init(self.allocator, lzw_minimum_code_size);
+            var lzw_decoder = try lzw.Decoder(.little).init(self.allocator, lzw_minimum_code_size, 0);
             defer lzw_decoder.deinit();
 
             var data_block_size = try context.reader.readByte();
