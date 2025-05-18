@@ -11,6 +11,7 @@ const PixelStorage = color.PixelStorage;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const types = @import("tiff/types.zig");
 const ccitt = @import("../compressions/ccitt.zig");
+const lzw = @import("../compressions/lzw.zig");
 
 pub const Header = types.Header;
 pub const IFD = types.IFD;
@@ -134,11 +135,24 @@ pub const TIFF = struct {
                 .planar_configuration => {
                     bitmap.planar_configuration = tag.toShort(endianess);
                 },
+                .predictor => {
+                    bitmap.predictor = tag.toShort(endianess);
+                },
                 else => {
                     // skip optional tags
                 },
             }
         }
+    }
+
+    pub fn uncompressLZW(_: *TIFF, read_stream: *ImageUnmanaged.Stream, dest_buffer: []u8, allocator: std.mem.Allocator) !void {
+        var write_stream = std.io.fixedBufferStream(dest_buffer);
+        var lzw_decoder = try lzw.Decoder(.big).init(allocator, 8, 1);
+        defer lzw_decoder.deinit();
+
+        lzw_decoder.decode(read_stream.reader(), write_stream.writer()) catch {
+            return ImageUnmanaged.ReadError.InvalidData;
+        };
     }
 
     pub fn uncompressCCITT(self: *TIFF, read_stream: *ImageUnmanaged.Stream, dest_buffer: []u8, image_width: usize, num_rows: usize) !void {
@@ -202,6 +216,7 @@ pub const TIFF = struct {
         const image_height = bitmap.image_height;
         const rows_per_strip = @min(bitmap.rows_per_strip, bitmap.image_height);
         const photometric_interpretation = bitmap.photometric_interpretation;
+        const predictor = bitmap.predictor;
         const compression = bitmap.compression;
         const row_remainder = image_height % rows_per_strip;
         // Note: not sure why but row_per_strip may be bigger than the image_height
@@ -223,6 +238,7 @@ pub const TIFF = struct {
                 .uncompressed => _ = try stream.read(strip_buffer[0..]),
                 .packbits => _ = try self.uncompressPackBits(stream, strip_buffer, byte_count),
                 .ccitt_rle => _ = try self.uncompressCCITT(stream, strip_buffer, image_width, current_row_size),
+                .lzw => _ = try self.uncompressLZW(stream, strip_buffer, allocator),
                 else => return ImageUnmanaged.Error.Unsupported,
             }
 
@@ -241,7 +257,11 @@ pub const TIFF = struct {
                 },
                 .grayscale8 => |pixels| {
                     for (0..byte_count) |strip_index| {
-                        pixels[pixel_index].value = strip_buffer[strip_index];
+                        if (predictor == 1 or pixel_index % image_width == 0) {
+                            pixels[pixel_index].value = strip_buffer[strip_index];
+                        } else {
+                            pixels[pixel_index].value = pixels[pixel_index - 1].value +% strip_buffer[strip_index];
+                        }
                         pixel_index += 1;
                         if (pixel_index >= pixels.len)
                             break :blk;
@@ -254,7 +274,11 @@ pub const TIFF = struct {
                         palette[color_index] = tiff_color_map.data[color_index];
                     }
                     for (0..byte_count) |strip_index| {
-                        storage.indices[pixel_index] = strip_buffer[strip_index];
+                        if (predictor == 1 or pixel_index % image_width == 0) {
+                            storage.indices[pixel_index] = strip_buffer[strip_index];
+                        } else {
+                            storage.indices[pixel_index] = storage.indices[pixel_index - 1] +% strip_buffer[strip_index];
+                        }
                         pixel_index += 1;
                         if (pixel_index >= storage.indices.len)
                             break :blk;
@@ -263,7 +287,12 @@ pub const TIFF = struct {
                 .rgb24 => |storage| {
                     var strip_index: usize = 0;
                     while (strip_index < byte_count) : (strip_index += 3) {
-                        storage[pixel_index] = color.Rgb24.initRgb(strip_buffer[strip_index], strip_buffer[strip_index + 1], strip_buffer[strip_index + 2]);
+                        if (predictor == 1 or pixel_index % image_width == 0) {
+                            storage[pixel_index] = color.Rgb24.initRgb(strip_buffer[strip_index], strip_buffer[strip_index + 1], strip_buffer[strip_index + 2]);
+                        } else {
+                            const previous_color = storage[pixel_index - 1];
+                            storage[pixel_index] = color.Rgb24.initRgb(previous_color.r +% strip_buffer[strip_index], previous_color.g +% strip_buffer[strip_index + 1], previous_color.b +% strip_buffer[strip_index + 2]);
+                        }
                         pixel_index += 1;
                         if (pixel_index >= storage.len)
                             break :blk;
@@ -272,7 +301,12 @@ pub const TIFF = struct {
                 .rgba32 => |storage| {
                     var strip_index: usize = 0;
                     while (strip_index < byte_count) : (strip_index += 4) {
-                        storage[pixel_index] = color.Rgba32.initRgba(strip_buffer[strip_index], strip_buffer[strip_index + 1], strip_buffer[strip_index + 2], strip_buffer[strip_index + 3]);
+                        if (predictor == 1 or pixel_index % image_width == 0) {
+                            storage[pixel_index] = color.Rgba32.initRgba(strip_buffer[strip_index], strip_buffer[strip_index + 1], strip_buffer[strip_index + 2], strip_buffer[strip_index + 3]);
+                        } else {
+                            const previous_color = storage[pixel_index - 1];
+                            storage[pixel_index] = color.Rgba32.initRgba(previous_color.r +% strip_buffer[strip_index], previous_color.g +% strip_buffer[strip_index + 1], previous_color.b +% strip_buffer[strip_index + 2], previous_color.a +% strip_buffer[strip_index + 3]);
+                        }
                         pixel_index += 1;
                         if (pixel_index >= storage.len)
                             break :blk;

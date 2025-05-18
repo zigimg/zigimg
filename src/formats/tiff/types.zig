@@ -44,10 +44,15 @@ pub const TagId = enum(u16) {
     x_resolution = 282,
     y_resolution = 283,
     planar_configuration = 284,
+    x_position = 286,
+    y_position = 287,
     t4_options = 292,
     resolution_unit = 296,
     page_number = 297,
     software = 305,
+    predictor = 317,
+    white_point = 318,
+    primary_chromaticities = 319,
     color_map = 320,
     extra_samples = 338,
     sample_format = 339,
@@ -99,13 +104,16 @@ pub const BitmapDescriptor = struct {
 
     planar_configuration: u16 = 1,
 
+    // predictor used before coding (mostly LZW)
+    predictor: u16 = 1,
+
     pub fn debug(self: *BitmapDescriptor) void {
         std.log.debug("{}\n", .{self});
     }
 
     pub fn guessPixelFormat(self: *BitmapDescriptor) ImageReadError!PixelFormat {
-        // only raw, packbits and ccitt_rle compression supported for now
-        if (self.compression != .uncompressed and self.compression != .packbits and self.compression != .ccitt_rle)
+        // only raw, packbits, lzw and ccitt_rle compression supported for now
+        if (self.compression != .uncompressed and self.compression != .packbits and self.compression != .ccitt_rle and self.compression != .lzw)
             return ImageError.Unsupported;
 
         switch (self.photometric_interpretation) {
@@ -114,7 +122,8 @@ pub const BitmapDescriptor = struct {
                 const bits_per_sample = self.bits_per_sample.data[0];
                 switch (bits_per_sample) {
                     // lower column values are stored in lower-order bits
-                    1 => return if (self.fill_order == 1) PixelFormat.grayscale1 else ImageError.Unsupported,
+                    // no support for bilevel files with a predictor
+                    1 => return if (self.fill_order == 1 and self.predictor == 1) PixelFormat.grayscale1 else ImageError.Unsupported,
                     // TODO
                     4 => return ImageError.Unsupported,
                     8 => return PixelFormat.grayscale8,
@@ -145,8 +154,8 @@ pub const BitmapDescriptor = struct {
                     4 => {
                         // 4 channels: RGBA or RGB/pre-multiplied
                         const extra_sample_format = self.extra_samples.data[0];
-                        // only support RGBA and not pre-multiplied for now
-                        if (bits[0] == 8 and bits[1] == 8 and bits[2] == 8 and bits[3] == 8 and extra_sample_format == 2)
+
+                        if (bits[0] == 8 and bits[1] == 8 and bits[2] == 8 and bits[3] == 8 and (extra_sample_format == 2 or extra_sample_format == 1))
                             return PixelFormat.rgba32;
 
                         return ImageError.Unsupported;
@@ -308,6 +317,7 @@ pub const IFD = struct {
 
         for (0..num_tag_entries) |index| {
             const tag = tags_list[index];
+
             try self.tags_map.put(@enumFromInt(std.mem.toNative(u16, tag.tag_id, endianess)), TagField{
                 .data_type = std.mem.toNative(u16, tag.data_type, endianess),
                 .data_count = std.mem.toNative(u32, tag.data_count, endianess),
