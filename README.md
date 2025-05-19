@@ -178,7 +178,7 @@ Currently, this only supports a subset of PAMs where:
 #### What's supported:
 * bilevel, grayscale, palette and RGB(A) files
 * most _baseline_ tags
-* Raw, LZW, PackBits, CCITT 1D files
+* Raw, LZW, Deflate, PackBits, CCITT 1D files
 * big-endian (MM) and little-endian (II) files should both be decoded fine
 
 #### What's missing:
