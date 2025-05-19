@@ -12,6 +12,7 @@ const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const types = @import("tiff/types.zig");
 const ccitt = @import("../compressions/ccitt.zig");
 const lzw = @import("../compressions/lzw.zig");
+const zlib = std.compress.zlib;
 
 pub const Header = types.Header;
 pub const IFD = types.IFD;
@@ -145,6 +146,14 @@ pub const TIFF = struct {
         }
     }
 
+    pub fn uncompressDeflate(_: *TIFF, read_stream: *ImageUnmanaged.Stream, dest_buffer: []u8) !void {
+        var write_stream = std.io.fixedBufferStream(dest_buffer);
+
+        zlib.decompress(read_stream.reader(), write_stream.writer()) catch {
+            return ImageUnmanaged.ReadError.InvalidData;
+        };
+    }
+
     pub fn uncompressLZW(_: *TIFF, read_stream: *ImageUnmanaged.Stream, dest_buffer: []u8, allocator: std.mem.Allocator) !void {
         var write_stream = std.io.fixedBufferStream(dest_buffer);
         var lzw_decoder = try lzw.Decoder(.big).init(allocator, 8, 1);
@@ -239,6 +248,7 @@ pub const TIFF = struct {
                 .packbits => _ = try self.uncompressPackBits(stream, strip_buffer, byte_count),
                 .ccitt_rle => _ = try self.uncompressCCITT(stream, strip_buffer, image_width, current_row_size),
                 .lzw => _ = try self.uncompressLZW(stream, strip_buffer, allocator),
+                .deflate, .pixar_deflate => _ = try self.uncompressDeflate(stream, strip_buffer),
                 else => return ImageUnmanaged.Error.Unsupported,
             }
 

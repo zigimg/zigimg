@@ -15,9 +15,11 @@ pub const CompressionType = enum(u16) {
     gp_4_fax = 4,
     lzw = 5,
     jpeg = 6,
+    deflate = 8,
     // old tag value used only in tiff v4
     uncompressed_old = 32771,
     packbits = 32773,
+    pixar_deflate = 32946,
 };
 
 pub const ResolutionUnit = enum(u16) {
@@ -113,8 +115,16 @@ pub const BitmapDescriptor = struct {
 
     pub fn guessPixelFormat(self: *BitmapDescriptor) ImageReadError!PixelFormat {
         // only raw, packbits, lzw and ccitt_rle compression supported for now
-        if (self.compression != .uncompressed and self.compression != .packbits and self.compression != .ccitt_rle and self.compression != .lzw)
-            return ImageError.Unsupported;
+        switch (self.compression) {
+            .uncompressed,
+            .packbits,
+            .ccitt_rle,
+            .lzw,
+            .deflate,
+            .pixar_deflate,
+            => {},
+            else => return ImageError.Unsupported,
+        }
 
         switch (self.photometric_interpretation) {
             // bi-level/grayscale pictures
