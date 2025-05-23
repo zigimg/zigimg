@@ -7,6 +7,7 @@ const utils = @import("../utils.zig");
 const std = @import("std");
 const PixelStorage = color.PixelStorage;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
+const packbits = @import("../compressions/packbits.zig");
 
 const iff_description_length = 12;
 const IFFMagicHeader = "FORM";
@@ -49,6 +50,7 @@ pub const ChunkHeader = extern struct {
 
 pub const IlbmCompressionType = enum(u8) {
     none = 0,
+    // packbits compression
     byterun = 1,
     // Atari-ST files
     byterun2 = 2,
@@ -216,34 +218,6 @@ pub fn extendEhbPalette(palette: *utils.FixedStorage(color.Rgba32, 256)) void {
         const c = data[i];
         // EHB mode extends the palette to 64 colors by adding 32 darker colors
         data[i + 32] = color.Rgba32.initRgb(c.r >> 1, c.g >> 1, c.b >> 1);
-    }
-}
-
-pub fn decodeByteRun1(stream: *ImageUnmanaged.Stream, tmp_buffer: []u8, length: u32) !void {
-    const reader = stream.reader();
-    var output_offset: u32 = 0;
-    var input_offset: u32 = 0;
-
-    while (input_offset < length - 1) {
-        const control: usize = try reader.readByte();
-        input_offset += 1;
-        if (control < 128) {
-            for (0..control + 1) |_| {
-                if (input_offset >= length) {
-                    return;
-                }
-                tmp_buffer[output_offset] = try reader.readByte();
-                output_offset += 1;
-                input_offset += 1;
-            }
-        } else if (control > 128) {
-            const value = try reader.readByte();
-            input_offset += 1;
-            for (0..257 - control) |_| {
-                tmp_buffer[output_offset] = value;
-                output_offset += 1;
-            }
-        }
     }
 }
 
@@ -531,7 +505,7 @@ pub const IFF = struct {
                     const reader = stream.reader();
                     _ = try reader.readAll(tmp_buffer);
                 } else {
-                    try decodeByteRun1(stream, tmp_buffer, chunk.length);
+                    try packbits.decode(stream, tmp_buffer, chunk.length);
                 }
             },
             IlbmCompressionType.byterun2 => try self.decodeByteRun2(stream, tmp_buffer, allocator),
