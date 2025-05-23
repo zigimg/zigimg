@@ -12,6 +12,7 @@ const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const types = @import("tiff/types.zig");
 const ccitt = @import("../compressions/ccitt.zig");
 const lzw = @import("../compressions/lzw.zig");
+const packbits = @import("../compressions/packbits.zig");
 const zlib = std.compress.zlib;
 
 pub const Header = types.Header;
@@ -172,33 +173,6 @@ pub const TIFF = struct {
         };
     }
 
-    pub fn uncompressPackBits(_: *TIFF, stream: *ImageUnmanaged.Stream, tmp_buffer: []u8, length: usize) !void {
-        const reader = stream.reader();
-        var input_offset: u32 = 0;
-        var output_offset: u32 = 0;
-
-        while (output_offset < length - 1) {
-            const control: i8 = @bitCast(try reader.readByte());
-            if (control <= -1) {
-                const value = try reader.readByte();
-                input_offset += 1;
-                for (0..@abs(control) + 1) |_| {
-                    tmp_buffer[output_offset] = value;
-                    output_offset += 1;
-                }
-            } else if (control <= 127) {
-                for (0..@as(usize, @intCast(control)) + 1) |_| {
-                    if (output_offset >= length) {
-                        return;
-                    }
-                    tmp_buffer[output_offset] = try reader.readByte();
-                    output_offset += 1;
-                    input_offset += 1;
-                }
-            }
-        }
-    }
-
     pub fn calRowByteSize(self: *TIFF) !usize {
         const bitmap = &self.bitmap;
         var total_bits: usize = 0;
@@ -235,7 +209,8 @@ pub const TIFF = struct {
         for (0..total_strips) |index| {
             // last strip may have less rows than rows_per_strip
             const current_row_size = if (total_strips > 1 and index < total_strips - 1) rows_per_strip else last_strip_row_count;
-            const byte_count = if (compression == .uncompressed) byte_counts_array[index] else current_row_size * row_byte_size;
+            const byte_count = current_row_size * row_byte_size;
+            const compressed_byte_count = byte_counts_array[index];
             const offset = offsets_array[index];
             // allocate buffer for the uncompressed strip_buffer
             const strip_buffer: []u8 = try allocator.alloc(u8, byte_count);
@@ -245,7 +220,7 @@ pub const TIFF = struct {
 
             switch (compression) {
                 .uncompressed => _ = try stream.read(strip_buffer[0..]),
-                .packbits => _ = try self.uncompressPackBits(stream, strip_buffer, byte_count),
+                .packbits => _ = try packbits.decode(stream, strip_buffer, compressed_byte_count),
                 .ccitt_rle => _ = try self.uncompressCCITT(stream, strip_buffer, image_width, current_row_size),
                 .lzw => _ = try self.uncompressLZW(stream, strip_buffer, allocator),
                 .deflate, .pixar_deflate => _ = try self.uncompressDeflate(stream, strip_buffer),
