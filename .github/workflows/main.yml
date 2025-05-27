@@ -14,7 +14,7 @@ jobs:
           git config --global core.autocrlf false
           git config --global core.eol lf
       - name: Checkout zigimg
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: zigimg
       - name: Checkout test-suite fixtures
@@ -23,9 +23,9 @@ jobs:
           repository: zigimg/test-suite
           path: test-suite
       - name: Setup Zig
-        uses: mlugg/setup-zig@v1
+        uses: mlugg/setup-zig@v2
         with:
-          version: 0.14.0-dev.2577+271452d22
+          version: 0.14.1
       - name: AST Verify
         run: zig fmt --check --ast-check src/
         working-directory: zigimg
