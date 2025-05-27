@@ -652,7 +652,7 @@ pub const ReaderProcessor = struct {
         const ptr_info = @typeInfo(Ptr);
 
         std.debug.assert(ptr_info == .pointer); // Must be a pointer
-        std.debug.assert(ptr_info.pointer.size == .One); // Must be a single-item pointer
+        std.debug.assert(ptr_info.pointer.size == .one); // Must be a single-item pointer
 
         const gen = struct {
             fn chunkProcessor(ptr: *anyopaque, data: *ChunkProcessData) ImageUnmanaged.ReadError!PixelFormat {
@@ -773,7 +773,7 @@ pub const TrnsProcessor = struct {
         };
         var pixel_pos: u32 = 0;
         // work around broken saturating arithmetic on wasm https://github.com/llvm/llvm-project/issues/58557
-        const isWasm = comptime @import("builtin").target.isWasm();
+        const isWasm = comptime @import("builtin").target.cpu.arch.isWasm();
         switch (self.trns_data) {
             .gray => |gray_alpha| {
                 switch (data.src_format) {
@@ -983,7 +983,7 @@ pub fn CustomReaderOptions2(Processor1: type, Processor2: type) type {
 
 const root = @import("root");
 
-pub const NoopAllocator = Allocator.VTable{ .alloc = undefined, .free = undefined, .resize = undefined };
+pub const NoopAllocator = Allocator.VTable{ .alloc = undefined, .free = undefined, .resize = undefined, .remap = undefined };
 
 /// Applications can override this by defining DefaultPngOptions struct in their root source file.
 /// We would like to use FixedBufferAllocator with memory from stack here since we should be able
