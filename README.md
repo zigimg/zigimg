@@ -8,11 +8,7 @@ This is a work in progress library to create, process, read and write different 
 
 ## Install & Build
 
-This library uses zig nominated [2024.11.0-mach](https://machengine.org/about/nominated-zig/). To install using [`zigup`](https://github.com/marler8997/zigup):
-
-```sh
-zigup 0.14.0-dev.2577+271452d22
-```
+This library currently uses zig [0.14.1](https://ziglang.org/download/), we do plan to go back to using mach nominated zig until a newer version than 0.14.1 will be nominated.
 
 ### Use zigimg in your project
 
