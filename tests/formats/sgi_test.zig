@@ -42,7 +42,7 @@ test "SGI 24-bit uncompressed" {
     };
 
     for (expected_colors, indexes) |hex_color, index| {
-        try helpers.expectEq(pixels.rgb24[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(pixels.rgb24[index].to.u32Rgb(), hex_color);
     }
 }
 
@@ -88,7 +88,7 @@ test "SGI 32-bit RGBA uncompressed" {
     };
 
     for (expected_colors, indexes) |hex_color, index| {
-        try helpers.expectEq(pixels.rgba32[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(pixels.rgba32[index].to.u32Rgb(), hex_color);
     }
 }
 
@@ -115,7 +115,7 @@ test "SGI RGB48be uncompressed" {
     };
 
     for (expected_colors, indexes) |hex_color, index| {
-        try helpers.expectEq(pixels.rgb48[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(pixels.rgb48[index].to.u32Rgb(), hex_color);
     }
 }
 
@@ -161,7 +161,7 @@ test "SGI 24-bit rle compressed" {
     };
 
     for (expected_colors, indexes) |hex_color, index| {
-        try helpers.expectEq(pixels.rgb24[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(pixels.rgb24[index].to.u32Rgb(), hex_color);
     }
 }
 
@@ -188,7 +188,7 @@ test "SGI RGB48be rle uncompressed" {
     };
 
     for (expected_colors, indexes) |hex_color, index| {
-        try helpers.expectEq(pixels.rgb48[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(pixels.rgb48[index].to.u32Rgb(), hex_color);
     }
 }
 
@@ -215,6 +215,6 @@ test "SGI 32-bit RGBA rle compressed" {
     };
 
     for (expected_colors, indexes) |hex_color, index| {
-        try helpers.expectEq(pixels.rgba32[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(pixels.rgba32[index].to.u32Rgb(), hex_color);
     }
 }

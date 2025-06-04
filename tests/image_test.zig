@@ -484,14 +484,14 @@ test "Test Colorf32 iterator" {
     defer test_image.deinit();
 
     const expectedColors = [_]color.Colorf32{
-        color.Colorf32.initRgb(1.0, 0.0, 0.0),
-        color.Colorf32.initRgb(0.0, 1.0, 0.0),
-        color.Colorf32.initRgb(0.0, 0.0, 1.0),
-        color.Colorf32.initRgb(0.0, 1.0, 1.0),
-        color.Colorf32.initRgb(1.0, 0.0, 1.0),
-        color.Colorf32.initRgb(1.0, 1.0, 0.0),
-        color.Colorf32.initRgb(0.0, 0.0, 0.0),
-        color.Colorf32.initRgb(1.0, 1.0, 1.0),
+        color.Colorf32.from.rgb(1.0, 0.0, 0.0),
+        color.Colorf32.from.rgb(0.0, 1.0, 0.0),
+        color.Colorf32.from.rgb(0.0, 0.0, 1.0),
+        color.Colorf32.from.rgb(0.0, 1.0, 1.0),
+        color.Colorf32.from.rgb(1.0, 0.0, 1.0),
+        color.Colorf32.from.rgb(1.0, 1.0, 0.0),
+        color.Colorf32.from.rgb(0.0, 0.0, 0.0),
+        color.Colorf32.from.rgb(1.0, 1.0, 1.0),
     };
 
     try helpers.expectEq(test_image.width, 8);
@@ -513,14 +513,14 @@ test "Convert Image from rgb24 to float32 (Colorf32)" {
     defer test_image.deinit();
 
     const expected_colors = [_]color.Colorf32{
-        color.Colorf32.initRgb(1.0, 0.0, 0.0),
-        color.Colorf32.initRgb(0.0, 1.0, 0.0),
-        color.Colorf32.initRgb(0.0, 0.0, 1.0),
-        color.Colorf32.initRgb(0.0, 1.0, 1.0),
-        color.Colorf32.initRgb(1.0, 0.0, 1.0),
-        color.Colorf32.initRgb(1.0, 1.0, 0.0),
-        color.Colorf32.initRgb(0.0, 0.0, 0.0),
-        color.Colorf32.initRgb(1.0, 1.0, 1.0),
+        color.Colorf32.from.rgb(1.0, 0.0, 0.0),
+        color.Colorf32.from.rgb(0.0, 1.0, 0.0),
+        color.Colorf32.from.rgb(0.0, 0.0, 1.0),
+        color.Colorf32.from.rgb(0.0, 1.0, 1.0),
+        color.Colorf32.from.rgb(1.0, 0.0, 1.0),
+        color.Colorf32.from.rgb(1.0, 1.0, 0.0),
+        color.Colorf32.from.rgb(0.0, 0.0, 0.0),
+        color.Colorf32.from.rgb(1.0, 1.0, 1.0),
     };
 
     try helpers.expectEq(test_image.width, 8);

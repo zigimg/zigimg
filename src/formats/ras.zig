@@ -157,7 +157,7 @@ pub const RAS = struct {
 
                 for (0..colors) |index| {
                     // palette components are stored in a separate plane
-                    palette[index] = color.Rgba32.initRgb(buffer[index], buffer[index + colors], buffer[index + 2 * colors]);
+                    palette[index] = color.Rgba32.from.rgb(buffer[index], buffer[index + colors], buffer[index + 2 * colors]);
                 }
             },
             else => return ImageError.Unsupported,
@@ -234,14 +234,14 @@ pub const RAS = struct {
                     for (0..image_height) |y| {
                         for (0..image_width) |x| {
                             const offset = y * image_width + x;
-                            storage.*[offset] = color.Rgba32.initRgb(buffer[offset * pixel_size + 1], buffer[offset * pixel_size + 2], buffer[offset * pixel_size + 3]);
+                            storage.*[offset] = color.Rgba32.from.rgb(buffer[offset * pixel_size + 1], buffer[offset * pixel_size + 2], buffer[offset * pixel_size + 3]);
                         }
                     }
                 } else {
                     for (0..image_height) |y| {
                         for (0..image_width) |x| {
                             const offset = y * image_width + x;
-                            storage.*[offset] = color.Rgba32.initRgb(buffer[offset * pixel_size + 3], buffer[offset * pixel_size + 2], buffer[offset * pixel_size + 1]);
+                            storage.*[offset] = color.Rgba32.from.rgb(buffer[offset * pixel_size + 3], buffer[offset * pixel_size + 2], buffer[offset * pixel_size + 1]);
                         }
                     }
                 }

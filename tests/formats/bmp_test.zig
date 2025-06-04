@@ -202,18 +202,18 @@ test "Write a v4 bitmap when writing an image with bgr24 pixel format" {
     try testing.expect(pixels.bgr24.len == width * height);
 
     // R, G, B
-    pixels.bgr24[0] = color.Bgr24.initRgb(255, 0, 0);
-    pixels.bgr24[1] = color.Bgr24.initRgb(0, 255, 0);
-    pixels.bgr24[2] = color.Bgr24.initRgb(0, 0, 255);
+    pixels.bgr24[0] = color.Bgr24.from.rgb(255, 0, 0);
+    pixels.bgr24[1] = color.Bgr24.from.rgb(0, 255, 0);
+    pixels.bgr24[2] = color.Bgr24.from.rgb(0, 0, 255);
 
     // Black, white
-    pixels.bgr24[3] = color.Bgr24.initRgb(0, 0, 0);
-    pixels.bgr24[4] = color.Bgr24.initRgb(255, 255, 255);
+    pixels.bgr24[3] = color.Bgr24.from.rgb(0, 0, 0);
+    pixels.bgr24[4] = color.Bgr24.from.rgb(255, 255, 255);
 
     // Cyan, Magenta, Yellow
-    pixels.bgr24[5] = color.Bgr24.initRgb(0, 255, 255);
-    pixels.bgr24[6] = color.Bgr24.initRgb(255, 0, 255);
-    pixels.bgr24[7] = color.Bgr24.initRgb(255, 255, 0);
+    pixels.bgr24[5] = color.Bgr24.from.rgb(0, 255, 255);
+    pixels.bgr24[6] = color.Bgr24.from.rgb(255, 0, 255);
+    pixels.bgr24[7] = color.Bgr24.from.rgb(255, 255, 0);
 
     try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
         .bmp = .{},
@@ -241,7 +241,7 @@ test "Write a v4 bitmap when writing an image with bgr24 pixel format" {
     try testing.expect(read_image_pixels == .bgr24);
 
     for (expected_colors, 0..) |hex_color, index| {
-        try helpers.expectEq(read_image_pixels.bgr24[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(read_image_pixels.bgr24[index].to.u32Rgb(), hex_color);
     }
 }
 
@@ -261,21 +261,21 @@ test "Write a v5 bitmap when writing an image with bgra32 pixel format" {
     try testing.expect(pixels.bgra32.len == width * height);
 
     // R, G, B
-    pixels.bgra32[0] = color.Bgra32.initRgb(255, 0, 0);
-    pixels.bgra32[1] = color.Bgra32.initRgb(0, 255, 0);
-    pixels.bgra32[2] = color.Bgra32.initRgb(0, 0, 255);
+    pixels.bgra32[0] = color.Bgra32.from.rgb(255, 0, 0);
+    pixels.bgra32[1] = color.Bgra32.from.rgb(0, 255, 0);
+    pixels.bgra32[2] = color.Bgra32.from.rgb(0, 0, 255);
 
     // Black, white
-    pixels.bgra32[3] = color.Bgra32.initRgb(0, 0, 0);
-    pixels.bgra32[4] = color.Bgra32.initRgb(255, 255, 255);
+    pixels.bgra32[3] = color.Bgra32.from.rgb(0, 0, 0);
+    pixels.bgra32[4] = color.Bgra32.from.rgb(255, 255, 255);
 
     // Cyan, Magenta, Yellow
-    pixels.bgra32[5] = color.Bgra32.initRgb(0, 255, 255);
-    pixels.bgra32[6] = color.Bgra32.initRgb(255, 0, 255);
-    pixels.bgra32[7] = color.Bgra32.initRgb(255, 255, 0);
+    pixels.bgra32[5] = color.Bgra32.from.rgb(0, 255, 255);
+    pixels.bgra32[6] = color.Bgra32.from.rgb(255, 0, 255);
+    pixels.bgra32[7] = color.Bgra32.from.rgb(255, 255, 0);
 
     // Transparent pixel
-    pixels.bgra32[8] = color.Bgra32.initRgba(0, 0, 0, 0);
+    pixels.bgra32[8] = color.Bgra32.from.rgba(0, 0, 0, 0);
 
     try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
         .bmp = .{},
@@ -303,6 +303,6 @@ test "Write a v5 bitmap when writing an image with bgra32 pixel format" {
     try testing.expect(read_image_pixels == .bgra32);
 
     for (expected_colors, 0..) |hex_color, index| {
-        try helpers.expectEq(read_image_pixels.bgra32[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(read_image_pixels.bgra32[index].to.u32Rgb(), hex_color);
     }
 }

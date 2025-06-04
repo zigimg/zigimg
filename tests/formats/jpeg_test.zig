@@ -86,9 +86,9 @@ test "Read the tuba properly" {
         try testing.expect(pixels == .rgb24);
 
         // Just for fun, let's sample a few pixels. :^)
-        try helpers.expectEq(pixels.rgb24[(126 * 512 + 163)], color.Rgb24.initRgb(0xAC, 0x78, 0x54));
-        try helpers.expectEq(pixels.rgb24[(265 * 512 + 284)], color.Rgb24.initRgb(0x37, 0x30, 0x33));
-        try helpers.expectEq(pixels.rgb24[(431 * 512 + 300)], color.Rgb24.initRgb(0xFE, 0xE7, 0xC9));
+        try helpers.expectEq(pixels.rgb24[(126 * 512 + 163)], color.Rgb24.from.rgb(0xAC, 0x78, 0x54));
+        try helpers.expectEq(pixels.rgb24[(265 * 512 + 284)], color.Rgb24.from.rgb(0x37, 0x30, 0x33));
+        try helpers.expectEq(pixels.rgb24[(431 * 512 + 300)], color.Rgb24.from.rgb(0xFE, 0xE7, 0xC9));
     }
 }
 
@@ -160,17 +160,17 @@ test "Read subsampling images" {
                 try testing.expect(pixels == .rgb24);
 
                 // Just for fun, let's sample a few pixels. :^)
-                const actual: color.Colorf32 = pixels.rgb24[(0 * 32 + 0)].toColorf32();
+                const actual: color.Colorf32 = pixels.rgb24[(0 * 32 + 0)].to.color(color.Colorf32);
                 try testing.expectApproxEqAbs(@as(f32, 1.0), actual.r, 0.05);
                 try testing.expectApproxEqAbs(@as(f32, 1.0), actual.g, 0.05);
                 try testing.expectApproxEqAbs(@as(f32, 0.0), actual.b, 0.05);
 
-                const actual1: color.Colorf32 = pixels.rgb24[(13 * 32 + 9)].toColorf32();
+                const actual1: color.Colorf32 = pixels.rgb24[(13 * 32 + 9)].to.color(color.Colorf32);
                 try testing.expectApproxEqAbs(@as(f32, 0.71), actual1.r, 0.05);
                 try testing.expectApproxEqAbs(@as(f32, 0.55), actual1.g, 0.05);
                 try testing.expectApproxEqAbs(@as(f32, 0.0), actual1.b, 0.05);
 
-                const actual2: color.Colorf32 = pixels.rgb24[(25 * 32 + 18)].toColorf32();
+                const actual2: color.Colorf32 = pixels.rgb24[(25 * 32 + 18)].to.color(color.Colorf32);
                 try testing.expectApproxEqAbs(@as(f32, 0.42), actual2.r, 0.05);
                 try testing.expectApproxEqAbs(@as(f32, 0.19), actual2.g, 0.05);
                 try testing.expectApproxEqAbs(@as(f32, 0.39), actual2.b, 0.05);

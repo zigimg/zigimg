@@ -78,11 +78,11 @@ test "Read ucm8 TGA file" {
 
     try helpers.expectEq(pixels.indexed8.indices.len, 128 * 128);
 
-    try helpers.expectEq(pixels.indexed8.palette[0].toU32Rgba(), 0x000000ff);
-    try helpers.expectEq(pixels.indexed8.palette[64].toU32Rgba(), 0xff0000ff);
-    try helpers.expectEq(pixels.indexed8.palette[128].toU32Rgba(), 0x00ff00ff);
-    try helpers.expectEq(pixels.indexed8.palette[192].toU32Rgba(), 0x0000ffff);
-    try helpers.expectEq(pixels.indexed8.palette[255].toU32Rgba(), 0xffffffff);
+    try helpers.expectEq(pixels.indexed8.palette[0].to.u32Rgba(), 0x000000ff);
+    try helpers.expectEq(pixels.indexed8.palette[64].to.u32Rgba(), 0xff0000ff);
+    try helpers.expectEq(pixels.indexed8.palette[128].to.u32Rgba(), 0x00ff00ff);
+    try helpers.expectEq(pixels.indexed8.palette[192].to.u32Rgba(), 0x0000ffff);
+    try helpers.expectEq(pixels.indexed8.palette[255].to.u32Rgba(), 0xffffffff);
 
     const width = tga_file.width();
     const height = tga_file.height();
@@ -134,7 +134,7 @@ test "Read utc16 TGA file" {
         while (x < width) : (x += 1) {
             const strip_index = x / 8;
 
-            try helpers.expectEq(pixels.rgb555[stride + x].toU32Rgb(), expected_strip[strip_index]);
+            try helpers.expectEq(pixels.rgb555[stride + x].to.u32Rgb(), expected_strip[strip_index]);
         }
     }
 }
@@ -172,7 +172,7 @@ test "Read utc24 TGA file" {
         while (x < width) : (x += 1) {
             const strip_index = x / 8;
 
-            try helpers.expectEq(pixels.bgr24[stride + x].toU32Rgb(), expected_strip[strip_index]);
+            try helpers.expectEq(pixels.bgr24[stride + x].to.u32Rgb(), expected_strip[strip_index]);
         }
     }
 }
@@ -210,7 +210,7 @@ test "Read utc32 TGA file" {
         while (x < width) : (x += 1) {
             const strip_index = x / 8;
 
-            try helpers.expectEq(pixels.bgra32[stride + x].toU32Rgba(), expected_strip[strip_index] << 8 | 0xff);
+            try helpers.expectEq(pixels.bgra32[stride + x].to.u32Rgba(), expected_strip[strip_index] << 8 | 0xff);
         }
     }
 }
@@ -272,11 +272,11 @@ test "Read ccm8 TGA file" {
 
     try helpers.expectEq(pixels.indexed8.indices.len, 128 * 128);
 
-    try helpers.expectEq(pixels.indexed8.palette[0].toU32Rgba(), 0x000000ff);
-    try helpers.expectEq(pixels.indexed8.palette[64].toU32Rgba(), 0xff0000ff);
-    try helpers.expectEq(pixels.indexed8.palette[128].toU32Rgba(), 0x00ff00ff);
-    try helpers.expectEq(pixels.indexed8.palette[192].toU32Rgba(), 0x0000ffff);
-    try helpers.expectEq(pixels.indexed8.palette[255].toU32Rgba(), 0xffffffff);
+    try helpers.expectEq(pixels.indexed8.palette[0].to.u32Rgba(), 0x000000ff);
+    try helpers.expectEq(pixels.indexed8.palette[64].to.u32Rgba(), 0xff0000ff);
+    try helpers.expectEq(pixels.indexed8.palette[128].to.u32Rgba(), 0x00ff00ff);
+    try helpers.expectEq(pixels.indexed8.palette[192].to.u32Rgba(), 0x0000ffff);
+    try helpers.expectEq(pixels.indexed8.palette[255].to.u32Rgba(), 0xffffffff);
 
     const width = tga_file.width();
     const height = tga_file.height();
@@ -328,7 +328,7 @@ test "Read ctc24 TGA file" {
         while (x < width) : (x += 1) {
             const strip_index = x / 8;
 
-            try helpers.expectEq(pixels.bgr24[stride + x].toU32Rgb(), expected_strip[strip_index]);
+            try helpers.expectEq(pixels.bgr24[stride + x].to.u32Rgb(), expected_strip[strip_index]);
         }
     }
 }
@@ -373,7 +373,7 @@ test "Read matte-01 TGA file" {
     for (test_inputs) |input| {
         const index = tga_file.header.image_spec.width * input.y + input.x;
 
-        try helpers.expectEq(pixels.bgra32[index].toU32Rgba(), input.hex);
+        try helpers.expectEq(pixels.bgra32[index].to.u32Rgba(), input.hex);
     }
 }
 
@@ -398,9 +398,9 @@ test "Read font TGA file" {
 
     const width = tga_file.width();
 
-    try helpers.expectEq(pixels.bgra32[64 * width + 16].toColorf32().toRgba32(), color.Rgba32.initRgba(0, 0, 0, 0));
-    try helpers.expectEq(pixels.bgra32[64 * width + 17].toColorf32().toRgba32(), color.Rgba32.initRgba(209, 209, 209, 255));
-    try helpers.expectEq(pixels.bgra32[65 * width + 17].toColorf32().toRgba32(), color.Rgba32.initRgba(255, 255, 255, 255));
+    try helpers.expectEq(pixels.bgra32[64 * width + 16].to.color(color.Rgba32), color.Rgba32.from.rgba(0, 0, 0, 0));
+    try helpers.expectEq(pixels.bgra32[64 * width + 17].to.color(color.Rgba32), color.Rgba32.from.rgba(209, 209, 209, 255));
+    try helpers.expectEq(pixels.bgra32[65 * width + 17].to.color(color.Rgba32), color.Rgba32.from.rgba(255, 255, 255, 255));
 }
 
 test "Read stopsignsmall TGA v1 file" {
@@ -423,8 +423,8 @@ test "Read stopsignsmall TGA v1 file" {
 
     const width = tga_file.width();
 
-    try helpers.expectEq(pixels.bgr24[143 * width + 93], color.Bgr24.initRgb(188, 34, 24));
-    try helpers.expectEq(pixels.bgr24[479 * width + 215], color.Bgr24.initRgb(33, 29, 17));
+    try helpers.expectEq(pixels.bgr24[143 * width + 93], color.Bgr24.from.rgb(188, 34, 24));
+    try helpers.expectEq(pixels.bgr24[479 * width + 215], color.Bgr24.from.rgb(33, 29, 17));
 }
 
 test "Read stopsignsmallcompressed TGA v1 file" {
@@ -447,8 +447,8 @@ test "Read stopsignsmallcompressed TGA v1 file" {
 
     const width = tga_file.width();
 
-    try helpers.expectEq(pixels.bgr24[143 * width + 93], color.Bgr24.initRgb(188, 34, 24));
-    try helpers.expectEq(pixels.bgr24[479 * width + 215], color.Bgr24.initRgb(33, 29, 17));
+    try helpers.expectEq(pixels.bgr24[143 * width + 93], color.Bgr24.from.rgb(188, 34, 24));
+    try helpers.expectEq(pixels.bgr24[479 * width + 215], color.Bgr24.from.rgb(33, 29, 17));
 }
 
 test "Write TGA uncompressed grayscale8" {
@@ -640,11 +640,11 @@ test "Write uncompressed indexed8 (color map 16-bit)" {
 
     try helpers.expectEq(pixels.indexed8.indices.len, 128 * 128);
 
-    try helpers.expectEq(pixels.indexed8.palette[0].toU32Rgba(), 0x000000ff);
-    try helpers.expectEq(pixels.indexed8.palette[64].toU32Rgba(), 0xff0000ff);
-    try helpers.expectEq(pixels.indexed8.palette[128].toU32Rgba(), 0x00ff00ff);
-    try helpers.expectEq(pixels.indexed8.palette[192].toU32Rgba(), 0x0000ffff);
-    try helpers.expectEq(pixels.indexed8.palette[255].toU32Rgba(), 0xffffffff);
+    try helpers.expectEq(pixels.indexed8.palette[0].to.u32Rgba(), 0x000000ff);
+    try helpers.expectEq(pixels.indexed8.palette[64].to.u32Rgba(), 0xff0000ff);
+    try helpers.expectEq(pixels.indexed8.palette[128].to.u32Rgba(), 0x00ff00ff);
+    try helpers.expectEq(pixels.indexed8.palette[192].to.u32Rgba(), 0x0000ffff);
+    try helpers.expectEq(pixels.indexed8.palette[255].to.u32Rgba(), 0xffffffff);
 
     const width = tga_file.width();
     const height = tga_file.height();
@@ -704,11 +704,11 @@ test "Write uncompressed indexed8 (color map 24-bit)" {
 
     try helpers.expectEq(pixels.indexed8.indices.len, 128 * 128);
 
-    try helpers.expectEq(pixels.indexed8.palette[0].toU32Rgba(), 0x000000ff);
-    try helpers.expectEq(pixels.indexed8.palette[64].toU32Rgba(), 0xff0000ff);
-    try helpers.expectEq(pixels.indexed8.palette[128].toU32Rgba(), 0x00ff00ff);
-    try helpers.expectEq(pixels.indexed8.palette[192].toU32Rgba(), 0x0000ffff);
-    try helpers.expectEq(pixels.indexed8.palette[255].toU32Rgba(), 0xffffffff);
+    try helpers.expectEq(pixels.indexed8.palette[0].to.u32Rgba(), 0x000000ff);
+    try helpers.expectEq(pixels.indexed8.palette[64].to.u32Rgba(), 0xff0000ff);
+    try helpers.expectEq(pixels.indexed8.palette[128].to.u32Rgba(), 0x00ff00ff);
+    try helpers.expectEq(pixels.indexed8.palette[192].to.u32Rgba(), 0x0000ffff);
+    try helpers.expectEq(pixels.indexed8.palette[255].to.u32Rgba(), 0xffffffff);
 
     const width = tga_file.width();
     const height = tga_file.height();
@@ -768,11 +768,11 @@ test "Write compressed indexed8 (color map 16-bit)" {
 
     try helpers.expectEq(pixels.indexed8.indices.len, 128 * 128);
 
-    try helpers.expectEq(pixels.indexed8.palette[0].toU32Rgba(), 0x000000ff);
-    try helpers.expectEq(pixels.indexed8.palette[64].toU32Rgba(), 0xff0000ff);
-    try helpers.expectEq(pixels.indexed8.palette[128].toU32Rgba(), 0x00ff00ff);
-    try helpers.expectEq(pixels.indexed8.palette[192].toU32Rgba(), 0x0000ffff);
-    try helpers.expectEq(pixels.indexed8.palette[255].toU32Rgba(), 0xffffffff);
+    try helpers.expectEq(pixels.indexed8.palette[0].to.u32Rgba(), 0x000000ff);
+    try helpers.expectEq(pixels.indexed8.palette[64].to.u32Rgba(), 0xff0000ff);
+    try helpers.expectEq(pixels.indexed8.palette[128].to.u32Rgba(), 0x00ff00ff);
+    try helpers.expectEq(pixels.indexed8.palette[192].to.u32Rgba(), 0x0000ffff);
+    try helpers.expectEq(pixels.indexed8.palette[255].to.u32Rgba(), 0xffffffff);
 
     const width = tga_file.width();
     const height = tga_file.height();
@@ -832,11 +832,11 @@ test "Write compressed indexed8 (color map 24-bit)" {
 
     try helpers.expectEq(pixels.indexed8.indices.len, 128 * 128);
 
-    try helpers.expectEq(pixels.indexed8.palette[0].toU32Rgba(), 0x000000ff);
-    try helpers.expectEq(pixels.indexed8.palette[64].toU32Rgba(), 0xff0000ff);
-    try helpers.expectEq(pixels.indexed8.palette[128].toU32Rgba(), 0x00ff00ff);
-    try helpers.expectEq(pixels.indexed8.palette[192].toU32Rgba(), 0x0000ffff);
-    try helpers.expectEq(pixels.indexed8.palette[255].toU32Rgba(), 0xffffffff);
+    try helpers.expectEq(pixels.indexed8.palette[0].to.u32Rgba(), 0x000000ff);
+    try helpers.expectEq(pixels.indexed8.palette[64].to.u32Rgba(), 0xff0000ff);
+    try helpers.expectEq(pixels.indexed8.palette[128].to.u32Rgba(), 0x00ff00ff);
+    try helpers.expectEq(pixels.indexed8.palette[192].to.u32Rgba(), 0x0000ffff);
+    try helpers.expectEq(pixels.indexed8.palette[255].to.u32Rgba(), 0xffffffff);
 
     const width = tga_file.width();
     const height = tga_file.height();
@@ -908,7 +908,7 @@ test "Write uncompressed 16-bit true color TGA" {
         while (x < width) : (x += 1) {
             const strip_index = x / 8;
 
-            try helpers.expectEq(pixels.rgb555[stride + x].toU32Rgb(), expected_strip[strip_index]);
+            try helpers.expectEq(pixels.rgb555[stride + x].to.u32Rgb(), expected_strip[strip_index]);
         }
     }
 }
@@ -966,7 +966,7 @@ test "Write compressed 16-bit true color TGA" {
         while (x < width) : (x += 1) {
             const strip_index = x / 8;
 
-            try helpers.expectEq(pixels.rgb555[stride + x].toU32Rgb(), expected_strip[strip_index]);
+            try helpers.expectEq(pixels.rgb555[stride + x].to.u32Rgb(), expected_strip[strip_index]);
         }
     }
 }
@@ -1024,7 +1024,7 @@ test "Write uncompressed 24-bit true color TGA" {
         while (x < width) : (x += 1) {
             const strip_index = x / 8;
 
-            try helpers.expectEq(pixels.bgr24[stride + x].toU32Rgb(), expected_strip[strip_index]);
+            try helpers.expectEq(pixels.bgr24[stride + x].to.u32Rgb(), expected_strip[strip_index]);
         }
     }
 }
@@ -1082,7 +1082,7 @@ test "Write compressed 24-bit true color TGA" {
         while (x < width) : (x += 1) {
             const strip_index = x / 8;
 
-            try helpers.expectEq(pixels.bgr24[stride + x].toU32Rgb(), expected_strip[strip_index]);
+            try helpers.expectEq(pixels.bgr24[stride + x].to.u32Rgb(), expected_strip[strip_index]);
         }
     }
 }
@@ -1140,7 +1140,7 @@ test "Write uncompressed 32-bit true color TGA" {
         while (x < width) : (x += 1) {
             const strip_index = x / 8;
 
-            try helpers.expectEq(pixels.bgra32[stride + x].toU32Rgba(), expected_strip[strip_index] << 8 | 0xff);
+            try helpers.expectEq(pixels.bgra32[stride + x].to.u32Rgba(), expected_strip[strip_index] << 8 | 0xff);
         }
     }
 }
@@ -1198,7 +1198,7 @@ test "Write compressed 32-bit true color TGA" {
         while (x < width) : (x += 1) {
             const strip_index = x / 8;
 
-            try helpers.expectEq(pixels.bgra32[stride + x].toU32Rgba(), expected_strip[strip_index] << 8 | 0xff);
+            try helpers.expectEq(pixels.bgra32[stride + x].to.u32Rgba(), expected_strip[strip_index] << 8 | 0xff);
         }
     }
 }

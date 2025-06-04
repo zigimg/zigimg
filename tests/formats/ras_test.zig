@@ -42,7 +42,7 @@ test "Sun-Raster 24-bit RGB24 uncompressed" {
     };
 
     for (expected_colors, indexes) |hex_color, index| {
-        try helpers.expectEq(pixels.rgb24[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(pixels.rgb24[index].to.u32Rgb(), hex_color);
     }
 }
 
@@ -69,7 +69,7 @@ test "Sun-Raster 24-bit BGR24 uncompressed" {
     };
 
     for (expected_colors, indexes) |hex_color, index| {
-        try helpers.expectEq(pixels.bgr24[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(pixels.bgr24[index].to.u32Rgb(), hex_color);
     }
 }
 
@@ -92,7 +92,7 @@ test "Sun-Raster 32-bit xRGB uncompressed" {
     const expected_colors = [_]u32{ 0x0, 0xf7a41d, 0x121212 };
 
     for (expected_colors, indexes) |hex_color, index| {
-        try helpers.expectEq(pixels.rgba32[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(pixels.rgba32[index].to.u32Rgb(), hex_color);
     }
 }
 
@@ -182,6 +182,6 @@ test "Sun-Raster bgr24 rle compressed" {
     };
 
     for (expected_colors, indexes) |hex_color, index| {
-        try helpers.expectEq(pixels.bgr24[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(pixels.bgr24[index].to.u32Rgb(), hex_color);
     }
 }

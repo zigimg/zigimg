@@ -674,22 +674,22 @@ pub const GIF = struct {
         switch (current_frame.pixels) {
             .indexed1 => |pixels| {
                 for (0..@min(effective_color_table.len, pixels.palette.len)) |index| {
-                    pixels.palette[index] = color.Rgba32.fromU32Rgb(effective_color_table[index].toU32Rgb());
+                    pixels.palette[index] = color.Rgba32.from.u32Rgb(effective_color_table[index].to.u32Rgb());
                 }
             },
             .indexed2 => |pixels| {
                 for (0..@min(effective_color_table.len, pixels.palette.len)) |index| {
-                    pixels.palette[index] = color.Rgba32.fromU32Rgb(effective_color_table[index].toU32Rgb());
+                    pixels.palette[index] = color.Rgba32.from.u32Rgb(effective_color_table[index].to.u32Rgb());
                 }
             },
             .indexed4 => |pixels| {
                 for (0..@min(effective_color_table.len, pixels.palette.len)) |index| {
-                    pixels.palette[index] = color.Rgba32.fromU32Rgb(effective_color_table[index].toU32Rgb());
+                    pixels.palette[index] = color.Rgba32.from.u32Rgb(effective_color_table[index].to.u32Rgb());
                 }
             },
             .indexed8 => |pixels| {
                 for (0..@min(effective_color_table.len, pixels.palette.len)) |index| {
-                    pixels.palette[index] = color.Rgba32.fromU32Rgb(effective_color_table[index].toU32Rgb());
+                    pixels.palette[index] = color.Rgba32.from.u32Rgb(effective_color_table[index].to.u32Rgb());
                 }
             },
             else => {},
@@ -707,7 +707,7 @@ pub const GIF = struct {
             .indexed4 => |pixels| @memset(pixels.indices, @intCast(background_color_index)),
             .indexed8 => |pixels| @memset(pixels.indices, background_color_index),
             .rgb24 => |pixels| @memset(pixels, effective_color_table[background_color_index]),
-            .rgba32 => |pixels| @memset(pixels, color.Rgba32.fromU32Rgba(effective_color_table[background_color_index].toU32Rgb())),
+            .rgba32 => |pixels| @memset(pixels, color.Rgba32.from.u32Rgba(effective_color_table[background_color_index].to.u32Rgb())),
             else => std.debug.panic("Pixel format {s} not supported", .{@tagName(current_frame.pixels)}),
         }
     }
@@ -787,7 +787,7 @@ pub const GIF = struct {
                         }
 
                         if (background_color_index < effective_color_table.len) {
-                            pixels[target_index] = color.Rgba32.fromU32Rgba(effective_color_table[background_color_index].toU32Rgba());
+                            pixels[target_index] = color.Rgba32.from.u32Rgba(effective_color_table[background_color_index].to.u32Rgba());
                         }
                     },
                     else => {
@@ -928,7 +928,7 @@ pub const GIF = struct {
 
                 const pixel_index = sub_image.pixels[source_index];
                 if (pixel_index < effective_color_table.len) {
-                    pixels[target_index] = color.Rgba32.fromU32Rgba(effective_color_table[pixel_index].toU32Rgba());
+                    pixels[target_index] = color.Rgba32.from.u32Rgba(effective_color_table[pixel_index].to.u32Rgba());
                 }
             },
             else => {
@@ -955,8 +955,8 @@ pub const GIF = struct {
             .indexed2 => |pixels| @memset(pixels.indices, 0),
             .indexed4 => |pixels| @memset(pixels.indices, 0),
             .indexed8 => |pixels| @memset(pixels.indices, 0),
-            .rgb24 => |pixels| @memset(pixels, color.Rgb24.fromU32Rgb(0)),
-            .rgba32 => |pixels| @memset(pixels, color.Rgba32.fromU32Rgba(0)),
+            .rgb24 => |pixels| @memset(pixels, color.Rgb24.from.u32Rgb(0)),
+            .rgba32 => |pixels| @memset(pixels, color.Rgba32.from.u32Rgba(0)),
             else => std.debug.panic("Pixel format {} not supported", .{pixel_format}),
         }
 

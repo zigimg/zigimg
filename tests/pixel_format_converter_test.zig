@@ -8,6 +8,14 @@ const helpers = @import("helpers.zig");
 // mlarouche: Not all conversion are tested, just the most important ones
 // If any pixel conversion cause issues, we will add a test for it
 
+const toU2 = color.ScaleValue(u2);
+const toU3 = color.ScaleValue(u3);
+const toU5 = color.ScaleValue(u5);
+const toU6 = color.ScaleValue(u6);
+const toU8 = color.ScaleValue(u8);
+const toU16 = color.ScaleValue(u16);
+const toF32 = color.ScaleValue(f32);
+
 test "PixelFormatConverter: convert from indexed1 to indexed2" {
     const indexed1_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .indexed1, 4);
     defer indexed1_pixels.deinit(helpers.zigimg_test_allocator);
@@ -1008,11 +1016,11 @@ test "PixelFormatConverter: convvert from rgb555 to rgb332" {
     const rgb555_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .rgb555, 5);
     defer rgb555_pixels.deinit(helpers.zigimg_test_allocator);
 
-    rgb555_pixels.rgb555[0] = color.Rgb555.initRgb(31, 0, 0);
-    rgb555_pixels.rgb555[1] = color.Rgb555.initRgb(0, 31, 0);
-    rgb555_pixels.rgb555[2] = color.Rgb555.initRgb(0, 0, 31);
-    rgb555_pixels.rgb555[3] = color.Rgb555.initRgb(31, 31, 31);
-    rgb555_pixels.rgb555[4] = color.Rgb555.initRgb(0, 0, 0);
+    rgb555_pixels.rgb555[0] = color.Rgb555.from.rgb(31, 0, 0);
+    rgb555_pixels.rgb555[1] = color.Rgb555.from.rgb(0, 31, 0);
+    rgb555_pixels.rgb555[2] = color.Rgb555.from.rgb(0, 0, 31);
+    rgb555_pixels.rgb555[3] = color.Rgb555.from.rgb(31, 31, 31);
+    rgb555_pixels.rgb555[4] = color.Rgb555.from.rgb(0, 0, 0);
 
     const rgb332_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &rgb555_pixels, .rgb332);
     defer rgb332_pixels.deinit(helpers.zigimg_test_allocator);
@@ -1042,11 +1050,11 @@ test "PixelFormatConverter: convvert from rgb555 to rgb565" {
     const rgb555_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .rgb555, 5);
     defer rgb555_pixels.deinit(helpers.zigimg_test_allocator);
 
-    rgb555_pixels.rgb555[0] = color.Rgb555.initRgb(31, 0, 0);
-    rgb555_pixels.rgb555[1] = color.Rgb555.initRgb(0, 31, 0);
-    rgb555_pixels.rgb555[2] = color.Rgb555.initRgb(0, 0, 31);
-    rgb555_pixels.rgb555[3] = color.Rgb555.initRgb(31, 31, 31);
-    rgb555_pixels.rgb555[4] = color.Rgb555.initRgb(0, 0, 0);
+    rgb555_pixels.rgb555[0] = color.Rgb555.from.rgb(31, 0, 0);
+    rgb555_pixels.rgb555[1] = color.Rgb555.from.rgb(0, 31, 0);
+    rgb555_pixels.rgb555[2] = color.Rgb555.from.rgb(0, 0, 31);
+    rgb555_pixels.rgb555[3] = color.Rgb555.from.rgb(31, 31, 31);
+    rgb555_pixels.rgb555[4] = color.Rgb555.from.rgb(0, 0, 0);
 
     const rgb565_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &rgb555_pixels, .rgb565);
     defer rgb565_pixels.deinit(helpers.zigimg_test_allocator);
@@ -1076,11 +1084,11 @@ test "PixelFormatConverter: convert from rgb555 to rgb24" {
     const rgb555_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .rgb555, 5);
     defer rgb555_pixels.deinit(helpers.zigimg_test_allocator);
 
-    rgb555_pixels.rgb555[0] = color.Rgb555.initRgb(31, 0, 0);
-    rgb555_pixels.rgb555[1] = color.Rgb555.initRgb(0, 31, 0);
-    rgb555_pixels.rgb555[2] = color.Rgb555.initRgb(0, 0, 31);
-    rgb555_pixels.rgb555[3] = color.Rgb555.initRgb(31, 31, 31);
-    rgb555_pixels.rgb555[4] = color.Rgb555.initRgb(0, 0, 0);
+    rgb555_pixels.rgb555[0] = color.Rgb555.from.rgb(31, 0, 0);
+    rgb555_pixels.rgb555[1] = color.Rgb555.from.rgb(0, 31, 0);
+    rgb555_pixels.rgb555[2] = color.Rgb555.from.rgb(0, 0, 31);
+    rgb555_pixels.rgb555[3] = color.Rgb555.from.rgb(31, 31, 31);
+    rgb555_pixels.rgb555[4] = color.Rgb555.from.rgb(0, 0, 0);
 
     const rgb24_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &rgb555_pixels, .rgb24);
     defer rgb24_pixels.deinit(helpers.zigimg_test_allocator);
@@ -1110,11 +1118,11 @@ test "PixelFormatConverter: convert from rgb555 to rgba32" {
     const rgb555_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .rgb555, 5);
     defer rgb555_pixels.deinit(helpers.zigimg_test_allocator);
 
-    rgb555_pixels.rgb555[0] = color.Rgb555.initRgb(31, 0, 0);
-    rgb555_pixels.rgb555[1] = color.Rgb555.initRgb(0, 31, 0);
-    rgb555_pixels.rgb555[2] = color.Rgb555.initRgb(0, 0, 31);
-    rgb555_pixels.rgb555[3] = color.Rgb555.initRgb(31, 31, 31);
-    rgb555_pixels.rgb555[4] = color.Rgb555.initRgb(0, 0, 0);
+    rgb555_pixels.rgb555[0] = color.Rgb555.from.rgb(31, 0, 0);
+    rgb555_pixels.rgb555[1] = color.Rgb555.from.rgb(0, 31, 0);
+    rgb555_pixels.rgb555[2] = color.Rgb555.from.rgb(0, 0, 31);
+    rgb555_pixels.rgb555[3] = color.Rgb555.from.rgb(31, 31, 31);
+    rgb555_pixels.rgb555[4] = color.Rgb555.from.rgb(0, 0, 0);
 
     const rgba32_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &rgb555_pixels, .rgba32);
     defer rgba32_pixels.deinit(helpers.zigimg_test_allocator);
@@ -1149,11 +1157,11 @@ test "PixelFormatConverter: convert from rgb555 to float32" {
     const rgb555_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .rgb555, 5);
     defer rgb555_pixels.deinit(helpers.zigimg_test_allocator);
 
-    rgb555_pixels.rgb555[0] = color.Rgb555.initRgb(31, 0, 0);
-    rgb555_pixels.rgb555[1] = color.Rgb555.initRgb(0, 31, 0);
-    rgb555_pixels.rgb555[2] = color.Rgb555.initRgb(0, 0, 31);
-    rgb555_pixels.rgb555[3] = color.Rgb555.initRgb(31, 31, 31);
-    rgb555_pixels.rgb555[4] = color.Rgb555.initRgb(0, 0, 0);
+    rgb555_pixels.rgb555[0] = color.Rgb555.from.rgb(31, 0, 0);
+    rgb555_pixels.rgb555[1] = color.Rgb555.from.rgb(0, 31, 0);
+    rgb555_pixels.rgb555[2] = color.Rgb555.from.rgb(0, 0, 31);
+    rgb555_pixels.rgb555[3] = color.Rgb555.from.rgb(31, 31, 31);
+    rgb555_pixels.rgb555[4] = color.Rgb555.from.rgb(0, 0, 0);
 
     const float32_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &rgb555_pixels, .float32);
     defer float32_pixels.deinit(helpers.zigimg_test_allocator);
@@ -1195,13 +1203,13 @@ test "PixelFormatConverter: convert rgba32 to bgra32" {
         const column: u8 = @truncate(index % 256);
 
         switch (row) {
-            0 => rgba32_pixels.rgba32[index] = color.Rgba32.initRgb(column, 0, 0),
-            1 => rgba32_pixels.rgba32[index] = color.Rgba32.initRgb(0, column, 0),
-            2 => rgba32_pixels.rgba32[index] = color.Rgba32.initRgb(0, 0, column),
-            3 => rgba32_pixels.rgba32[index] = color.Rgba32.initRgb(column, column, 0),
-            4 => rgba32_pixels.rgba32[index] = color.Rgba32.initRgb(column, 0, column),
-            5 => rgba32_pixels.rgba32[index] = color.Rgba32.initRgb(0, column, column),
-            6 => rgba32_pixels.rgba32[index] = color.Rgba32.initRgb(column, column, column),
+            0 => rgba32_pixels.rgba32[index] = color.Rgba32.from.rgb(column, 0, 0),
+            1 => rgba32_pixels.rgba32[index] = color.Rgba32.from.rgb(0, column, 0),
+            2 => rgba32_pixels.rgba32[index] = color.Rgba32.from.rgb(0, 0, column),
+            3 => rgba32_pixels.rgba32[index] = color.Rgba32.from.rgb(column, column, 0),
+            4 => rgba32_pixels.rgba32[index] = color.Rgba32.from.rgb(column, 0, column),
+            5 => rgba32_pixels.rgba32[index] = color.Rgba32.from.rgb(0, column, column),
+            6 => rgba32_pixels.rgba32[index] = color.Rgba32.from.rgb(column, column, column),
             else => {},
         }
     }
@@ -1226,13 +1234,13 @@ test "PixelFormatConverter: convert bgra32 to rgba32" {
         const column: u8 = @truncate(index % 256);
 
         switch (row) {
-            0 => bgra32_pixels.bgra32[index] = color.Bgra32.initRgb(column, 0, 0),
-            1 => bgra32_pixels.bgra32[index] = color.Bgra32.initRgb(0, column, 0),
-            2 => bgra32_pixels.bgra32[index] = color.Bgra32.initRgb(0, 0, column),
-            3 => bgra32_pixels.bgra32[index] = color.Bgra32.initRgb(column, column, 0),
-            4 => bgra32_pixels.bgra32[index] = color.Bgra32.initRgb(column, 0, column),
-            5 => bgra32_pixels.bgra32[index] = color.Bgra32.initRgb(0, column, column),
-            6 => bgra32_pixels.bgra32[index] = color.Bgra32.initRgb(column, column, column),
+            0 => bgra32_pixels.bgra32[index] = color.Bgra32.from.rgb(column, 0, 0),
+            1 => bgra32_pixels.bgra32[index] = color.Bgra32.from.rgb(0, column, 0),
+            2 => bgra32_pixels.bgra32[index] = color.Bgra32.from.rgb(0, 0, column),
+            3 => bgra32_pixels.bgra32[index] = color.Bgra32.from.rgb(column, column, 0),
+            4 => bgra32_pixels.bgra32[index] = color.Bgra32.from.rgb(column, 0, column),
+            5 => bgra32_pixels.bgra32[index] = color.Bgra32.from.rgb(0, column, column),
+            6 => bgra32_pixels.bgra32[index] = color.Bgra32.from.rgb(column, column, column),
             else => {},
         }
     }
@@ -1257,13 +1265,13 @@ test "PixelFormatConverter: convert rgba32 to float32" {
         const column: u8 = @truncate(index % 256);
 
         switch (row) {
-            0 => rgba32_pixels.rgba32[index] = color.Rgba32.initRgb(column, 0, 0),
-            1 => rgba32_pixels.rgba32[index] = color.Rgba32.initRgb(0, column, 0),
-            2 => rgba32_pixels.rgba32[index] = color.Rgba32.initRgb(0, 0, column),
-            3 => rgba32_pixels.rgba32[index] = color.Rgba32.initRgb(column, column, 0),
-            4 => rgba32_pixels.rgba32[index] = color.Rgba32.initRgb(column, 0, column),
-            5 => rgba32_pixels.rgba32[index] = color.Rgba32.initRgb(0, column, column),
-            6 => rgba32_pixels.rgba32[index] = color.Rgba32.initRgb(column, column, column),
+            0 => rgba32_pixels.rgba32[index] = color.Rgba32.from.rgb(column, 0, 0),
+            1 => rgba32_pixels.rgba32[index] = color.Rgba32.from.rgb(0, column, 0),
+            2 => rgba32_pixels.rgba32[index] = color.Rgba32.from.rgb(0, 0, column),
+            3 => rgba32_pixels.rgba32[index] = color.Rgba32.from.rgb(column, column, 0),
+            4 => rgba32_pixels.rgba32[index] = color.Rgba32.from.rgb(column, 0, column),
+            5 => rgba32_pixels.rgba32[index] = color.Rgba32.from.rgb(0, column, column),
+            6 => rgba32_pixels.rgba32[index] = color.Rgba32.from.rgb(column, column, column),
             else => {},
         }
     }
@@ -1273,10 +1281,10 @@ test "PixelFormatConverter: convert rgba32 to float32" {
 
     const float_tolerance = 0.0001;
     for (0..float32_pixels.float32.len) |index| {
-        try helpers.expectApproxEqAbs(float32_pixels.float32[index].r, color.toF32Color(rgba32_pixels.rgba32[index].r), float_tolerance);
-        try helpers.expectApproxEqAbs(float32_pixels.float32[index].g, color.toF32Color(rgba32_pixels.rgba32[index].g), float_tolerance);
-        try helpers.expectApproxEqAbs(float32_pixels.float32[index].b, color.toF32Color(rgba32_pixels.rgba32[index].b), float_tolerance);
-        try helpers.expectApproxEqAbs(float32_pixels.float32[index].a, color.toF32Color(rgba32_pixels.rgba32[index].a), float_tolerance);
+        try helpers.expectApproxEqAbs(float32_pixels.float32[index].r, toF32(rgba32_pixels.rgba32[index].r), float_tolerance);
+        try helpers.expectApproxEqAbs(float32_pixels.float32[index].g, toF32(rgba32_pixels.rgba32[index].g), float_tolerance);
+        try helpers.expectApproxEqAbs(float32_pixels.float32[index].b, toF32(rgba32_pixels.rgba32[index].b), float_tolerance);
+        try helpers.expectApproxEqAbs(float32_pixels.float32[index].a, toF32(rgba32_pixels.rgba32[index].a), float_tolerance);
     }
 }
 
@@ -1289,13 +1297,13 @@ test "PixelFormatConverter: convert bgra32 to float32" {
         const column: u8 = @truncate(index % 256);
 
         switch (row) {
-            0 => bgra32_pixels.bgra32[index] = color.Bgra32.initRgb(column, 0, 0),
-            1 => bgra32_pixels.bgra32[index] = color.Bgra32.initRgb(0, column, 0),
-            2 => bgra32_pixels.bgra32[index] = color.Bgra32.initRgb(0, 0, column),
-            3 => bgra32_pixels.bgra32[index] = color.Bgra32.initRgb(column, column, 0),
-            4 => bgra32_pixels.bgra32[index] = color.Bgra32.initRgb(column, 0, column),
-            5 => bgra32_pixels.bgra32[index] = color.Bgra32.initRgb(0, column, column),
-            6 => bgra32_pixels.bgra32[index] = color.Bgra32.initRgb(column, column, column),
+            0 => bgra32_pixels.bgra32[index] = color.Bgra32.from.rgb(column, 0, 0),
+            1 => bgra32_pixels.bgra32[index] = color.Bgra32.from.rgb(0, column, 0),
+            2 => bgra32_pixels.bgra32[index] = color.Bgra32.from.rgb(0, 0, column),
+            3 => bgra32_pixels.bgra32[index] = color.Bgra32.from.rgb(column, column, 0),
+            4 => bgra32_pixels.bgra32[index] = color.Bgra32.from.rgb(column, 0, column),
+            5 => bgra32_pixels.bgra32[index] = color.Bgra32.from.rgb(0, column, column),
+            6 => bgra32_pixels.bgra32[index] = color.Bgra32.from.rgb(column, column, column),
             else => {},
         }
     }
@@ -1305,10 +1313,10 @@ test "PixelFormatConverter: convert bgra32 to float32" {
 
     const float_tolerance = 0.0001;
     for (0..float32_pixels.float32.len) |index| {
-        try helpers.expectApproxEqAbs(float32_pixels.float32[index].r, color.toF32Color(bgra32_pixels.bgra32[index].r), float_tolerance);
-        try helpers.expectApproxEqAbs(float32_pixels.float32[index].g, color.toF32Color(bgra32_pixels.bgra32[index].g), float_tolerance);
-        try helpers.expectApproxEqAbs(float32_pixels.float32[index].b, color.toF32Color(bgra32_pixels.bgra32[index].b), float_tolerance);
-        try helpers.expectApproxEqAbs(float32_pixels.float32[index].a, color.toF32Color(bgra32_pixels.bgra32[index].a), float_tolerance);
+        try helpers.expectApproxEqAbs(float32_pixels.float32[index].r, toF32(bgra32_pixels.bgra32[index].r), float_tolerance);
+        try helpers.expectApproxEqAbs(float32_pixels.float32[index].g, toF32(bgra32_pixels.bgra32[index].g), float_tolerance);
+        try helpers.expectApproxEqAbs(float32_pixels.float32[index].b, toF32(bgra32_pixels.bgra32[index].b), float_tolerance);
+        try helpers.expectApproxEqAbs(float32_pixels.float32[index].a, toF32(bgra32_pixels.bgra32[index].a), float_tolerance);
     }
 }
 
@@ -1318,16 +1326,16 @@ test "PixelFormatConverter: convert float32 to rgba32" {
 
     for (0..float32_pixels.float32.len) |index| {
         const row: u8 = @truncate(index / 256);
-        const column: f32 = color.toF32Color(@as(u8, @truncate(index % 256)));
+        const column: f32 = toF32(@as(u8, @truncate(index % 256)));
 
         switch (row) {
-            0 => float32_pixels.float32[index] = color.Colorf32.initRgb(column, 0, 0),
-            1 => float32_pixels.float32[index] = color.Colorf32.initRgb(0, column, 0),
-            2 => float32_pixels.float32[index] = color.Colorf32.initRgb(0, 0, column),
-            3 => float32_pixels.float32[index] = color.Colorf32.initRgb(column, column, 0),
-            4 => float32_pixels.float32[index] = color.Colorf32.initRgb(column, 0, column),
-            5 => float32_pixels.float32[index] = color.Colorf32.initRgb(0, column, column),
-            6 => float32_pixels.float32[index] = color.Colorf32.initRgb(column, column, column),
+            0 => float32_pixels.float32[index] = color.Colorf32.from.rgb(column, 0, 0),
+            1 => float32_pixels.float32[index] = color.Colorf32.from.rgb(0, column, 0),
+            2 => float32_pixels.float32[index] = color.Colorf32.from.rgb(0, 0, column),
+            3 => float32_pixels.float32[index] = color.Colorf32.from.rgb(column, column, 0),
+            4 => float32_pixels.float32[index] = color.Colorf32.from.rgb(column, 0, column),
+            5 => float32_pixels.float32[index] = color.Colorf32.from.rgb(0, column, column),
+            6 => float32_pixels.float32[index] = color.Colorf32.from.rgb(column, column, column),
             else => {},
         }
     }
@@ -1336,10 +1344,10 @@ test "PixelFormatConverter: convert float32 to rgba32" {
     defer rgba32_pixels.deinit(helpers.zigimg_test_allocator);
 
     for (0..rgba32_pixels.rgba32.len) |index| {
-        try helpers.expectEq(rgba32_pixels.rgba32[index].r, color.toIntColor(u8, float32_pixels.float32[index].r));
-        try helpers.expectEq(rgba32_pixels.rgba32[index].g, color.toIntColor(u8, float32_pixels.float32[index].g));
-        try helpers.expectEq(rgba32_pixels.rgba32[index].b, color.toIntColor(u8, float32_pixels.float32[index].b));
-        try helpers.expectEq(rgba32_pixels.rgba32[index].a, color.toIntColor(u8, float32_pixels.float32[index].a));
+        try helpers.expectEq(rgba32_pixels.rgba32[index].r, toU8(float32_pixels.float32[index].r));
+        try helpers.expectEq(rgba32_pixels.rgba32[index].g, toU8(float32_pixels.float32[index].g));
+        try helpers.expectEq(rgba32_pixels.rgba32[index].b, toU8(float32_pixels.float32[index].b));
+        try helpers.expectEq(rgba32_pixels.rgba32[index].a, toU8(float32_pixels.float32[index].a));
     }
 }
 
@@ -1349,16 +1357,16 @@ test "PixelFormatConverter: convert float32 to bgra32" {
 
     for (0..float32_pixels.float32.len) |index| {
         const row: u8 = @truncate(index / 256);
-        const column: f32 = color.toF32Color(@as(u8, @truncate(index % 256)));
+        const column: f32 = toF32(@as(u8, @truncate(index % 256)));
 
         switch (row) {
-            0 => float32_pixels.float32[index] = color.Colorf32.initRgb(column, 0, 0),
-            1 => float32_pixels.float32[index] = color.Colorf32.initRgb(0, column, 0),
-            2 => float32_pixels.float32[index] = color.Colorf32.initRgb(0, 0, column),
-            3 => float32_pixels.float32[index] = color.Colorf32.initRgb(column, column, 0),
-            4 => float32_pixels.float32[index] = color.Colorf32.initRgb(column, 0, column),
-            5 => float32_pixels.float32[index] = color.Colorf32.initRgb(0, column, column),
-            6 => float32_pixels.float32[index] = color.Colorf32.initRgb(column, column, column),
+            0 => float32_pixels.float32[index] = color.Colorf32.from.rgb(column, 0, 0),
+            1 => float32_pixels.float32[index] = color.Colorf32.from.rgb(0, column, 0),
+            2 => float32_pixels.float32[index] = color.Colorf32.from.rgb(0, 0, column),
+            3 => float32_pixels.float32[index] = color.Colorf32.from.rgb(column, column, 0),
+            4 => float32_pixels.float32[index] = color.Colorf32.from.rgb(column, 0, column),
+            5 => float32_pixels.float32[index] = color.Colorf32.from.rgb(0, column, column),
+            6 => float32_pixels.float32[index] = color.Colorf32.from.rgb(column, column, column),
             else => {},
         }
     }
@@ -1367,10 +1375,10 @@ test "PixelFormatConverter: convert float32 to bgra32" {
     defer bgra32_pixels.deinit(helpers.zigimg_test_allocator);
 
     for (0..bgra32_pixels.bgra32.len) |index| {
-        try helpers.expectEq(bgra32_pixels.bgra32[index].r, color.toIntColor(u8, float32_pixels.float32[index].r));
-        try helpers.expectEq(bgra32_pixels.bgra32[index].g, color.toIntColor(u8, float32_pixels.float32[index].g));
-        try helpers.expectEq(bgra32_pixels.bgra32[index].b, color.toIntColor(u8, float32_pixels.float32[index].b));
-        try helpers.expectEq(bgra32_pixels.bgra32[index].a, color.toIntColor(u8, float32_pixels.float32[index].a));
+        try helpers.expectEq(bgra32_pixels.bgra32[index].r, toU8(float32_pixels.float32[index].r));
+        try helpers.expectEq(bgra32_pixels.bgra32[index].g, toU8(float32_pixels.float32[index].g));
+        try helpers.expectEq(bgra32_pixels.bgra32[index].b, toU8(float32_pixels.float32[index].b));
+        try helpers.expectEq(bgra32_pixels.bgra32[index].a, toU8(float32_pixels.float32[index].a));
     }
 }
 
@@ -1380,16 +1388,16 @@ test "PixelFormatConverter: convert float32 to rgba64" {
 
     for (0..float32_pixels.float32.len) |index| {
         const row: u8 = @truncate(index / 256);
-        const column: f32 = color.toF32Color(@as(u8, @truncate(index % 256)));
+        const column: f32 = toF32(@as(u8, @truncate(index % 256)));
 
         switch (row) {
-            0 => float32_pixels.float32[index] = color.Colorf32.initRgb(column, 0, 0),
-            1 => float32_pixels.float32[index] = color.Colorf32.initRgb(0, column, 0),
-            2 => float32_pixels.float32[index] = color.Colorf32.initRgb(0, 0, column),
-            3 => float32_pixels.float32[index] = color.Colorf32.initRgb(column, column, 0),
-            4 => float32_pixels.float32[index] = color.Colorf32.initRgb(column, 0, column),
-            5 => float32_pixels.float32[index] = color.Colorf32.initRgb(0, column, column),
-            6 => float32_pixels.float32[index] = color.Colorf32.initRgb(column, column, column),
+            0 => float32_pixels.float32[index] = color.Colorf32.from.rgb(column, 0, 0),
+            1 => float32_pixels.float32[index] = color.Colorf32.from.rgb(0, column, 0),
+            2 => float32_pixels.float32[index] = color.Colorf32.from.rgb(0, 0, column),
+            3 => float32_pixels.float32[index] = color.Colorf32.from.rgb(column, column, 0),
+            4 => float32_pixels.float32[index] = color.Colorf32.from.rgb(column, 0, column),
+            5 => float32_pixels.float32[index] = color.Colorf32.from.rgb(0, column, column),
+            6 => float32_pixels.float32[index] = color.Colorf32.from.rgb(column, column, column),
             else => {},
         }
     }
@@ -1398,10 +1406,10 @@ test "PixelFormatConverter: convert float32 to rgba64" {
     defer rgba64_pixels.deinit(helpers.zigimg_test_allocator);
 
     for (0..rgba64_pixels.rgba64.len) |index| {
-        try helpers.expectEq(rgba64_pixels.rgba64[index].r, color.toIntColor(u16, float32_pixels.float32[index].r));
-        try helpers.expectEq(rgba64_pixels.rgba64[index].g, color.toIntColor(u16, float32_pixels.float32[index].g));
-        try helpers.expectEq(rgba64_pixels.rgba64[index].b, color.toIntColor(u16, float32_pixels.float32[index].b));
-        try helpers.expectEq(rgba64_pixels.rgba64[index].a, color.toIntColor(u16, float32_pixels.float32[index].a));
+        try helpers.expectEq(rgba64_pixels.rgba64[index].r, toU16(float32_pixels.float32[index].r));
+        try helpers.expectEq(rgba64_pixels.rgba64[index].g, toU16(float32_pixels.float32[index].g));
+        try helpers.expectEq(rgba64_pixels.rgba64[index].b, toU16(float32_pixels.float32[index].b));
+        try helpers.expectEq(rgba64_pixels.rgba64[index].a, toU16(float32_pixels.float32[index].a));
     }
 }
 
@@ -1411,16 +1419,16 @@ test "PixelFormatConverter: convert float32 to rgb332" {
 
     for (0..float32_pixels.float32.len) |index| {
         const row: u8 = @truncate(index / 256);
-        const column: f32 = color.toF32Color(@as(u8, @truncate(index % 256)));
+        const column: f32 = toF32(@as(u8, @truncate(index % 256)));
 
         switch (row) {
-            0 => float32_pixels.float32[index] = color.Colorf32.initRgb(column, 0, 0),
-            1 => float32_pixels.float32[index] = color.Colorf32.initRgb(0, column, 0),
-            2 => float32_pixels.float32[index] = color.Colorf32.initRgb(0, 0, column),
-            3 => float32_pixels.float32[index] = color.Colorf32.initRgb(column, column, 0),
-            4 => float32_pixels.float32[index] = color.Colorf32.initRgb(column, 0, column),
-            5 => float32_pixels.float32[index] = color.Colorf32.initRgb(0, column, column),
-            6 => float32_pixels.float32[index] = color.Colorf32.initRgb(column, column, column),
+            0 => float32_pixels.float32[index] = color.Colorf32.from.rgb(column, 0, 0),
+            1 => float32_pixels.float32[index] = color.Colorf32.from.rgb(0, column, 0),
+            2 => float32_pixels.float32[index] = color.Colorf32.from.rgb(0, 0, column),
+            3 => float32_pixels.float32[index] = color.Colorf32.from.rgb(column, column, 0),
+            4 => float32_pixels.float32[index] = color.Colorf32.from.rgb(column, 0, column),
+            5 => float32_pixels.float32[index] = color.Colorf32.from.rgb(0, column, column),
+            6 => float32_pixels.float32[index] = color.Colorf32.from.rgb(column, column, column),
             else => {},
         }
     }
@@ -1429,9 +1437,9 @@ test "PixelFormatConverter: convert float32 to rgb332" {
     defer rgb332_pixels.deinit(helpers.zigimg_test_allocator);
 
     for (0..rgb332_pixels.rgb332.len) |index| {
-        try helpers.expectEq(rgb332_pixels.rgb332[index].r, color.toIntColor(u3, float32_pixels.float32[index].r));
-        try helpers.expectEq(rgb332_pixels.rgb332[index].g, color.toIntColor(u3, float32_pixels.float32[index].g));
-        try helpers.expectEq(rgb332_pixels.rgb332[index].b, color.toIntColor(u2, float32_pixels.float32[index].b));
+        try helpers.expectEq(rgb332_pixels.rgb332[index].r, toU3(float32_pixels.float32[index].r));
+        try helpers.expectEq(rgb332_pixels.rgb332[index].g, toU3(float32_pixels.float32[index].g));
+        try helpers.expectEq(rgb332_pixels.rgb332[index].b, toU2(float32_pixels.float32[index].b));
     }
 }
 
@@ -1441,16 +1449,16 @@ test "PixelFormatConverter: convert float32 to rgb565" {
 
     for (0..float32_pixels.float32.len) |index| {
         const row: u8 = @truncate(index / 256);
-        const column: f32 = color.toF32Color(@as(u8, @truncate(index % 256)));
+        const column: f32 = toF32(@as(u8, @truncate(index % 256)));
 
         switch (row) {
-            0 => float32_pixels.float32[index] = color.Colorf32.initRgb(column, 0, 0),
-            1 => float32_pixels.float32[index] = color.Colorf32.initRgb(0, column, 0),
-            2 => float32_pixels.float32[index] = color.Colorf32.initRgb(0, 0, column),
-            3 => float32_pixels.float32[index] = color.Colorf32.initRgb(column, column, 0),
-            4 => float32_pixels.float32[index] = color.Colorf32.initRgb(column, 0, column),
-            5 => float32_pixels.float32[index] = color.Colorf32.initRgb(0, column, column),
-            6 => float32_pixels.float32[index] = color.Colorf32.initRgb(column, column, column),
+            0 => float32_pixels.float32[index] = color.Colorf32.from.rgb(column, 0, 0),
+            1 => float32_pixels.float32[index] = color.Colorf32.from.rgb(0, column, 0),
+            2 => float32_pixels.float32[index] = color.Colorf32.from.rgb(0, 0, column),
+            3 => float32_pixels.float32[index] = color.Colorf32.from.rgb(column, column, 0),
+            4 => float32_pixels.float32[index] = color.Colorf32.from.rgb(column, 0, column),
+            5 => float32_pixels.float32[index] = color.Colorf32.from.rgb(0, column, column),
+            6 => float32_pixels.float32[index] = color.Colorf32.from.rgb(column, column, column),
             else => {},
         }
     }
@@ -1459,9 +1467,9 @@ test "PixelFormatConverter: convert float32 to rgb565" {
     defer rgb565_pixels.deinit(helpers.zigimg_test_allocator);
 
     for (0..rgb565_pixels.rgb565.len) |index| {
-        try helpers.expectEq(rgb565_pixels.rgb565[index].r, color.toIntColor(u5, float32_pixels.float32[index].r));
-        try helpers.expectEq(rgb565_pixels.rgb565[index].g, color.toIntColor(u6, float32_pixels.float32[index].g));
-        try helpers.expectEq(rgb565_pixels.rgb565[index].b, color.toIntColor(u5, float32_pixels.float32[index].b));
+        try helpers.expectEq(rgb565_pixels.rgb565[index].r, toU5(float32_pixels.float32[index].r));
+        try helpers.expectEq(rgb565_pixels.rgb565[index].g, toU6(float32_pixels.float32[index].g));
+        try helpers.expectEq(rgb565_pixels.rgb565[index].b, toU5(float32_pixels.float32[index].b));
     }
 }
 
@@ -1469,18 +1477,18 @@ test "PixelFormatConverter: convert float32 to grayscale16Alpha" {
     const float32_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .float32, 9);
     defer float32_pixels.deinit(helpers.zigimg_test_allocator);
 
-    float32_pixels.float32[0] = color.Colorf32.initRgb(1.0, 0.0, 0.0);
-    float32_pixels.float32[1] = color.Colorf32.initRgb(0.0, 1.0, 0.0);
-    float32_pixels.float32[2] = color.Colorf32.initRgb(0.0, 0.0, 1.0);
+    float32_pixels.float32[0] = color.Colorf32.from.rgb(1.0, 0.0, 0.0);
+    float32_pixels.float32[1] = color.Colorf32.from.rgb(0.0, 1.0, 0.0);
+    float32_pixels.float32[2] = color.Colorf32.from.rgb(0.0, 0.0, 1.0);
 
-    float32_pixels.float32[3] = color.Colorf32.initRgb(1.0, 0.0, 1.0);
-    float32_pixels.float32[4] = color.Colorf32.initRgb(1.0, 1.0, 0.0);
-    float32_pixels.float32[5] = color.Colorf32.initRgb(0.0, 1.0, 1.0);
+    float32_pixels.float32[3] = color.Colorf32.from.rgb(1.0, 0.0, 1.0);
+    float32_pixels.float32[4] = color.Colorf32.from.rgb(1.0, 1.0, 0.0);
+    float32_pixels.float32[5] = color.Colorf32.from.rgb(0.0, 1.0, 1.0);
 
-    float32_pixels.float32[6] = color.Colorf32.initRgb(1.0, 1.0, 1.0);
-    float32_pixels.float32[7] = color.Colorf32.initRgb(0.0, 0.0, 0.0);
+    float32_pixels.float32[6] = color.Colorf32.from.rgb(1.0, 1.0, 1.0);
+    float32_pixels.float32[7] = color.Colorf32.from.rgb(0.0, 0.0, 0.0);
 
-    float32_pixels.float32[8] = color.Colorf32.initRgba(0.2, 0.1, 0.8, 0.4);
+    float32_pixels.float32[8] = color.Colorf32.from.rgba(0.2, 0.1, 0.8, 0.4);
 
     const grayscale16_alpha_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &float32_pixels, .grayscale16Alpha);
     defer grayscale16_alpha_pixels.deinit(helpers.zigimg_test_allocator);
@@ -1517,18 +1525,18 @@ test "PixelFormatConverter: convert float32 to grayscale8" {
     const float32_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .float32, 9);
     defer float32_pixels.deinit(helpers.zigimg_test_allocator);
 
-    float32_pixels.float32[0] = color.Colorf32.initRgb(1.0, 0.0, 0.0);
-    float32_pixels.float32[1] = color.Colorf32.initRgb(0.0, 1.0, 0.0);
-    float32_pixels.float32[2] = color.Colorf32.initRgb(0.0, 0.0, 1.0);
+    float32_pixels.float32[0] = color.Colorf32.from.rgb(1.0, 0.0, 0.0);
+    float32_pixels.float32[1] = color.Colorf32.from.rgb(0.0, 1.0, 0.0);
+    float32_pixels.float32[2] = color.Colorf32.from.rgb(0.0, 0.0, 1.0);
 
-    float32_pixels.float32[3] = color.Colorf32.initRgb(1.0, 0.0, 1.0);
-    float32_pixels.float32[4] = color.Colorf32.initRgb(1.0, 1.0, 0.0);
-    float32_pixels.float32[5] = color.Colorf32.initRgb(0.0, 1.0, 1.0);
+    float32_pixels.float32[3] = color.Colorf32.from.rgb(1.0, 0.0, 1.0);
+    float32_pixels.float32[4] = color.Colorf32.from.rgb(1.0, 1.0, 0.0);
+    float32_pixels.float32[5] = color.Colorf32.from.rgb(0.0, 1.0, 1.0);
 
-    float32_pixels.float32[6] = color.Colorf32.initRgb(1.0, 1.0, 1.0);
-    float32_pixels.float32[7] = color.Colorf32.initRgb(0.0, 0.0, 0.0);
+    float32_pixels.float32[6] = color.Colorf32.from.rgb(1.0, 1.0, 1.0);
+    float32_pixels.float32[7] = color.Colorf32.from.rgb(0.0, 0.0, 0.0);
 
-    float32_pixels.float32[8] = color.Colorf32.initRgba(0.2, 0.1, 0.8, 0.4);
+    float32_pixels.float32[8] = color.Colorf32.from.rgba(0.2, 0.1, 0.8, 0.4);
 
     const grayscale8_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &float32_pixels, .grayscale8);
     defer grayscale8_pixels.deinit(helpers.zigimg_test_allocator);
@@ -1556,18 +1564,18 @@ test "PixelFormatConverter: convert rgba64 to grayscale16Alpha" {
     const rgba64_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .rgba64, 9);
     defer rgba64_pixels.deinit(helpers.zigimg_test_allocator);
 
-    rgba64_pixels.rgba64[0] = color.Rgba64.initRgb(65535, 0, 0);
-    rgba64_pixels.rgba64[1] = color.Rgba64.initRgb(0, 65535, 0);
-    rgba64_pixels.rgba64[2] = color.Rgba64.initRgb(0, 0, 65535);
+    rgba64_pixels.rgba64[0] = color.Rgba64.from.rgb(65535, 0, 0);
+    rgba64_pixels.rgba64[1] = color.Rgba64.from.rgb(0, 65535, 0);
+    rgba64_pixels.rgba64[2] = color.Rgba64.from.rgb(0, 0, 65535);
 
-    rgba64_pixels.rgba64[3] = color.Rgba64.initRgb(65535, 0, 65535);
-    rgba64_pixels.rgba64[4] = color.Rgba64.initRgb(65535, 65535, 0);
-    rgba64_pixels.rgba64[5] = color.Rgba64.initRgb(0, 65535, 65535);
+    rgba64_pixels.rgba64[3] = color.Rgba64.from.rgb(65535, 0, 65535);
+    rgba64_pixels.rgba64[4] = color.Rgba64.from.rgb(65535, 65535, 0);
+    rgba64_pixels.rgba64[5] = color.Rgba64.from.rgb(0, 65535, 65535);
 
-    rgba64_pixels.rgba64[6] = color.Rgba64.initRgb(65535, 65535, 65535);
-    rgba64_pixels.rgba64[7] = color.Rgba64.initRgb(0, 0, 0);
+    rgba64_pixels.rgba64[6] = color.Rgba64.from.rgb(65535, 65535, 65535);
+    rgba64_pixels.rgba64[7] = color.Rgba64.from.rgb(0, 0, 0);
 
-    rgba64_pixels.rgba64[8] = color.Rgba64.initRgba(13107, 6553, 52428, 26214);
+    rgba64_pixels.rgba64[8] = color.Rgba64.from.rgba(13107, 6553, 52428, 26214);
 
     const grayscale16_alpha_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &rgba64_pixels, .grayscale16Alpha);
     defer grayscale16_alpha_pixels.deinit(helpers.zigimg_test_allocator);
@@ -1604,18 +1612,18 @@ test "PixelFormatConverter: convert rgba32 to grayscale8" {
     const rgba32_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .rgba32, 9);
     defer rgba32_pixels.deinit(helpers.zigimg_test_allocator);
 
-    rgba32_pixels.rgba32[0] = color.Rgba32.initRgb(255, 0, 0);
-    rgba32_pixels.rgba32[1] = color.Rgba32.initRgb(0, 255, 0);
-    rgba32_pixels.rgba32[2] = color.Rgba32.initRgb(0, 0, 255);
+    rgba32_pixels.rgba32[0] = color.Rgba32.from.rgb(255, 0, 0);
+    rgba32_pixels.rgba32[1] = color.Rgba32.from.rgb(0, 255, 0);
+    rgba32_pixels.rgba32[2] = color.Rgba32.from.rgb(0, 0, 255);
 
-    rgba32_pixels.rgba32[3] = color.Rgba32.initRgb(255, 0, 255);
-    rgba32_pixels.rgba32[4] = color.Rgba32.initRgb(255, 255, 0);
-    rgba32_pixels.rgba32[5] = color.Rgba32.initRgb(0, 255, 255);
+    rgba32_pixels.rgba32[3] = color.Rgba32.from.rgb(255, 0, 255);
+    rgba32_pixels.rgba32[4] = color.Rgba32.from.rgb(255, 255, 0);
+    rgba32_pixels.rgba32[5] = color.Rgba32.from.rgb(0, 255, 255);
 
-    rgba32_pixels.rgba32[6] = color.Rgba32.initRgb(255, 255, 255);
-    rgba32_pixels.rgba32[7] = color.Rgba32.initRgb(0, 0, 0);
+    rgba32_pixels.rgba32[6] = color.Rgba32.from.rgb(255, 255, 255);
+    rgba32_pixels.rgba32[7] = color.Rgba32.from.rgb(0, 0, 0);
 
-    rgba32_pixels.rgba32[8] = color.Rgba32.initRgba(51, 25, 204, 102);
+    rgba32_pixels.rgba32[8] = color.Rgba32.from.rgba(51, 25, 204, 102);
 
     const grayscale8_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &rgba32_pixels, .grayscale8);
     defer grayscale8_pixels.deinit(helpers.zigimg_test_allocator);

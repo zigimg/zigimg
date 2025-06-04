@@ -107,7 +107,7 @@ test "TIFF/LE 24-bit uncompressed" {
     };
 
     for (expected_colors, indexes) |hex_color, index| {
-        try helpers.expectEq(pixels.rgb24[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(pixels.rgb24[index].to.u32Rgb(), hex_color);
     }
 }
 
@@ -134,7 +134,7 @@ test "TIFF/BE rgb24 gray single strip uncompressed" {
     };
 
     for (expected_colors, indexes) |hex_color, index| {
-        try helpers.expectEq(pixels.rgb24[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(pixels.rgb24[index].to.u32Rgb(), hex_color);
     }
 }
 
@@ -161,7 +161,7 @@ test "TIFF/BE rgb24 color single strip uncompressed" {
     };
 
     for (expected_colors, indexes) |hex_color, index| {
-        try helpers.expectEq(pixels.rgb24[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(pixels.rgb24[index].to.u32Rgb(), hex_color);
     }
 }
 
@@ -188,7 +188,7 @@ test "TIFF/BE 24-bit uncompressed" {
     };
 
     for (expected_colors, indexes) |hex_color, index| {
-        try helpers.expectEq(pixels.rgb24[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(pixels.rgb24[index].to.u32Rgb(), hex_color);
     }
 }
 
@@ -211,7 +211,7 @@ test "TIFF/LE RGBA uncompressed" {
     const expected_colors = [_]u32{ 0xf6ff00, 0xbe0042, 0x2900d7 };
 
     for (expected_colors, indexes) |hex_color, index| {
-        try helpers.expectEq(pixels.rgba32[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(pixels.rgba32[index].to.u32Rgb(), hex_color);
     }
 }
 
@@ -304,7 +304,7 @@ test "TIFF/LE 24-bit packbits" {
     };
 
     for (expected_colors, indexes) |hex_color, index| {
-        try helpers.expectEq(pixels.rgb24[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(pixels.rgb24[index].to.u32Rgb(), hex_color);
     }
 }
 
@@ -327,7 +327,7 @@ test "TIFF/LE RGBA packbits" {
     const expected_colors = [_]u32{ 0xf6ff00, 0xbe0042, 0x2900d7 };
 
     for (expected_colors, indexes) |hex_color, index| {
-        try helpers.expectEq(pixels.rgba32[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(pixels.rgba32[index].to.u32Rgb(), hex_color);
     }
 }
 
@@ -439,7 +439,7 @@ test "TIFF/LE 24-bit LZW" {
     };
 
     for (expected_colors, indexes) |hex_color, index| {
-        try helpers.expectEq(pixels.rgb24[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(pixels.rgb24[index].to.u32Rgb(), hex_color);
     }
 }
 
@@ -462,7 +462,7 @@ test "TIFF/LE RGBA LZW" {
     const expected_colors = [_]u32{ 0xf6ff00, 0xbe0042, 0x2900d7 };
 
     for (expected_colors, indexes) |hex_color, index| {
-        try helpers.expectEq(pixels.rgba32[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(pixels.rgba32[index].to.u32Rgb(), hex_color);
     }
 }
 
@@ -555,7 +555,7 @@ test "TIFF/LE 24-bit Deflate" {
     };
 
     for (expected_colors, indexes) |hex_color, index| {
-        try helpers.expectEq(pixels.rgb24[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(pixels.rgb24[index].to.u32Rgb(), hex_color);
     }
 }
 
@@ -578,6 +578,6 @@ test "TIFF/LE RGBA Deflate" {
     const expected_colors = [_]u32{ 0xf6ff00, 0xbe0042, 0x2900d7 };
 
     for (expected_colors, indexes) |hex_color, index| {
-        try helpers.expectEq(pixels.rgba32[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(pixels.rgba32[index].to.u32Rgb(), hex_color);
     }
 }

@@ -7,6 +7,8 @@ const testing = std.testing;
 const Image = @import("../../src/Image.zig");
 const helpers = @import("../helpers.zig");
 
+const toU8 = color.ScaleValue(u8);
+
 test "PCX indexed1 (linear)" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pcx/test-bpp1.pcx");
     defer file.close();
@@ -219,8 +221,8 @@ test "Write PCX indexed 1 (even width)" {
     defer image_pattern.deinit();
 
     // Generate palette
-    image_pattern.pixels.indexed1.palette[0] = color.Rgba32.initRgb(0, 0, 0);
-    image_pattern.pixels.indexed1.palette[1] = color.Rgba32.initRgb(255, 255, 255);
+    image_pattern.pixels.indexed1.palette[0] = color.Rgba32.from.rgb(0, 0, 0);
+    image_pattern.pixels.indexed1.palette[1] = color.Rgba32.from.rgb(255, 255, 255);
 
     // Generate pattern
     for (0..image_height) |y| {
@@ -330,7 +332,7 @@ test "Write PCX indexed 4 (even width)" {
     for (0..16) |index| {
         const current_step = index % colors_per_channel;
         const current_channel = index / colors_per_channel;
-        const current_intensity = color.toIntColor(u8, @as(f32, @floatFromInt(current_step)) / @as(f32, @floatFromInt(colors_per_channel)));
+        const current_intensity = toU8(@as(f32, @floatFromInt(current_step)) / @as(f32, @floatFromInt(colors_per_channel)));
         rainbow_test.pixels.indexed4.palette[index].a = 255;
         switch (current_channel) {
             0 => rainbow_test.pixels.indexed4.palette[index].r = current_intensity,
@@ -435,7 +437,7 @@ test "Write PCX indexed 8 (even width)" {
     for (0..255) |index| {
         const current_step = index % colors_per_channel;
         const current_channel = index / colors_per_channel;
-        const current_intensity = color.toIntColor(u8, @as(f32, @floatFromInt(current_step)) / @as(f32, @floatFromInt(colors_per_channel)));
+        const current_intensity = toU8(@as(f32, @floatFromInt(current_step)) / @as(f32, @floatFromInt(colors_per_channel)));
 
         rainbow_test.pixels.indexed8.palette[index].r = 0;
         rainbow_test.pixels.indexed8.palette[index].g = 0;

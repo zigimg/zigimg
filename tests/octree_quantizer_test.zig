@@ -8,9 +8,9 @@ test "Build the oct tree with 3 colors" {
     var quantizer = OctTreeQuantizer.init(helpers.zigimg_test_allocator);
     defer quantizer.deinit();
 
-    const red = color.Rgba32.initRgb(0xFF, 0, 0);
-    const green = color.Rgba32.initRgb(0, 0xFF, 0);
-    const blue = color.Rgba32.initRgb(0, 0, 0xFF);
+    const red = color.Rgba32.from.rgb(0xFF, 0, 0);
+    const green = color.Rgba32.from.rgb(0, 0xFF, 0);
+    const blue = color.Rgba32.from.rgb(0, 0, 0xFF);
 
     try quantizer.addColor(red);
     try quantizer.addColor(green);
@@ -51,14 +51,14 @@ test "Build a oct tree with 32-bit RGBA bitmap" {
 
     try helpers.expectEq(palette.len, 255);
 
-    const palette_index = try quantizer.getPaletteIndex(color.Rgba32.initRgba(110, 0, 0, 255));
+    const palette_index = try quantizer.getPaletteIndex(color.Rgba32.from.rgba(110, 0, 0, 255));
     try helpers.expectEq(palette_index, 87);
     try helpers.expectEq(palette[palette_index].r, 110);
     try helpers.expectEq(palette[palette_index].g, 2);
     try helpers.expectEq(palette[palette_index].b, 2);
     try helpers.expectEq(palette[palette_index].a, 255);
 
-    const second_palette_index = try quantizer.getPaletteIndex(color.Rgba32.initRgba(0, 0, 119, 255));
+    const second_palette_index = try quantizer.getPaletteIndex(color.Rgba32.from.rgba(0, 0, 119, 255));
     try helpers.expectEq(second_palette_index, 50);
     try helpers.expectEq(palette[second_palette_index].r, 0);
     try helpers.expectEq(palette[second_palette_index].g, 0);

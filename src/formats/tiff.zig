@@ -81,7 +81,7 @@ pub const TIFF = struct {
                     color_map.resize(num_colors);
                     for (0..num_colors) |color_index| {
                         // TIFF colors are stored as 16-bit components
-                        color_map.data[color_index] = color.Rgba32.initRgb(@truncate(palette[color_index] / 256), @truncate(palette[color_index + num_colors] / 256), @truncate(palette[color_index + num_colors * 2] / 256));
+                        color_map.data[color_index] = color.Rgba32.from.rgb(@truncate(palette[color_index] / 256), @truncate(palette[color_index + num_colors] / 256), @truncate(palette[color_index + num_colors * 2] / 256));
                     }
                 },
                 .strip_byte_counts => {
@@ -273,10 +273,10 @@ pub const TIFF = struct {
                     var strip_index: usize = 0;
                     while (strip_index < byte_count) : (strip_index += 3) {
                         if (predictor == 1 or pixel_index % image_width == 0) {
-                            storage[pixel_index] = color.Rgb24.initRgb(strip_buffer[strip_index], strip_buffer[strip_index + 1], strip_buffer[strip_index + 2]);
+                            storage[pixel_index] = color.Rgb24.from.rgb(strip_buffer[strip_index], strip_buffer[strip_index + 1], strip_buffer[strip_index + 2]);
                         } else {
                             const previous_color = storage[pixel_index - 1];
-                            storage[pixel_index] = color.Rgb24.initRgb(previous_color.r +% strip_buffer[strip_index], previous_color.g +% strip_buffer[strip_index + 1], previous_color.b +% strip_buffer[strip_index + 2]);
+                            storage[pixel_index] = color.Rgb24.from.rgb(previous_color.r +% strip_buffer[strip_index], previous_color.g +% strip_buffer[strip_index + 1], previous_color.b +% strip_buffer[strip_index + 2]);
                         }
                         pixel_index += 1;
                         if (pixel_index >= storage.len)
@@ -287,10 +287,10 @@ pub const TIFF = struct {
                     var strip_index: usize = 0;
                     while (strip_index < byte_count) : (strip_index += 4) {
                         if (predictor == 1 or pixel_index % image_width == 0) {
-                            storage[pixel_index] = color.Rgba32.initRgba(strip_buffer[strip_index], strip_buffer[strip_index + 1], strip_buffer[strip_index + 2], strip_buffer[strip_index + 3]);
+                            storage[pixel_index] = color.Rgba32.from.rgba(strip_buffer[strip_index], strip_buffer[strip_index + 1], strip_buffer[strip_index + 2], strip_buffer[strip_index + 3]);
                         } else {
                             const previous_color = storage[pixel_index - 1];
-                            storage[pixel_index] = color.Rgba32.initRgba(previous_color.r +% strip_buffer[strip_index], previous_color.g +% strip_buffer[strip_index + 1], previous_color.b +% strip_buffer[strip_index + 2], previous_color.a +% strip_buffer[strip_index + 3]);
+                            storage[pixel_index] = color.Rgba32.from.rgba(previous_color.r +% strip_buffer[strip_index], previous_color.g +% strip_buffer[strip_index + 1], previous_color.b +% strip_buffer[strip_index + 2], previous_color.a +% strip_buffer[strip_index + 3]);
                         }
                         pixel_index += 1;
                         if (pixel_index >= storage.len)

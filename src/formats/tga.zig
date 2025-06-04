@@ -7,6 +7,9 @@ const std = @import("std");
 const simd = @import("../simd.zig");
 const utils = @import("../utils.zig");
 
+const toU5 = color.ScaleValue(u5);
+const toU8 = color.ScaleValue(u8);
+
 pub const TGAImageType = packed struct(u8) {
     indexed: bool = false,
     truecolor: bool = false,
@@ -994,9 +997,9 @@ pub const TGA = struct {
         while (data_index < data_end) : (data_index += 1) {
             const read_color = try utils.readStruct(reader, color.Rgb555, .little);
 
-            data.palette[data_index].r = color.scaleToIntColor(u8, read_color.r);
-            data.palette[data_index].g = color.scaleToIntColor(u8, read_color.g);
-            data.palette[data_index].b = color.scaleToIntColor(u8, read_color.b);
+            data.palette[data_index].r = toU8(read_color.r);
+            data.palette[data_index].g = toU8(read_color.g);
+            data.palette[data_index].b = toU8(read_color.b);
             data.palette[data_index].a = 255;
         }
     }
@@ -1375,9 +1378,9 @@ pub const TGA = struct {
 
         while (data_index < data_end) : (data_index += 1) {
             const converted_color = color.Rgb555{
-                .r = color.scaleToIntColor(u5, indexed.palette[data_index].r),
-                .g = color.scaleToIntColor(u5, indexed.palette[data_index].g),
-                .b = color.scaleToIntColor(u5, indexed.palette[data_index].b),
+                .r = toU5(indexed.palette[data_index].r),
+                .g = toU5(indexed.palette[data_index].g),
+                .b = toU5(indexed.palette[data_index].b),
             };
 
             try writer.writeInt(u16, @as(u15, @bitCast(converted_color)), .little);

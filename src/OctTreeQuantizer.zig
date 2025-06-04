@@ -76,11 +76,11 @@ fn anyColorToRgb24(color_value: anytype) color.Rgb24 {
 
     const has_alpha_type = @hasField(T, "a");
     if (has_alpha_type) {
-        const premultiplied_alpha = color_value.toPremultipliedAlpha();
+        const premultiplied_alpha = color_value.to.premultipliedAlpha();
 
-        return color.Rgb24.fromU32Rgba(premultiplied_alpha.toU32Rgba());
+        return color.Rgb24.from.u32Rgba(premultiplied_alpha.to.u32Rgba());
     } else {
-        return color.Rgb24.fromU32Rgb(color_value.toU32Rgb());
+        return color.Rgb24.from.u32Rgb(color_value.to.u32Rgb());
     }
 }
 
@@ -112,7 +112,7 @@ const Node = struct {
     }
 
     pub fn getColor(self: Node) color.Rgba32 {
-        return color.Rgba32.initRgb(@intCast(self.red / self.reference_count), @intCast(self.green / self.reference_count), @intCast(self.blue / self.reference_count));
+        return color.Rgba32.from.rgb(@intCast(self.red / self.reference_count), @intCast(self.green / self.reference_count), @intCast(self.blue / self.reference_count));
     }
 
     pub fn addColor(self: *Node, source_color: anytype, level: i32, parent: *OctTreeQuantizer) Error!void {
