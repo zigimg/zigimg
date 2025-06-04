@@ -4,353 +4,518 @@ const Allocator = std.mem.Allocator;
 const PixelFormat = @import("pixel_format.zig").PixelFormat;
 const TypeInfo = std.builtin.TypeInfo;
 
-pub inline fn toIntColor(comptime T: type, value: f32) T {
-    const float_value = @round(value * @as(f32, @floatFromInt(std.math.maxInt(T))));
-    return @as(T, @intFromFloat(std.math.clamp(float_value, std.math.minInt(T), std.math.maxInt(T))));
-}
-
-pub inline fn scaleToIntColor(comptime T: type, value: anytype) T {
-    const ValueT = @TypeOf(value);
-    if (ValueT == comptime_int) return @as(T, value);
-    const ValueTypeInfo = @typeInfo(ValueT);
-    if (ValueTypeInfo != .int or ValueTypeInfo.int.signedness != .unsigned) {
-        @compileError("scaleToInColor only accepts unsigned integers as values. Got " ++ @typeName(ValueT) ++ ".");
-    }
-    const cur_value_bits = @bitSizeOf(ValueT);
-    const new_value_bits = @bitSizeOf(T);
-    if (cur_value_bits > new_value_bits) {
-        return @as(T, @truncate(value >> (cur_value_bits - new_value_bits)));
-    } else if (cur_value_bits < new_value_bits) {
-        const cur_value_max = std.math.maxInt(ValueT);
-        const new_value_max = std.math.maxInt(T);
-        return @as(T, @truncate((@as(u32, value) * new_value_max + cur_value_max / 2) / cur_value_max));
-    } else return @as(T, value);
-}
-
-pub inline fn toF32Color(value: anytype) f32 {
-    return @as(f32, @floatFromInt(value)) / @as(f32, @floatFromInt(std.math.maxInt(@TypeOf(value))));
-}
-
-pub const Colorf32 = extern struct {
-    r: f32 align(1) = 0.0,
-    g: f32 align(1) = 0.0,
-    b: f32 align(1) = 0.0,
-    a: f32 align(1) = 1.0,
-
-    pub fn initRgb(r: f32, g: f32, b: f32) Colorf32 {
-        return .{
-            .r = r,
-            .g = g,
-            .b = b,
-        };
-    }
-
-    pub fn initRgba(r: f32, g: f32, b: f32, a: f32) Colorf32 {
-        return .{
-            .r = r,
-            .g = g,
-            .b = b,
-            .a = a,
-        };
-    }
-
-    pub fn fromU32Rgba(value: u32) Colorf32 {
-        return .{
-            .r = toF32Color(@as(u8, @truncate(value >> 24))),
-            .g = toF32Color(@as(u8, @truncate(value >> 16))),
-            .b = toF32Color(@as(u8, @truncate(value >> 8))),
-            .a = toF32Color(@as(u8, @truncate(value))),
-        };
-    }
-
-    pub fn toU32Rgba(self: Colorf32) u32 {
-        return @as(u32, toIntColor(u8, self.r)) << 24 |
-            @as(u32, toIntColor(u8, self.g)) << 16 |
-            @as(u32, toIntColor(u8, self.b)) << 8 |
-            @as(u32, toIntColor(u8, self.a));
-    }
-
-    pub fn fromU64Rgba(value: u64) Colorf32 {
-        return .{
-            .r = toF32Color(@as(u16, @truncate(value >> 48))),
-            .g = toF32Color(@as(u16, @truncate(value >> 32))),
-            .b = toF32Color(@as(u16, @truncate(value >> 16))),
-            .a = toF32Color(@as(u16, @truncate(value))),
-        };
-    }
-
-    pub fn toU64Rgba(self: Colorf32) u64 {
-        return @as(u64, toIntColor(u16, self.r)) << 48 |
-            @as(u64, toIntColor(u16, self.g)) << 32 |
-            @as(u64, toIntColor(u16, self.b)) << 16 |
-            @as(u64, toIntColor(u16, self.a));
-    }
-
-    pub fn toPremultipliedAlpha(self: Colorf32) Colorf32 {
-        return .{
-            .r = self.r * self.a,
-            .g = self.g * self.a,
-            .b = self.b * self.a,
-            .a = self.a,
-        };
-    }
-
-    pub fn toRgba(self: Colorf32, comptime T: type) RgbaColor(T) {
-        return .{
-            .r = toIntColor(T, self.r),
-            .g = toIntColor(T, self.g),
-            .b = toIntColor(T, self.b),
-            .a = toIntColor(T, self.a),
-        };
-    }
-
-    pub fn toRgba32(self: Colorf32) Rgba32 {
-        return self.toRgba(u8);
-    }
-
-    pub fn toRgba64(self: Colorf32) Rgba64 {
-        return self.toRgba(u16);
-    }
-
-    pub inline fn fromArray(value: [4]f32) Colorf32 {
-        return @bitCast(value);
-    }
-
-    pub inline fn toArray(self: Colorf32) [4]f32 {
-        return @bitCast(self);
-    }
-
-    pub inline fn fromFloat4(value: math.float4) Colorf32 {
-        return @bitCast(value);
-    }
-
-    pub inline fn toFloat4(self: Colorf32) math.float4 {
-        return @bitCast(self);
-    }
-};
-
 fn isAll8BitColor(comptime red_type: type, comptime green_type: type, comptime blue_type: type, comptime alpha_type: type) bool {
     return red_type == u8 and green_type == u8 and blue_type == u8 and (alpha_type == u8 or alpha_type == void);
 }
 
-// FIXME: Workaround for https://github.com/zigimg/zigimg/issues/101, before it was only passed Self and getting RedT, GreenT, BlueT and AlphaT from Self fields.
-fn RgbMethods(
-    comptime Self: type,
+/// Creates a function that takes a numeric value and converts
+/// and scales it as necessary to fit in the provided type.
+///
+/// If the provided type is a float, the output will be between 0.0 and 1.0.
+/// If the provided type is an int, the output will be between 0 and intmax.
+///
+/// If the input value is a float, it will be treated as 0.0 to 1.0.
+/// If the input value is an int, it will be treated as 0 to intmax.
+pub fn ScaleValue(comptime T: type) fn (anytype) T {
+    switch (@typeInfo(T)) {
+        else => @compileError("ScaleValue only works with numeric types. Got " ++ @typeName(T) ++ "."),
+
+        .int => |info| {
+            if (info.signedness != .unsigned) {
+                @compileError("ScaleValue only works with unsigned integer types. Got " ++ @typeName(T) ++ ".");
+            }
+            const out_bits = @bitSizeOf(T);
+            const out_max = std.math.maxInt(T);
+            return (struct {
+                pub fn scaleValue(value: anytype) T {
+                    const ValueT = @TypeOf(value);
+                    if (ValueT == comptime_int) return @as(T, value);
+                    switch (@typeInfo(ValueT)) {
+                        else => @compileError("scaleValue only works with numeric types. Got " ++ @typeName(ValueT) ++ "."),
+
+                        .int => |value_info| {
+                            if (value_info.signedness != .unsigned) {
+                                @compileError("scaleValue only works with unsigned integer types. Got " ++ @typeName(ValueT) ++ ".");
+                            }
+                            const in_bits = @bitSizeOf(ValueT);
+                            if (in_bits > out_bits) {
+                                return @truncate(value >> (in_bits - out_bits));
+                            } else if (in_bits < out_bits) {
+                                const in_max = std.math.maxInt(ValueT);
+                                // `out = (value / in_max) * out_max`
+                                //
+                                // but we rearrange this to avoid precision loss
+                                //
+                                // `out = (value * out_max) / in_max`
+                                //
+                                // and we add half of in_max before dividing so
+                                // that we get the rounded result, since integer
+                                // division is floored.
+                                //
+                                // In order to fit `value * out_max` we need an
+                                // int of size `in_bits + out_bits` in the worst
+                                // case scenario.
+                                const FitInt = @Type(.{ .int = .{
+                                    .bits = in_bits + out_bits,
+                                    .signedness = .unsigned,
+                                } });
+
+                                return @truncate((@as(FitInt, value) * out_max + in_max / 2) / in_max);
+                            } else return value;
+                        },
+
+                        .float => return @intFromFloat(std.math.clamp(
+                            @round(value * @as(ValueT, @floatFromInt(out_max))),
+                            0.0,
+                            out_max,
+                        )),
+                    }
+                }
+            }).scaleValue;
+        },
+
+        .float => {
+            return (struct {
+                pub fn scaleValue(value: anytype) T {
+                    const ValueT = @TypeOf(value);
+                    if (ValueT == comptime_int) {
+                        @compileError("scaleValue cannot create a float from a comptime_int, since it has no max value.");
+                    }
+                    switch (@typeInfo(ValueT)) {
+                        else => @compileError("scaleValue only works with numeric types. Got " ++ @typeName(ValueT) ++ "."),
+                        .int => |value_info| {
+                            if (value_info.signedness != .unsigned) {
+                                @compileError("scaleValue only works with unsigned integer types. Got " ++ @typeName(ValueT) ++ ".");
+                            }
+                            const in_max: T = @floatFromInt(std.math.maxInt(ValueT));
+                            return @as(T, @floatFromInt(value)) / in_max;
+                        },
+                        .float => return @floatCast(value),
+                    }
+                }
+            }).scaleValue;
+        },
+    }
+}
+
+/// Creates a namespace with methods for instantiating the
+/// provided RGB(A) color struct `T` from various types.
+///
+/// `T` is expected to be a struct containing fields for
+/// `r`, `g`, `b`, and optionally `a`, with numeric types.
+///
+/// This supports both integer and floating point fields,
+/// and even mixing the two, though there's little reason
+/// to do that.
+fn FromMethods(comptime T: type) type {
+    const has_alpha = @hasField(T, "a");
+
+    const RedT: type = @FieldType(T, "r");
+    const GreenT: type = @FieldType(T, "g");
+    const BlueT: type = @FieldType(T, "b");
+    const AlphaT: type =
+        if (has_alpha)
+            @FieldType(T, "a")
+        else
+            void;
+
+    const multiple_channel_types =
+        RedT != GreenT or
+        RedT != BlueT or
+        (RedT != AlphaT and AlphaT != void);
+
+    const scaleRed = ScaleValue(RedT);
+    const scaleGreen = ScaleValue(GreenT);
+    const scaleBlue = ScaleValue(BlueT);
+    const scaleAlpha: if (has_alpha) fn (anytype) AlphaT else void =
+        if (has_alpha)
+            ScaleValue(AlphaT)
+        else {};
+
+    return packed struct(u0) {
+        pub fn rgb(r: RedT, g: GreenT, b: BlueT) T {
+            return .{
+                .r = r,
+                .g = g,
+                .b = b,
+            };
+        }
+
+        pub fn rgba(r: RedT, g: GreenT, b: BlueT, a: AlphaT) T {
+            var res: T = .{
+                .r = r,
+                .g = g,
+                .b = b,
+            };
+            if (has_alpha) {
+                res.a = a;
+            }
+            return res;
+        }
+
+        /// Create the target color type from another struct with
+        /// numeric `r`, `g`, `b`, and optionally, `a` fields.
+        pub fn color(other_color: anytype) T {
+            var res: T = .{
+                .r = scaleRed(other_color.r),
+                .g = scaleGreen(other_color.g),
+                .b = scaleBlue(other_color.b),
+            };
+            if (has_alpha and @hasField(@TypeOf(other_color), "a")) {
+                res.a = scaleAlpha(other_color.a);
+            }
+            return res;
+        }
+
+        /// Create the target color type from another struct
+        /// with a numeric `value` and optionally `alpha` field.
+        pub fn grayscale(gray: anytype) T {
+            var res: T = .{
+                .r = scaleRed(gray.value),
+                .g = scaleGreen(gray.value),
+                .b = scaleBlue(gray.value),
+            };
+            if (has_alpha and @hasField(@TypeOf(gray), "alpha")) {
+                res.a = scaleAlpha(gray.alpha);
+            }
+            return res;
+        }
+
+        pub fn u32Rgba(value: u32) T {
+            var res: T = .{
+                .r = scaleRed(@as(u8, @truncate(value >> 24))),
+                .g = scaleGreen(@as(u8, @truncate(value >> 16))),
+                .b = scaleBlue(@as(u8, @truncate(value >> 8))),
+            };
+            if (has_alpha) {
+                res.a = scaleAlpha(@as(u8, @truncate(value)));
+            }
+            return res;
+        }
+
+        pub fn u32Rgb(value: u32) T {
+            return .{
+                .r = scaleRed(@as(u8, @truncate(value >> 16))),
+                .g = scaleGreen(@as(u8, @truncate(value >> 8))),
+                .b = scaleBlue(@as(u8, @truncate(value))),
+            };
+        }
+
+        pub fn u64Rgba(value: u64) T {
+            var res: T = .{
+                .r = scaleRed(@as(u16, @truncate(value >> 48))),
+                .g = scaleGreen(@as(u16, @truncate(value >> 32))),
+                .b = scaleBlue(@as(u16, @truncate(value >> 16))),
+            };
+            if (has_alpha) {
+                res.a = scaleAlpha(@as(u16, @truncate(value)));
+            }
+            return res;
+        }
+
+        pub fn u64Rgb(value: u64) T {
+            return .{
+                .r = scaleRed(@as(u16, @truncate(value >> 32))),
+                .g = scaleGreen(@as(u16, @truncate(value >> 16))),
+                .b = scaleBlue(@as(u16, @truncate(value))),
+            };
+        }
+
+        /// Only valid for color types where all channels are the same type.
+        pub fn array(arr: [4]RedT) T {
+            if (comptime multiple_channel_types) {
+                @compileError("Color.from.array may only be used when all channels in the color are the same type.");
+            }
+
+            var res: T = .{
+                .r = arr[0],
+                .g = arr[1],
+                .b = arr[2],
+            };
+            if (has_alpha) {
+                res.a = arr[3];
+            }
+            return res;
+        }
+
+        pub fn float4(value: math.float4) T {
+            var res: T = .{
+                .r = scaleRed(value[0]),
+                .g = scaleGreen(value[1]),
+                .b = scaleBlue(value[2]),
+            };
+            if (has_alpha) {
+                res.a = scaleAlpha(value[3]);
+            }
+            return res;
+        }
+
+        /// Using this on a target type which doesn't
+        /// have all 8-bit channels is a compile error.
+        pub fn htmlHex(hex_string: []const u8) !T {
+            if (comptime !isAll8BitColor(RedT, GreenT, BlueT, AlphaT)) {
+                @compileError(
+                    "Color.from.htmlHex can only be used on colors with 8-bit channels. " ++
+                        @typeName(T) ++ " has at least one channel which is not u8.",
+                );
+            }
+            if (hex_string.len == 0) {
+                return error.InvalidHtmlHexString;
+            }
+
+            if (hex_string[0] != '#') {
+                return error.InvalidHtmlHexString;
+            }
+
+            if (has_alpha) {
+                if (hex_string.len != 4 and hex_string.len != 7 and hex_string.len != 5 and hex_string.len != 9) {
+                    return error.InvalidHtmlHexString;
+                }
+            } else {
+                if (hex_string.len != 4 and hex_string.len != 7) {
+                    return error.InvalidHtmlHexString;
+                }
+            }
+
+            if (hex_string.len == 7) {
+                var storage: [3]u8 = undefined;
+                const output = std.fmt.hexToBytes(storage[0..], hex_string[1..]) catch {
+                    return error.InvalidHtmlHexString;
+                };
+
+                return .{
+                    .r = output[0],
+                    .g = output[1],
+                    .b = output[2],
+                };
+            } else if (has_alpha and hex_string.len == 9) {
+                var storage: [4]u8 = undefined;
+                const output = std.fmt.hexToBytes(storage[0..], hex_string[1..]) catch {
+                    return error.InvalidHtmlHexString;
+                };
+
+                return .{
+                    .r = output[0],
+                    .g = output[1],
+                    .b = output[2],
+                    .a = output[3],
+                };
+            } else if (hex_string.len == 4) {
+                const red_digit = std.fmt.charToDigit(hex_string[1], 16) catch {
+                    return error.InvalidHtmlHexString;
+                };
+                const green_digit = std.fmt.charToDigit(hex_string[2], 16) catch {
+                    return error.InvalidHtmlHexString;
+                };
+                const blue_digit = std.fmt.charToDigit(hex_string[3], 16) catch {
+                    return error.InvalidHtmlHexString;
+                };
+
+                return .{
+                    .r = red_digit | (red_digit << 4),
+                    .g = green_digit | (green_digit << 4),
+                    .b = blue_digit | (blue_digit << 4),
+                };
+            } else if (has_alpha and hex_string.len == 5) {
+                const red_digit = std.fmt.charToDigit(hex_string[1], 16) catch {
+                    return error.InvalidHtmlHexString;
+                };
+                const green_digit = std.fmt.charToDigit(hex_string[2], 16) catch {
+                    return error.InvalidHtmlHexString;
+                };
+                const blue_digit = std.fmt.charToDigit(hex_string[3], 16) catch {
+                    return error.InvalidHtmlHexString;
+                };
+                const alpha_digit = std.fmt.charToDigit(hex_string[4], 16) catch {
+                    return error.InvalidHtmlHexString;
+                };
+
+                return .{
+                    .r = red_digit | (red_digit << 4),
+                    .g = green_digit | (green_digit << 4),
+                    .b = blue_digit | (blue_digit << 4),
+                    .a = alpha_digit | (alpha_digit << 4),
+                };
+            } else {
+                return error.InvalidHtmlHexString;
+            }
+        }
+    };
+}
+
+/// Creates a namespace with methods for converting the
+/// provided RGB(A) color struct `T` to various types.
+///
+/// `T` is expected to be a struct containing fields for
+/// `r`, `g`, `b`, and optionally `a`, with numeric types.
+///
+/// Unfortunately, Zig cannot have a field type depend on
+/// information about the parent struct, so you'll need to
+/// pass the types for the fields separately. If there's no
+/// alpha channel, pass `void` for that type.
+///
+/// This supports both integer and floating point fields,
+/// and even mixing the two, though there's little reason
+/// to do that.
+///
+/// These methods must be included as a field named `to`,
+/// because they use `@fieldParentPtr` to get the parent
+/// struct so they can access its fields.
+///
+/// NOTE: If the parent struct is a packed struct at a non
+///       byte-aligned address, this will likely result in
+///       the wrong parent address being selected, leading
+///       to undefined behavior.
+fn ToMethods(
+    comptime T: type,
     comptime RedT: type,
     comptime GreenT: type,
     comptime BlueT: type,
     comptime AlphaT: type,
 ) type {
-    const has_alpha_type = @hasField(Self, "a");
+    const has_alpha = AlphaT != void;
 
-    return struct {
-        pub fn initRgb(r: RedT, g: GreenT, b: BlueT) Self {
-            return Self{
-                .r = r,
-                .g = g,
-                .b = b,
-            };
-        }
+    const multiple_channel_types =
+        RedT != GreenT or
+        RedT != BlueT or
+        (RedT != AlphaT and AlphaT != void);
 
-        pub fn toColorf32(self: Self) Colorf32 {
-            return Colorf32{
-                .r = toF32Color(self.r),
-                .g = toF32Color(self.g),
-                .b = toF32Color(self.b),
-                .a = if (has_alpha_type) toF32Color(self.a) else 1.0,
-            };
-        }
+    const scaleRed = ScaleValue(RedT);
+    const scaleGreen = ScaleValue(GreenT);
+    const scaleBlue = ScaleValue(BlueT);
+    // const scaleAlpha: if (has_alpha) fn (anytype) AlphaT else void =
+    //     if (has_alpha)
+    //         ScaleValue(AlphaT)
+    //     else {};
 
-        pub fn fromU32Rgba(value: u32) Self {
-            var res = Self{
-                .r = scaleToIntColor(RedT, @as(u8, @truncate(value >> 24))),
-                .g = scaleToIntColor(GreenT, @as(u8, @truncate(value >> 16))),
-                .b = scaleToIntColor(BlueT, @as(u8, @truncate(value >> 8))),
-            };
-            if (has_alpha_type) {
-                res.a = scaleToIntColor(AlphaT, @as(u8, @truncate(value)));
+    const toU8 = ScaleValue(u8);
+    const toU16 = ScaleValue(u16);
+    const toF32 = ScaleValue(f32);
+
+    return packed struct(u0) {
+        const To = @This();
+
+        fn getSelf(to: *const To) *align(1) const T {
+            // @fieldParentPtr is broken for packed structs.
+            // See: https://github.com/ziglang/zig/issues/20458
+            if (@typeInfo(T).@"struct".layout == .@"packed") {
+                const ptr: usize = @intFromPtr(to);
+                const off: usize = @bitOffsetOf(T, "to");
+                return @ptrFromInt(ptr - off / 8);
             }
+
+            return @fieldParentPtr("to", to);
+        }
+
+        /// Assumes the target color type has `FromMethods` for it.
+        pub fn color(to: *const To, ColorT: type) ColorT {
+            return ColorT.from.color(to.getSelf().*);
+        }
+
+        pub fn u32Rgba(to: *const To) u32 {
+            const self = to.getSelf();
+            return @as(u32, toU8(self.r)) << 24 |
+                @as(u32, toU8(self.g)) << 16 |
+                @as(u32, toU8(self.b)) << 8 |
+                if (has_alpha) toU8(self.a) else 0xff;
+        }
+
+        pub fn u32Rgb(to: *const To) u32 {
+            const self = to.getSelf();
+            return @as(u32, toU8(self.r)) << 16 |
+                @as(u32, toU8(self.g)) << 8 |
+                toU8(self.b);
+        }
+
+        pub fn u64Rgba(to: *const To) u64 {
+            const self = to.getSelf();
+            return @as(u64, toU16(self.r)) << 48 |
+                @as(u64, toU16(self.g)) << 32 |
+                @as(u64, toU16(self.b)) << 16 |
+                if (has_alpha) toU16(self.a) else 0xffff;
+        }
+
+        pub fn u64Rgb(to: *const To) u64 {
+            const self = to.getSelf();
+            return @as(u64, toU16(self.r)) << 32 |
+                @as(u64, toU16(self.g)) << 16 |
+                toU16(self.b);
+        }
+
+        /// Only valid for color types where all channels are the same type.
+        pub fn array(to: *const To) [4]RedT {
+            if (comptime multiple_channel_types) {
+                @compileError("Color.to.array may only be used when all channels in the color are the same type.");
+            }
+
+            const self = to.getSelf();
+
+            return .{
+                self.r,
+                self.g,
+                self.b,
+                if (has_alpha)
+                    self.a
+                else
+                    scaleRed(@as(f32, 1.0)),
+            };
+        }
+
+        pub fn float4(to: *const To) math.float4 {
+            const self = to.getSelf();
+
+            return .{
+                toF32(self.r),
+                toF32(self.g),
+                toF32(self.b),
+                if (has_alpha)
+                    toF32(self.a)
+                else
+                    1.0,
+            };
+        }
+
+        /// For int channels, premultiplication
+        /// is done with a round-trip to f32.
+        pub fn premultipliedAlpha(to: *const To) T {
+            const self = to.getSelf();
+            var res = self.*;
+            if (!has_alpha) return res;
+
+            const alpha = if (@typeInfo(AlphaT) == .int)
+                toF32(res.a)
+            else
+                res.a;
+
+            res.r = if (@typeInfo(RedT) == .int)
+                scaleRed(toF32(res.r) * alpha)
+            else
+                res.r * alpha;
+
+            res.g = if (@typeInfo(GreenT) == .int)
+                scaleGreen(toF32(res.g) * alpha)
+            else
+                res.g * alpha;
+
+            res.b = if (@typeInfo(BlueT) == .int)
+                scaleBlue(toF32(res.b) * alpha)
+            else
+                res.b * alpha;
+
             return res;
-        }
-
-        pub fn fromU32Rgb(value: u32) Self {
-            return Self{
-                .r = scaleToIntColor(RedT, @as(u8, @truncate(value >> 16))),
-                .g = scaleToIntColor(GreenT, @as(u8, @truncate(value >> 8))),
-                .b = scaleToIntColor(BlueT, @as(u8, @truncate(value))),
-            };
-        }
-
-        pub fn fromU64Rgba(value: u64) Self {
-            var res = Self{
-                .r = scaleToIntColor(RedT, @as(u16, @truncate(value >> 48))),
-                .g = scaleToIntColor(GreenT, @as(u16, @truncate(value >> 32))),
-                .b = scaleToIntColor(BlueT, @as(u16, @truncate(value >> 16))),
-            };
-            if (has_alpha_type) {
-                res.a = scaleToIntColor(AlphaT, @as(u16, @truncate(value)));
-            }
-            return res;
-        }
-
-        pub fn fromU64Rgb(value: u64) Self {
-            return Self{
-                .r = scaleToIntColor(RedT, @as(u16, @truncate(value >> 32))),
-                .g = scaleToIntColor(GreenT, @as(u16, @truncate(value >> 16))),
-                .b = scaleToIntColor(BlueT, @as(u16, @truncate(value))),
-            };
-        }
-
-        // Only enable fromHtmlHex when all color component type are u8
-        pub usingnamespace if (isAll8BitColor(RedT, GreenT, BlueT, AlphaT))
-            struct {
-                pub fn fromHtmlHex(hex_string: []const u8) !Self {
-                    if (hex_string.len == 0) {
-                        return error.InvalidHtmlHexString;
-                    }
-
-                    if (hex_string[0] != '#') {
-                        return error.InvalidHtmlHexString;
-                    }
-
-                    if (has_alpha_type) {
-                        if (hex_string.len != 4 and hex_string.len != 7 and hex_string.len != 5 and hex_string.len != 9) {
-                            return error.InvalidHtmlHexString;
-                        }
-                    } else {
-                        if (hex_string.len != 4 and hex_string.len != 7) {
-                            return error.InvalidHtmlHexString;
-                        }
-                    }
-
-                    if (hex_string.len == 7) {
-                        var storage: [3]u8 = undefined;
-                        const output = std.fmt.hexToBytes(storage[0..], hex_string[1..]) catch {
-                            return error.InvalidHtmlHexString;
-                        };
-
-                        return Self{
-                            .r = output[0],
-                            .g = output[1],
-                            .b = output[2],
-                        };
-                    } else if (has_alpha_type and hex_string.len == 9) {
-                        var storage: [4]u8 = undefined;
-                        const output = std.fmt.hexToBytes(storage[0..], hex_string[1..]) catch {
-                            return error.InvalidHtmlHexString;
-                        };
-
-                        return Self{
-                            .r = output[0],
-                            .g = output[1],
-                            .b = output[2],
-                            .a = output[3],
-                        };
-                    } else if (hex_string.len == 4) {
-                        const red_digit = std.fmt.charToDigit(hex_string[1], 16) catch {
-                            return error.InvalidHtmlHexString;
-                        };
-                        const green_digit = std.fmt.charToDigit(hex_string[2], 16) catch {
-                            return error.InvalidHtmlHexString;
-                        };
-                        const blue_digit = std.fmt.charToDigit(hex_string[3], 16) catch {
-                            return error.InvalidHtmlHexString;
-                        };
-
-                        return Self{
-                            .r = red_digit | (red_digit << 4),
-                            .g = green_digit | (green_digit << 4),
-                            .b = blue_digit | (blue_digit << 4),
-                        };
-                    } else if (has_alpha_type and hex_string.len == 5) {
-                        const red_digit = std.fmt.charToDigit(hex_string[1], 16) catch {
-                            return error.InvalidHtmlHexString;
-                        };
-                        const green_digit = std.fmt.charToDigit(hex_string[2], 16) catch {
-                            return error.InvalidHtmlHexString;
-                        };
-                        const blue_digit = std.fmt.charToDigit(hex_string[3], 16) catch {
-                            return error.InvalidHtmlHexString;
-                        };
-                        const alpha_digit = std.fmt.charToDigit(hex_string[4], 16) catch {
-                            return error.InvalidHtmlHexString;
-                        };
-
-                        return Self{
-                            .r = red_digit | (red_digit << 4),
-                            .g = green_digit | (green_digit << 4),
-                            .b = blue_digit | (blue_digit << 4),
-                            .a = alpha_digit | (alpha_digit << 4),
-                        };
-                    } else {
-                        return error.InvalidHtmlHexString;
-                    }
-                }
-            }
-        else
-            struct {};
-
-        pub fn toU32Rgba(self: Self) u32 {
-            return @as(u32, scaleToIntColor(u8, self.r)) << 24 |
-                @as(u32, scaleToIntColor(u8, self.g)) << 16 |
-                @as(u32, scaleToIntColor(u8, self.b)) << 8 |
-                if (@hasField(Self, "a")) scaleToIntColor(u8, self.a) else 0xff;
-        }
-
-        pub fn toU32Rgb(self: Self) u32 {
-            return @as(u32, scaleToIntColor(u8, self.r)) << 16 |
-                @as(u32, scaleToIntColor(u8, self.g)) << 8 |
-                scaleToIntColor(u8, self.b);
-        }
-
-        pub fn toU64Rgba(self: Self) u64 {
-            return @as(u64, scaleToIntColor(u16, self.r)) << 48 |
-                @as(u64, scaleToIntColor(u16, self.g)) << 32 |
-                @as(u64, scaleToIntColor(u16, self.b)) << 16 |
-                if (@hasField(Self, "a")) scaleToIntColor(u16, self.a) else 0xffff;
-        }
-
-        pub fn toU64Rgb(self: Self) u64 {
-            return @as(u64, scaleToIntColor(u16, self.r)) << 32 |
-                @as(u64, scaleToIntColor(u16, self.g)) << 16 |
-                scaleToIntColor(u16, self.b);
-        }
-    };
-}
-
-fn RgbaMethods(comptime Self: type) type {
-    return struct {
-        const T = std.meta.fieldInfo(Self, .r).type;
-        const comp_bits = @typeInfo(T).Int.bits;
-
-        pub fn initRgba(r: T, g: T, b: T, a: T) Self {
-            return Self{
-                .r = r,
-                .g = g,
-                .b = b,
-                .a = a,
-            };
-        }
-
-        pub fn toPremultipliedAlpha(self: Self) Self {
-            const max = std.math.maxInt(T);
-            return Self{
-                .r = @as(T, @truncate((@as(u32, self.r) * self.a + max / 2) / max)),
-                .g = @as(T, @truncate((@as(u32, self.g) * self.a + max / 2) / max)),
-                .b = @as(T, @truncate((@as(u32, self.b) * self.a + max / 2) / max)),
-                .a = self.a,
-            };
         }
     };
 }
 
 fn RgbColor(comptime T: type) type {
     return extern struct {
-        r: T align(1),
-        g: T align(1),
-        b: T align(1),
+        pub const from = FromMethods(@This());
 
-        pub usingnamespace RgbMethods(@This(), T, T, T, void);
+        to: ToMethods(@This(), T, T, T, void) = .{},
+
+        r: T align(1) = 0,
+        g: T align(1) = 0,
+        b: T align(1) = 0,
     };
 }
 
@@ -363,11 +528,13 @@ fn RgbColor(comptime T: type) type {
 // Vulkan: VK_FORMAT_B5G5R5A1_UNORM_PACK16
 // Direct3D/DXGI: n/a
 pub const Bgr555 = packed struct {
+    pub const from = FromMethods(@This());
+
+    to: ToMethods(@This(), u5, u5, u5, void) = .{},
+
     r: u5 = 0,
     g: u5 = 0,
     b: u5 = 0,
-
-    pub usingnamespace RgbMethods(@This(), u5, u5, u5, void);
 };
 
 // Rgb332
@@ -375,11 +542,13 @@ pub const Bgr555 = packed struct {
 // Vulkan: n/a
 // Direct3D/DXGI: n/a
 pub const Rgb332 = packed struct {
-    r: u3,
-    g: u3,
-    b: u2,
+    pub const from = FromMethods(@This());
 
-    pub usingnamespace RgbMethods(@This(), u3, u3, u2, void);
+    to: ToMethods(@This(), u3, u3, u2, void) = .{},
+
+    r: u3 = 0,
+    g: u3 = 0,
+    b: u2 = 0,
 };
 
 // Rgb555
@@ -387,11 +556,13 @@ pub const Rgb332 = packed struct {
 // Vulkan: VK_FORMAT_R5G5B5A1_UNORM_PACK16
 // Direct3D/DXGI: n/a
 pub const Rgb555 = packed struct {
-    b: u5,
-    g: u5,
-    r: u5,
+    pub const from = FromMethods(@This());
 
-    pub usingnamespace RgbMethods(@This(), u5, u5, u5, void);
+    to: ToMethods(@This(), u5, u5, u5, void) = .{},
+
+    b: u5 = 0,
+    g: u5 = 0,
+    r: u5 = 0,
 };
 
 // Rgb565
@@ -399,24 +570,33 @@ pub const Rgb555 = packed struct {
 // Vulkan: VK_FORMAT_R5G6B5_UNORM_PACK16
 // Direct3D/DXGI: n/a
 pub const Rgb565 = packed struct {
-    b: u5,
-    g: u6,
-    r: u5,
+    pub const from = FromMethods(@This());
 
-    pub usingnamespace RgbMethods(@This(), u5, u6, u5, void);
+    to: ToMethods(@This(), u5, u6, u5, void) = .{},
+
+    b: u5 = 0,
+    g: u6 = 0,
+    r: u5 = 0,
 };
 
 fn RgbaColor(comptime T: type) type {
     return extern struct {
-        r: T align(1),
-        g: T align(1),
-        b: T align(1),
-        a: T align(1) = std.math.maxInt(T),
+        pub const from = FromMethods(@This());
 
-        pub usingnamespace RgbMethods(@This(), T, T, T, T);
-        pub usingnamespace RgbaMethods(@This());
+        to: ToMethods(@This(), T, T, T, T) = .{},
+
+        r: T align(1) = 0,
+        g: T align(1) = 0,
+        b: T align(1) = 0,
+        a: T align(1) =
+            if (@typeInfo(T) == .int)
+                std.math.maxInt(T)
+            else
+                1.0,
     };
 }
+
+pub const Colorf32 = RgbaColor(f32);
 
 // Rgb24
 // OpenGL: GL_RGB
@@ -444,23 +624,30 @@ pub const Rgba64 = RgbaColor(u16);
 
 fn BgrColor(comptime T: type) type {
     return extern struct {
-        b: T align(1),
-        g: T align(1),
-        r: T align(1),
+        pub const from = FromMethods(@This());
 
-        pub usingnamespace RgbMethods(@This(), T, T, T, void);
+        to: ToMethods(@This(), T, T, T, void) = .{},
+
+        b: T align(1) = 0,
+        g: T align(1) = 0,
+        r: T align(1) = 0,
     };
 }
 
 fn BgraColor(comptime T: type) type {
     return extern struct {
-        b: T align(1),
-        g: T align(1),
-        r: T align(1),
-        a: T = std.math.maxInt(T),
+        pub const from = FromMethods(@This());
 
-        pub usingnamespace RgbMethods(@This(), T, T, T, T);
-        pub usingnamespace RgbaMethods(@This());
+        to: ToMethods(@This(), T, T, T, T) = .{},
+
+        b: T align(1) = 0,
+        g: T align(1) = 0,
+        r: T align(1) = 0,
+        a: T align(1) =
+            if (@typeInfo(T) == .int)
+                std.math.maxInt(T)
+            else
+                1.0,
     };
 }
 
@@ -502,7 +689,7 @@ pub fn IndexedStorage(comptime T: type) type {
 
             // Palette is filled with a opaque black by default. Having palette not use
             // alpha is a good heuristic for indexed PNG to not add the transparency chunk.
-            @memset(result.palette, Rgba32.initRgba(0, 0, 0, 255));
+            @memset(result.palette, Rgba32.from.rgba(0, 0, 0, 255));
             return result;
         }
 
@@ -527,13 +714,15 @@ pub const IndexedStorage8 = IndexedStorage(u8);
 pub const IndexedStorage16 = IndexedStorage(u16);
 
 pub fn Grayscale(comptime T: type) type {
+    const toF32 = ScaleValue(f32);
+
     return struct {
         value: T,
 
         const Self = @This();
 
         pub fn toColorf32(self: Self) Colorf32 {
-            const gray = toF32Color(self.value);
+            const gray = toF32(self.value);
             return Colorf32{
                 .r = gray,
                 .g = gray,
@@ -545,19 +734,25 @@ pub fn Grayscale(comptime T: type) type {
 }
 
 pub fn GrayscaleAlpha(comptime T: type) type {
+    const toF32 = ScaleValue(f32);
+
     return struct {
         value: T,
-        alpha: T = std.math.maxInt(T),
+        alpha: T =
+            if (@typeInfo(T) == .int)
+                std.math.maxInt(T)
+            else
+                1.0,
 
         const Self = @This();
 
         pub fn toColorf32(self: Self) Colorf32 {
-            const gray = toF32Color(self.value);
+            const gray = toF32(self.value);
             return Colorf32{
                 .r = gray,
                 .g = gray,
                 .b = gray,
-                .a = toF32Color(self.alpha),
+                .a = toF32(self.alpha),
             };
         }
     };
@@ -570,6 +765,9 @@ pub const Grayscale8 = Grayscale(u8);
 pub const Grayscale16 = Grayscale(u16);
 pub const Grayscale8Alpha = GrayscaleAlpha(u8);
 pub const Grayscale16Alpha = GrayscaleAlpha(u16);
+
+pub const Grayscalef32 = Grayscale(f32);
+pub const Grayscalef32Alpha = GrayscaleAlpha(f32);
 
 pub const PixelStorage = union(PixelFormat) {
     invalid: void,
@@ -1014,12 +1212,12 @@ pub const PixelStorageIterator = struct {
         }
 
         const result: ?Colorf32 = switch (self.pixels.*) {
-            .invalid => Colorf32.initRgb(0.0, 0.0, 0.0),
-            .indexed1 => |data| data.palette[data.indices[self.current_index]].toColorf32(),
-            .indexed2 => |data| data.palette[data.indices[self.current_index]].toColorf32(),
-            .indexed4 => |data| data.palette[data.indices[self.current_index]].toColorf32(),
-            .indexed8 => |data| data.palette[data.indices[self.current_index]].toColorf32(),
-            .indexed16 => |data| data.palette[data.indices[self.current_index]].toColorf32(),
+            .invalid => Colorf32.from.rgb(0.0, 0.0, 0.0),
+            .indexed1 => |data| data.palette[data.indices[self.current_index]].to.color(Colorf32),
+            .indexed2 => |data| data.palette[data.indices[self.current_index]].to.color(Colorf32),
+            .indexed4 => |data| data.palette[data.indices[self.current_index]].to.color(Colorf32),
+            .indexed8 => |data| data.palette[data.indices[self.current_index]].to.color(Colorf32),
+            .indexed16 => |data| data.palette[data.indices[self.current_index]].to.color(Colorf32),
             .grayscale1 => |data| data[self.current_index].toColorf32(),
             .grayscale2 => |data| data[self.current_index].toColorf32(),
             .grayscale4 => |data| data[self.current_index].toColorf32(),
@@ -1027,16 +1225,16 @@ pub const PixelStorageIterator = struct {
             .grayscale8Alpha => |data| data[self.current_index].toColorf32(),
             .grayscale16 => |data| data[self.current_index].toColorf32(),
             .grayscale16Alpha => |data| data[self.current_index].toColorf32(),
-            .rgb24 => |data| data[self.current_index].toColorf32(),
-            .rgba32 => |data| data[self.current_index].toColorf32(),
-            .rgb332 => |data| data[self.current_index].toColorf32(),
-            .rgb565 => |data| data[self.current_index].toColorf32(),
-            .rgb555 => |data| data[self.current_index].toColorf32(),
-            .bgr555 => |data| data[self.current_index].toColorf32(),
-            .bgr24 => |data| data[self.current_index].toColorf32(),
-            .bgra32 => |data| data[self.current_index].toColorf32(),
-            .rgb48 => |data| data[self.current_index].toColorf32(),
-            .rgba64 => |data| data[self.current_index].toColorf32(),
+            .rgb24 => |data| data[self.current_index].to.color(Colorf32),
+            .rgba32 => |data| data[self.current_index].to.color(Colorf32),
+            .rgb332 => |data| data[self.current_index].to.color(Colorf32),
+            .rgb565 => |data| data[self.current_index].to.color(Colorf32),
+            .rgb555 => |data| data[self.current_index].to.color(Colorf32),
+            .bgr555 => |data| data[self.current_index].to.color(Colorf32),
+            .bgr24 => |data| data[self.current_index].to.color(Colorf32),
+            .bgra32 => |data| data[self.current_index].to.color(Colorf32),
+            .rgb48 => |data| data[self.current_index].to.color(Colorf32),
+            .rgba64 => |data| data[self.current_index].to.color(Colorf32),
             .float32 => |data| data[self.current_index],
         };
 
@@ -2136,11 +2334,11 @@ pub const RgbColorspace = struct {
 
         const result = self.xyza_to_rgba.mulVector(xyz_float4);
 
-        return Colorf32.fromFloat4(result);
+        return Colorf32.from.float4(result);
     }
 
     pub fn toXYZ(self: RgbColorspace, color: Colorf32) CIEXYZ {
-        const result = self.rgba_to_xyza.mulVector(color.toFloat4());
+        const result = self.rgba_to_xyza.mulVector(color.to.float4());
 
         return .{
             .x = result[0],
@@ -2152,11 +2350,11 @@ pub const RgbColorspace = struct {
     pub fn fromXYZAlpha(self: RgbColorspace, xyza: CIEXYZAlpha) Colorf32 {
         const result = self.xyza_to_rgba.mulVector(xyza.toFloat4());
 
-        return Colorf32.fromFloat4(result);
+        return Colorf32.from.float4(result);
     }
 
     pub fn toXYZAlpha(self: RgbColorspace, color: Colorf32) CIEXYZAlpha {
-        const result = self.rgba_to_xyza.mulVector(color.toFloat4());
+        const result = self.rgba_to_xyza.mulVector(color.to.float4());
 
         return CIEXYZAlpha.fromFloat4(result);
     }
@@ -2168,7 +2366,7 @@ pub const RgbColorspace = struct {
         switch (post_conversion_behavior) {
             .none => {},
             .clamp => {
-                result = Colorf32.fromFloat4(math.clamp4(result.toFloat4(), 0.0, 1.0));
+                result = Colorf32.from.float4(math.clamp4(result.to.float4(), 0.0, 1.0));
             },
         }
 
@@ -2195,7 +2393,7 @@ pub const RgbColorspace = struct {
         switch (post_conversion_behavior) {
             .none => {},
             .clamp => {
-                result = Colorf32.fromFloat4(math.clamp4(result.toFloat4(), 0.0, 1.0));
+                result = Colorf32.from.float4(math.clamp4(result.to.float4(), 0.0, 1.0));
             },
         }
 
@@ -2221,7 +2419,7 @@ pub const RgbColorspace = struct {
         switch (post_conversion_behavior) {
             .none => {},
             .clamp => {
-                result = Colorf32.fromFloat4(math.clamp4(result.toFloat4(), 0.0, 1.0));
+                result = Colorf32.from.float4(math.clamp4(result.to.float4(), 0.0, 1.0));
             },
         }
 
@@ -2247,7 +2445,7 @@ pub const RgbColorspace = struct {
         switch (post_conversion_behavior) {
             .none => {},
             .clamp => {
-                result = Colorf32.fromFloat4(math.clamp4(result.toFloat4(), 0.0, 1.0));
+                result = Colorf32.from.float4(math.clamp4(result.to.float4(), 0.0, 1.0));
             },
         }
 
@@ -2297,7 +2495,7 @@ pub const RgbColorspace = struct {
         switch (post_conversion_behavior) {
             .none => {},
             .clamp => {
-                result = Colorf32.fromFloat4(math.clamp4(result.toFloat4(), 0.0, 1.0));
+                result = Colorf32.from.float4(math.clamp4(result.to.float4(), 0.0, 1.0));
             },
         }
 
@@ -2315,7 +2513,7 @@ pub const RgbColorspace = struct {
         switch (post_conversion_behavior) {
             .none => {},
             .clamp => {
-                result = Colorf32.fromFloat4(math.clamp4(result.toFloat4(), 0.0, 1.0));
+                result = Colorf32.from.float4(math.clamp4(result.to.float4(), 0.0, 1.0));
             },
         }
 
@@ -2346,7 +2544,7 @@ pub const RgbColorspace = struct {
         const slice_rgba: []Colorf32 = @ptrCast(slice_xyza);
 
         for (slice_rgba) |*rgba| {
-            rgba.* = Colorf32.fromFloat4(self.xyza_to_rgba.mulVector(rgba.toFloat4()));
+            rgba.* = Colorf32.from.float4(self.xyza_to_rgba.mulVector(rgba.to.float4()));
         }
 
         return slice_rgba;
@@ -2366,7 +2564,7 @@ pub const RgbColorspace = struct {
         const slice_rgba: []Colorf32 = try allocator.alloc(Colorf32, slice_xyza.len);
 
         for (0..slice_xyza.len) |index| {
-            slice_rgba[index] = Colorf32.fromFloat4(self.xyza_to_rgba.mulVector(slice_xyza[index].toFloat4()));
+            slice_rgba[index] = Colorf32.from.float4(self.xyza_to_rgba.mulVector(slice_xyza[index].toFloat4()));
         }
 
         return slice_rgba;
@@ -2376,7 +2574,7 @@ pub const RgbColorspace = struct {
         const slice_xyza: []CIEXYZAlpha = try allocator.alloc(CIEXYZAlpha, colors.len);
 
         for (0..colors.len) |index| {
-            slice_xyza[index] = CIEXYZAlpha.fromFloat4(self.rgba_to_xyza.mulVector(colors[index].toFloat4()));
+            slice_xyza[index] = CIEXYZAlpha.fromFloat4(self.rgba_to_xyza.mulVector(colors[index].to.float4()));
         }
 
         return slice_xyza;
@@ -2395,12 +2593,12 @@ pub const RgbColorspace = struct {
 
             const xyza = lab_alpha.toXYZAlphaPrecomputedWhitePoint(white_point_xyz);
 
-            rgba.* = Colorf32.fromFloat4(self.xyza_to_rgba.mulVector(xyza.toFloat4()));
+            rgba.* = Colorf32.from.float4(self.xyza_to_rgba.mulVector(xyza.toFloat4()));
 
             switch (post_conversion_behavior) {
                 .none => {},
                 .clamp => {
-                    rgba.* = Colorf32.fromFloat4(@min(@max(rgba.toFloat4(), all_zeroes), all_ones));
+                    rgba.* = Colorf32.from.float4(@min(@max(rgba.to.float4(), all_zeroes), all_ones));
                 },
             }
         }
@@ -2433,12 +2631,12 @@ pub const RgbColorspace = struct {
         for (0..slice_lab.len) |index| {
             const xyza = slice_lab[index].toXYZAlphaPrecomputedWhitePoint(white_point_xyz);
 
-            slice_rgba[index] = Colorf32.fromFloat4(self.xyza_to_rgba.mulVector(xyza.toFloat4()));
+            slice_rgba[index] = Colorf32.from.float4(self.xyza_to_rgba.mulVector(xyza.toFloat4()));
 
             switch (post_conversion_behavior) {
                 .none => {},
                 .clamp => {
-                    slice_rgba[index] = Colorf32.fromFloat4(@min(@max(slice_rgba[index].toFloat4(), all_zeroes), all_ones));
+                    slice_rgba[index] = Colorf32.from.float4(@min(@max(slice_rgba[index].to.float4(), all_zeroes), all_ones));
                 },
             }
         }
@@ -2452,7 +2650,7 @@ pub const RgbColorspace = struct {
         const white_point_xyz = self.white.toXYZ(1.0);
 
         for (0..colors.len) |index| {
-            const xyza = CIEXYZAlpha.fromFloat4(self.rgba_to_xyza.mulVector(colors[index].toFloat4()));
+            const xyza = CIEXYZAlpha.fromFloat4(self.rgba_to_xyza.mulVector(colors[index].to.float4()));
 
             slice_lab[index] = CIELabAlpha.fromXYZAlphaPrecomputedWhitePoint(xyza, white_point_xyz);
         }
@@ -2473,12 +2671,12 @@ pub const RgbColorspace = struct {
 
             const xyza = luv_alpha.toXYZAlphaPrecomputedWhitePoint(white_point_xyz);
 
-            rgba.* = Colorf32.fromFloat4(self.xyza_to_rgba.mulVector(xyza.toFloat4()));
+            rgba.* = Colorf32.from.float4(self.xyza_to_rgba.mulVector(xyza.toFloat4()));
 
             switch (post_conversion_behavior) {
                 .none => {},
                 .clamp => {
-                    rgba.* = Colorf32.fromFloat4(@min(@max(rgba.toFloat4(), all_zeroes), all_ones));
+                    rgba.* = Colorf32.from.float4(@min(@max(rgba.to.float4(), all_zeroes), all_ones));
                 },
             }
         }
@@ -2513,12 +2711,12 @@ pub const RgbColorspace = struct {
 
             const xyza = luv_alpha.toXYZAlphaPrecomputedWhitePoint(white_point_xyz);
 
-            slice_rgba[index] = Colorf32.fromFloat4(self.xyza_to_rgba.mulVector(xyza.toFloat4()));
+            slice_rgba[index] = Colorf32.from.float4(self.xyza_to_rgba.mulVector(xyza.toFloat4()));
 
             switch (post_conversion_behavior) {
                 .none => {},
                 .clamp => {
-                    slice_rgba[index] = Colorf32.fromFloat4(@min(@max(slice_rgba[index].toFloat4(), all_zeroes), all_ones));
+                    slice_rgba[index] = Colorf32.from.float4(@min(@max(slice_rgba[index].to.float4(), all_zeroes), all_ones));
                 },
             }
         }
@@ -2532,7 +2730,7 @@ pub const RgbColorspace = struct {
         const white_point_xyz = self.white.toXYZ(1.0);
 
         for (0..colors.len) |index| {
-            const xyza = CIEXYZAlpha.fromFloat4(self.rgba_to_xyza.mulVector(colors[index].toFloat4()));
+            const xyza = CIEXYZAlpha.fromFloat4(self.rgba_to_xyza.mulVector(colors[index].to.float4()));
 
             slice_luv[index] = CIELuvAlpha.fromXYZAlphaPrecomputedWhitePoint(xyza, white_point_xyz);
         }
@@ -2551,12 +2749,12 @@ pub const RgbColorspace = struct {
 
             const xyza = lab_alpha.toXYZAlpha();
 
-            rgba.* = Colorf32.fromFloat4(self.xyza_to_rgba.mulVector(xyza.toFloat4()));
+            rgba.* = Colorf32.from.float4(self.xyza_to_rgba.mulVector(xyza.toFloat4()));
 
             switch (post_conversion_behavior) {
                 .none => {},
                 .clamp => {
-                    rgba.* = Colorf32.fromFloat4(@min(@max(rgba.toFloat4(), all_zeroes), all_ones));
+                    rgba.* = Colorf32.from.float4(@min(@max(rgba.to.float4(), all_zeroes), all_ones));
                 },
             }
         }
@@ -2587,12 +2785,12 @@ pub const RgbColorspace = struct {
 
             const xyza = lab_alpha.toXYZAlpha();
 
-            slice_rgba[index] = Colorf32.fromFloat4(self.xyza_to_rgba.mulVector(xyza.toFloat4()));
+            slice_rgba[index] = Colorf32.from.float4(self.xyza_to_rgba.mulVector(xyza.toFloat4()));
 
             switch (post_conversion_behavior) {
                 .none => {},
                 .clamp => {
-                    slice_rgba[index] = Colorf32.fromFloat4(@min(@max(slice_rgba[index].toFloat4(), all_zeroes), all_ones));
+                    slice_rgba[index] = Colorf32.from.float4(@min(@max(slice_rgba[index].to.float4(), all_zeroes), all_ones));
                 },
             }
         }
@@ -2604,7 +2802,7 @@ pub const RgbColorspace = struct {
         const slice_lab: []OklabAlpha = try allocator.alloc(OklabAlpha, colors.len);
 
         for (0..colors.len) |index| {
-            const xyza = CIEXYZAlpha.fromFloat4(self.rgba_to_xyza.mulVector(colors[index].toFloat4()));
+            const xyza = CIEXYZAlpha.fromFloat4(self.rgba_to_xyza.mulVector(colors[index].to.float4()));
 
             slice_lab[index] = OklabAlpha.fromXYZAlpha(xyza);
         }
@@ -2615,18 +2813,18 @@ pub const RgbColorspace = struct {
     pub fn convertColor(source: RgbColorspace, target: RgbColorspace, color: Colorf32) Colorf32 {
         const conversion_matrix = computeConversionMatrix(source, target);
 
-        const color_float4 = color.toFloat4();
+        const color_float4 = color.to.float4();
         const result = conversion_matrix.mulVector(color_float4);
 
-        return Colorf32.fromFloat4(result);
+        return Colorf32.from.float4(result);
     }
 
     pub fn convertColors(source: RgbColorspace, target: RgbColorspace, colors: []Colorf32) void {
         const conversion_matrix = computeConversionMatrix(source, target);
 
         for (colors) |*color| {
-            const color_float4 = color.toFloat4();
-            color.* = Colorf32.fromFloat4(conversion_matrix.mulVector(color_float4));
+            const color_float4 = color.to.float4();
+            color.* = Colorf32.from.float4(conversion_matrix.mulVector(color_float4));
         }
     }
 
