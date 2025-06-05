@@ -216,7 +216,7 @@ fn doGifTest(entry_name: []const u8) !void {
 
         const expected_background_color_opt = blk: {
             if (config_section.getValue("background")) |string_background_color| {
-                break :blk @as(?color.Rgba32, try color.Rgba32.fromHtmlHex(string_background_color.string));
+                break :blk @as(?color.Rgba32, try color.Rgba32.from.htmlHex(string_background_color.string));
             }
 
             break :blk @as(?color.Rgba32, null);
@@ -253,7 +253,7 @@ fn doGifTest(entry_name: []const u8) !void {
         try helpers.expectEq(gif_file.header.height, @as(u16, @intCast(expected_height.number)));
 
         if (expected_background_color_opt) |expected_background_color| {
-            try helpers.expectEq(gif_file.global_color_table.data[gif_file.header.background_color_index].toU32Rgba(), expected_background_color.toU32Rgba());
+            try helpers.expectEq(gif_file.global_color_table.data[gif_file.header.background_color_index].to.u32Rgba(), expected_background_color.to.u32Rgba());
         }
 
         try helpers.expectEq(gif_file.loopCount(), expected_loop_count);
@@ -306,19 +306,19 @@ fn doGifTest(entry_name: []const u8) !void {
                     const background_color_index = gif_file.header.background_color_index;
 
                     const gif_background_color = switch (frames.items[frame_index].pixels) {
-                        .indexed1 => |pixels| if (background_color_index < pixels.palette.len) pixels.palette[background_color_index] else color.Rgba32.initRgba(0, 0, 0, 0),
-                        .indexed2 => |pixels| if (background_color_index < pixels.palette.len) pixels.palette[background_color_index] else color.Rgba32.initRgba(0, 0, 0, 0),
-                        .indexed4 => |pixels| if (background_color_index < pixels.palette.len) pixels.palette[background_color_index] else color.Rgba32.initRgba(0, 0, 0, 0),
-                        .indexed8 => |pixels| if (background_color_index < pixels.palette.len) pixels.palette[background_color_index] else color.Rgba32.initRgba(0, 0, 0, 0),
-                        else => color.Rgba32.initRgba(0, 0, 0, 0),
+                        .indexed1 => |pixels| if (background_color_index < pixels.palette.len) pixels.palette[background_color_index] else color.Rgba32.from.rgba(0, 0, 0, 0),
+                        .indexed2 => |pixels| if (background_color_index < pixels.palette.len) pixels.palette[background_color_index] else color.Rgba32.from.rgba(0, 0, 0, 0),
+                        .indexed4 => |pixels| if (background_color_index < pixels.palette.len) pixels.palette[background_color_index] else color.Rgba32.from.rgba(0, 0, 0, 0),
+                        .indexed8 => |pixels| if (background_color_index < pixels.palette.len) pixels.palette[background_color_index] else color.Rgba32.from.rgba(0, 0, 0, 0),
+                        else => color.Rgba32.from.rgba(0, 0, 0, 0),
                     };
 
                     for (pixel_list.items) |expected_color| {
                         if (frame_data_iterator.next()) |actual_color| {
-                            if (expected_color.toU32Rgba() == 0) {
-                                try helpers.expectEq(actual_color.toRgba32(), gif_background_color);
+                            if (expected_color.to.u32Rgba() == 0) {
+                                try helpers.expectEq(actual_color.to.color(color.Rgba32), gif_background_color);
                             } else {
-                                try helpers.expectEq(actual_color.toRgba32(), expected_color);
+                                try helpers.expectEq(actual_color.to.color(color.Rgba32), expected_color);
                             }
                         }
                     }

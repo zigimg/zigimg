@@ -217,7 +217,7 @@ pub fn extendEhbPalette(palette: *utils.FixedStorage(color.Rgba32, 256)) void {
     for (0..32) |i| {
         const c = data[i];
         // EHB mode extends the palette to 64 colors by adding 32 darker colors
-        data[i + 32] = color.Rgba32.initRgb(c.r >> 1, c.g >> 1, c.b >> 1);
+        data[i + 32] = color.Rgba32.from.rgb(c.r >> 1, c.g >> 1, c.b >> 1);
     }
 }
 
@@ -459,7 +459,7 @@ pub const IFF = struct {
 
         for (0..num_colors) |i| {
             const c = try utils.readStruct(reader, color.Rgb24, .little);
-            palette[i] = color.Rgba32.fromU32Rgb(c.toU32Rgb());
+            palette[i] = color.Rgba32.from.u32Rgb(c.to.u32Rgb());
         }
         self.cmap_bits = std.math.log2_int_ceil(usize, palette.len);
     }
@@ -544,13 +544,13 @@ pub const IFF = struct {
                     // Keep color: in HAM mode, current color
                     // may be based on previous color instead of coming from
                     // the palette.
-                    var previous_color = color.Rgb24.initRgb(0, 0, 0);
+                    var previous_color = color.Rgb24.from.rgb(0, 0, 0);
                     for (0..self.width()) |col| {
                         const index = (self.width() * row * pixel_size) + (col * pixel_size);
                         if (planes == 24) {
-                            previous_color = color.Rgb24.initRgb(chunky_buffer[index], chunky_buffer[index + 1], chunky_buffer[index + 2]);
+                            previous_color = color.Rgb24.from.rgb(chunky_buffer[index], chunky_buffer[index + 1], chunky_buffer[index + 2]);
                         } else if (chunky_buffer[index] < palette.len) {
-                            previous_color = color.Rgb24.fromU32Rgba(palette[chunky_buffer[index]].toU32Rgba());
+                            previous_color = color.Rgb24.from.u32Rgba(palette[chunky_buffer[index]].to.u32Rgba());
                         } else if (is_ham) {
                             // Get the control bit which will tell use how current pixel should be calculated
                             const control: u8 = (chunky_buffer[index] >> cmap_bits) & 0x3;

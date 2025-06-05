@@ -613,7 +613,7 @@ pub fn example(allocator: std.mem.Allocator) !void {
     var palette_storage: [256]zigimg.color.Rgba32 = undefined;
     const palette = quantizer.makePalette(255, palette_storage[0..]);
 
-    const palette_index = try quantizer.getPaletteIndex(zigimg.color.Rgba32.initRgba(110, 0, 0, 255));
+    const palette_index = try quantizer.getPaletteIndex(zigimg.color.Rgba32.from.rgba(110, 0, 0, 255));
 }
 ```
 
@@ -623,11 +623,11 @@ You can get a color from a HTML hex string. The alpha component is always last. 
 
 ```zig
 pub fn example() !void {
-    const rgb24 = try zigimg.color.Rgb24.fromHtmlHex("#123499");
-    const rgba32 = try zigimg.color.Rgba32.fromHtmlHex("FF000045");
+    const rgb24 = try zigimg.color.Rgb24.from.htmlHex("#123499");
+    const rgba32 = try zigimg.color.Rgba32.from.htmlHex("FF000045");
 
-    const red_rgb24 = try zigimg.color.Rgb24.fromHtmlHex("#F00");
-    const blue_rgba32 = try zigimg.clor.Rgba32.fromHtmlHex("#00FA");
+    const red_rgb24 = try zigimg.color.Rgb24.from.htmlHex("#F00");
+    const blue_rgba32 = try zigimg.color.Rgba32.from.htmlHex("#00FA");
 }
 ```
 

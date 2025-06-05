@@ -394,18 +394,18 @@ test "Writing Rgb24 ASCII PPM format" {
     try testing.expect(pixels.rgb24.len == width * height);
 
     // R, G, B
-    pixels.rgb24[0] = color.Rgb24.initRgb(255, 0, 0);
-    pixels.rgb24[1] = color.Rgb24.initRgb(0, 255, 0);
-    pixels.rgb24[2] = color.Rgb24.initRgb(0, 0, 255);
+    pixels.rgb24[0] = color.Rgb24.from.rgb(255, 0, 0);
+    pixels.rgb24[1] = color.Rgb24.from.rgb(0, 255, 0);
+    pixels.rgb24[2] = color.Rgb24.from.rgb(0, 0, 255);
 
     // Black, white
-    pixels.rgb24[3] = color.Rgb24.initRgb(0, 0, 0);
-    pixels.rgb24[4] = color.Rgb24.initRgb(255, 255, 255);
+    pixels.rgb24[3] = color.Rgb24.from.rgb(0, 0, 0);
+    pixels.rgb24[4] = color.Rgb24.from.rgb(255, 255, 255);
 
     // Cyan, Magenta, Yellow
-    pixels.rgb24[5] = color.Rgb24.initRgb(0, 255, 255);
-    pixels.rgb24[6] = color.Rgb24.initRgb(255, 0, 255);
-    pixels.rgb24[7] = color.Rgb24.initRgb(255, 255, 0);
+    pixels.rgb24[5] = color.Rgb24.from.rgb(0, 255, 255);
+    pixels.rgb24[6] = color.Rgb24.from.rgb(255, 0, 255);
+    pixels.rgb24[7] = color.Rgb24.from.rgb(255, 255, 0);
 
     try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
         .ppm = .{ .binary = false },
@@ -426,7 +426,7 @@ test "Writing Rgb24 ASCII PPM format" {
     try testing.expect(read_image_pixels == .rgb24);
 
     for (expected_colors, 0..) |hex_color, index| {
-        try helpers.expectEq(read_image_pixels.rgb24[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(read_image_pixels.rgb24[index].to.u32Rgb(), hex_color);
     }
 }
 
@@ -446,18 +446,18 @@ test "Writing Rgb24 binary PPM format" {
     try testing.expect(pixels.rgb24.len == width * height);
 
     // R, G, B
-    pixels.rgb24[0] = color.Rgb24.initRgb(255, 0, 0);
-    pixels.rgb24[1] = color.Rgb24.initRgb(0, 255, 0);
-    pixels.rgb24[2] = color.Rgb24.initRgb(0, 0, 255);
+    pixels.rgb24[0] = color.Rgb24.from.rgb(255, 0, 0);
+    pixels.rgb24[1] = color.Rgb24.from.rgb(0, 255, 0);
+    pixels.rgb24[2] = color.Rgb24.from.rgb(0, 0, 255);
 
     // Black, white
-    pixels.rgb24[3] = color.Rgb24.initRgb(0, 0, 0);
-    pixels.rgb24[4] = color.Rgb24.initRgb(255, 255, 255);
+    pixels.rgb24[3] = color.Rgb24.from.rgb(0, 0, 0);
+    pixels.rgb24[4] = color.Rgb24.from.rgb(255, 255, 255);
 
     // Cyan, Magenta, Yellow
-    pixels.rgb24[5] = color.Rgb24.initRgb(0, 255, 255);
-    pixels.rgb24[6] = color.Rgb24.initRgb(255, 0, 255);
-    pixels.rgb24[7] = color.Rgb24.initRgb(255, 255, 0);
+    pixels.rgb24[5] = color.Rgb24.from.rgb(0, 255, 255);
+    pixels.rgb24[6] = color.Rgb24.from.rgb(255, 0, 255);
+    pixels.rgb24[7] = color.Rgb24.from.rgb(255, 255, 0);
 
     try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
         .ppm = .{ .binary = true },
@@ -478,7 +478,7 @@ test "Writing Rgb24 binary PPM format" {
     try testing.expect(read_image_pixels == .rgb24);
 
     for (expected_colors, 0..) |hex_color, index| {
-        try helpers.expectEq(read_image_pixels.rgb24[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(read_image_pixels.rgb24[index].to.u32Rgb(), hex_color);
     }
 }
 
@@ -495,18 +495,18 @@ test "Trying to write a bitmap or grayscale Netpbm with an true color pixel form
     const pixels = source_image.pixels;
 
     // R, G, B
-    pixels.rgb24[0] = color.Rgb24.initRgb(255, 0, 0);
-    pixels.rgb24[1] = color.Rgb24.initRgb(0, 255, 0);
-    pixels.rgb24[2] = color.Rgb24.initRgb(0, 0, 255);
+    pixels.rgb24[0] = color.Rgb24.from.rgb(255, 0, 0);
+    pixels.rgb24[1] = color.Rgb24.from.rgb(0, 255, 0);
+    pixels.rgb24[2] = color.Rgb24.from.rgb(0, 0, 255);
 
     // Black, white
-    pixels.rgb24[3] = color.Rgb24.initRgb(0, 0, 0);
-    pixels.rgb24[4] = color.Rgb24.initRgb(255, 255, 255);
+    pixels.rgb24[3] = color.Rgb24.from.rgb(0, 0, 0);
+    pixels.rgb24[4] = color.Rgb24.from.rgb(255, 255, 255);
 
     // Cyan, Magenta, Yellow
-    pixels.rgb24[5] = color.Rgb24.initRgb(0, 255, 255);
-    pixels.rgb24[6] = color.Rgb24.initRgb(255, 0, 255);
-    pixels.rgb24[7] = color.Rgb24.initRgb(255, 255, 0);
+    pixels.rgb24[5] = color.Rgb24.from.rgb(0, 255, 255);
+    pixels.rgb24[6] = color.Rgb24.from.rgb(255, 0, 255);
+    pixels.rgb24[7] = color.Rgb24.from.rgb(255, 255, 0);
 
     {
         const write_error = source_image.writeToFilePath(image_file_name, .{ .pbm = .{} });

@@ -144,7 +144,7 @@ test "IFF-ILBM indexed8 4 bitplanes HAM" {
     };
 
     for (expected_colors, indexes) |hex_color, index| {
-        try helpers.expectEq(pixels.rgb24[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(pixels.rgb24[index].to.u32Rgb(), hex_color);
     }
 }
 
@@ -172,7 +172,7 @@ test "IFF-ILBM indexed8 6 bitplanes HAM8" {
     };
 
     for (expected_colors, indexes) |hex_color, index| {
-        try helpers.expectEq(pixels.rgb24[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(pixels.rgb24[index].to.u32Rgb(), hex_color);
     }
 }
 
@@ -200,7 +200,7 @@ test "IFF-ILBM 24bit" {
     };
 
     for (expected_colors, indexes) |hex_color, index| {
-        try helpers.expectEq(pixels.rgb24[index].toU32Rgb(), hex_color);
+        try helpers.expectEq(pixels.rgb24[index].to.u32Rgb(), hex_color);
     }
 }
 

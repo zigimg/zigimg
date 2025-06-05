@@ -583,7 +583,7 @@ pub const PCX = struct {
                 // Write VGA palette
                 try writer.writeByte(VGAPaletteIdentifier);
                 for (pixels.indexed8.palette) |current_entry| {
-                    const rgb24_color = color.Rgb24.fromU32Rgba(current_entry.toU32Rgba());
+                    const rgb24_color = color.Rgb24.from.u32Rgba(current_entry.to.u32Rgba());
                     try utils.writeStruct(writer, rgb24_color, .little);
                 }
             },

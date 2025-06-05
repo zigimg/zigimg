@@ -308,7 +308,7 @@ fn readAllData(
         };
 
         for (palette, 0..) |entry, n| {
-            destination_palette[n] = color.Rgba32.initRgb(entry.r, entry.g, entry.b);
+            destination_palette[n] = color.Rgba32.from.rgb(entry.r, entry.g, entry.b);
         }
 
         try callPaletteProcessors(options, destination_palette);
