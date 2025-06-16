@@ -1,15 +1,16 @@
+const std = @import("std");
+const bigToNative = std.mem.bigToNative;
 const Allocator = std.mem.Allocator;
+
 const buffered_stream_source = @import("../buffered_stream_source.zig");
 const color = @import("../color.zig");
+const PixelStorage = color.PixelStorage;
 const FormatInterface = @import("../FormatInterface.zig");
 const ImageUnmanaged = @import("../ImageUnmanaged.zig");
 const ImageReadError = ImageUnmanaged.ReadError;
 const ImageError = ImageUnmanaged.Error;
-const utils = @import("../utils.zig");
-const std = @import("std");
-const PixelStorage = color.PixelStorage;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
-const bigToNative = std.mem.bigToNative;
+const utils = @import("../utils.zig");
 
 pub const CompressionFlag = enum(u8) {
     uncompressed = 0x0,
@@ -150,7 +151,7 @@ pub const SGI = struct {
                 const sizes: []u32 = @as(*const []u32, @ptrCast(&tables_buffer[self.header.y_size * self.header.z_size * 4 ..])).*[0 .. self.header.y_size * self.header.z_size];
 
                 // then read compressed_data that's following the tables
-                const data_buffer: []u8 = try allocator.alloc(u8, try stream.getEndPos() - try stream.getPos());
+                const data_buffer: []u8 = try allocator.alloc(u8, try std.math.cast(usize, try stream.getEndPos() - try stream.getPos()));
                 defer allocator.free(data_buffer);
 
                 const data_start = 512 + tables_buffer.len;
