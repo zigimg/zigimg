@@ -151,7 +151,10 @@ pub const SGI = struct {
                 const sizes: []u32 = @as(*const []u32, @ptrCast(&tables_buffer[self.header.y_size * self.header.z_size * 4 ..])).*[0 .. self.header.y_size * self.header.z_size];
 
                 // then read compressed_data that's following the tables
-                const data_buffer: []u8 = try allocator.alloc(u8, try std.math.cast(usize, try stream.getEndPos() - try stream.getPos()));
+                const data_buffer: []u8 = try allocator.alloc(
+                    u8,
+                    std.math.cast(usize, try stream.getEndPos() - try stream.getPos()) orelse return error.StreamTooLong,
+                );
                 defer allocator.free(data_buffer);
 
                 const data_start = 512 + tables_buffer.len;
