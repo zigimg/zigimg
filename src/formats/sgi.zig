@@ -153,7 +153,7 @@ pub const SGI = struct {
                 // then read compressed_data that's following the tables
                 const data_buffer: []u8 = try allocator.alloc(
                     u8,
-                    std.math.cast(usize, try stream.getEndPos() - try stream.getPos()) orelse return error.StreamTooLong,
+                    std.math.cast(usize, try stream.getEndPos() - try stream.getPos()) orelse return ImageReadError.StreamTooLong,
                 );
                 defer allocator.free(data_buffer);
 
