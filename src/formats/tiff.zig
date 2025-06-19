@@ -323,8 +323,6 @@ pub const TIFF = struct {
 
         try self.decodeBitmap(stream, allocator);
 
-        self.bitmap.debug();
-
         const pixel_format = try self.bitmap.guessPixelFormat();
 
         var pixels = try color.PixelStorage.init(allocator, pixel_format, self.bitmap.image_width * self.bitmap.image_height);
