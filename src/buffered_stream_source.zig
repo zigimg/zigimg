@@ -183,7 +183,7 @@ pub fn BufferedStreamSourceWriter(comptime BufferSize: usize) type {
                     if (amt < 0) {
                         const abs_amt = @abs(amt);
                         if (abs_amt <= self.buffered_writer.end) {
-                            self.buffered_writer.end -= abs_amt;
+                            self.buffered_writer.end -= std.math.cast(usize, abs_amt) orelse std.math.maxInt(usize);
                         } else {
                             self.buffered_writer.flush() catch {
                                 return error.Unseekable;
