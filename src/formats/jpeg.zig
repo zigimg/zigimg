@@ -15,8 +15,6 @@ const FrameHeader = @import("./jpeg/FrameHeader.zig");
 const JFIFHeader = @import("./jpeg/JFIFHeader.zig");
 
 const Markers = @import("./jpeg/utils.zig").Markers;
-const ZigzagOffsets = @import("./jpeg/utils.zig").ZigzagOffsets;
-const IDCTMultipliers = @import("./jpeg/utils.zig").IDCTMultipliers;
 const QuantizationTable = @import("./jpeg/quantization.zig").Table;
 
 const HuffmanReader = @import("./jpeg/huffman.zig").Reader;
