@@ -172,11 +172,15 @@ pub const JPEG = struct {
             }
         }
 
-        try self.frame.?.dequantizeBlocks();
-        self.frame.?.idctBlocks();
-        try self.frame.?.renderToPixels(&pixels_opt.*.?);
+        if (self.frame) |*frame| {
+            try frame.dequantizeBlocks();
+            frame.idctBlocks();
+            try frame.renderToPixels(&pixels_opt.*.?);
 
-        return if (self.frame) |frame| frame else ImageReadError.InvalidData;
+            return frame.*;
+        }
+
+        return ImageReadError.InvalidData;
     }
 
     // Format interface
