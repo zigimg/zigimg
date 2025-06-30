@@ -15,8 +15,6 @@ const FrameHeader = @import("./jpeg/FrameHeader.zig");
 const JFIFHeader = @import("./jpeg/JFIFHeader.zig");
 
 const Markers = @import("./jpeg/utils.zig").Markers;
-const ZigzagOffsets = @import("./jpeg/utils.zig").ZigzagOffsets;
-const IDCTMultipliers = @import("./jpeg/utils.zig").IDCTMultipliers;
 const QuantizationTable = @import("./jpeg/quantization.zig").Table;
 
 const HuffmanReader = @import("./jpeg/huffman.zig").Reader;
@@ -172,11 +170,15 @@ pub const JPEG = struct {
             }
         }
 
-        try self.frame.?.dequantizeBlocks();
-        self.frame.?.idctBlocks();
-        try self.frame.?.renderToPixels(&pixels_opt.*.?);
+        if (self.frame) |*frame| {
+            try frame.dequantizeBlocks();
+            frame.idctBlocks();
+            try frame.renderToPixels(&pixels_opt.*.?);
 
-        return if (self.frame) |frame| frame else ImageReadError.InvalidData;
+            return frame.*;
+        }
+
+        return ImageReadError.InvalidData;
     }
 
     // Format interface
