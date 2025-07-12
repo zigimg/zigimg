@@ -27,6 +27,7 @@ const SupportedFormats = struct {
     pub const sgi = formats.sgi.SGI;
     pub const tga = formats.tga.TGA;
     pub const tiff = formats.tiff.TIFF;
+    pub const xbm = formats.xbm.XBM;
 };
 
 pub const Format = std.meta.DeclEnum(SupportedFormats);
@@ -48,6 +49,7 @@ pub const EncoderOptions = union(Format) {
     sgi: void,
     tga: SupportedFormats.tga.EncoderOptions,
     tiff: void,
+    xbm: void,
 };
 
 pub const Error = error{

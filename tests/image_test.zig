@@ -422,6 +422,27 @@ test "Should detect TIFF properly" {
     }
 }
 
+test "Should detect XBM properly" {
+    const image_tests = &[_][]const u8{
+        // good files
+        helpers.fixtures_path ++ "xbm/fancyclock.xbm",
+        helpers.fixtures_path ++ "xbm/penguin.xbm",
+        helpers.fixtures_path ++ "xbm/blarg.xbm",
+        // good but malformed files
+        helpers.fixtures_path ++ "xbm/no_labels.xbm",
+        helpers.fixtures_path ++ "xbm/missing_array_var.xbm",
+        helpers.fixtures_path ++ "xbm/no_trailing.xbm",
+    };
+
+    for (image_tests) |image_path| {
+        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path);
+        try std.testing.expect(format == .xbm);
+
+        var test_image = try helpers.testImageFromFile(image_path);
+        defer test_image.deinit();
+    }
+}
+
 test "Should error on invalid file" {
     const invalidFile = helpers.testImageFromFile("tests/helpers.zig");
     try helpers.expectError(invalidFile, ImageError.Unsupported);
