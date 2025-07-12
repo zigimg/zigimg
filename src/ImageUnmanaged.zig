@@ -54,7 +54,6 @@ pub const EncoderOptions = union(Format) {
 
 pub const Error = error{
     Unsupported,
-    InvalidData,
 };
 
 pub const ReadError = Error ||
