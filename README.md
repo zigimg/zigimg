@@ -78,7 +78,7 @@ zig build test
 | SUN           | ✔️            | ❌            |
 | TGA           | ✔️            | ✔️            |
 | TIFF          | ✔️ (Partial)  | ❌            |
-| XBM           | ❌            | ❌            |
+| XBM           | ✔️            | ❌            |
 | XPM           | ❌            | ❌            |
 
 ### BMP - Bitmap
@@ -185,6 +185,9 @@ Currently, this only supports a subset of PAMs where:
 #### Notes
 * Only the first IFD is decoded
 * Orientation tag is not supported yet
+
+### XBM - X BitMap format
+* Everything is supported
 
 ## Supported Pixel formats
 
