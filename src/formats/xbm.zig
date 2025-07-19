@@ -65,12 +65,8 @@ pub const XBM = struct {
 
     fn parseDefineValue(line: []const u8) ?u32 {
         //  Split the line and take the last numeric token
-        var it = std.mem.tokenizeAny(u8, line, " \t");
-        if (it.next() == null) return null; // skip "#define"
-        var last_token: ?[]const u8 = null;
-        while (it.next()) |tok| {
-            last_token = tok;
-        }
+        var it = std.mem.splitBackwardsAny(u8, line, " \t");
+        const last_token = it.next();
         if (last_token) |token| {
             return std.fmt.parseInt(u32, token, 10) catch null;
         }
