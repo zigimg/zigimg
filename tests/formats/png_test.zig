@@ -946,8 +946,7 @@ fn writeTestData(dir: *std.fs.Dir, tst_data_name: []const u8, result: *color.Pix
     var toutput = try dir.createFile(tst_data_name, .{});
     defer toutput.close();
     var writer = toutput.deprecatedWriter();
-    var a = writer.adaptToNewApi();
-    try a.new_interface.print("{s}\n{X}", .{ @tagName(result.*), md5_val });
+    try writer.print("{s}\n{X}", .{ @tagName(result.*), md5_val });
 }
 
 test "InfoProcessor on Png Test suite" {
