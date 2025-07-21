@@ -73,7 +73,7 @@ fn processChunk(self: *Self, data: *ChunkProcessData) Image.ReadError!PixelForma
                 var txt = buffer[0..to_read];
                 try reader.readNoEof(txt);
                 if (data.chunk_length > buffer.len) try data.stream.seekBy(@as(i64, data.chunk_length) - buffer.len);
-                self.writer.print("tEXt Length {s}:\n", .{std.fmt.fmtIntSizeBin(data.chunk_length)}) catch return result_format;
+                self.writer.print("tEXt Length {Bi}:\n", .{data.chunk_length}) catch return result_format;
                 const strEnd = std.mem.indexOfScalar(u8, txt, 0).?;
                 self.writer.print("               Keyword: {s}\n", .{txt[0..strEnd]}) catch return result_format;
                 txt = txt[strEnd + 1 ..];
@@ -83,7 +83,7 @@ fn processChunk(self: *Self, data: *ChunkProcessData) Image.ReadError!PixelForma
                 const to_read = if (data.chunk_length > 81) 81 else data.chunk_length;
                 var txt = buffer[0..to_read];
                 try reader.readNoEof(txt);
-                self.writer.print("zTXt Length {s}:\n", .{std.fmt.fmtIntSizeBin(data.chunk_length)}) catch return result_format;
+                self.writer.print("zTXt Length {Bi}:\n", .{data.chunk_length}) catch return result_format;
                 const strEnd = std.mem.indexOfScalar(u8, txt, 0).?;
                 self.writer.print("               Keyword: {s}\n", .{txt[0..strEnd]}) catch return result_format;
                 if (txt[strEnd + 1] == 0) {
@@ -107,7 +107,7 @@ fn processChunk(self: *Self, data: *ChunkProcessData) Image.ReadError!PixelForma
                 var txt = buffer[0..to_read];
                 try reader.readNoEof(txt);
                 if (data.chunk_length > buffer.len) try data.stream.seekBy(@as(i64, data.chunk_length) - buffer.len);
-                self.writer.print("iTXt Length {s}:\n", .{std.fmt.fmtIntSizeBin(data.chunk_length)}) catch return result_format;
+                self.writer.print("iTXt Length {Bi}:\n", .{data.chunk_length}) catch return result_format;
                 var strEnd = std.mem.indexOfScalar(u8, txt, 0).?;
                 self.writer.print("               Keyword: {s}\n", .{txt[0..strEnd]}) catch return result_format;
                 txt = txt[strEnd + 1 ..];
@@ -162,7 +162,7 @@ fn processChunk(self: *Self, data: *ChunkProcessData) Image.ReadError!PixelForma
                 }
             },
             png.Chunks.tRNS.id => {
-                self.writer.print("tRNS Length {s}: ", .{std.fmt.fmtIntSizeBin(data.chunk_length)}) catch return result_format;
+                self.writer.print("tRNS Length {Bi}: ", .{data.chunk_length}) catch return result_format;
                 if (data.chunk_length == 2 and data.header.color_type != .indexed) {
                     const val = try reader.readInt(u16, .big);
                     self.writer.print("{}\n", .{val}) catch return result_format;
@@ -175,7 +175,7 @@ fn processChunk(self: *Self, data: *ChunkProcessData) Image.ReadError!PixelForma
                     const to_print = if (data.chunk_length > 20) 20 else data.chunk_length;
                     const vals = buffer[0..to_print];
                     try reader.readNoEof(vals);
-                    self.writer.print("{d}", .{vals}) catch return result_format;
+                    self.writer.print("{any}", .{vals}) catch return result_format;
                     if (data.chunk_length > 20) {
                         self.writer.print(" ...\n", .{}) catch return result_format;
                         try data.stream.seekBy(data.chunk_length - 20);
@@ -183,7 +183,7 @@ fn processChunk(self: *Self, data: *ChunkProcessData) Image.ReadError!PixelForma
                 }
             },
             png.Chunks.bKGD.id => {
-                self.writer.print("bKGD Length {s}: ", .{std.fmt.fmtIntSizeBin(data.chunk_length)}) catch return result_format;
+                self.writer.print("bKGD Length {Bi}: ", .{data.chunk_length}) catch return result_format;
                 if (data.chunk_length == 1) {
                     const val = try reader.readInt(u8, .big);
                     self.writer.print("Index {}\n", .{val}) catch return result_format;
@@ -217,7 +217,7 @@ fn processChunk(self: *Self, data: *ChunkProcessData) Image.ReadError!PixelForma
                     try data.stream.seekBy(data.chunk_length);
                     self.writer.print("iCCP: Invalid Length {}: ", .{data.chunk_length}) catch return result_format;
                 } else {
-                    self.writer.print("iCCP Length {s}: ", .{std.fmt.fmtIntSizeBin(data.chunk_length)}) catch return result_format;
+                    self.writer.print("iCCP Length {Bi}: ", .{data.chunk_length}) catch return result_format;
 
                     var iccp = buffer[0..data.chunk_length];
                     try reader.readNoEof(iccp);
@@ -247,7 +247,7 @@ fn processChunk(self: *Self, data: *ChunkProcessData) Image.ReadError!PixelForma
             else => {
                 try data.stream.seekBy(data.chunk_length);
                 var chunk_name = std.mem.bigToNative(u32, data.chunk_id);
-                self.writer.print("{s} Length {s}\n", .{ std.mem.asBytes(&chunk_name), std.fmt.fmtIntSizeBin(data.chunk_length) }) catch return result_format;
+                self.writer.print("{s} Length {Bi}\n", .{ std.mem.asBytes(&chunk_name), data.chunk_length }) catch return result_format;
             },
         }
         try data.stream.seekBy(@sizeOf(u32));
@@ -262,7 +262,7 @@ fn processChunk(self: *Self, data: *ChunkProcessData) Image.ReadError!PixelForma
         self.idat_count += 1;
         self.idat_size += data.chunk_length;
     } else if (data.chunk_id == png.Chunks.IEND.id) {
-        self.writer.print("IDAT Count: {}, Total Size: {s}\n", .{ self.idat_count, std.fmt.fmtIntSizeBin(self.idat_size) }) catch return result_format;
+        self.writer.print("IDAT Count: {}, Total Size: {Bi}\n", .{ self.idat_count, self.idat_size }) catch return result_format;
         self.writer.print("────────────────────────────────────────────────\n", .{}) catch return result_format;
     }
 

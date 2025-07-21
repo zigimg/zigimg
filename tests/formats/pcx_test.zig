@@ -13,7 +13,7 @@ test "PCX indexed1 (linear)" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pcx/test-bpp1.pcx");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var pcxFile = pcx.PCX{};
 
@@ -50,7 +50,7 @@ test "PCX indexed4 (linear)" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pcx/test-bpp4.pcx");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var pcxFile = pcx.PCX{};
 
@@ -88,7 +88,7 @@ test "PCX indexed8 (linear)" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pcx/test-bpp8.pcx");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var pcxFile = pcx.PCX{};
 
@@ -128,7 +128,7 @@ test "PCX indexed24 (planar)" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pcx/test-bpp24.pcx");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var pcxFile = pcx.PCX{};
 
@@ -185,7 +185,7 @@ test "Write PCX indexed1 (odd width)" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var pcxFile = pcx.PCX{};
 
@@ -249,7 +249,7 @@ test "Write PCX indexed 1 (even width)" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var pcxFile = pcx.PCX{};
 
@@ -297,7 +297,7 @@ test "Write PCX indexed4 (odd width)" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var pcxFile = pcx.PCX{};
 
@@ -362,7 +362,7 @@ test "Write PCX indexed 4 (even width)" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var pcxFile = pcx.PCX{};
 
@@ -408,7 +408,7 @@ test "Write PCX indexed8 (odd width)" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var pcxFile = pcx.PCX{};
 
@@ -471,7 +471,7 @@ test "Write PCX indexed 8 (even width)" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var pcxFile = pcx.PCX{};
 
@@ -517,7 +517,7 @@ test "Write PCX rgb24 (odd width)" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var pcxFile = pcx.PCX{};
 
@@ -589,7 +589,7 @@ test "Write PCX rgb24 (even width)" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var pcxFile = pcx.PCX{};
 

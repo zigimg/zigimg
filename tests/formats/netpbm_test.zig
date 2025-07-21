@@ -11,7 +11,7 @@ test "Load ASCII PBM image" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "netpbm/pbm_ascii.pbm");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var pbmFile = netpbm.PBM{};
 
@@ -32,7 +32,7 @@ test "Load binary PBM image" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "netpbm/pbm_binary.pbm");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var pbmFile = netpbm.PBM{};
 
@@ -53,7 +53,7 @@ test "Load ASCII PGM 8-bit grayscale image" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "netpbm/pgm_ascii_grayscale8.pgm");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var pgmFile = netpbm.PGM{};
 
@@ -74,7 +74,7 @@ test "Load Binary PGM 8-bit grayscale image" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "netpbm/pgm_binary_grayscale8.pgm");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var pgmFile = netpbm.PGM{};
 
@@ -95,7 +95,7 @@ test "Load ASCII PGM 16-bit grayscale image" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "netpbm/pgm_ascii_grayscale16.pgm");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var pgmFile = netpbm.PGM{};
 
@@ -116,7 +116,7 @@ test "Load Binary PGM 16-bit grayscale image" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "netpbm/pgm_binary_grayscale16.pgm");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var pgmFile = netpbm.PGM{};
 
@@ -137,7 +137,7 @@ test "Load ASCII PPM image" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "netpbm/ppm_ascii_rgb24.ppm");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var ppmFile = netpbm.PPM{};
 
@@ -175,7 +175,7 @@ test "Load binary PPM image" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "netpbm/ppm_binary_rgb24.ppm");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var ppmFile = netpbm.PPM{};
 

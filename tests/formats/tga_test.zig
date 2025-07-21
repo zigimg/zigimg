@@ -12,7 +12,7 @@ test "Should error on non TGA images" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var tga_file = tga.TGA{};
 
@@ -25,7 +25,7 @@ test "Read ubw8 TGA file" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/ubw8.tga");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var tga_file = tga.TGA{};
 
@@ -61,7 +61,7 @@ test "Read ucm8 TGA file" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/ucm8.tga");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var tga_file = tga.TGA{};
 
@@ -105,7 +105,7 @@ test "Read utc16 TGA file" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/utc16.tga");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var tga_file = tga.TGA{};
 
@@ -143,7 +143,7 @@ test "Read utc24 TGA file" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/utc24.tga");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var tga_file = tga.TGA{};
 
@@ -181,7 +181,7 @@ test "Read utc32 TGA file" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/utc32.tga");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var tga_file = tga.TGA{};
 
@@ -219,7 +219,7 @@ test "Read cbw8 TGA file" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/cbw8.tga");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var tga_file = tga.TGA{};
 
@@ -255,7 +255,7 @@ test "Read ccm8 TGA file" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/ccm8.tga");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var tga_file = tga.TGA{};
 
@@ -299,7 +299,7 @@ test "Read ctc24 TGA file" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/ctc24.tga");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var tga_file = tga.TGA{};
 
@@ -337,7 +337,7 @@ test "Read matte-01 TGA file" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/matte-01.tga");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var tga_file = tga.TGA{};
 
@@ -381,7 +381,7 @@ test "Read font TGA file" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/font.tga");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var tga_file = tga.TGA{};
 
@@ -407,7 +407,7 @@ test "Read stopsignsmall TGA v1 file" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/stopsignsmall.tga");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var tga_file = tga.TGA{};
 
@@ -431,7 +431,7 @@ test "Read stopsignsmallcompressed TGA v1 file" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/stopsignsmallcompressed.tga");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var tga_file = tga.TGA{};
 
@@ -497,7 +497,7 @@ test "Write TGA uncompressed grayscale8" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var tga_file = tga.TGA{};
 
@@ -567,7 +567,7 @@ test "Write TGA compressed grayscale8" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var tga_file = tga.TGA{};
 
@@ -623,7 +623,7 @@ test "Write uncompressed indexed8 (color map 16-bit)" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var tga_file = tga.TGA{};
 
@@ -687,7 +687,7 @@ test "Write uncompressed indexed8 (color map 24-bit)" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var tga_file = tga.TGA{};
 
@@ -751,7 +751,7 @@ test "Write compressed indexed8 (color map 16-bit)" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var tga_file = tga.TGA{};
 
@@ -815,7 +815,7 @@ test "Write compressed indexed8 (color map 24-bit)" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var tga_file = tga.TGA{};
 
@@ -879,7 +879,7 @@ test "Write uncompressed 16-bit true color TGA" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var tga_file = tga.TGA{};
 
@@ -937,7 +937,7 @@ test "Write compressed 16-bit true color TGA" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var tga_file = tga.TGA{};
 
@@ -995,7 +995,7 @@ test "Write uncompressed 24-bit true color TGA" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var tga_file = tga.TGA{};
 
@@ -1053,7 +1053,7 @@ test "Write compressed 24-bit true color TGA" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var tga_file = tga.TGA{};
 
@@ -1111,7 +1111,7 @@ test "Write uncompressed 32-bit true color TGA" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var tga_file = tga.TGA{};
 
@@ -1169,7 +1169,7 @@ test "Write compressed 32-bit true color TGA" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var tga_file = tga.TGA{};
 
@@ -1240,7 +1240,7 @@ test "Write uncompressed Rgb24 to TGA" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var tga_file = tga.TGA{};
 
@@ -1297,7 +1297,7 @@ test "Write compressed Rgb24 to TGA" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var tga_file = tga.TGA{};
 
@@ -1369,7 +1369,7 @@ test "Write uncompressed Rgba32 to TGA" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var tga_file = tga.TGA{};
 
@@ -1442,7 +1442,7 @@ test "Write compressed Rgba32 to TGA" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var tga_file = tga.TGA{};
 

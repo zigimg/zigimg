@@ -15,7 +15,7 @@ test "Should error on non QOI images" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var qoi_file = qoi.QOI{};
 
@@ -28,7 +28,7 @@ test "Read zero.qoi file" {
     const file = try helpers.testOpenFile(zero_qoi_file);
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var qoi_file = qoi.QOI{};
 

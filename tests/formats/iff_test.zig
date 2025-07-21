@@ -14,7 +14,7 @@ test "IFF-PBM indexed8 (chunky Deluxe Paint DOS file)" {
 
     var the_bitmap = iff.IFF{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -45,7 +45,7 @@ test "IFF-ILBM indexed8 8 bitplanes" {
 
     var the_bitmap = iff.IFF{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -70,7 +70,7 @@ test "IFF-ILBM indexed8 8 bitplanes uncompressed" {
 
     var the_bitmap = iff.IFF{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -95,7 +95,7 @@ test "IFF-ILBM indexed8 6 bitplanes EHB" {
 
     var the_bitmap = iff.IFF{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -126,7 +126,7 @@ test "IFF-ILBM indexed8 4 bitplanes HAM" {
 
     var the_bitmap = iff.IFF{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -154,7 +154,7 @@ test "IFF-ILBM indexed8 6 bitplanes HAM8" {
 
     var the_bitmap = iff.IFF{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -182,7 +182,7 @@ test "IFF-ILBM 24bit" {
 
     var the_bitmap = iff.IFF{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -210,7 +210,7 @@ test "IFF-ILBM indexed8 4 bitplanes Atari ST" {
 
     var the_bitmap = iff.IFF{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -241,7 +241,7 @@ test "IFF-ACBM indexed8 3 bitplanes uncompressed" {
 
     var the_bitmap = iff.IFF{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);

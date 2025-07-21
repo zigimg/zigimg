@@ -21,7 +21,7 @@ test "Should error on non PNG images" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     const invalidFile = png.PNG.readImage(helpers.zigimg_test_allocator, &stream_source);
 
@@ -31,7 +31,7 @@ test "Should error on non PNG images" {
 test "loadHeader_valid" {
     const expectEqual = std.testing.expectEqual;
     var buffer = valid_header_data.*;
-    var stream = Image.Stream{ .buffer = std.io.fixedBufferStream(&buffer) };
+    var stream = Image.Stream{ .buffer = std.Io.fixedBufferStream(&buffer) };
     const header = try png.loadHeader(&stream);
     try expectEqual(@as(u32, 0xff), header.width);
     try expectEqual(@as(u32, 0x75), header.height);
@@ -44,25 +44,25 @@ test "loadHeader_valid" {
 
 test "PNG loadHeader() should error when data is empty" {
     var buffer: [0]u8 = undefined;
-    var stream = Image.Stream{ .buffer = std.io.fixedBufferStream(&buffer) };
+    var stream = Image.Stream{ .buffer = std.Io.fixedBufferStream(&buffer) };
     try expectError(Image.ReadError.EndOfStream, png.loadHeader(&stream));
 }
 
 test "PNG loadHeader() should error when header signature is invalid" {
     var buffer = "asdsdasdasdsads".*;
-    var stream = Image.Stream{ .buffer = std.io.fixedBufferStream(&buffer) };
+    var stream = Image.Stream{ .buffer = std.Io.fixedBufferStream(&buffer) };
     try expectError(Image.ReadError.InvalidData, png.loadHeader(&stream));
 }
 
 test "PNG loadHeader() should error on bad header chunk" {
     var buffer = (magic_header ++ "\x00\x00\x01\x0d" ++ png.Chunks.IHDR.name ++ "asad").*;
-    var stream = Image.Stream{ .buffer = std.io.fixedBufferStream(&buffer) };
+    var stream = Image.Stream{ .buffer = std.Io.fixedBufferStream(&buffer) };
     try expectError(Image.ReadError.InvalidData, png.loadHeader(&stream));
 }
 
 test "PNG loadHeader() should error when header is too short" {
     var buffer = (magic_header ++ "\x00\x00\x00\x0d" ++ png.Chunks.IHDR.name ++ "asad").*;
-    var stream = Image.Stream{ .buffer = std.io.fixedBufferStream(&buffer) };
+    var stream = Image.Stream{ .buffer = std.Io.fixedBufferStream(&buffer) };
     try expectError(Image.ReadError.EndOfStream, png.loadHeader(&stream));
 }
 
@@ -100,7 +100,7 @@ test "PNG loadHeader() should error on invalid data in header" {
 fn testHeaderWithInvalidValue(buf: []u8, position: usize, val: u8) !void {
     const origin = buf[position];
     buf[position] = val;
-    var stream = Image.Stream{ .buffer = std.io.fixedBufferStream(buf) };
+    var stream = Image.Stream{ .buffer = std.Io.fixedBufferStream(buf) };
     try expectError(Image.ReadError.InvalidData, png.loadHeader(&stream));
     buf[position] = origin;
 }
@@ -111,7 +111,7 @@ test "png: Indexed PNG with transparency (Aseprite output)" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "png/aseprite_indexed_transparent.png");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var png_image = try png.PNG.readImage(helpers.zigimg_test_allocator, &stream_source);
     defer png_image.deinit(helpers.zigimg_test_allocator);
@@ -186,7 +186,7 @@ test "png: Don't write tRNS chunk in indexed format when there is no alpha" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var check_trns_processor: CheckTrnsPresentProcessor = .{};
 
@@ -224,7 +224,7 @@ test "png: Write tRNS chunk in indexed format only when alpha is present" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var check_trns_processor: CheckTrnsPresentProcessor = .{};
 
@@ -268,7 +268,7 @@ test "png: Write indexed1 format" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var options = png.DefaultOptions.init(.{});
 
@@ -320,7 +320,7 @@ test "png: Write indexed2 format" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var options = png.DefaultOptions.init(.{});
 
@@ -372,7 +372,7 @@ test "png: Write indexed4 format" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var options = png.DefaultOptions.init(.{});
 
@@ -424,7 +424,7 @@ test "png: Write indexed8 format" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var options = png.DefaultOptions.init(.{});
 
@@ -467,7 +467,7 @@ test "png: Write grayscale1 format" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var options = png.DefaultOptions.init(.{});
 
@@ -503,7 +503,7 @@ test "png: Write grayscale2 format" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var options = png.DefaultOptions.init(.{});
 
@@ -539,7 +539,7 @@ test "png: Write grayscale4 format" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var options = png.DefaultOptions.init(.{});
 
@@ -575,7 +575,7 @@ test "png: Write grayscale8 format" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var options = png.DefaultOptions.init(.{});
 
@@ -612,7 +612,7 @@ test "png: Write grayscale8Alpha format" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var options = png.DefaultOptions.init(.{});
 
@@ -649,7 +649,7 @@ test "png: Write grayscale16 format" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var options = png.DefaultOptions.init(.{});
 
@@ -686,7 +686,7 @@ test "png: Write grayscale16Alpha format" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var options = png.DefaultOptions.init(.{});
 
@@ -725,7 +725,7 @@ test "png: Write rgb24 format" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var options = png.DefaultOptions.init(.{});
 
@@ -766,7 +766,7 @@ test "png: Write rgba32 format" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var options = png.DefaultOptions.init(.{});
 
@@ -807,7 +807,7 @@ test "png: Write rgb48 format" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var options = png.DefaultOptions.init(.{});
 
@@ -848,7 +848,7 @@ test "png: Write rgba64 format" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var options = png.DefaultOptions.init(.{});
 
@@ -917,7 +917,7 @@ pub fn testWithDir(directory: []const u8, testMd5Sig: bool) !void {
             // Read test data and check with it
             if (idir.openFile(tst_data_name[0..len], .{ .mode = .read_only })) |tdata| {
                 defer tdata.close();
-                var treader = tdata.reader();
+                var treader = tdata.deprecatedReader();
                 var expected_md5: [16]u8 = undefined;
                 var read_buffer: [50]u8 = undefined;
                 const str_format = try treader.readUntilDelimiter(read_buffer[0..], '\n');
@@ -945,8 +945,9 @@ pub fn testWithDir(directory: []const u8, testMd5Sig: bool) !void {
 fn writeTestData(dir: *std.fs.Dir, tst_data_name: []const u8, result: *color.PixelStorage, md5_val: []const u8) !void {
     var toutput = try dir.createFile(tst_data_name, .{});
     defer toutput.close();
-    var writer = toutput.writer();
-    try writer.print("{s}\n{s}", .{ @tagName(result.*), std.fmt.fmtSliceHexUpper(md5_val) });
+    var writer = toutput.deprecatedWriter();
+    var a = writer.adaptToNewApi();
+    try a.new_interface.print("{s}\n{X}", .{ @tagName(result.*), md5_val });
 }
 
 test "InfoProcessor on Png Test suite" {
@@ -958,7 +959,7 @@ test "InfoProcessor on Png Test suite" {
         var it = idir.iterate();
 
         var info_buffer: [16384]u8 = undefined;
-        var info_stream = std.io.StreamSource{ .buffer = std.io.fixedBufferStream(info_buffer[0..]) };
+        var info_stream = std.Io.StreamSource{ .buffer = std.Io.fixedBufferStream(info_buffer[0..]) };
 
         while (try it.next()) |entry| {
             if (entry.kind != .file or !std.mem.eql(u8, std.fs.path.extension(entry.name), ".png")) {
@@ -988,13 +989,13 @@ test "InfoProcessor on Png Test suite" {
             if (idir.openFile(tst_data_name[0..len], .{ .mode = .read_only })) |tdata| {
                 defer tdata.close();
                 var expected_data_buffer: [16384]u8 = undefined;
-                const loaded = try tdata.reader().readAll(expected_data_buffer[0..]);
+                const loaded = try tdata.deprecatedReader().readAll(expected_data_buffer[0..]);
                 try std.testing.expectEqualSlices(u8, expected_data_buffer[0..loaded], info_buffer[0..loaded]);
             } else |_| {
                 // If there is no test data assume test is correct and write it out
                 var toutput = try idir.createFile(tst_data_name[0..len], .{});
                 defer toutput.close();
-                var writer = toutput.writer();
+                var writer = toutput.deprecatedWriter();
                 try writer.writeAll(info_buffer[0..info_stream.buffer.pos]);
             }
         }

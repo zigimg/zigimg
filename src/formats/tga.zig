@@ -161,7 +161,7 @@ const TargaRLEDecoder = struct {
     repeat_data: []u8 = undefined,
     data_stream: std.io.FixedBufferStream([]u8) = undefined,
 
-    pub const Reader = std.io.Reader(*TargaRLEDecoder, ImageUnmanaged.ReadError, read);
+    pub const Reader = std.io.GenericReader(*TargaRLEDecoder, ImageUnmanaged.ReadError, read);
 
     const State = enum {
         read_header,
@@ -177,7 +177,7 @@ const TargaRLEDecoder = struct {
         };
 
         result.repeat_data = try allocator.alloc(u8, bytes_per_pixels);
-        result.data_stream = std.io.fixedBufferStream(result.repeat_data);
+        result.data_stream = std.Io.fixedBufferStream(result.repeat_data);
         return result;
     }
 
@@ -247,7 +247,7 @@ pub const TargaStream = union(enum) {
     image: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader,
     rle: TargaRLEDecoder,
 
-    pub const Reader = std.io.Reader(*TargaStream, ImageUnmanaged.ReadError, read);
+    pub const Reader = std.io.GenericReader(*TargaStream, ImageUnmanaged.ReadError, read);
 
     pub fn read(self: *TargaStream, dest: []u8) ImageUnmanaged.ReadError!usize {
         switch (self.*) {
@@ -310,7 +310,7 @@ fn RunLengthSimpleEncoder(comptime IntType: type) type {
                 return;
             }
 
-            var fixed_stream = std.io.fixedBufferStream(source_data);
+            var fixed_stream = std.Io.fixedBufferStream(source_data);
             const reader = fixed_stream.reader();
 
             var total_similar_count: usize = 0;
@@ -362,7 +362,7 @@ fn RunLengthSIMDEncoder(
 
             var total_similar_count: usize = 0;
 
-            var fixed_stream = std.io.fixedBufferStream(source_data);
+            var fixed_stream = std.Io.fixedBufferStream(source_data);
             const reader = fixed_stream.reader();
 
             var compared_value = try reader.readInt(IntType, .little);

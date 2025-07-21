@@ -10,7 +10,7 @@ test "Farbfeld: Check dimension file" {
         const yellow_file = try helpers.testOpenFile(helpers.fixtures_path ++ "farbfeld/yellow-1x1-semitransparent.png.ff");
         defer yellow_file.close();
 
-        var yellow_stream_source = std.io.StreamSource{ .file = yellow_file };
+        var yellow_stream_source = std.Io.StreamSource{ .file = yellow_file };
 
         var yellow_image = farbfeld.Farbfeld{};
         const yellow_pixels = try yellow_image.read(helpers.zigimg_test_allocator, &yellow_stream_source);
@@ -25,7 +25,7 @@ test "Farbfeld: Check dimension file" {
         const dragon_file = try helpers.testOpenFile(helpers.fixtures_path ++ "farbfeld/dragon.ff");
         defer dragon_file.close();
 
-        var dragon_stream_source = std.io.StreamSource{ .file = dragon_file };
+        var dragon_stream_source = std.Io.StreamSource{ .file = dragon_file };
 
         var dragon_image = farbfeld.Farbfeld{};
         const dragon_pixels = try dragon_image.read(helpers.zigimg_test_allocator, &dragon_stream_source);
@@ -41,7 +41,7 @@ test "Farbfeld: invalid file format" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "farbfeld/dragon.png");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var farbfeld_image = farbfeld.Farbfeld{};
     const image_error = farbfeld_image.read(helpers.zigimg_test_allocator, &stream_source);
@@ -53,7 +53,7 @@ test "Farbfeld: read writeImage output" {
     const source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "farbfeld/yellow-1x1-semitransparent.png.ff");
     defer source_file.close();
 
-    var source_stream_source = std.io.StreamSource{ .file = source_file };
+    var source_stream_source = std.Io.StreamSource{ .file = source_file };
 
     var source_image: farbfeld.Farbfeld = .{};
     const source_pixels = try source_image.read(helpers.zigimg_test_allocator, &source_stream_source);
@@ -61,11 +61,11 @@ test "Farbfeld: read writeImage output" {
 
     var target_buffer: [farbfeld.Header.size + @sizeOf(color.Rgba64) * 1]u8 = undefined;
     var write_stream = Image.Stream{
-        .buffer = std.io.fixedBufferStream(&target_buffer),
+        .buffer = std.Io.fixedBufferStream(&target_buffer),
     };
 
     try source_image.write(&write_stream, source_pixels);
-    write_stream.buffer = std.io.fixedBufferStream(write_stream.buffer.getWritten());
+    write_stream.buffer = std.Io.fixedBufferStream(write_stream.buffer.getWritten());
 
     var decoded_image = try farbfeld.Farbfeld.readImage(helpers.zigimg_test_allocator, &write_stream);
     defer decoded_image.deinit(helpers.zigimg_test_allocator);

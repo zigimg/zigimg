@@ -8,16 +8,16 @@ pub const DefaultBufferedStreamSourceWriter = BufferedStreamSourceWriter(Default
 // An buffered stream that can read and seek StreamSource
 pub fn BufferedStreamSourceReader(comptime BufferSize: usize) type {
     return struct {
-        buffered_reader: std.io.BufferedReader(BufferSize, std.io.StreamSource.Reader),
+        buffered_reader: std.io.BufferedReader(BufferSize, std.Io.StreamSource.Reader),
 
-        pub const ReadError = std.io.StreamSource.ReadError;
-        pub const SeekError = std.io.StreamSource.SeekError;
-        pub const GetSeekPosError = std.io.StreamSource.GetSeekPosError;
+        pub const ReadError = std.Io.StreamSource.ReadError;
+        pub const SeekError = std.Io.StreamSource.SeekError;
+        pub const GetSeekPosError = std.Io.StreamSource.GetSeekPosError;
 
         const Self = @This();
 
-        pub const Reader = std.io.Reader(*Self, ReadError, read);
-        pub const SeekableStream = std.io.SeekableStream(
+        pub const Reader = std.Io.GenericReader(*Self, ReadError, read);
+        pub const SeekableStream = std.Io.SeekableStream(
             *Self,
             SeekError,
             GetSeekPosError,
@@ -118,26 +118,26 @@ pub fn BufferedStreamSourceReader(comptime BufferSize: usize) type {
     };
 }
 
-pub fn bufferedStreamSourceReader(stream: *std.io.StreamSource) BufferedStreamSourceReader(DefaultBufferSize) {
+pub fn bufferedStreamSourceReader(stream: *std.Io.StreamSource) BufferedStreamSourceReader(DefaultBufferSize) {
     return .{ .buffered_reader = .{ .unbuffered_reader = stream.reader() } };
 }
 
-pub fn bufferedStreamSourceReaderWithSize(comptime buffer_size: usize, stream: *std.io.StreamSource) BufferedStreamSourceReader(buffer_size) {
+pub fn bufferedStreamSourceReaderWithSize(comptime buffer_size: usize, stream: *std.Io.StreamSource) BufferedStreamSourceReader(buffer_size) {
     return .{ .buffered_reader = .{ .unbuffered_reader = stream.reader() } };
 }
 
 // An buffered stream that can writer and seek StreamSource
 pub fn BufferedStreamSourceWriter(comptime BufferSize: usize) type {
     return struct {
-        buffered_writer: std.io.BufferedWriter(BufferSize, std.io.StreamSource.Writer),
+        buffered_writer: std.io.BufferedWriter(BufferSize, std.Io.StreamSource.Writer),
 
-        pub const WriteError = std.io.StreamSource.WriteError;
-        pub const SeekError = std.io.StreamSource.SeekError;
-        pub const GetSeekPosError = std.io.StreamSource.GetSeekPosError;
+        pub const WriteError = std.Io.StreamSource.WriteError;
+        pub const SeekError = std.Io.StreamSource.SeekError;
+        pub const GetSeekPosError = std.Io.StreamSource.GetSeekPosError;
 
         const Self = @This();
 
-        pub const Writer = std.io.Writer(*Self, WriteError, write);
+        pub const Writer = std.io.GenericWriter(*Self, WriteError, write);
         pub const SeekableStream = std.io.SeekableStream(
             *Self,
             SeekError,
@@ -245,10 +245,10 @@ pub fn BufferedStreamSourceWriter(comptime BufferSize: usize) type {
     };
 }
 
-pub fn bufferedStreamSourceWriter(stream: *std.io.StreamSource) BufferedStreamSourceWriter(DefaultBufferSize) {
+pub fn bufferedStreamSourceWriter(stream: *std.Io.StreamSource) BufferedStreamSourceWriter(DefaultBufferSize) {
     return .{ .buffered_writer = .{ .unbuffered_writer = stream.writer() } };
 }
 
-pub fn bufferedStreamSourceWriterWithSize(comptime buffer_size: usize, stream: *std.io.StreamSource) BufferedStreamSourceWriter(buffer_size) {
+pub fn bufferedStreamSourceWriterWithSize(comptime buffer_size: usize, stream: *std.Io.StreamSource) BufferedStreamSourceWriter(buffer_size) {
     return .{ .buffered_writer = .{ .unbuffered_writer = stream.writer() } };
 }

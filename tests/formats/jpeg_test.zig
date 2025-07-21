@@ -11,7 +11,7 @@ test "Should error on non JPEG images" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var jpeg_file = jpeg.JPEG.init(helpers.zigimg_test_allocator);
     defer jpeg_file.deinit();
@@ -31,7 +31,7 @@ test "Read JFIF header properly and decode simple Huffman stream" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "jpeg/huff_simple0.jpg");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var jpeg_file = jpeg.JPEG.init(helpers.zigimg_test_allocator);
     defer jpeg_file.deinit();
@@ -61,7 +61,7 @@ test "Read the tuba properly" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "jpeg/tuba.jpg");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var jpeg_file = jpeg.JPEG.init(helpers.zigimg_test_allocator);
     defer jpeg_file.deinit();
@@ -96,7 +96,7 @@ test "Read grayscale images" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "jpeg/grayscale_sample0.jpg");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var jpeg_file = jpeg.JPEG.init(helpers.zigimg_test_allocator);
     defer jpeg_file.deinit();
@@ -184,7 +184,7 @@ test "Read progressive jpeg with restart intervals" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "jpeg/tuba_restart_prog.jpg");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var jpeg_file = jpeg.JPEG.init(helpers.zigimg_test_allocator);
     defer jpeg_file.deinit();

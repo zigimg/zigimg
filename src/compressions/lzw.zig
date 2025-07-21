@@ -163,12 +163,12 @@ test "Should decode a simple LZW little-endian stream" {
     const test_data = [_]u8{ 0x4c, 0x01 };
 
     var reader = Image.Stream{
-        .const_buffer = std.io.fixedBufferStream(&test_data),
+        .const_buffer = std.Io.fixedBufferStream(&test_data),
     };
 
     var out_data_storage: [256]u8 = undefined;
     var out_data_buffer = Image.Stream{
-        .buffer = std.io.fixedBufferStream(&out_data_storage),
+        .buffer = std.Io.fixedBufferStream(&out_data_storage),
     };
 
     var lzw = try Decoder(.little).init(std.testing.allocator, initial_code_size, 0);

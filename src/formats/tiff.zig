@@ -148,7 +148,7 @@ pub const TIFF = struct {
     }
 
     pub fn uncompressDeflate(_: *TIFF, read_stream: *ImageUnmanaged.Stream, dest_buffer: []u8) !void {
-        var write_stream = std.io.fixedBufferStream(dest_buffer);
+        var write_stream = std.Io.fixedBufferStream(dest_buffer);
 
         zlib.decompress(read_stream.reader(), write_stream.writer()) catch {
             return ImageUnmanaged.ReadError.InvalidData;
@@ -156,7 +156,7 @@ pub const TIFF = struct {
     }
 
     pub fn uncompressLZW(_: *TIFF, read_stream: *ImageUnmanaged.Stream, dest_buffer: []u8, allocator: std.mem.Allocator) !void {
-        var write_stream = std.io.fixedBufferStream(dest_buffer);
+        var write_stream = std.Io.fixedBufferStream(dest_buffer);
         var lzw_decoder = try lzw.Decoder(.big).init(allocator, 8, 1);
         defer lzw_decoder.deinit();
 
@@ -166,7 +166,7 @@ pub const TIFF = struct {
     }
 
     pub fn uncompressCCITT(self: *TIFF, read_stream: *ImageUnmanaged.Stream, dest_buffer: []u8, image_width: usize, num_rows: usize) !void {
-        var write_stream = std.io.fixedBufferStream(dest_buffer);
+        var write_stream = std.Io.fixedBufferStream(dest_buffer);
         var ccitt_decoder = try ccitt.Decoder.init(image_width, num_rows, @truncate(self.bitmap.photometric_interpretation));
         ccitt_decoder.decode(read_stream.reader(), write_stream.writer()) catch {
             return ImageUnmanaged.ReadError.InvalidData;

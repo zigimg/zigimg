@@ -539,7 +539,7 @@ pub const GIF = struct {
             }
 
             sub_image.pixels = try self.allocator.alloc(u8, @as(usize, sub_image.image_descriptor.height) * @as(usize, sub_image.image_descriptor.width));
-            var pixels_buffer = std.io.fixedBufferStream(sub_image.pixels);
+            var pixels_buffer = std.Io.fixedBufferStream(sub_image.pixels);
 
             const lzw_minimum_code_size = try context.reader.readByte();
 
@@ -559,7 +559,7 @@ pub const GIF = struct {
                 _ = try context.reader.readAll(data_block.data[0..]);
 
                 var data_block_reader = ImageUnmanaged.Stream{
-                    .buffer = std.io.fixedBufferStream(data_block.data),
+                    .buffer = std.Io.fixedBufferStream(data_block.data),
                 };
 
                 lzw_decoder.decode(data_block_reader.reader(), pixels_buffer.writer()) catch |err| {

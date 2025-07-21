@@ -96,7 +96,7 @@ test "Read simple version 4 24-bit RGB bitmap" {
 
     var the_bitmap = bmp.BMP{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     const pixels = try the_bitmap.read(helpers.zigimg_test_allocator, &stream_source);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -151,7 +151,7 @@ test "Read a valid version 5 RGBA bitmap from file" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "bmp/windows_rgba_v5.bmp");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var the_bitmap = bmp.BMP{};
 
@@ -164,7 +164,7 @@ test "Read a valid version 5 RGBA bitmap from file" {
 test "Read a valid version 5 RGBA bitmap from memory" {
     var MemoryRGBABitmap: [200 * 1024]u8 = undefined;
     const buffer: []const u8 = try helpers.testReadFile(helpers.fixtures_path ++ "bmp/windows_rgba_v5.bmp", MemoryRGBABitmap[0..]);
-    var stream_source = std.io.StreamSource{ .const_buffer = std.io.fixedBufferStream(buffer) };
+    var stream_source = std.Io.StreamSource{ .const_buffer = std.Io.fixedBufferStream(buffer) };
 
     var the_bitmap = bmp.BMP{};
 
@@ -178,7 +178,7 @@ test "Should error when reading an invalid file" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "bmp/notbmp.png");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var the_bitmap = bmp.BMP{};
 
@@ -226,7 +226,7 @@ test "Write a v4 bitmap when writing an image with bgr24 pixel format" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var read_bmp = bmp.BMP{};
 
@@ -288,7 +288,7 @@ test "Write a v5 bitmap when writing an image with bgra32 pixel format" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
 
     var read_bmp = bmp.BMP{};
 

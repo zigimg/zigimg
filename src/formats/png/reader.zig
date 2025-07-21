@@ -131,7 +131,7 @@ const IDatChunksReader = struct {
     }
 };
 
-const IDATReader = std.io.Reader(*IDatChunksReader, ImageUnmanaged.ReadError, IDatChunksReader.read);
+const IDATReader = std.io.GenericReader(*IDatChunksReader, ImageUnmanaged.ReadError, IDatChunksReader.read);
 
 /// Loads only the png header from the stream. Useful when you only metadata.
 pub fn loadHeader(stream: *ImageUnmanaged.Stream) ImageUnmanaged.ReadError!png.HeaderData {
@@ -149,7 +149,7 @@ pub fn loadHeader(stream: *ImageUnmanaged.Stream) ImageUnmanaged.ReadError!png.H
     var header_data: [@sizeOf(png.HeaderData)]u8 = undefined;
     try reader.readNoEof(&header_data);
 
-    var struct_stream = std.io.fixedBufferStream(&header_data);
+    var struct_stream = std.Io.fixedBufferStream(&header_data);
 
     const header = try utils.readStruct(struct_stream.reader(), png.HeaderData, .big);
     if (!header.isValid()) return ImageUnmanaged.ReadError.InvalidData;

@@ -39,7 +39,7 @@ pub fn ZlibCompressor(comptime WriterType: type) type {
         }
 
         pub const Error = deflate.Compressor(WriterType).Error;
-        pub const Writer = std.io.Writer(*Self, Error, write);
+        pub const Writer = std.io.GenericWriter(*Self, Error, write);
 
         pub fn writer(self: *Self) Writer {
             return .{ .context = self };

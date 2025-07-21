@@ -11,7 +11,7 @@ test "Should error on non SGI images" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var sgi_file = sgi.SGI{};
 
@@ -25,7 +25,7 @@ test "SGI 24-bit uncompressed" {
 
     var the_bitmap = sgi.SGI{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -52,7 +52,7 @@ test "SGI grayscale uncompressed" {
 
     var the_bitmap = sgi.SGI{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -71,7 +71,7 @@ test "SGI 32-bit RGBA uncompressed" {
 
     var the_bitmap = sgi.SGI{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -98,7 +98,7 @@ test "SGI RGB48be uncompressed" {
 
     var the_bitmap = sgi.SGI{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -125,7 +125,7 @@ test "SGI grayscale rle compressed" {
 
     var the_bitmap = sgi.SGI{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -144,7 +144,7 @@ test "SGI 24-bit rle compressed" {
 
     var the_bitmap = sgi.SGI{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -171,7 +171,7 @@ test "SGI RGB48be rle uncompressed" {
 
     var the_bitmap = sgi.SGI{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -198,7 +198,7 @@ test "SGI 32-bit RGBA rle compressed" {
 
     var the_bitmap = sgi.SGI{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);

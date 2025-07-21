@@ -1,5 +1,5 @@
 const std = @import("std");
-pub const Stream = std.io.StreamSource;
+pub const Stream = std.Io.StreamSource;
 
 const color = @import("color.zig");
 const FormatInterface = @import("FormatInterface.zig");
@@ -54,20 +54,20 @@ pub const Error = error{
     Unsupported,
 };
 
-pub const ReadError = Error ||
-    std.mem.Allocator.Error ||
-    utils.StructReadError ||
-    std.io.StreamSource.SeekError ||
-    std.io.StreamSource.GetSeekPosError ||
-    error{ EndOfStream, StreamTooLong, InvalidData };
+pub const ReadError =
+    error{ InvalidData, Unsupported, EndOfStream, StreamTooLong } ||
+    std.Io.StreamSource.ReadError ||
+    std.Io.StreamSource.SeekError ||
+    std.Io.StreamSource.GetSeekPosError ||
+    std.mem.Allocator.Error;
 
-pub const WriteError = Error ||
-    std.mem.Allocator.Error ||
-    std.io.StreamSource.WriteError ||
-    std.io.StreamSource.SeekError ||
-    std.io.StreamSource.GetSeekPosError ||
+pub const WriteError =
+    error{ Unsupported, InvalidData, UnfinishedBits, EndOfStream } ||
+    std.Io.StreamSource.WriteError ||
+    std.Io.StreamSource.SeekError ||
+    std.Io.StreamSource.GetSeekPosError ||
     std.fs.File.OpenError ||
-    error{ EndOfStream, InvalidData, UnfinishedBits };
+    std.mem.Allocator.Error;
 
 pub const ConvertError = Error ||
     std.mem.Allocator.Error ||
@@ -150,13 +150,13 @@ pub fn detectFormatFromFilePath(file_path: []const u8) !Format {
 
 /// Detect which image format is used by the file
 pub fn detectFormatFromFile(file: *std.fs.File) !Format {
-    var stream_source = std.io.StreamSource{ .file = file.* };
+    var stream_source = std.Io.StreamSource{ .file = file.* };
     return internalDetectFormat(&stream_source);
 }
 
 /// Detect which image format is used by the memory buffer
 pub fn detectFormatFromMemory(buffer: []const u8) !Format {
-    var stream_source = std.io.StreamSource{ .const_buffer = std.io.fixedBufferStream(buffer) };
+    var stream_source = std.Io.StreamSource{ .const_buffer = std.Io.fixedBufferStream(buffer) };
     return internalDetectFormat(&stream_source);
 }
 
@@ -170,13 +170,13 @@ pub fn fromFilePath(allocator: std.mem.Allocator, file_path: []const u8) !ImageU
 
 /// Load an image from a standard library std.fs.File
 pub fn fromFile(allocator: std.mem.Allocator, file: *std.fs.File) !ImageUnmanaged {
-    var stream_source = std.io.StreamSource{ .file = file.* };
+    var stream_source = std.Io.StreamSource{ .file = file.* };
     return internalRead(allocator, &stream_source);
 }
 
 /// Load an image from a memory buffer
 pub fn fromMemory(allocator: std.mem.Allocator, buffer: []const u8) !ImageUnmanaged {
-    var stream_source = std.io.StreamSource{ .const_buffer = std.io.fixedBufferStream(buffer) };
+    var stream_source = std.Io.StreamSource{ .const_buffer = std.Io.fixedBufferStream(buffer) };
     return internalRead(allocator, &stream_source);
 }
 
@@ -260,7 +260,7 @@ pub fn writeToFilePath(self: ImageUnmanaged, allocator: std.mem.Allocator, file_
 
 /// Write the image to an image format to the specified std.fs.File
 pub fn writeToFile(self: ImageUnmanaged, allocator: std.mem.Allocator, file: std.fs.File, encoder_options: EncoderOptions) WriteError!void {
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     try self.internalWrite(allocator, &stream_source, encoder_options);
 }
@@ -268,7 +268,7 @@ pub fn writeToFile(self: ImageUnmanaged, allocator: std.mem.Allocator, file: std
 /// Write the image to an image format in a memory buffer. The memory buffer is not grown
 /// for you so make sure you pass a large enough buffer.
 pub fn writeToMemory(self: ImageUnmanaged, allocator: std.mem.Allocator, write_buffer: []u8, encoder_options: EncoderOptions) WriteError![]u8 {
-    var stream_source = std.io.StreamSource{ .buffer = std.io.fixedBufferStream(write_buffer) };
+    var stream_source = std.Io.StreamSource{ .buffer = std.Io.fixedBufferStream(write_buffer) };
 
     try self.internalWrite(allocator, &stream_source, encoder_options);
 

@@ -11,7 +11,7 @@ test "Should error on non RAS images" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var ras_file = ras.RAS{};
 
@@ -25,7 +25,7 @@ test "Sun-Raster 24-bit RGB24 uncompressed" {
 
     var the_bitmap = ras.RAS{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -52,7 +52,7 @@ test "Sun-Raster 24-bit BGR24 uncompressed" {
 
     var the_bitmap = ras.RAS{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -79,7 +79,7 @@ test "Sun-Raster 32-bit xRGB uncompressed" {
 
     var the_bitmap = ras.RAS{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -102,7 +102,7 @@ test "Sun-Raster 8-bit with palette uncompressed" {
 
     var the_bitmap = ras.RAS{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -127,7 +127,7 @@ test "Sun-Raster 8-bit grayscale uncompressed" {
 
     var the_bitmap = ras.RAS{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -146,7 +146,7 @@ test "Sun-Raster 1-bit black & white uncompressed" {
 
     var the_bitmap = ras.RAS{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -165,7 +165,7 @@ test "Sun-Raster bgr24 rle compressed" {
 
     var the_bitmap = ras.RAS{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);

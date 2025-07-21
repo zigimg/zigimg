@@ -190,7 +190,7 @@ pub fn decodeBmhdChunk(stream: *ImageUnmanaged.Stream) ImageUnmanaged.ReadError!
     var header_data: [@sizeOf(BmhdHeader)]u8 = undefined;
     try reader.readNoEof(&header_data);
 
-    var struct_stream = std.io.fixedBufferStream(&header_data);
+    var struct_stream = std.Io.fixedBufferStream(&header_data);
 
     const header = try utils.readStruct(struct_stream.reader(), BmhdHeader, .big);
 

@@ -3,8 +3,13 @@ const std = @import("std");
 
 const native_endian = builtin.target.cpu.arch.endian();
 
-pub const StructReadError = error{ EndOfStream, InvalidData } || std.io.StreamSource.ReadError;
-pub const StructWriteError = std.io.StreamSource.WriteError;
+const BuiltinType = std.builtin.Type;
+const Endian = std.builtin.Endian;
+const big = std.mem.big;
+const little = std.mem.little;
+
+pub const StructReadError = error{ EndOfStream, InvalidData } || std.Io.StreamSource.ReadError;
+pub const StructWriteError = std.Io.StreamSource.WriteError;
 
 pub fn FixedStorage(comptime T: type, comptime storage_size: usize) type {
     return struct {

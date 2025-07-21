@@ -14,7 +14,7 @@ pub fn ChunkWriter(comptime buffer_size: usize, comptime WriterType: type) type 
         section_id: [4]u8,
 
         pub const Error = WriterType.Error;
-        pub const Writer = io.Writer(*Self, Error, write);
+        pub const Writer = io.GenericWriter(*Self, Error, write);
 
         const Self = @This();
 

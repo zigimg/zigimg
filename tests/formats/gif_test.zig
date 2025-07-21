@@ -11,7 +11,7 @@ test "Should error on non GIF images" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var stream_source = std.Io.StreamSource{ .file = file };
 
     var gif_file = gif.GIF.init(helpers.zigimg_test_allocator);
     defer gif_file.deinit();
@@ -33,7 +33,7 @@ test "GIF test suite" {
     const test_list_file = try helpers.testOpenFile(helpers.fixtures_path ++ "gif/TESTS");
     defer test_list_file.close();
 
-    var buffered_reader = std.io.bufferedReader(test_list_file.reader());
+    var buffered_reader = std.io.bufferedReader(test_list_file.deprecatedReader());
     var reader = buffered_reader.reader();
 
     var area_alloc = std.heap.ArenaAllocator.init(helpers.zigimg_test_allocator);
@@ -61,7 +61,7 @@ test "Rotating Earth GIF" {
     const gif_input_file = try helpers.testOpenFile(helpers.fixtures_path ++ "gif/rotating_earth.gif");
     defer gif_input_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = gif_input_file };
+    var stream_source = std.Io.StreamSource{ .file = gif_input_file };
 
     var gif_file = gif.GIF.init(helpers.zigimg_test_allocator);
     defer gif_file.deinit();
@@ -204,7 +204,7 @@ fn doGifTest(entry_name: []const u8) !void {
     var config_ini = IniFile.init(helpers.zigimg_test_allocator);
     defer config_ini.deinit();
 
-    var buffered_reader = std.io.bufferedReader(config_file.reader());
+    var buffered_reader = std.io.bufferedReader(config_file.deprecatedReader());
 
     try config_ini.parse(buffered_reader.reader());
 
@@ -234,7 +234,7 @@ fn doGifTest(entry_name: []const u8) !void {
         const gif_input_file = try helpers.testOpenFile(gif_input_filepath);
         defer gif_input_file.close();
 
-        var stream_source = std.io.StreamSource{ .file = gif_input_file };
+        var stream_source = std.Io.StreamSource{ .file = gif_input_file };
 
         var gif_file = gif.GIF.init(helpers.zigimg_test_allocator);
         defer gif_file.deinit();
@@ -285,7 +285,7 @@ fn doGifTest(entry_name: []const u8) !void {
                     const pixels_file = try helpers.testOpenFile(pixels_filepath);
                     defer pixels_file.close();
 
-                    var pixels_buffred_reader = std.io.bufferedReader(pixels_file.reader());
+                    var pixels_buffred_reader = std.io.bufferedReader(pixels_file.deprecatedReader());
                     var pixels_reader = pixels_buffred_reader.reader();
 
                     var pixel_list = std.ArrayList(color.Rgba32).init(area_allocator);

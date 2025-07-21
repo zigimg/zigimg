@@ -12,9 +12,11 @@ pub fn build(b: *Build) void {
 
     const zigimg_build_test = b.addTest(.{
         .name = "zigimgtest",
-        .root_source_file = b.path("zigimg.zig"),
-        .target = target,
-        .optimize = optimize,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("zigimg.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
         .filters = test_filters,
     });
 

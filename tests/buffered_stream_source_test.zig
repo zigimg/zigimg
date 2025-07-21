@@ -15,7 +15,7 @@ test "BufferedStreamReader should read and seek properly with a file" {
     var read_file = try temp_folder.dir.openFile(TestFilename, .{});
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var stream_source = std.Io.StreamSource{ .file = read_file };
     var buffered_stream = buffered_stream_source.bufferedStreamSourceReaderWithSize(4, &stream_source);
 
     const reader = buffered_stream.reader();
@@ -59,7 +59,7 @@ test "BufferedStreamWriter should read and seek properly with a file" {
         var write_file = try temp_folder.dir.createFile(TestFilename, .{});
         defer write_file.close();
 
-        var stream_source = std.io.StreamSource{ .file = write_file };
+        var stream_source = std.Io.StreamSource{ .file = write_file };
         var buffered_stream = buffered_stream_source.bufferedStreamSourceWriterWithSize(4, &stream_source);
 
         const writer = buffered_stream.writer();
@@ -79,7 +79,7 @@ test "BufferedStreamWriter should read and seek properly with a file" {
     var read_file = try temp_folder.dir.openFile(TestFilename, .{});
     defer read_file.close();
 
-    const reader = read_file.reader();
+    const reader = read_file.deprecatedReader();
     var read_contents = try reader.readAllAlloc(std.testing.allocator, 128);
     defer std.testing.allocator.free(read_contents);
 
