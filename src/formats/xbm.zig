@@ -23,11 +23,10 @@ const buffered_stream_source = @import("../buffered_stream_source.zig");
 // XBM files are found in two variations: the older XI 0 format and the newer (as of 1986) XI 1 format. The only difference between these formats is how the pixel data is packed. The XI 1 flavor stores pixel data as 8-bit BYTEs. The older XI 0 flavor stores pixel data as 16-bit WORDs. There are no markers separating the rows of image data in either of these formats, and the size of an XBM array is limited only by the compiler and machine using the bitmap.
 // The XI 0 XBM is considered obsolete. Make sure that any X software you write is able to read both the XBM XIO and XI 1 formats, but when you write data, use only the XI 1 XBM format.
 pub const XBM = struct {
-    width: u32,
-    height: u32,
-    hotspot_x: u32,
-    hotspot_y: u32,
-    pixels: []const u8,
+    width: u32 = 0,
+    height: u32 = 0,
+    hotspot_x: u32 = 0,
+    hotspot_y: u32 = 0,
 
     pub fn formatInterface() FormatInterface {
         return FormatInterface{
@@ -185,7 +184,7 @@ pub const XBM = struct {
         var result: ImageUnmanaged = .{};
         errdefer result.deinit(allocator);
 
-        var xbm: XBM = .{ .width = 0, .height = 0, .hotspot_x = 0, .hotspot_y = 0, .pixels = &[_]u8{} };
+        var xbm: XBM = .{};
         result.pixels = try xbm.read(allocator, stream);
         result.width = @intCast(xbm.width);
         result.height = @intCast(xbm.height);
