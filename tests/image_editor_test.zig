@@ -3,6 +3,7 @@ const std = @import("std");
 const color = @import("../src/color.zig");
 const Image = @import("../src/Image.zig");
 const ImageEditor = @import("../src/ImageEditor.zig");
+const expectEquals = std.testing.expectEqual;
 
 test "Flip image vertically" {
     var unflipped = try Image.create(std.testing.allocator, 8, 8, .rgb24);
@@ -21,4 +22,43 @@ test "Flip image vertically" {
 
     try unflipped.flipVertically();
     try std.testing.expectEqualSlices(color.Rgb24, unflipped.pixels.rgb24, flipped.pixels.rgb24);
+}
+
+test "normalise_simple" {
+    const box = (ImageEditor.Box{
+        .x = 0,
+        .y = 0,
+        .width = 10,
+        .height = 10,
+    }).normalize(10, 10);
+    try expectEquals(0, box.x);
+    try expectEquals(0, box.y);
+    try expectEquals(10, box.width);
+    try expectEquals(10, box.height);
+}
+
+test "normalise_overflow" {
+    const box = (ImageEditor.Box{
+        .x = 0,
+        .y = 0,
+        .width = 16,
+        .height = 14,
+    }).normalize(10, 10);
+    try expectEquals(0, box.x);
+    try expectEquals(0, box.y);
+    try expectEquals(10, box.width);
+    try expectEquals(10, box.height);
+}
+
+test "normalise_overflow2" {
+    const box = (ImageEditor.Box{
+        .x = 4,
+        .y = 6,
+        .width = 10,
+        .height = 10,
+    }).normalize(10, 10);
+    try expectEquals(4, box.x);
+    try expectEquals(6, box.y);
+    try expectEquals(6, box.width);
+    try expectEquals(4, box.height);
 }
