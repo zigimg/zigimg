@@ -31,6 +31,7 @@ test {
         @import("tests/formats/tga_test.zig"),
         @import("tests/formats/tiff_test.zig"),
         @import("tests/formats/farbfeld_test.zig"),
+        @import("tests/formats/xbm_test.zig"),
         @import("tests/image_editor_test.zig"),
         @import("tests/image_test.zig"),
         @import("tests/math_test.zig"),
