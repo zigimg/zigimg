@@ -315,6 +315,15 @@ pub fn flipVertically(self: *const ImageUnmanaged, allocator: std.mem.Allocator)
     try ImageEditor.flipVertically(&self.pixels, self.height, allocator);
 }
 
+/// Create and allocate a cropped subsection of this image.
+pub fn crop(
+    self: *const ImageUnmanaged,
+    area: ImageEditor.Box,
+    allocator: std.mem.Allocator,
+) ImageEditor.Error!ImageUnmanaged {
+    return try ImageEditor.crop(self, area, allocator);
+}
+
 /// Iterate the pixel in pixel-format agnostic way. In the case of an animation, it returns an iterator for the first frame. The iterator is read-only.
 pub fn iterator(self: *const ImageUnmanaged) color.PixelStorageIterator {
     return color.PixelStorageIterator.init(&self.pixels);
