@@ -3,7 +3,6 @@ const std = @import("std");
 const color = @import("../src/color.zig");
 const Image = @import("../src/Image.zig");
 const ImageEditor = @import("../src/ImageEditor.zig");
-const expectEquals = std.testing.expectEqual;
 
 test "Flip image vertically" {
     var unflipped = try Image.create(std.testing.allocator, 8, 8, .rgb24);
@@ -30,11 +29,11 @@ test "normalise_simple" {
         .y = 0,
         .width = 10,
         .height = 10,
-    }).normalize(10, 10);
-    try expectEquals(0, box.x);
-    try expectEquals(0, box.y);
-    try expectEquals(10, box.width);
-    try expectEquals(10, box.height);
+    }).clamp(10, 10);
+    try std.testing.expectEqual(0, box.x);
+    try std.testing.expectEqual(0, box.y);
+    try std.testing.expectEqual(10, box.width);
+    try std.testing.expectEqual(10, box.height);
 }
 
 test "normalise_overflow" {
@@ -43,11 +42,11 @@ test "normalise_overflow" {
         .y = 0,
         .width = 16,
         .height = 14,
-    }).normalize(10, 10);
-    try expectEquals(0, box.x);
-    try expectEquals(0, box.y);
-    try expectEquals(10, box.width);
-    try expectEquals(10, box.height);
+    }).clamp(10, 10);
+    try std.testing.expectEqual(0, box.x);
+    try std.testing.expectEqual(0, box.y);
+    try std.testing.expectEqual(10, box.width);
+    try std.testing.expectEqual(10, box.height);
 }
 
 test "normalise_overflow2" {
@@ -56,9 +55,9 @@ test "normalise_overflow2" {
         .y = 6,
         .width = 10,
         .height = 10,
-    }).normalize(10, 10);
-    try expectEquals(4, box.x);
-    try expectEquals(6, box.y);
-    try expectEquals(6, box.width);
-    try expectEquals(4, box.height);
+    }).clamp(10, 10);
+    try std.testing.expectEqual(4, box.x);
+    try std.testing.expectEqual(6, box.y);
+    try std.testing.expectEqual(6, box.width);
+    try std.testing.expectEqual(4, box.height);
 }

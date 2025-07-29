@@ -26,7 +26,7 @@ pub fn crop(
     crop_area: Box,
     allocator: std.mem.Allocator,
 ) Error!ImageUnmanaged {
-    const box = crop_area.normalize(image.width, image.height);
+    const box = crop_area.clamp(image.width, image.height);
 
     const new_buffer = try color.PixelStorage.init(
         allocator,
@@ -80,7 +80,7 @@ pub const Box = struct {
 
     /// If the crop area falls partially outside the image boundary,
     /// adjust the crop region.
-    pub fn normalize(area: Box, image_width: usize, image_height: usize) Box {
+    pub fn clamp(area: Box, image_width: usize, image_height: usize) Box {
         var box = area;
         if (box.x + box.width > image_width) box.width = image_width - box.x;
         if (box.y + box.height > image_height) box.height = image_height - box.y;
