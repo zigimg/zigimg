@@ -22,3 +22,42 @@ test "Flip image vertically" {
     try unflipped.flipVertically();
     try std.testing.expectEqualSlices(color.Rgb24, unflipped.pixels.rgb24, flipped.pixels.rgb24);
 }
+
+test "normalise_simple" {
+    const box = (ImageEditor.Box{
+        .x = 0,
+        .y = 0,
+        .width = 10,
+        .height = 10,
+    }).clamp(10, 10);
+    try std.testing.expectEqual(0, box.x);
+    try std.testing.expectEqual(0, box.y);
+    try std.testing.expectEqual(10, box.width);
+    try std.testing.expectEqual(10, box.height);
+}
+
+test "normalise_overflow" {
+    const box = (ImageEditor.Box{
+        .x = 0,
+        .y = 0,
+        .width = 16,
+        .height = 14,
+    }).clamp(10, 10);
+    try std.testing.expectEqual(0, box.x);
+    try std.testing.expectEqual(0, box.y);
+    try std.testing.expectEqual(10, box.width);
+    try std.testing.expectEqual(10, box.height);
+}
+
+test "normalise_overflow2" {
+    const box = (ImageEditor.Box{
+        .x = 4,
+        .y = 6,
+        .width = 10,
+        .height = 10,
+    }).clamp(10, 10);
+    try std.testing.expectEqual(4, box.x);
+    try std.testing.expectEqual(6, box.y);
+    try std.testing.expectEqual(6, box.width);
+    try std.testing.expectEqual(4, box.height);
+}
