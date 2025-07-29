@@ -45,7 +45,7 @@ pub fn crop(
     }
     const original_data = image.pixels.asBytes();
     const new_data = new_buffer.asBytes();
-    const pixel_size = original_data.len / image.height / image.width;
+    const pixel_size = image.pixelFormat().pixelStride();
     std.debug.assert(new_data.len == box.width * box.height * pixel_size);
 
     var y: usize = 0;
