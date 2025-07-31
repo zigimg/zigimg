@@ -248,7 +248,7 @@ pub fn main() !void {
     var file = try std.fs.cwd().openFile(file_path, .{});
     defer file.close();
 
-    var image = try zigimg.Image.fromFile(allocator, file);
+    var image = try zigimg.Image.fromFile(allocator, &file);
     defer image.deinit();
 
     // Do something with your image
