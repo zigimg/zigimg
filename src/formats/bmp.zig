@@ -125,7 +125,13 @@ pub const BitmapInfoHeaderV5 = extern struct {
     pub const HeaderSize = @sizeOf(BitmapInfoHeaderV5);
 };
 
-pub const BitmapInfoHeader = union(enum) {
+pub const BitmapInfoHeaderVersion = enum {
+    windows31,
+    v4,
+    v5,
+};
+
+pub const BitmapInfoHeader = union(BitmapInfoHeaderVersion) {
     windows31: BitmapInfoHeaderWindows31,
     v4: BitmapInfoHeaderV4,
     v5: BitmapInfoHeaderV5,
@@ -139,7 +145,9 @@ pub const BMP = struct {
     file_header: BitmapFileHeader = undefined,
     info_header: BitmapInfoHeader = undefined,
 
-    pub const EncoderOptions = struct {};
+    pub const EncoderOptions = struct {
+        preferred_version: BitmapInfoHeaderVersion = .v4,
+    };
 
     pub fn formatInterface() FormatInterface {
         return FormatInterface{
@@ -179,25 +187,74 @@ pub const BMP = struct {
         //  Fill header information based on pixel format
         switch (image.pixels) {
             .bgr24 => {
-                bmp.file_header = .{
-                    .size = @intCast(image.width * image.height * 3 + @sizeOf(BitmapFileHeader) + BitmapInfoHeaderV4.HeaderSize),
-                    .pixel_offset = @sizeOf(BitmapFileHeader) + BitmapInfoHeaderV4.HeaderSize,
-                };
+                switch (encoder_options.bmp.preferred_version) {
+                    .windows31 => {
+                        bmp.file_header = .{
+                            .size = @intCast(image.width * image.height * 3 + @sizeOf(BitmapFileHeader) + BitmapInfoHeaderWindows31.HeaderSize),
+                            .pixel_offset = @sizeOf(BitmapFileHeader) + BitmapInfoHeaderWindows31.HeaderSize,
+                        };
 
-                bmp.info_header = .{
-                    .v4 = .{
-                        .header_size = BitmapInfoHeaderV4.HeaderSize,
-                        .width = @intCast(image.width),
-                        .height = @intCast(image.height),
-                        .color_plane = 1,
-                        .bit_count = 24,
-                        .compression_method = .none,
-                        .image_raw_size = @intCast(image.width * image.height * 3),
-                        .horizontal_resolution = PixelsPerMeterResolution,
-                        .vertical_resolution = PixelsPerMeterResolution,
-                        .color_space = .srgb,
+                        bmp.info_header = .{
+                            .windows31 = .{
+                                .header_size = BitmapInfoHeaderWindows31.HeaderSize,
+                                .width = @intCast(image.width),
+                                .height = @intCast(image.height),
+                                .color_plane = 1,
+                                .bit_count = 24,
+                                .compression_method = .none,
+                                .image_raw_size = @intCast(image.width * image.height * 3),
+                                .horizontal_resolution = PixelsPerMeterResolution,
+                                .vertical_resolution = PixelsPerMeterResolution,
+                            },
+                        };
                     },
-                };
+                    .v4 => {
+                        bmp.file_header = .{
+                            .size = @intCast(image.width * image.height * 3 + @sizeOf(BitmapFileHeader) + BitmapInfoHeaderV4.HeaderSize),
+                            .pixel_offset = @sizeOf(BitmapFileHeader) + BitmapInfoHeaderV4.HeaderSize,
+                        };
+
+                        bmp.info_header = .{
+                            .v4 = .{
+                                .header_size = BitmapInfoHeaderV4.HeaderSize,
+                                .width = @intCast(image.width),
+                                .height = @intCast(image.height),
+                                .color_plane = 1,
+                                .bit_count = 24,
+                                .compression_method = .none,
+                                .image_raw_size = @intCast(image.width * image.height * 3),
+                                .horizontal_resolution = PixelsPerMeterResolution,
+                                .vertical_resolution = PixelsPerMeterResolution,
+                                .color_space = .srgb,
+                            },
+                        };
+                    },
+                    .v5 => {
+                        bmp.file_header = .{
+                            .size = @intCast(image.width * image.height * 3 + @sizeOf(BitmapFileHeader) + BitmapInfoHeaderV5.HeaderSize),
+                            .pixel_offset = @sizeOf(BitmapFileHeader) + BitmapInfoHeaderV5.HeaderSize,
+                        };
+
+                        bmp.info_header = .{
+                            .v5 = .{
+                                .header_size = BitmapInfoHeaderV5.HeaderSize,
+                                .width = @intCast(image.width),
+                                .height = @intCast(image.height),
+                                .color_plane = 1,
+                                .bit_count = 24,
+                                .compression_method = .none,
+                                .image_raw_size = @intCast(image.width * image.height * 3),
+                                .horizontal_resolution = PixelsPerMeterResolution,
+                                .vertical_resolution = PixelsPerMeterResolution,
+                                .color_space = .srgb,
+                                .red_mask = 0x0000FF00,
+                                .green_mask = 0x00FF0000,
+                                .blue_mask = 0xFF000000,
+                                .alpha_mask = 0x00000000,
+                            },
+                        };
+                    },
+                }
             },
             .bgra32 => {
                 bmp.file_header = .{
@@ -232,7 +289,6 @@ pub const BMP = struct {
         try bmp.write(stream, image.pixels);
 
         _ = allocator;
-        _ = encoder_options;
     }
 
     pub fn width(self: BMP) i32 {
@@ -265,9 +321,9 @@ pub const BMP = struct {
 
     pub fn pixelFormat(self: BMP) ImageUnmanaged.ReadError!PixelFormat {
         return switch (self.info_header) {
+            .windows31 => |windows31Header| try findPixelFormat(windows31Header.bit_count, windows31Header.compression_method),
             .v4 => |v4Header| try findPixelFormat(v4Header.bit_count, v4Header.compression_method),
             .v5 => |v5Header| try findPixelFormat(v5Header.bit_count, v5Header.compression_method),
-            else => return ImageUnmanaged.Error.Unsupported,
         };
     }
 
@@ -296,6 +352,16 @@ pub const BMP = struct {
 
         // Read pixel data
         _ = switch (self.info_header) {
+            .windows31 => |windows31Header| {
+                const pixel_width = windows31Header.width;
+                const pixel_height = windows31Header.height;
+                const pixel_format = try findPixelFormat(windows31Header.bit_count, windows31Header.compression_method);
+
+                pixels = try color.PixelStorage.init(allocator, pixel_format, @intCast(pixel_width * pixel_height));
+                errdefer pixels.deinit(allocator);
+
+                try readPixels(reader, pixel_width, pixel_height, &pixels);
+            },
             .v4 => |v4Header| {
                 const pixel_width = v4Header.width;
                 const pixel_height = v4Header.height;
@@ -316,7 +382,6 @@ pub const BMP = struct {
 
                 try readPixels(reader, pixel_width, pixel_height, &pixels);
             },
-            else => return ImageUnmanaged.Error.Unsupported,
         };
 
         return pixels;
@@ -330,14 +395,14 @@ pub const BMP = struct {
         try utils.writeStruct(writer, self.file_header, .little);
 
         switch (self.info_header) {
+            .windows31 => |windows31| {
+                try utils.writeStruct(writer, windows31, .little);
+            },
             .v4 => |v4| {
                 try utils.writeStruct(writer, v4, .little);
             },
             .v5 => |v5| {
                 try utils.writeStruct(writer, v5, .little);
-            },
-            else => {
-                return ImageUnmanaged.WriteError.InvalidData;
             },
         }
 
