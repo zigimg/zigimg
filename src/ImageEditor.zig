@@ -21,11 +21,7 @@ pub fn flipVertically(pixels: *const color.PixelStorage, height: usize, allocato
 }
 
 /// Create and allocate a cropped subsection of this image.
-pub fn crop(
-    image: *const ImageUnmanaged,
-    crop_area: Box,
-    allocator: std.mem.Allocator,
-) Error!ImageUnmanaged {
+pub fn crop(image: *const ImageUnmanaged, allocator: std.mem.Allocator, crop_area: Box) Error!ImageUnmanaged {
     const box = crop_area.clamp(image.width, image.height);
 
     const new_buffer = try color.PixelStorage.init(

@@ -143,8 +143,8 @@ pub fn flipVertically(self: *const Image) ImageEditor.Error!void {
 }
 
 /// Return a cropped copy of an image.
-pub fn crop(self: *const Image, area: ImageEditor.Box, allocator: std.mem.Allocator) ImageEditor.Error!Image {
-    return (try ImageUnmanaged.crop(@ptrCast(self), area, allocator)).toManaged(allocator);
+pub fn crop(self: *const Image, allocator: std.mem.Allocator, area: ImageEditor.Box) ImageEditor.Error!Image {
+    return (try ImageUnmanaged.crop(@ptrCast(self), allocator, area)).toManaged(allocator);
 }
 
 /// Iterate the pixel in pixel-format agnostic way. In the case of an animation, it returns an iterator for the first frame. The iterator is read-only.
