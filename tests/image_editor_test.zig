@@ -578,3 +578,36 @@ test "ImageEditor.crop: crop rgba64 images" {
         try helpers.expectEq(pixel, color.Rgba64{ .r = 32767, .g = 12345, .b = 54321, .a = 45213 });
     }
 }
+
+test "ImageEditor.crop: crop float32 images" {
+    var big_image = try Image.create(std.testing.allocator, 8, 8, .float32);
+    defer big_image.deinit();
+
+    // Set all pixels to transparent black
+    for (big_image.pixels.float32) |*pixel| {
+        pixel.* = .{ .r = 0, .g = 0, .b = 0, .a = 0 };
+    }
+
+    // Set the region that will be cropped
+    for (2..(2 + 2)) |y| {
+        const stride = y * big_image.width;
+
+        for (2..(2 + 2)) |x| {
+            big_image.pixels.float32[stride + x] = .{ .r = 0.123, .g = 0.456, .b = 0.789, .a = 0.543 };
+        }
+    }
+
+    var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
+    defer cropped.deinit();
+
+    try std.testing.expect(cropped.pixels == .float32);
+    try helpers.expectEq(cropped.width, 2);
+    try helpers.expectEq(cropped.height, 2);
+
+    for (cropped.pixels.float32) |pixel| {
+        try helpers.expectApproxEqAbs(pixel.r, 0.123, 0.0001);
+        try helpers.expectApproxEqAbs(pixel.g, 0.456, 0.0001);
+        try helpers.expectApproxEqAbs(pixel.b, 0.789, 0.0001);
+        try helpers.expectApproxEqAbs(pixel.a, 0.543, 0.0001);
+    }
+}
