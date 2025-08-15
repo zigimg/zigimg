@@ -278,3 +278,303 @@ test "ImageEditor.crop: crop grayscale16Alpha images" {
         try helpers.expectEq(pixel.alpha, 12345);
     }
 }
+
+test "ImageEditor.crop: crop rgb24 images" {
+    var big_image = try Image.create(std.testing.allocator, 8, 8, .rgb24);
+    defer big_image.deinit();
+
+    // Set all pixels to black
+    for (big_image.pixels.rgb24) |*pixel| {
+        pixel.* = .{ .r = 0, .g = 0, .b = 0 };
+    }
+
+    // Set the region that will be cropped
+    for (2..(2 + 2)) |y| {
+        const stride = y * big_image.width;
+
+        for (2..(2 + 2)) |x| {
+            big_image.pixels.rgb24[stride + x] = .{ .r = 123, .g = 211, .b = 191 };
+        }
+    }
+
+    var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
+    defer cropped.deinit();
+
+    try std.testing.expect(cropped.pixels == .rgb24);
+    try helpers.expectEq(cropped.width, 2);
+    try helpers.expectEq(cropped.height, 2);
+
+    for (cropped.pixels.rgb24) |pixel| {
+        try helpers.expectEq(pixel, color.Rgb24{ .r = 123, .g = 211, .b = 191 });
+    }
+}
+
+test "ImageEditor.crop: crop rgba32 images" {
+    var big_image = try Image.create(std.testing.allocator, 8, 8, .rgba32);
+    defer big_image.deinit();
+
+    // Set all pixels to transparent black
+    for (big_image.pixels.rgba32) |*pixel| {
+        pixel.* = .{ .r = 0, .g = 0, .b = 0, .a = 0 };
+    }
+
+    // Set the region that will be cropped
+    for (2..(2 + 2)) |y| {
+        const stride = y * big_image.width;
+
+        for (2..(2 + 2)) |x| {
+            big_image.pixels.rgba32[stride + x] = .{ .r = 123, .g = 211, .b = 191, .a = 97 };
+        }
+    }
+
+    var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
+    defer cropped.deinit();
+
+    try std.testing.expect(cropped.pixels == .rgba32);
+    try helpers.expectEq(cropped.width, 2);
+    try helpers.expectEq(cropped.height, 2);
+
+    for (cropped.pixels.rgba32) |pixel| {
+        try helpers.expectEq(pixel, color.Rgba32{ .r = 123, .g = 211, .b = 191, .a = 97 });
+    }
+}
+
+test "ImageEditor.crop: crop rgb332 images" {
+    var big_image = try Image.create(std.testing.allocator, 8, 8, .rgb332);
+    defer big_image.deinit();
+
+    // Set all pixels to black
+    for (big_image.pixels.rgb332) |*pixel| {
+        pixel.* = .{ .r = 0, .g = 0, .b = 0 };
+    }
+
+    // Set the region that will be cropped
+    for (2..(2 + 2)) |y| {
+        const stride = y * big_image.width;
+
+        for (2..(2 + 2)) |x| {
+            big_image.pixels.rgb332[stride + x] = .{ .r = 5, .g = 7, .b = 3 };
+        }
+    }
+
+    var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
+    defer cropped.deinit();
+
+    try std.testing.expect(cropped.pixels == .rgb332);
+    try helpers.expectEq(cropped.width, 2);
+    try helpers.expectEq(cropped.height, 2);
+
+    for (cropped.pixels.rgb332) |pixel| {
+        try helpers.expectEq(pixel, color.Rgb332{ .r = 5, .g = 7, .b = 3 });
+    }
+}
+
+test "ImageEditor.crop: crop rgb565 images" {
+    var big_image = try Image.create(std.testing.allocator, 8, 8, .rgb565);
+    defer big_image.deinit();
+
+    // Set all pixels to black
+    for (big_image.pixels.rgb565) |*pixel| {
+        pixel.* = .{ .r = 0, .g = 0, .b = 0 };
+    }
+
+    // Set the region that will be cropped
+    for (2..(2 + 2)) |y| {
+        const stride = y * big_image.width;
+
+        for (2..(2 + 2)) |x| {
+            big_image.pixels.rgb565[stride + x] = .{ .r = 21, .g = 57, .b = 15 };
+        }
+    }
+
+    var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
+    defer cropped.deinit();
+
+    try std.testing.expect(cropped.pixels == .rgb565);
+    try helpers.expectEq(cropped.width, 2);
+    try helpers.expectEq(cropped.height, 2);
+
+    for (cropped.pixels.rgb565) |pixel| {
+        try helpers.expectEq(pixel, color.Rgb565{ .r = 21, .g = 57, .b = 15 });
+    }
+}
+
+test "ImageEditor.crop: crop rgb555 images" {
+    var big_image = try Image.create(std.testing.allocator, 8, 8, .rgb555);
+    defer big_image.deinit();
+
+    // Set all pixels to black
+    for (big_image.pixels.rgb555) |*pixel| {
+        pixel.* = .{ .r = 0, .g = 0, .b = 0 };
+    }
+
+    // Set the region that will be cropped
+    for (2..(2 + 2)) |y| {
+        const stride = y * big_image.width;
+
+        for (2..(2 + 2)) |x| {
+            big_image.pixels.rgb555[stride + x] = .{ .r = 21, .g = 7, .b = 15 };
+        }
+    }
+
+    var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
+    defer cropped.deinit();
+
+    try std.testing.expect(cropped.pixels == .rgb555);
+    try helpers.expectEq(cropped.width, 2);
+    try helpers.expectEq(cropped.height, 2);
+
+    for (cropped.pixels.rgb555) |pixel| {
+        try helpers.expectEq(pixel, color.Rgb555{ .r = 21, .g = 7, .b = 15 });
+    }
+}
+
+test "ImageEditor.crop: crop bgr555 images" {
+    var big_image = try Image.create(std.testing.allocator, 8, 8, .bgr555);
+    defer big_image.deinit();
+
+    // Set all pixels to black
+    for (big_image.pixels.bgr555) |*pixel| {
+        pixel.* = .{ .r = 0, .g = 0, .b = 0 };
+    }
+
+    // Set the region that will be cropped
+    for (2..(2 + 2)) |y| {
+        const stride = y * big_image.width;
+
+        for (2..(2 + 2)) |x| {
+            big_image.pixels.bgr555[stride + x] = .{ .r = 21, .g = 7, .b = 15 };
+        }
+    }
+
+    var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
+    defer cropped.deinit();
+
+    try std.testing.expect(cropped.pixels == .bgr555);
+    try helpers.expectEq(cropped.width, 2);
+    try helpers.expectEq(cropped.height, 2);
+
+    for (cropped.pixels.bgr555) |pixel| {
+        try helpers.expectEq(pixel, color.Bgr555{ .r = 21, .g = 7, .b = 15 });
+    }
+}
+
+test "ImageEditor.crop: crop bgr24 images" {
+    var big_image = try Image.create(std.testing.allocator, 8, 8, .bgr24);
+    defer big_image.deinit();
+
+    // Set all pixels to black
+    for (big_image.pixels.bgr24) |*pixel| {
+        pixel.* = .{ .r = 0, .g = 0, .b = 0 };
+    }
+
+    // Set the region that will be cropped
+    for (2..(2 + 2)) |y| {
+        const stride = y * big_image.width;
+
+        for (2..(2 + 2)) |x| {
+            big_image.pixels.bgr24[stride + x] = .{ .r = 123, .g = 211, .b = 191 };
+        }
+    }
+
+    var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
+    defer cropped.deinit();
+
+    try std.testing.expect(cropped.pixels == .bgr24);
+    try helpers.expectEq(cropped.width, 2);
+    try helpers.expectEq(cropped.height, 2);
+
+    for (cropped.pixels.bgr24) |pixel| {
+        try helpers.expectEq(pixel, color.Bgr24{ .r = 123, .g = 211, .b = 191 });
+    }
+}
+
+test "ImageEditor.crop: crop bgra32 images" {
+    var big_image = try Image.create(std.testing.allocator, 8, 8, .bgra32);
+    defer big_image.deinit();
+
+    // Set all pixels to transparent black
+    for (big_image.pixels.bgra32) |*pixel| {
+        pixel.* = .{ .r = 0, .g = 0, .b = 0, .a = 0 };
+    }
+
+    // Set the region that will be cropped
+    for (2..(2 + 2)) |y| {
+        const stride = y * big_image.width;
+
+        for (2..(2 + 2)) |x| {
+            big_image.pixels.bgra32[stride + x] = .{ .r = 123, .g = 211, .b = 191, .a = 97 };
+        }
+    }
+
+    var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
+    defer cropped.deinit();
+
+    try std.testing.expect(cropped.pixels == .bgra32);
+    try helpers.expectEq(cropped.width, 2);
+    try helpers.expectEq(cropped.height, 2);
+
+    for (cropped.pixels.bgra32) |pixel| {
+        try helpers.expectEq(pixel, color.Bgra32{ .r = 123, .g = 211, .b = 191, .a = 97 });
+    }
+}
+
+test "ImageEditor.crop: crop rgb48 images" {
+    var big_image = try Image.create(std.testing.allocator, 8, 8, .rgb48);
+    defer big_image.deinit();
+
+    // Set all pixels to black
+    for (big_image.pixels.rgb48) |*pixel| {
+        pixel.* = .{ .r = 0, .g = 0, .b = 0 };
+    }
+
+    // Set the region that will be cropped
+    for (2..(2 + 2)) |y| {
+        const stride = y * big_image.width;
+
+        for (2..(2 + 2)) |x| {
+            big_image.pixels.rgb48[stride + x] = .{ .r = 32767, .g = 12345, .b = 54321 };
+        }
+    }
+
+    var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
+    defer cropped.deinit();
+
+    try std.testing.expect(cropped.pixels == .rgb48);
+    try helpers.expectEq(cropped.width, 2);
+    try helpers.expectEq(cropped.height, 2);
+
+    for (cropped.pixels.rgb48) |pixel| {
+        try helpers.expectEq(pixel, color.Rgb48{ .r = 32767, .g = 12345, .b = 54321 });
+    }
+}
+
+test "ImageEditor.crop: crop rgba64 images" {
+    var big_image = try Image.create(std.testing.allocator, 8, 8, .rgba64);
+    defer big_image.deinit();
+
+    // Set all pixels to transparant black
+    for (big_image.pixels.rgba64) |*pixel| {
+        pixel.* = .{ .r = 0, .g = 0, .b = 0, .a = 0 };
+    }
+
+    // Set the region that will be cropped
+    for (2..(2 + 2)) |y| {
+        const stride = y * big_image.width;
+
+        for (2..(2 + 2)) |x| {
+            big_image.pixels.rgba64[stride + x] = .{ .r = 32767, .g = 12345, .b = 54321, .a = 45213 };
+        }
+    }
+
+    var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
+    defer cropped.deinit();
+
+    try std.testing.expect(cropped.pixels == .rgba64);
+    try helpers.expectEq(cropped.width, 2);
+    try helpers.expectEq(cropped.height, 2);
+
+    for (cropped.pixels.rgba64) |pixel| {
+        try helpers.expectEq(pixel, color.Rgba64{ .r = 32767, .g = 12345, .b = 54321, .a = 45213 });
+    }
+}
