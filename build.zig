@@ -1,6 +1,6 @@
 const Build = @import("std").Build;
 
-pub const zigimg = @import("zigimg");
+pub const zigimg = @import("zigimg.zig");
 
 pub fn build(b: *Build) void {
     const target = b.standardTargetOptions(.{});
