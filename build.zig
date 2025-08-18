@@ -1,5 +1,7 @@
 const Build = @import("std").Build;
 
+pub const zigimg = @import("zigimg");
+
 pub fn build(b: *Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
