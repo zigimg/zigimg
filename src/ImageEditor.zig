@@ -24,11 +24,20 @@ pub fn flipVertically(pixels: *const color.PixelStorage, height: usize, allocato
 pub fn crop(image: *const ImageUnmanaged, allocator: std.mem.Allocator, crop_area: Box) Error!ImageUnmanaged {
     const box = crop_area.clamp(image.width, image.height);
 
-    const new_buffer = try color.PixelStorage.init(
+    var cropped_pixels = try color.PixelStorage.init(
         allocator,
         image.pixelFormat(),
         box.width * box.height,
     );
+
+    if (image.pixelFormat().isIndexed()) {
+        const source_palette = image.pixels.getPalette().?;
+        cropped_pixels.resizePalette(source_palette.len);
+
+        const destination_palette = cropped_pixels.getPalette().?;
+
+        @memcpy(destination_palette, source_palette);
+    }
 
     if (box.width == 0 or box.height == 0 or
         image.width == 0 or image.height == 0)
@@ -36,28 +45,29 @@ pub fn crop(image: *const ImageUnmanaged, allocator: std.mem.Allocator, crop_are
         return ImageUnmanaged{
             .width = box.width,
             .height = box.height,
-            .pixels = new_buffer,
+            .pixels = cropped_pixels,
         };
     }
+
     const original_data = image.pixels.asBytes();
-    const new_data = new_buffer.asBytes();
+    const cropped_data = cropped_pixels.asBytes();
     const pixel_size = image.pixelFormat().pixelStride();
-    std.debug.assert(new_data.len == box.width * box.height * pixel_size);
+    std.debug.assert(cropped_data.len == box.width * box.height * pixel_size);
 
     var y: usize = 0;
     const row_byte_width = box.width * pixel_size;
     while (y < box.height) : (y += 1) {
         const start_pixel = (box.x * pixel_size) + ((y + box.y) * image.width * pixel_size);
-        const src = original_data[start_pixel .. start_pixel + row_byte_width];
-        const dest_pixel = y * row_byte_width;
-        const dst = new_data[dest_pixel .. dest_pixel + row_byte_width];
-        @memcpy(dst, src);
+        const source = original_data[start_pixel .. start_pixel + row_byte_width];
+        const destination_pixel = y * row_byte_width;
+        const destination = cropped_data[destination_pixel .. destination_pixel + row_byte_width];
+        @memcpy(destination, source);
     }
 
     return ImageUnmanaged{
         .width = box.width,
         .height = box.height,
-        .pixels = new_buffer,
+        .pixels = cropped_pixels,
     };
 }
 

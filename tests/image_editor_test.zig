@@ -611,3 +611,201 @@ test "ImageEditor.crop: crop float32 images" {
         try helpers.expectApproxEqAbs(pixel.a, 0.543, 0.0001);
     }
 }
+
+test "ImageEditor.crop: crop indexed1 images" {
+    var big_image = try Image.create(std.testing.allocator, 8, 8, .indexed1);
+    defer big_image.deinit();
+
+    // Setup the palette
+    big_image.pixels.indexed1.palette[0] = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
+    big_image.pixels.indexed1.palette[1] = .{ .r = 255, .g = 255, .b = 255, .a = 255 };
+
+    // Set all pixels to index 0
+    for (big_image.pixels.indexed1.indices) |*index| {
+        index.* = 0;
+    }
+
+    // Set the region that will be cropped
+    for (2..(2 + 2)) |y| {
+        const stride = y * big_image.width;
+
+        for (2..(2 + 2)) |x| {
+            big_image.pixels.indexed1.indices[stride + x] = 1;
+        }
+    }
+
+    var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
+    defer cropped.deinit();
+
+    try std.testing.expect(cropped.pixels == .indexed1);
+    try helpers.expectEq(cropped.width, 2);
+    try helpers.expectEq(cropped.height, 2);
+
+    for (0..big_image.pixels.indexed1.palette.len) |index| {
+        try helpers.expectEq(cropped.pixels.indexed1.palette[index], big_image.pixels.indexed1.palette[index]);
+    }
+
+    for (cropped.pixels.indexed1.indices) |index| {
+        try helpers.expectEq(index, 1);
+    }
+}
+
+test "ImageEditor.crop: crop indexed2 images" {
+    var big_image = try Image.create(std.testing.allocator, 8, 8, .indexed2);
+    defer big_image.deinit();
+
+    // Setup the palette
+    for (0..big_image.pixels.indexed2.palette.len) |palette_index| {
+        const grayscale_value: u8 = @intFromFloat(@as(f32, @floatFromInt(palette_index)) / @as(f32, @floatFromInt(big_image.pixels.indexed2.palette.len)) * 255.0);
+        big_image.pixels.indexed2.palette[0] = .{ .r = grayscale_value, .g = grayscale_value, .b = grayscale_value, .a = 255 };
+    }
+
+    // Set all pixels to index 0
+    for (big_image.pixels.indexed2.indices) |*index| {
+        index.* = 0;
+    }
+
+    // Set the region that will be cropped
+    for (2..(2 + 2)) |y| {
+        const stride = y * big_image.width;
+
+        for (2..(2 + 2)) |x| {
+            big_image.pixels.indexed2.indices[stride + x] = 2;
+        }
+    }
+
+    var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
+    defer cropped.deinit();
+
+    try std.testing.expect(cropped.pixels == .indexed2);
+    try helpers.expectEq(cropped.width, 2);
+    try helpers.expectEq(cropped.height, 2);
+
+    for (0..big_image.pixels.indexed2.palette.len) |index| {
+        try helpers.expectEq(cropped.pixels.indexed2.palette[index], big_image.pixels.indexed2.palette[index]);
+    }
+
+    for (cropped.pixels.indexed2.indices) |index| {
+        try helpers.expectEq(index, 2);
+    }
+}
+
+test "ImageEditor.crop: crop indexed4 images" {
+    var big_image = try Image.create(std.testing.allocator, 8, 8, .indexed4);
+    defer big_image.deinit();
+
+    // Setup the palette
+    for (0..big_image.pixels.indexed4.palette.len) |palette_index| {
+        const grayscale_value: u8 = @intFromFloat(@as(f32, @floatFromInt(palette_index)) / @as(f32, @floatFromInt(big_image.pixels.indexed4.palette.len)) * 255.0);
+        big_image.pixels.indexed4.palette[0] = .{ .r = grayscale_value, .g = grayscale_value, .b = grayscale_value, .a = 255 };
+    }
+
+    // Set all pixels to index 0
+    for (big_image.pixels.indexed4.indices) |*index| {
+        index.* = 0;
+    }
+
+    // Set the region that will be cropped
+    for (2..(2 + 2)) |y| {
+        const stride = y * big_image.width;
+
+        for (2..(2 + 2)) |x| {
+            big_image.pixels.indexed4.indices[stride + x] = 7;
+        }
+    }
+
+    var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
+    defer cropped.deinit();
+
+    try std.testing.expect(cropped.pixels == .indexed4);
+    try helpers.expectEq(cropped.width, 2);
+    try helpers.expectEq(cropped.height, 2);
+
+    for (0..big_image.pixels.indexed4.palette.len) |index| {
+        try helpers.expectEq(cropped.pixels.indexed4.palette[index], big_image.pixels.indexed4.palette[index]);
+    }
+
+    for (cropped.pixels.indexed4.indices) |index| {
+        try helpers.expectEq(index, 7);
+    }
+}
+
+test "ImageEditor.crop: crop indexed8 images" {
+    var big_image = try Image.create(std.testing.allocator, 8, 8, .indexed8);
+    defer big_image.deinit();
+
+    // Setup the palette
+    for (0..big_image.pixels.indexed8.palette.len) |palette_index| {
+        const grayscale_value: u8 = @intFromFloat(@as(f32, @floatFromInt(palette_index)) / @as(f32, @floatFromInt(big_image.pixels.indexed8.palette.len)) * 255.0);
+        big_image.pixels.indexed8.palette[0] = .{ .r = grayscale_value, .g = grayscale_value, .b = grayscale_value, .a = 255 };
+    }
+
+    // Set all pixels to index 0
+    for (big_image.pixels.indexed8.indices) |*index| {
+        index.* = 0;
+    }
+
+    // Set the region that will be cropped
+    for (2..(2 + 2)) |y| {
+        const stride = y * big_image.width;
+
+        for (2..(2 + 2)) |x| {
+            big_image.pixels.indexed8.indices[stride + x] = 125;
+        }
+    }
+
+    var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
+    defer cropped.deinit();
+
+    try std.testing.expect(cropped.pixels == .indexed8);
+    try helpers.expectEq(cropped.width, 2);
+    try helpers.expectEq(cropped.height, 2);
+
+    for (0..big_image.pixels.indexed8.palette.len) |index| {
+        try helpers.expectEq(cropped.pixels.indexed8.palette[index], big_image.pixels.indexed8.palette[index]);
+    }
+
+    for (cropped.pixels.indexed8.indices) |index| {
+        try helpers.expectEq(index, 125);
+    }
+}
+
+test "ImageEditor.crop: crop indexed16 images" {
+    var big_image = try Image.create(std.testing.allocator, 8, 8, .indexed16);
+    defer big_image.deinit();
+
+    // Setup the palette
+    for (0..big_image.pixels.indexed16.palette.len) |palette_index| {
+        const grayscale_value: u8 = @intFromFloat(@as(f32, @floatFromInt(palette_index)) / @as(f32, @floatFromInt(big_image.pixels.indexed16.palette.len)) * 255.0);
+        big_image.pixels.indexed16.palette[0] = .{ .r = grayscale_value, .g = grayscale_value, .b = grayscale_value, .a = 255 };
+    }
+
+    // Set all pixels to index 0
+    for (big_image.pixels.indexed16.indices) |*index| {
+        index.* = 0;
+    }
+
+    // Set the region that will be cropped
+    for (2..(2 + 2)) |y| {
+        const stride = y * big_image.width;
+
+        for (2..(2 + 2)) |x| {
+            big_image.pixels.indexed16.indices[stride + x] = 32767;
+        }
+    }
+
+    var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
+    defer cropped.deinit();
+
+    try std.testing.expect(cropped.pixels == .indexed16);
+    try helpers.expectEq(cropped.width, 2);
+    try helpers.expectEq(cropped.height, 2);
+
+    for (0..big_image.pixels.indexed16.palette.len) |index| {
+        try helpers.expectEq(cropped.pixels.indexed16.palette[index], big_image.pixels.indexed16.palette[index]);
+    }
+
+    for (cropped.pixels.indexed16.indices) |index| {
+        try helpers.expectEq(index, 32767);
+    }
+}
