@@ -142,6 +142,11 @@ pub fn flipVertically(self: *const Image) ImageEditor.Error!void {
     try ImageUnmanaged.flipVertically(@ptrCast(self), self.allocator);
 }
 
+/// Return a cropped copy of an image.
+pub fn crop(self: *const Image, allocator: std.mem.Allocator, area: ImageEditor.Box) ImageEditor.Error!Image {
+    return (try ImageUnmanaged.crop(@ptrCast(self), allocator, area)).toManaged(allocator);
+}
+
 /// Iterate the pixel in pixel-format agnostic way. In the case of an animation, it returns an iterator for the first frame. The iterator is read-only.
 // FIXME: *const Image is a workaround for a stage2 bug because determining the pass a parameter by value or pointer depending of the size is not mature yet
 // and fails. For now we are explictly requesting to access only a const pointer.
