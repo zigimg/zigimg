@@ -4,17 +4,17 @@ pub fn build(b: *Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    _ = b.addModule("zigimg", .{
+    const zigimg_module = b.addModule("zigimg", .{
         .root_source_file = b.path("zigimg.zig"),
+        .target = target,
+        .optimize = optimize,
     });
 
     const test_filters = b.option([]const []const u8, "test-filter", "Skip tests that do not match any filter") orelse &[0][]const u8{};
 
     const zigimg_build_test = b.addTest(.{
         .name = "zigimgtest",
-        .root_source_file = b.path("zigimg.zig"),
-        .target = target,
-        .optimize = optimize,
+        .root_module = zigimg_module,
         .filters = test_filters,
     });
 
