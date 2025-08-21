@@ -1,6 +1,6 @@
 const std = @import("std");
 const testing = std.testing;
-const Image = @import("../src/Image.zig");
+// const Image = @import("../src/Image.zig");
 
 pub const zigimg_test_allocator = std.testing.allocator;
 pub const fixtures_path = "../test-suite/fixtures/";
@@ -36,10 +36,10 @@ pub fn testOpenFile(file_path: []const u8) !std.fs.File {
         if (err == error.FileNotFound) return error.SkipZigTest else return err;
 }
 
-pub fn testImageFromFile(image_path: []const u8) !Image {
-    return Image.fromFilePath(zigimg_test_allocator, image_path) catch |err|
-        if (err == error.FileNotFound) return error.SkipZigTest else return err;
-}
+// pub fn testImageFromFile(image_path: []const u8) !Image {
+//     return Image.fromFilePath(zigimg_test_allocator, image_path) catch |err|
+//         if (err == error.FileNotFound) return error.SkipZigTest else return err;
+// }
 
 pub fn testReadFile(file_path: []const u8, buffer: []u8) ![]u8 {
     return std.fs.cwd().readFile(file_path, buffer) catch |err|

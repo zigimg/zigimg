@@ -1,6 +1,3 @@
-const std = @import("std");
-pub const Stream = std.io.StreamSource;
-
 const color = @import("color.zig");
 const FormatInterface = @import("FormatInterface.zig");
 const formats = @import("formats.zig");
@@ -8,6 +5,7 @@ const Image = @import("Image.zig");
 const ImageEditor = @import("ImageEditor.zig");
 const PixelFormat = @import("pixel_format.zig").PixelFormat;
 const PixelFormatConverter = @import("PixelFormatConverter.zig");
+const std = @import("std");
 const utils = @import("utils.zig");
 
 const SupportedFormats = struct {
@@ -59,15 +57,12 @@ pub const Error = error{
 pub const ReadError = Error ||
     std.mem.Allocator.Error ||
     utils.StructReadError ||
-    std.io.StreamSource.SeekError ||
-    std.io.StreamSource.GetSeekPosError ||
+    std.Io.Reader.Error ||
     error{ EndOfStream, StreamTooLong, InvalidData };
 
 pub const WriteError = Error ||
     std.mem.Allocator.Error ||
-    std.io.StreamSource.WriteError ||
-    std.io.StreamSource.SeekError ||
-    std.io.StreamSource.GetSeekPosError ||
+    std.Io.Writer.Error ||
     std.fs.File.OpenError ||
     error{ EndOfStream, InvalidData, UnfinishedBits };
 
