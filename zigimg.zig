@@ -8,6 +8,7 @@ pub const math = @import("src/math.zig");
 pub const PixelFormat = @import("src/pixel_format.zig").PixelFormat;
 // pub const PixelFormatConverter = @import("src/PixelFormatConverter.zig");
 pub const Colors = @import("src/predefined_colors.zig").Colors;
+pub const io = @import("src/io.zig");
 
 test {
     const std = @import("std");
@@ -17,6 +18,7 @@ test {
         // @import("src/compressions/lzw.zig"),
         // @import("tests/buffered_stream_source_test.zig"),
         @import("tests/color_test.zig"),
+        @import("tests/io_test.zig"),
         // @import("tests/formats/bmp_test.zig"),
         // @import("tests/formats/gif_test.zig"),
         // @import("tests/formats/iff_test.zig"),
