@@ -4,13 +4,13 @@ const builtin = @import("builtin");
 pub const ReadStream = union(enum) {
     memory: std.Io.Reader,
     file: std.fs.File.Reader,
-    buffered_file: BufferedFileStream,
+    buffered_file: BufferedFileReadStream,
 
     pub const Error = SeekError || EndPosError;
     pub const SeekError = std.fs.File.Reader.SeekError;
     pub const EndPosError = std.fs.File.Reader.SizeError;
 
-    const BufferedFileStream = struct {
+    const BufferedFileReadStream = struct {
         buffer: [4096]u8 = undefined,
         reader: std.fs.File.Reader = undefined,
     };
@@ -28,7 +28,7 @@ pub const ReadStream = union(enum) {
     }
 
     pub fn initBufferedFile(file: std.fs.File) ReadStream {
-        var file_stream: BufferedFileStream = .{};
+        var file_stream: BufferedFileReadStream = .{};
 
         file_stream.reader = file.reader(file_stream.buffer[0..]);
 
@@ -149,6 +149,93 @@ pub const ReadStream = union(enum) {
             .memory => |*memory| memory.buffer.len,
             .file => |*file_reader| file_reader.getSize(),
             .buffered_file => |*buffered_file| buffered_file.reader.getSize(),
+        };
+    }
+};
+
+pub const WriteStream = union(enum) {
+    memory: std.Io.Writer,
+    file: std.fs.File.Writer,
+    buffered_file: BufferedFileWriteStream,
+
+    pub const Error = SeekError || std.Io.Writer.Error;
+    pub const SeekError = std.fs.File.SeekError;
+
+    const BufferedFileWriteStream = struct {
+        buffer: [4096]u8 = undefined,
+        writer: std.fs.File.Writer = undefined,
+    };
+
+    pub fn initMemory(buffer: []u8) WriteStream {
+        return .{
+            .memory = std.Io.Writer.fixed(buffer),
+        };
+    }
+
+    pub fn initFile(file: std.fs.File, buffer: []u8) WriteStream {
+        return .{
+            .file = file.writer(buffer),
+        };
+    }
+
+    pub fn initBufferedFile(file: std.fs.File) WriteStream {
+        var file_stream: BufferedFileWriteStream = .{};
+
+        file_stream.writer = file.writer(file_stream.buffer[0..]);
+
+        return .{
+            .buffered_file = file_stream,
+        };
+    }
+
+    pub fn writer(self: *WriteStream) *std.io.Writer {
+        return switch (self.*) {
+            .memory => |*memory_writer| memory_writer,
+            .file => |*file_writer| &file_writer.interface,
+            .buffered_file => |*buffered_file| &buffered_file.writer.interface,
+        };
+    }
+
+    pub fn seekTo(self: *WriteStream, offset: u64) SeekError!void {
+        switch (self.*) {
+            .memory => |*memory| {
+                if (offset >= memory.buffer.len) {
+                    return SeekError.Unseekable;
+                }
+
+                memory.end = offset;
+            },
+            .file => |*file_writer| {
+                self.flush() catch {
+                    return SeekError.Unexpected;
+                };
+                file_writer.interface.end = 0;
+                try file_writer.seekTo(offset);
+            },
+            .buffered_file => |*buffered_file| {
+                self.flush() catch {
+                    return SeekError.Unexpected;
+                };
+
+                buffered_file.writer.interface.end = 0;
+                try buffered_file.writer.seekTo(offset);
+            },
+        }
+    }
+
+    pub fn getPos(self: *const WriteStream) u64 {
+        return switch (self.*) {
+            .memory => |*memory| memory.end,
+            .file => |*file_writer| file_writer.pos + file_writer.interface.end,
+            .buffered_file => |*buffered_file| buffered_file.writer.pos + buffered_file.writer.interface.end,
+        };
+    }
+
+    pub fn flush(self: *WriteStream) std.Io.Writer.Error!void {
+        return switch (self.*) {
+            .memory => |*memory| memory.flush(),
+            .file => |*file_writer| file_writer.interface.flush(),
+            .buffered_file => |*buffered_file| buffered_file.writer.interface.flush(),
         };
     }
 };
