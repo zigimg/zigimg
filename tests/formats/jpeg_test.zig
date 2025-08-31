@@ -202,3 +202,99 @@ test "Read progressive jpeg with restart intervals" {
 
     try testing.expect(pixels_opt != null);
 }
+
+fn averageDelta(img0: Image, img1: Image) !f32 {
+    try testing.expectEqual(img0.width, img1.width);
+    try testing.expectEqual(img0.height, img1.height);
+
+    const w = img0.width;
+    const h = img0.height;
+
+    var sum: f64 = 0.0;
+    var n: usize = 0;
+
+    switch (img0.pixelFormat()) {
+        .rgb24 => {
+            try testing.expectEqual(@as(@TypeOf(img0.pixelFormat()), img1.pixelFormat()), .rgb24);
+            const p0 = img0.pixels.rgb24;
+            const p1 = img1.pixels.rgb24;
+            for (0..h) |y| {
+                for (0..w) |x| {
+                    const idx = y * w + x;
+                    sum += @abs(@as(f64, @floatFromInt(p0[idx].r)) - @as(f64, @floatFromInt(p1[idx].r)));
+                    sum += @abs(@as(f64, @floatFromInt(p0[idx].g)) - @as(f64, @floatFromInt(p1[idx].g)));
+                    sum += @abs(@as(f64, @floatFromInt(p0[idx].b)) - @as(f64, @floatFromInt(p1[idx].b)));
+                    n += 3;
+                }
+            }
+        },
+        .grayscale8 => {
+            try testing.expectEqual(@as(@TypeOf(img0.pixelFormat()), img1.pixelFormat()), .grayscale8);
+            const p0 = img0.pixels.grayscale8;
+            const p1 = img1.pixels.grayscale8;
+            for (0..h) |y| {
+                for (0..w) |x| {
+                    const idx = y * w + x;
+                    sum += @abs(@as(f64, @floatFromInt(p0[idx].value)) - @as(f64, @floatFromInt(p1[idx].value)));
+                    n += 1;
+                }
+            }
+        },
+        else => @panic("unsupported pixel format in averageDelta"),
+    }
+
+    return @as(f32, @floatCast(sum / @as(f64, @floatFromInt(n))));
+}
+
+fn encodeDecode(img: *const Image, quality: u8) !Image {
+    var arena = std.heap.ArenaAllocator.init(helpers.zigimg_test_allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
+    // Generous buffer for small test images
+    const buf = try alloc.alloc(u8, 1 << 20);
+    defer alloc.free(buf);
+
+    const encoded = try img.writeToMemory(buf, .{ .jpeg = .{ .quality = quality } });
+    return try Image.fromMemory(helpers.zigimg_test_allocator, encoded);
+}
+
+test "JPEG writer round-trip RGB average delta (q=60)" {
+    var img = try Image.create(helpers.zigimg_test_allocator, 128, 96, .rgb24);
+    defer img.deinit();
+
+    // Fill with a smooth gradient and some color variation
+    for (0..img.height) |y| {
+        for (0..img.width) |x| {
+            const fx = @as(f32, @floatFromInt(x)) / @as(f32, @floatFromInt(img.width - 1));
+            const fy = @as(f32, @floatFromInt(y)) / @as(f32, @floatFromInt(img.height - 1));
+            const r: u8 = @intFromFloat(fx * 255.0);
+            const g: u8 = @intFromFloat(fy * 255.0);
+            const b: u8 = @intFromFloat((1.0 - 0.5 * fx - 0.5 * fy) * 255.0);
+            img.pixels.rgb24[y * img.width + x] = color.Rgb24.from.rgb(r, g, b);
+        }
+    }
+
+    var decoded = try encodeDecode(&img, 60);
+    defer decoded.deinit();
+    const avg = try averageDelta(img, decoded);
+    std.debug.print("JPEG writer RGB q=60 avg_delta={d:.2} (<= 3.0)\n", .{avg});
+    try testing.expect(avg <= 3.0);
+}
+
+test "JPEG writer round-trip grayscale average delta (q=60)" {
+    var img = try Image.create(helpers.zigimg_test_allocator, 64, 64, .grayscale8);
+    defer img.deinit();
+    for (0..img.height) |y| {
+        for (0..img.width) |x| {
+            const v: u8 = @intCast((x + y) % 256);
+            img.pixels.grayscale8[y * img.width + x] = .{ .value = v };
+        }
+    }
+
+    var decoded = try encodeDecode(&img, 60);
+    defer decoded.deinit();
+    const avg = try averageDelta(img, decoded);
+    std.debug.print("JPEG writer Gray q=60 avg_delta={d:.2} (<= 3.0)\n", .{avg});
+    try testing.expect(avg <= 3.0);
+}

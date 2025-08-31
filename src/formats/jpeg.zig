@@ -21,6 +21,7 @@ const HuffmanReader = @import("./jpeg/huffman.zig").Reader;
 const HuffmanTable = @import("./jpeg/huffman.zig").Table;
 const Frame = @import("./jpeg/Frame.zig");
 const Scan = @import("./jpeg/Scan.zig");
+const JPEGWriter = @import("./jpeg/writer.zig").JPEGWriter;
 
 // TODO: Precisions other than 8-bit
 
@@ -35,6 +36,11 @@ pub const JPEG = struct {
     dc_huffman_tables: [4]?HuffmanTable = @splat(null),
     ac_huffman_tables: [4]?HuffmanTable = @splat(null),
     restart_interval: u16 = 0,
+
+    pub const EncoderOptions = struct {
+        /// JPEG quality (1-100, where 100 is highest quality)
+        quality: u8 = 75,
+    };
 
     pub fn init(allocator: Allocator) JPEG {
         return .{
@@ -220,11 +226,36 @@ pub const JPEG = struct {
         return result;
     }
 
-    fn writeImage(allocator: Allocator, write_stream: *ImageUnmanaged.Stream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageWriteError!void {
+    fn writeImage(
+        allocator: Allocator,
+        write_stream: *ImageUnmanaged.Stream,
+        image: ImageUnmanaged,
+        encoder_options: ImageUnmanaged.EncoderOptions,
+    ) ImageWriteError!void {
         _ = allocator;
-        _ = write_stream;
-        _ = image;
-        _ = encoder_options;
+        // Extract JPEG-specific encoder options
+        const jpeg_options = encoder_options.jpeg;
+
+        // Validate quality parameter
+        if (jpeg_options.quality == 0 or jpeg_options.quality > 100) {
+            return ImageWriteError.InvalidData;
+        }
+
+        // Validate that the image can be encoded as JPEG
+        try JPEGWriter.validateImage(image);
+
+        // Create buffered writer for better performance
+        var buffered_stream = buffered_stream_source.bufferedStreamSourceWriter(write_stream);
+        const writer = buffered_stream.writer();
+
+        // Create JPEG writer
+        var jpeg_writer = JPEGWriter.init(writer.any());
+
+        // Encode the image
+        try jpeg_writer.encode(image, jpeg_options.quality);
+
+        // Flush the buffered writer to ensure all data is written
+        try buffered_stream.flush();
     }
 
     fn parseDefineHuffmanTables(self: *JPEG, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!void {
