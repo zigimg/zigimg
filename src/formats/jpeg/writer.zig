@@ -3,6 +3,8 @@ const ImageUnmanaged = @import("../../ImageUnmanaged.zig");
 const color = @import("../../color.zig");
 const PixelFormat = @import("../../pixel_format.zig").PixelFormat;
 const math = std.math;
+const utils = @import("./utils.zig");
+const huffman = @import("./huffman.zig");
 
 // Constants from the Go implementation
 const blockSize = 64;
@@ -15,11 +17,6 @@ const huffIndexLuminanceAC = 1;
 const huffIndexChrominanceDC = 2;
 const huffIndexChrominanceAC = 3;
 
-// JPEG marker constants
-const dqtMarker = 0xdb;
-const sof0Marker = 0xc0;
-const dhtMarker = 0xc4;
-
 // Huffman index aliases for convenience
 const huffIndex = struct {
     pub const luminanceDC = huffIndexLuminanceDC;
@@ -28,7 +25,7 @@ const huffIndex = struct {
     pub const chrominanceAC = huffIndexChrominanceAC;
 };
 
-// Huffman table specification type
+// Huffman table specification type (reusing existing huffman.Table structure)
 const HuffmanSpec = struct {
     count: [16]u8,
     value: []const u8,
@@ -327,7 +324,7 @@ pub const JPEGWriter = struct {
     /// Write Start of Frame (Baseline DCT) marker
     pub fn writeSOF0(self: *JPEGWriter, width: u16, height: u16, components: u8) ImageUnmanaged.WriteError!void {
         const markerlen = 8 + 3 * @as(usize, components);
-        self.writeMarkerHeader(sof0Marker, markerlen); // SOF0 marker
+        self.writeMarkerHeader(@as(u8, @intCast(@intFromEnum(utils.Markers.sof0) & 0xFF)), markerlen); // SOF0 marker
 
         // 8-bit precision
         self.buf[0] = 8;
@@ -373,7 +370,7 @@ pub const JPEGWriter = struct {
     /// Write Define Quantization Tables marker
     pub fn writeDQT(self: *JPEGWriter) ImageUnmanaged.WriteError!void {
         const markerlen = 2 + nQuantIndex * (1 + blockSize);
-        self.writeMarkerHeader(dqtMarker, markerlen); // DQT marker
+        self.writeMarkerHeader(@as(u8, @intCast(@intFromEnum(utils.Markers.define_quantization_tables) & 0xFF)), markerlen); // DQT marker
 
         for (0..nQuantIndex) |i| {
             // Write table index (8-bit precision, destination i)
@@ -402,7 +399,7 @@ pub const JPEGWriter = struct {
         }
 
         // Write DHT marker header
-        self.writeMarkerHeader(dhtMarker, markerlen); // DHT marker
+        self.writeMarkerHeader(@as(u8, @intCast(@intFromEnum(utils.Markers.define_huffman_tables) & 0xFF)), markerlen); // DHT marker
 
         // Write Huffman table data
         const table_classes = [_]u8{ 0x00, 0x10, 0x01, 0x11 }; // DC luminance, AC luminance, DC chrominance, AC chrominance
@@ -603,8 +600,25 @@ pub const JPEGWriter = struct {
 
         for (0..8) |j| {
             for (0..8) |i| {
-                const x = @as(usize, @intCast(@min(@max(px + @as(i32, @intCast(i)), 0), @as(i32, @intCast(image.width - 1)))));
-                const y = @as(usize, @intCast(@min(@max(py + @as(i32, @intCast(j)), 0), @as(i32, @intCast(image.height - 1)))));
+                var sx = px + @as(i32, @intCast(i));
+                var sy = py + @as(i32, @intCast(j));
+
+                // Clamp coordinates to image bounds (same as Go implementation)
+                if (sx < 0) {
+                    sx = 0;
+                }
+                if (sx > @as(i32, @intCast(image.width - 1))) {
+                    sx = @as(i32, @intCast(image.width - 1));
+                }
+                if (sy < 0) {
+                    sy = 0;
+                }
+                if (sy > @as(i32, @intCast(image.height - 1))) {
+                    sy = @as(i32, @intCast(image.height - 1));
+                }
+
+                const x = @as(usize, @intCast(sx));
+                const y = @as(usize, @intCast(sy));
 
                 // Get pixel from RGB24 data
                 const pixel_index = y * image.width + x;
@@ -647,8 +661,25 @@ pub const JPEGWriter = struct {
 
         for (0..8) |j| {
             for (0..8) |i| {
-                const x = @as(usize, @intCast(@min(@max(px + @as(i32, @intCast(i)), 0), @as(i32, @intCast(image.width - 1)))));
-                const y = @as(usize, @intCast(@min(@max(py + @as(i32, @intCast(j)), 0), @as(i32, @intCast(image.height - 1)))));
+                var sx = px + @as(i32, @intCast(i));
+                var sy = py + @as(i32, @intCast(j));
+
+                // Clamp coordinates to image bounds (same as Go implementation)
+                if (sx < 0) {
+                    sx = 0;
+                }
+                if (sx > @as(i32, @intCast(image.width - 1))) {
+                    sx = @as(i32, @intCast(image.width - 1));
+                }
+                if (sy < 0) {
+                    sy = 0;
+                }
+                if (sy > @as(i32, @intCast(image.height - 1))) {
+                    sy = @as(i32, @intCast(image.height - 1));
+                }
+
+                const x = @as(usize, @intCast(sx));
+                const y = @as(usize, @intCast(sy));
 
                 // Get pixel from grayscale data
                 const pixel_index = y * image.width + x;
@@ -662,6 +693,11 @@ pub const JPEGWriter = struct {
 
     /// Scale 4 chroma blocks (16x16) down to 1 chroma block (8x8) for 4:2:0 subsampling
     pub fn scale(dst: *[64]i32, src: *[4][64]i32) void {
+        // Initialize destination block to zero
+        for (0..64) |i| {
+            dst[i] = 0;
+        }
+
         // Use the same logic as Go implementation: dstOff := (i&2)<<4 | (i&1)<<2
         for (0..4) |i| {
             const dst_off = (@as(u8, @intCast(i & 2)) << 4) | (@as(u8, @intCast(i & 1)) << 2);
@@ -826,8 +862,15 @@ pub const JPEGWriter = struct {
         var y_block: [64]i32 = undefined;
         var cb_blocks: [4][64]i32 = undefined;
         var cr_blocks: [4][64]i32 = undefined;
-        var cb_block: [64]i32 = undefined;
-        var cr_block: [64]i32 = undefined;
+
+        // Initialize all blocks to zero
+        for (0..64) |i| {
+            y_block[i] = 0;
+            for (0..4) |j| {
+                cb_blocks[j][i] = 0;
+                cr_blocks[j][i] = 0;
+            }
+        }
 
         // DC component predictors (for delta encoding)
         var prev_dc_y: i32 = 0;
@@ -850,40 +893,29 @@ pub const JPEGWriter = struct {
             while (y < @as(i32, @intCast(image.height))) : (y += 16) {
                 var x: i32 = 0;
                 while (x < @as(i32, @intCast(image.width))) : (x += 16) {
+                    // Initialize chroma blocks for this macroblock to prevent stale data
+                    for (0..4) |i| {
+                        for (0..64) |j| {
+                            cb_blocks[i][j] = 0;
+                            cr_blocks[i][j] = 0;
+                        }
+                    }
+
                     // Process 4 luminance blocks (8x8 each) per macroblock
+                    var y_blocks: [4][64]i32 = undefined;
                     for (0..4) |i| {
                         const x_off = @as(i32, @intCast(i & 1)) * 8;
                         const y_off = @as(i32, @intCast(i & 2)) * 4; // Go uses * 4, not * 8
-                        try self.rgbToYCbCr(image, x + x_off, y + y_off, &y_block, &cb_blocks[i], &cr_blocks[i]);
-                        prev_dc_y = try self.writeBlock(&y_block, quantIndexLuminance, prev_dc_y);
+                        try self.rgbToYCbCr(image, x + x_off, y + y_off, &y_blocks[i], &cb_blocks[i], &cr_blocks[i]);
+                        prev_dc_y = try self.writeBlock(&y_blocks[i], quantIndexLuminance, prev_dc_y);
                     }
 
                     // Scale and process chrominance blocks (4:2:0 subsampling)
-                    scale(&cb_block, &cb_blocks);
+                    scale(&y_blocks[0], &cb_blocks);
+                    prev_dc_cb = try self.writeBlock(&y_blocks[0], quantIndexChrominance, prev_dc_cb);
 
-                    // Debug: Print first chroma block values
-                    if (comptime @hasDecl(@This(), "DEBUG") and @This().DEBUG and x == 0 and y == 0) {
-                        std.debug.print("Cb block (first 8 values): ", .{});
-                        for (0..8) |i| {
-                            std.debug.print("{} ", .{cb_block[i]});
-                        }
-                        std.debug.print("\n", .{});
-                    }
-
-                    prev_dc_cb = try self.writeBlock(&cb_block, quantIndexChrominance, prev_dc_cb);
-
-                    scale(&cr_block, &cr_blocks);
-
-                    // Debug: Print first chroma block values
-                    if (comptime @hasDecl(@This(), "DEBUG") and @This().DEBUG and x == 0 and y == 0) {
-                        std.debug.print("Cr block (first 8 values): ", .{});
-                        for (0..8) |i| {
-                            std.debug.print("{} ", .{cr_block[i]});
-                        }
-                        std.debug.print("\n", .{});
-                    }
-
-                    prev_dc_cr = try self.writeBlock(&cr_block, quantIndexChrominance, prev_dc_cr);
+                    scale(&y_blocks[0], &cr_blocks);
+                    prev_dc_cr = try self.writeBlock(&y_blocks[0], quantIndexChrominance, prev_dc_cr);
                 }
             }
         }
@@ -940,8 +972,8 @@ pub const JPEGWriter = struct {
 
         // Emit the actual value bits (if any)
         if (n_bits > 0) {
-            // Use std.mem to reinterpret the bytes
-            const b_unsigned = std.mem.bytesAsValue(u32, std.mem.asBytes(&b)).*;
+            // Cast to u32 and mask the bits (same as Go implementation)
+            const b_unsigned = @as(u32, @bitCast(b));
             try self.emit(b_unsigned & ((@as(u32, 1) << @as(u5, @intCast(n_bits))) - 1), n_bits);
         }
     }

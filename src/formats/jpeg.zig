@@ -227,12 +227,11 @@ pub const JPEG = struct {
     }
 
     fn writeImage(
-        allocator: Allocator,
+        _: Allocator,
         write_stream: *ImageUnmanaged.Stream,
         image: ImageUnmanaged,
         encoder_options: ImageUnmanaged.EncoderOptions,
     ) ImageWriteError!void {
-        _ = allocator;
         // Extract JPEG-specific encoder options
         const jpeg_options = encoder_options.jpeg;
 
