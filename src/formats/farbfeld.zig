@@ -4,7 +4,6 @@ const FormatInterface = @import("../FormatInterface.zig");
 const ImageUnmanaged = @import("../ImageUnmanaged.zig");
 const io = @import("../io.zig");
 const std = @import("std");
-const utils = @import("../utils.zig");
 
 pub const Header = extern struct {
     width: u32 align(1) = 0,

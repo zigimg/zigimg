@@ -1,4 +1,4 @@
-// pub const bmp = @import("formats/bmp.zig");
+pub const bmp = @import("formats/bmp.zig");
 pub const farbfeld = @import("formats/farbfeld.zig");
 // pub const gif = @import("formats/gif.zig");
 // pub const iff = @import("formats/iff.zig");

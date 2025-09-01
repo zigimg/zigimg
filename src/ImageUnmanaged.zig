@@ -10,7 +10,7 @@ const std = @import("std");
 const utils = @import("utils.zig");
 
 const SupportedFormats = struct {
-    // pub const bmp = formats.bmp.BMP;
+    pub const bmp = formats.bmp.BMP;
     pub const farbfeld = formats.farbfeld.Farbfeld;
     // pub const gif = formats.gif.GIF;
     // pub const iff = formats.iff.IFF;
@@ -32,7 +32,7 @@ const SupportedFormats = struct {
 pub const Format = std.meta.DeclEnum(SupportedFormats);
 
 pub const EncoderOptions = union(Format) {
-    // bmp: SupportedFormats.bmp.EncoderOptions,
+    bmp: SupportedFormats.bmp.EncoderOptions,
     farbfeld: void,
     // gif: void,
     // iff: void,
@@ -256,7 +256,7 @@ pub fn writeToFilePath(self: ImageUnmanaged, allocator: std.mem.Allocator, file_
 }
 
 /// Write the image to an image format to the specified std.fs.File
-pub fn writeToFile(self: ImageUnmanaged, allocator: std.mem.Allocator, file: *std.fs.File, write_buffer: []u8, encoder_options: EncoderOptions) WriteError!void {
+pub fn writeToFile(self: ImageUnmanaged, allocator: std.mem.Allocator, file: std.fs.File, write_buffer: []u8, encoder_options: EncoderOptions) WriteError!void {
     var write_stream = io.WriteStream.initFile(file, write_buffer);
 
     try self.internalWrite(allocator, &write_stream, encoder_options);
@@ -328,6 +328,9 @@ fn internalDetectFormat(read_stream: *io.ReadStream) !Format {
 
         // TODO: Try to implement all formatDetect will no seeking if possible
         // so we can remove this
+
+        // farbfeld: no seek
+        // bmp: no seek
         try read_stream.seekTo(0);
 
         const found = try formatInterface.formatDetect(read_stream);

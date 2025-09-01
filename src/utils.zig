@@ -52,6 +52,7 @@ pub inline fn toMagicNumber(magic: []const u8, comptime wanted_endian: std.built
     };
 }
 
+// TODO: Remove ?
 fn checkEnumFields(data: anytype) StructReadError!void {
     const T = @typeInfo(@TypeOf(data)).pointer.child;
     inline for (std.meta.fields(T)) |entry| {
@@ -68,16 +69,19 @@ fn checkEnumFields(data: anytype) StructReadError!void {
     }
 }
 
+// TODO: Remove ?
 pub fn readStructNative(reader: anytype, comptime T: type) StructReadError!T {
     var result: T = try reader.readStruct(T);
     try checkEnumFields(&result);
     return result;
 }
 
+// TODO: Remove ?
 pub fn writeStructNative(writer: anytype, value: anytype) StructWriteError!void {
     try writer.writeStruct(value);
 }
 
+// TODO: Remove ?
 pub fn writeStructForeign(writer: anytype, value: anytype) StructWriteError!void {
     const T = @typeInfo(@TypeOf(value));
     inline for (std.meta.fields(T)) |field| {
@@ -136,12 +140,14 @@ fn swapFieldBytes(data: anytype) StructReadError!void {
     }
 }
 
+// TODO: Remove ?
 pub fn readStructForeign(reader: anytype, comptime T: type) StructReadError!T {
     var result: T = try reader.readStruct(T);
     try swapFieldBytes(&result);
     return result;
 }
 
+// TODO: Remove ?
 pub inline fn readStruct(reader: anytype, comptime T: type, comptime wanted_endian: std.builtin.Endian) StructReadError!T {
     return switch (native_endian) {
         .little => {
@@ -159,6 +165,7 @@ pub inline fn readStruct(reader: anytype, comptime T: type, comptime wanted_endi
     };
 }
 
+// TODO: Remove ?
 pub inline fn writeStruct(writer: anytype, value: anytype, comptime wanted_endian: std.builtin.Endian) StructWriteError!void {
     return switch (native_endian) {
         .little => {
