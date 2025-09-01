@@ -7,7 +7,7 @@ pub const ReadStream = union(enum) {
     memory: std.Io.Reader,
     file: std.fs.File.Reader,
 
-    pub const Error = SeekError || EndPosError || std.Io.Reader.Error;
+    pub const Error = SeekError || EndPosError || std.Io.Reader.Error || std.Io.Reader.StreamError;
     pub const SeekError = std.fs.File.Reader.SeekError;
     pub const EndPosError = std.fs.File.Reader.SizeError;
 

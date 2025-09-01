@@ -15,7 +15,7 @@ const SupportedFormats = struct {
     pub const gif = formats.gif.GIF;
     pub const iff = formats.iff.IFF;
     pub const jpeg = formats.jpeg.JPEG;
-    // pub const pam = formats.pam.PAM;
+    pub const pam = formats.pam.PAM;
     // pub const pbm = formats.netpbm.PBM;
     // pub const pcx = formats.pcx.PCX;
     // pub const pgm = formats.netpbm.PGM;
@@ -37,7 +37,7 @@ pub const EncoderOptions = union(Format) {
     gif: void,
     iff: void,
     jpeg: void,
-    // pam: SupportedFormats.pam.EncoderOptions,
+    pam: SupportedFormats.pam.EncoderOptions,
     // pbm: SupportedFormats.pbm.EncoderOptions,
     // pcx: SupportedFormats.pcx.EncoderOptions,
     // pgm: SupportedFormats.pgm.EncoderOptions,
@@ -333,7 +333,8 @@ fn internalDetectFormat(read_stream: *io.ReadStream) !Format {
         // bmp: no seek
         // gif: no seek
         // iff: no seek
-        // jpeg: no sseek
+        // jpeg: no seek
+        // pam: no seek
         try read_stream.seekTo(0);
 
         const found = try formatInterface.formatDetect(read_stream);
