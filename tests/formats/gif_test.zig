@@ -76,9 +76,9 @@ test "Rotating Earth GIF" {
     var frames = try gif_file.read(&read_stream);
     defer {
         for (frames.items) |entry| {
-            entry.pixels.deinit(gif_file.allocator);
+            entry.pixels.deinit(helpers.zigimg_test_allocator);
         }
-        frames.deinit(gif_file.allocator);
+        frames.deinit(helpers.zigimg_test_allocator);
     }
 
     try helpers.expectEq(gif_file.header.width, 400);
@@ -268,9 +268,9 @@ fn doGifTest(entry_name: []const u8) !void {
         var frames = try gif_file.read(&read_stream);
         defer {
             for (frames.items) |entry| {
-                entry.pixels.deinit(gif_file.allocator);
+                entry.pixels.deinit(helpers.zigimg_test_allocator);
             }
-            frames.deinit(gif_file.allocator);
+            frames.deinit(helpers.zigimg_test_allocator);
         }
 
         try helpers.expectEqSlice(u8, gif_file.header.magic[0..], expected_version.string[0..3]);
