@@ -8,6 +8,6 @@ formatDetect: *const FormatDetectFn,
 readImage: *const ReadImageFn,
 writeImage: *const WriteImageFn,
 
-pub const FormatDetectFn = fn (read_stream: *io.ReadStream) io.ReadStream.Error!bool;
+pub const FormatDetectFn = fn (read_stream: *io.ReadStream) ImageUnmanaged.ReadError!bool;
 pub const ReadImageFn = fn (allocator: std.mem.Allocator, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!ImageUnmanaged;
 pub const WriteImageFn = fn (allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageUnmanaged.WriteError!void;

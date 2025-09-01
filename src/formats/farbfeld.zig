@@ -38,7 +38,7 @@ pub const Farbfeld = struct {
     }
 
     /// Taken a stream, Returns true if and only if the stream contains the magic value "fabfeld"
-    pub fn formatDetect(read_stream: *io.ReadStream) io.ReadStream.Error!bool {
+    pub fn formatDetect(read_stream: *io.ReadStream) ImageUnmanaged.ReadError!bool {
         const reader = read_stream.reader();
 
         const read_magic_header = try reader.peek(Header.MAGIC_VALUE.len);

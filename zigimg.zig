@@ -20,7 +20,7 @@ test {
         @import("tests/io_test.zig"),
         @import("tests/formats/bmp_test.zig"),
         @import("tests/formats/gif_test.zig"),
-        // @import("tests/formats/iff_test.zig"),
+        @import("tests/formats/iff_test.zig"),
         // @import("tests/formats/jpeg_test.zig"),
         // @import("tests/formats/netpbm_test.zig"),
         // @import("tests/formats/pam_test.zig"),

@@ -949,7 +949,7 @@ pub const PixelStorage = union(PixelFormat) {
             },
             .grayscale16Alpha => {
                 return .{
-                    .grayscale16Alpha = @constCast(@alignCast(std.mem.bytesAsSlice(Grayscale16Alpha, pixels))),
+                    .grayscale16Alpha = @alignCast(@constCast(std.mem.bytesAsSlice(Grayscale16Alpha, pixels))),
                 };
             },
             .rgb332 => {
@@ -959,12 +959,12 @@ pub const PixelStorage = union(PixelFormat) {
             },
             .rgb555 => {
                 return .{
-                    .rgb555 = @constCast(@alignCast(std.mem.bytesAsSlice(Rgb555, pixels))),
+                    .rgb555 = @alignCast(@constCast(std.mem.bytesAsSlice(Rgb555, pixels))),
                 };
             },
             .rgb565 => {
                 return .{
-                    .rgb565 = @constCast(@alignCast(std.mem.bytesAsSlice(Rgb565, pixels))),
+                    .rgb565 = @alignCast(@constCast(std.mem.bytesAsSlice(Rgb565, pixels))),
                 };
             },
             .rgb24 => {
@@ -979,7 +979,7 @@ pub const PixelStorage = union(PixelFormat) {
             },
             .bgr555 => {
                 return .{
-                    .bgr555 = @constCast(@alignCast(std.mem.bytesAsSlice(Bgr555, pixels))),
+                    .bgr555 = @alignCast(@constCast(std.mem.bytesAsSlice(Bgr555, pixels))),
                 };
             },
             .bgr24 => {

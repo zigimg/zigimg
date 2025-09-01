@@ -149,7 +149,7 @@ pub const BMP = struct {
         };
     }
 
-    pub fn formatDetect(read_stream: *io.ReadStream) io.ReadStream.Error!bool {
+    pub fn formatDetect(read_stream: *io.ReadStream) ImageUnmanaged.ReadError!bool {
         const reader = read_stream.reader();
 
         const magic_number = try reader.peek(2);
