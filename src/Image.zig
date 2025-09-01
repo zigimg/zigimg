@@ -1,8 +1,9 @@
 const std = @import("std");
-
 const color = @import("color.zig");
 const ImageEditor = @import("ImageEditor.zig");
 const ImageUnmanaged = @import("ImageUnmanaged.zig");
+const PixelFormat = @import("pixel_format.zig").PixelFormat;
+
 pub const Error = ImageUnmanaged.Error;
 pub const ReadError = ImageUnmanaged.ReadError;
 pub const WriteError = ImageUnmanaged.WriteError;
@@ -13,7 +14,6 @@ pub const EncoderOptions = ImageUnmanaged.EncoderOptions;
 pub const AnimationLoopInfinite = ImageUnmanaged.AnimationLoopInfinite;
 pub const AnimationFrame = ImageUnmanaged.AnimationFrame;
 pub const Animation = ImageUnmanaged.Animation;
-const PixelFormat = @import("pixel_format.zig").PixelFormat;
 
 // This layout must match the one in ImageUnmanaged
 width: usize = 0,
@@ -37,13 +37,13 @@ pub fn deinit(self: *Image) void {
 }
 
 /// Detect which image format is used by the file path
-pub fn detectFormatFromFilePath(file_path: []const u8) !Format {
-    return ImageUnmanaged.detectFormatFromFilePath(file_path);
+pub fn detectFormatFromFilePath(file_path: []const u8, read_buffer: []u8) !Format {
+    return ImageUnmanaged.detectFormatFromFilePath(file_path, read_buffer);
 }
 
 /// Detect which image format is used by the file
-pub fn detectFormatFromFile(file: *std.fs.File) !Format {
-    return ImageUnmanaged.detectFormatFromFile(file);
+pub fn detectFormatFromFile(file: *std.fs.File, read_buffer: []u8) !Format {
+    return ImageUnmanaged.detectFormatFromFile(file, read_buffer);
 }
 
 /// Detect which image format is used by the memory buffer
@@ -52,13 +52,13 @@ pub fn detectFormatFromMemory(buffer: []const u8) !Format {
 }
 
 /// Load an image from a file path
-pub fn fromFilePath(allocator: std.mem.Allocator, file_path: []const u8) !Image {
-    return (try ImageUnmanaged.fromFilePath(allocator, file_path)).toManaged(allocator);
+pub fn fromFilePath(allocator: std.mem.Allocator, file_path: []const u8, read_buffer: []u8) !Image {
+    return (try ImageUnmanaged.fromFilePath(allocator, file_path, read_buffer)).toManaged(allocator);
 }
 
 /// Load an image from a standard library std.fs.File
-pub fn fromFile(allocator: std.mem.Allocator, file: *std.fs.File) !Image {
-    return (try ImageUnmanaged.fromFile(allocator, file)).toManaged(allocator);
+pub fn fromFile(allocator: std.mem.Allocator, file: *std.fs.File, read_buffer: []u8) !Image {
+    return (try ImageUnmanaged.fromFile(allocator, file, read_buffer)).toManaged(allocator);
 }
 
 /// Load an image from a memory buffer
@@ -115,13 +115,13 @@ pub fn isAnimation(self: Image) bool {
 }
 
 /// Write the image to an image format to the specified path
-pub fn writeToFilePath(self: Image, file_path: []const u8, encoder_options: EncoderOptions) WriteError!void {
-    return ImageUnmanaged.writeToFilePath(self.toUnmanaged(), self.allocator, file_path, encoder_options);
+pub fn writeToFilePath(self: Image, file_path: []const u8, write_buffer: []u8, encoder_options: EncoderOptions) WriteError!void {
+    return ImageUnmanaged.writeToFilePath(self.toUnmanaged(), self.allocator, file_path, write_buffer, encoder_options);
 }
 
 /// Write the image to an image format to the specified std.fs.File
-pub fn writeToFile(self: Image, file: std.fs.File, encoder_options: EncoderOptions) WriteError!void {
-    return ImageUnmanaged.writeToFile(self.toUnmanaged(), self.allocator, file, encoder_options);
+pub fn writeToFile(self: Image, file: std.fs.File, write_buffer: []u8, encoder_options: EncoderOptions) WriteError!void {
+    return ImageUnmanaged.writeToFile(self.toUnmanaged(), self.allocator, file, write_buffer, encoder_options);
 }
 
 /// Write the image to an image format in a memory buffer. The memory buffer is not grown
@@ -148,8 +148,6 @@ pub fn crop(self: *const Image, allocator: std.mem.Allocator, area: ImageEditor.
 }
 
 /// Iterate the pixel in pixel-format agnostic way. In the case of an animation, it returns an iterator for the first frame. The iterator is read-only.
-// FIXME: *const Image is a workaround for a stage2 bug because determining the pass a parameter by value or pointer depending of the size is not mature yet
-// and fails. For now we are explictly requesting to access only a const pointer.
 pub fn iterator(self: *const Image) color.PixelStorageIterator {
     return color.PixelStorageIterator.init(&self.pixels);
 }
