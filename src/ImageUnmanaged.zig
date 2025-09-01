@@ -12,7 +12,7 @@ const utils = @import("utils.zig");
 const SupportedFormats = struct {
     pub const bmp = formats.bmp.BMP;
     pub const farbfeld = formats.farbfeld.Farbfeld;
-    // pub const gif = formats.gif.GIF;
+    pub const gif = formats.gif.GIF;
     // pub const iff = formats.iff.IFF;
     // pub const jpeg = formats.jpeg.JPEG;
     // pub const pam = formats.pam.PAM;
@@ -34,7 +34,7 @@ pub const Format = std.meta.DeclEnum(SupportedFormats);
 pub const EncoderOptions = union(Format) {
     bmp: SupportedFormats.bmp.EncoderOptions,
     farbfeld: void,
-    // gif: void,
+    gif: void,
     // iff: void,
     // jpeg: void,
     // pam: SupportedFormats.pam.EncoderOptions,
@@ -85,7 +85,7 @@ pub const Animation = struct {
     frames: FrameList = .{},
     loop_count: i32 = AnimationLoopInfinite,
 
-    pub const FrameList = std.ArrayListUnmanaged(AnimationFrame);
+    pub const FrameList = std.ArrayList(AnimationFrame);
 
     pub fn deinit(self: *Animation, allocator: std.mem.Allocator) void {
         // Animation share its first frame with the pixels in Image, we don't want to free it twice
@@ -331,6 +331,7 @@ fn internalDetectFormat(read_stream: *io.ReadStream) !Format {
 
         // farbfeld: no seek
         // bmp: no seek
+        // gif: no seek
         try read_stream.seekTo(0);
 
         const found = try formatInterface.formatDetect(read_stream);
