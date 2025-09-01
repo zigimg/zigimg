@@ -5,10 +5,17 @@ const PixelFormat = @import("../../pixel_format.zig").PixelFormat;
 const math = std.math;
 const utils = @import("./utils.zig");
 const huffman = @import("./huffman.zig");
+const quantization = @import("./quantization.zig");
+const FrameHeader = @import("./FrameHeader.zig");
 
-// Constants from the Go implementation
-const blockSize = 64;
-const nQuantIndex = 2;
+const Block = utils.Block;
+const MAX_BLOCKS = utils.MAX_BLOCKS;
+const MAX_COMPONENTS = utils.MAX_COMPONENTS;
+const ZigzagOffsets = utils.ZigzagOffsets;
+const Markers = utils.Markers;
+
+const block_size = 64;
+const quant_index = 2;
 const quantIndexLuminance = 0;
 const quantIndexChrominance = 1;
 const nHuffIndex = 4;
@@ -106,7 +113,7 @@ const DefaultQuality = 75;
 // the tables according to its quality parameter.
 // The values are derived from section K.1 of the spec, after converting from
 // natural to zig-zag order.
-const unscaledQuant = [nQuantIndex][blockSize]u8{
+const unscaledQuant = [quant_index][block_size]u8{
     // Luminance.
     [_]u8{
         16,  11,  12,  14,  12,  10,  16,  14,
@@ -135,7 +142,7 @@ const unscaledQuant = [nQuantIndex][blockSize]u8{
 const huffmanLUT = [256]u32;
 
 // Zigzag ordering for DCT coefficients (same as JPEG spec)
-const unzig = [blockSize]u8{
+const unzig = [block_size]u8{
     0,  1,  8,  16, 9,  2,  3,  10,
     17, 24, 32, 25, 18, 11, 4,  5,
     12, 19, 26, 33, 40, 48, 41, 34,
@@ -189,7 +196,7 @@ pub const JPEGWriter = struct {
     buf: [16]u8 = undefined,
     bits: u32 = 0,
     n_bits: u32 = 0,
-    quant: [nQuantIndex][blockSize]u8 = undefined, // Scaled quantization tables
+    quant: [quant_index][block_size]u8 = undefined, // Scaled quantization tables (using zigzag ordering)
     huffman_lut: [nHuffIndex][256]u32 = undefined, // Huffman look-up tables
 
     /// Initialize a new JPEG writer
@@ -269,14 +276,14 @@ pub const JPEGWriter = struct {
             std.debug.print("Quality: {}, Scale factor: {}\n", .{ quality, scale_factor });
         }
 
-        // Scale the quantization tables
-        for (0..nQuantIndex) |i| {
-            for (0..blockSize) |j| {
+        // Scale the quantization tables using zigzag ordering (like existing reader)
+        for (0..quant_index) |i| {
+            for (0..block_size) |j| {
                 var x = @as(i32, unscaledQuant[i][j]);
                 x = @divTrunc((x * scale_factor + 50), 100);
                 if (x < 1) x = 1;
                 if (x > 255) x = 255;
-                self.quant[i][j] = @as(u8, @intCast(x));
+                self.quant[i][ZigzagOffsets[j]] = @as(u8, @intCast(x)); // Use zigzag ordering like existing code
             }
 
             // Debug: Print first few quantization values
@@ -369,10 +376,10 @@ pub const JPEGWriter = struct {
 
     /// Write Define Quantization Tables marker
     pub fn writeDQT(self: *JPEGWriter) ImageUnmanaged.WriteError!void {
-        const markerlen = 2 + nQuantIndex * (1 + blockSize);
+        const markerlen = 2 + quant_index * (1 + block_size);
         self.writeMarkerHeader(@as(u8, @intCast(@intFromEnum(utils.Markers.define_quantization_tables) & 0xFF)), markerlen); // DQT marker
 
-        for (0..nQuantIndex) |i| {
+        for (0..quant_index) |i| {
             // Write table index (8-bit precision, destination i)
             self.buf[0] = @as(u8, @intCast(i)); // table index
             _ = self.writer.write(self.buf[0..1]) catch {
@@ -518,11 +525,11 @@ pub const JPEGWriter = struct {
     }
 
     /// Process and write an 8x8 DCT block
-    pub fn writeBlock(self: *JPEGWriter, block: *[64]i32, quant_index: usize, prev_dc: i32) ImageUnmanaged.WriteError!i32 {
+    pub fn writeBlock(self: *JPEGWriter, block: *[64]i32, quant_idx: usize, prev_dc: i32) ImageUnmanaged.WriteError!i32 {
         if (self.err != null) return 0;
 
         // Debug: Print first block's input values
-        if (comptime @hasDecl(@This(), "DEBUG") and @This().DEBUG and prev_dc == 0 and quant_index == 0) {
+        if (comptime @hasDecl(@This(), "DEBUG") and @This().DEBUG and prev_dc == 0 and quant_idx == 0) {
             std.debug.print("Input block (first 8 values): ", .{});
             for (0..8) |i| {
                 std.debug.print("{} ", .{block[i]});
@@ -534,7 +541,7 @@ pub const JPEGWriter = struct {
         fdct(block);
 
         // Debug: Print first block's DCT values
-        if (comptime @hasDecl(@This(), "DEBUG") and @This().DEBUG and prev_dc == 0 and quant_index == 0) {
+        if (comptime @hasDecl(@This(), "DEBUG") and @This().DEBUG and prev_dc == 0 and quant_idx == 0) {
             std.debug.print("DCT block (first 8 values): ", .{});
             for (0..8) |i| {
                 std.debug.print("{} ", .{block[i]});
@@ -542,29 +549,29 @@ pub const JPEGWriter = struct {
             std.debug.print("\n", .{});
             std.debug.print("Quantization table (first 8 values): ", .{});
             for (0..8) |i| {
-                std.debug.print("{} ", .{self.quant[quant_index][i]});
+                std.debug.print("{} ", .{self.quant[quant_idx][i]});
             }
             std.debug.print("\n", .{});
         }
 
         // Quantize the DCT coefficients and handle DC prediction
-        const dc = div(block[0], 8 * @as(i32, self.quant[quant_index][0]));
+        const dc = div(block[0], 8 * @as(i32, self.quant[quant_idx][0]));
 
         // Debug: Print quantized DC value
-        if (comptime @hasDecl(@This(), "DEBUG") and @This().DEBUG and prev_dc == 0 and quant_index == 0) {
-            std.debug.print("DC: raw={}, quant_factor={}, quantized={}\n", .{ block[0], 8 * @as(i32, self.quant[quant_index][0]), dc });
+        if (comptime @hasDecl(@This(), "DEBUG") and @This().DEBUG and prev_dc == 0 and quant_idx == 0) {
+            std.debug.print("DC: raw={}, quant_factor={}, quantized={}\n", .{ block[0], 8 * @as(i32, self.quant[quant_idx][0]), dc });
         }
 
-        try self.emitHuffRLE(@as(usize, 2 * quant_index + 0), 0, dc - prev_dc);
+        try self.emitHuffRLE(@as(usize, 2 * quant_idx + 0), 0, dc - prev_dc);
 
         // Handle AC coefficients
-        const huff_index = @as(usize, 2 * quant_index + 1);
+        const huff_index = @as(usize, 2 * quant_idx + 1);
         var run_length: i32 = 0;
 
         // Process AC coefficients (skip DC coefficient at index 0)
         var non_zero_ac_count: u32 = 0;
-        for (1..blockSize) |zig| {
-            const ac = div(block[unzig[zig]], 8 * @as(i32, self.quant[quant_index][zig]));
+        for (1..block_size) |zig| {
+            const ac = div(block[unzig[zig]], 8 * @as(i32, self.quant[quant_idx][zig]));
             if (ac == 0) {
                 run_length += 1;
             } else {
@@ -582,7 +589,7 @@ pub const JPEGWriter = struct {
         }
 
         // Debug: Print AC coefficient count for first block
-        if (comptime @hasDecl(@This(), "DEBUG") and @This().DEBUG and prev_dc == 0 and quant_index == 0) {
+        if (comptime @hasDecl(@This(), "DEBUG") and @This().DEBUG and prev_dc == 0 and quant_idx == 0) {
             std.debug.print("Non-zero AC coefficients: {}\n", .{non_zero_ac_count});
         }
 
