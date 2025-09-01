@@ -1,11 +1,8 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const simd = @import("../../simd.zig");
-
-const buffered_stream_source = @import("../../buffered_stream_source.zig");
-const Image = @import("../../Image.zig");
-const ImageReadError = Image.ReadError;
+const ImageUnmanaged = @import("../../ImageUnmanaged.zig");
+const io = @import("../../io.zig");
 
 const Markers = @import("utils.zig").Markers;
 const FrameHeader = @import("FrameHeader.zig");
@@ -18,8 +15,9 @@ const MAX_COMPONENTS = @import("utils.zig").MAX_COMPONENTS;
 const MAX_BLOCKS = @import("utils.zig").MAX_BLOCKS;
 const Block = @import("utils.zig").Block;
 
-const Self = @This();
-allocator: Allocator,
+const Frame = @This();
+
+allocator: std.mem.Allocator,
 frame_header: FrameHeader,
 quantization_tables: *[4]?QuantizationTable,
 dc_huffman_tables: *[4]?HuffmanTable,
@@ -37,8 +35,7 @@ vertical_sampling_factor_max: usize = 0,
 
 const JPEG_DEBUG = false;
 
-pub fn read(allocator: Allocator, frame_type: Markers, quantization_tables: *[4]?QuantizationTable, dc_huffman_tables: *[4]?HuffmanTable, ac_huffman_tables: *[4]?HuffmanTable, buffered_stream: *buffered_stream_source.DefaultBufferedStreamSourceReader) ImageReadError!Self {
-    const reader = buffered_stream.reader();
+pub fn read(allocator: std.mem.Allocator, frame_type: Markers, quantization_tables: *[4]?QuantizationTable, dc_huffman_tables: *[4]?HuffmanTable, ac_huffman_tables: *[4]?HuffmanTable, reader: *std.Io.Reader) ImageUnmanaged.ReadError!Frame {
     const frame_header = try FrameHeader.read(allocator, reader);
 
     const horizontal_sampling_factor_max = frame_header.getMaxHorizontalSamplingFactor();
@@ -51,7 +48,7 @@ pub fn read(allocator: Allocator, frame_type: Markers, quantization_tables: *[4]
     const height_actual = ((frame_header.height + mcu_height - 1) / mcu_height) * mcu_height;
     const block_storage = try allocator.alloc([MAX_COMPONENTS]Block, width_actual * height_actual / 64);
 
-    var self = Self{
+    var self = Frame{
         .allocator = allocator,
         .frame_header = frame_header,
         .quantization_tables = quantization_tables,
@@ -71,7 +68,7 @@ pub fn read(allocator: Allocator, frame_type: Markers, quantization_tables: *[4]
     return self;
 }
 
-pub fn deinit(self: *Self) void {
+pub fn deinit(self: *Frame) void {
     self.allocator.free(self.block_storage);
     for (self.dc_huffman_tables) |*maybe_huffman_table| {
         if (maybe_huffman_table.*) |*huffman_table| {
@@ -88,7 +85,7 @@ pub fn deinit(self: *Self) void {
     self.frame_header.deinit();
 }
 
-pub fn renderToPixels(self: *Self, pixels: *color.PixelStorage) ImageReadError!void {
+pub fn renderToPixels(self: *Frame, pixels: *color.PixelStorage) ImageUnmanaged.ReadError!void {
     switch (self.frame_header.components.len) {
         1 => try self.renderToPixelsGrayscale(pixels.grayscale8), // Grayscale images is non-interleaved
         3 => {
@@ -99,7 +96,7 @@ pub fn renderToPixels(self: *Self, pixels: *color.PixelStorage) ImageReadError!v
     }
 }
 
-fn renderToPixelsGrayscale(self: *Self, pixels: []color.Grayscale8) ImageReadError!void {
+fn renderToPixelsGrayscale(self: *Frame, pixels: []color.Grayscale8) ImageUnmanaged.ReadError!void {
     var block_y: usize = 0;
     while (block_y < self.block_height) : (block_y += 1) {
         const pixel_y = block_y * 8;
@@ -127,7 +124,7 @@ fn renderToPixelsGrayscale(self: *Self, pixels: []color.Grayscale8) ImageReadErr
     }
 }
 
-pub fn renderToPixelsRgb(self: *Self, pixels: []color.Rgb24) ImageReadError!void {
+pub fn renderToPixelsRgb(self: *Frame, pixels: []color.Rgb24) ImageUnmanaged.ReadError!void {
     var block_y: usize = 0;
     while (block_y < self.block_height) : (block_y += 1) {
         const pixel_y = block_y * 8;
@@ -157,7 +154,7 @@ pub fn renderToPixelsRgb(self: *Self, pixels: []color.Rgb24) ImageReadError!void
     }
 }
 
-pub fn yCbCrToRgbBlock(self: *Self, y_block: *[3]Block, cbcr_block: *[3]Block, v: usize, h: usize) void {
+pub fn yCbCrToRgbBlock(self: *Frame, y_block: *[3]Block, cbcr_block: *[3]Block, v: usize, h: usize) void {
     const Co_1: @Vector(8, f32) = @splat(@as(f32, 1.402));
     const Co_2: @Vector(8, f32) = @splat(@as(f32, 1.772));
     const Co_3: @Vector(8, f32) = @splat(@as(f32, 0.344));
@@ -205,7 +202,7 @@ pub fn yCbCrToRgbBlock(self: *Self, y_block: *[3]Block, cbcr_block: *[3]Block, v
     }
 }
 
-pub fn yCbCrToRgb(self: *Self) ImageReadError!void {
+pub fn yCbCrToRgb(self: *Frame) ImageUnmanaged.ReadError!void {
     const y_step = self.vertical_sampling_factor_max;
     const x_step = self.horizontal_sampling_factor_max;
 
@@ -234,10 +231,10 @@ pub fn yCbCrToRgb(self: *Self) ImageReadError!void {
     }
 }
 
-pub fn dequantizeBlocks(self: *Self) ImageReadError!void {
+pub fn dequantizeBlocks(self: *Frame) ImageUnmanaged.ReadError!void {
     for (self.frame_header.components) |component| {
         if (self.quantization_tables[component.quantization_table_id] == null) {
-            return ImageReadError.InvalidData;
+            return ImageUnmanaged.ReadError.InvalidData;
         }
     }
 
@@ -271,7 +268,7 @@ pub fn dequantizeBlocks(self: *Self) ImageReadError!void {
     }
 }
 
-pub fn idctBlocks(self: *Self) void {
+pub fn idctBlocks(self: *Frame) void {
     const y_step = self.vertical_sampling_factor_max;
     const x_step = self.horizontal_sampling_factor_max;
 

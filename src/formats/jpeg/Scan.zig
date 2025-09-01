@@ -1,9 +1,8 @@
 const std = @import("std");
 
-const buffered_stream_source = @import("../../buffered_stream_source.zig");
 const color = @import("../../color.zig");
-const Image = @import("../../Image.zig");
-const ImageReadError = Image.ReadError;
+const ImageUnmanaged = @import("../../ImageUnmanaged.zig");
+const io = @import("../../io.zig");
 
 const Markers = @import("utils.zig").Markers;
 const FrameHeader = @import("FrameHeader.zig");
@@ -13,7 +12,7 @@ const HuffmanReader = @import("huffman.zig").Reader;
 const Block = @import("utils.zig").Block;
 const ZigzagOffsets = @import("utils.zig").ZigzagOffsets;
 
-const Self = @This();
+const Scan = @This();
 
 const JPEG_DEBUG = false;
 const JPEG_VERY_DEBUG = false;
@@ -30,14 +29,14 @@ approximation_low: u4,
 
 prediction_values: [3]i32,
 
-pub fn init(frame: *const Frame, stream: *buffered_stream_source.DefaultBufferedStreamSourceReader) ImageReadError!Self {
-    const reader = stream.reader();
-    const segment_size = try reader.readInt(u16, .big);
+pub fn init(frame: *const Frame, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!Scan {
+    const reader = read_stream.reader();
+    const segment_size = try reader.takeInt(u16, .big);
     if (JPEG_DEBUG) std.debug.print("StartOfScan: segment size = 0x{X}\n", .{segment_size});
 
-    const component_count = try reader.readByte();
+    const component_count = try reader.takeByte();
     if (component_count < 1 or component_count > 4) {
-        return ImageReadError.InvalidData;
+        return ImageUnmanaged.ReadError.InvalidData;
     }
 
     if (JPEG_DEBUG) std.debug.print("  Component count: {}\n", .{component_count});
@@ -64,24 +63,24 @@ pub fn init(frame: *const Frame, stream: *buffered_stream_source.DefaultBuffered
         }
 
         if (!valid_component) {
-            return ImageReadError.InvalidData;
+            return ImageUnmanaged.ReadError.InvalidData;
         }
     }
 
-    const start_of_spectral_selection = try reader.readByte();
-    const end_of_spectral_selection = try reader.readByte();
+    const start_of_spectral_selection = try reader.takeByte();
+    const end_of_spectral_selection = try reader.takeByte();
 
     if (start_of_spectral_selection > 63 or end_of_spectral_selection > 63) {
-        return ImageReadError.InvalidData;
+        return ImageUnmanaged.ReadError.InvalidData;
     }
 
     if (end_of_spectral_selection < start_of_spectral_selection) {
-        return ImageReadError.InvalidData;
+        return ImageUnmanaged.ReadError.InvalidData;
     }
 
     if (frame.frame_type == Markers.sof0) {
         if (start_of_spectral_selection != 0 or end_of_spectral_selection != 63) {
-            return ImageReadError.InvalidData;
+            return ImageUnmanaged.ReadError.InvalidData;
         }
     }
 
@@ -89,22 +88,22 @@ pub fn init(frame: *const Frame, stream: *buffered_stream_source.DefaultBuffered
         const any_zero: bool = start_of_spectral_selection == 0 or end_of_spectral_selection == 0;
         const both_zero: bool = start_of_spectral_selection == 0 and end_of_spectral_selection == 0;
         if (any_zero and !both_zero) {
-            return ImageReadError.InvalidData;
+            return ImageUnmanaged.ReadError.InvalidData;
         }
     }
 
     if (JPEG_VERY_DEBUG) std.debug.print("  Spectral selection: {}-{}\n", .{ start_of_spectral_selection, end_of_spectral_selection });
 
-    const approximation_bits = try reader.readByte();
+    const approximation_bits = try reader.takeByte();
     const approximation_high: u4 = @intCast(approximation_bits >> 4);
     const approximation_low: u4 = @intCast(approximation_bits & 0b1111);
     if (JPEG_VERY_DEBUG) std.debug.print("  Approximation bit position: high={} low={}\n", .{ approximation_high, approximation_low });
 
     std.debug.assert(segment_size == 2 * component_count + 1 + 2 + 1 + 2);
 
-    return Self{
+    return Scan{
         .frame = frame,
-        .reader = HuffmanReader.init(stream),
+        .reader = HuffmanReader.init(read_stream),
         .components = components,
         .component_count = component_count,
         .start_of_spectral_selection = start_of_spectral_selection,
@@ -118,8 +117,8 @@ pub fn init(frame: *const Frame, stream: *buffered_stream_source.DefaultBuffered
 /// Perform the scan operation.
 /// We assume the AC and DC huffman tables are already set up, and ready to decode.
 /// This should implement section E.2.3 of t-81 1992.
-pub fn performScan(frame: *const Frame, restart_interval: u16, stream: *buffered_stream_source.DefaultBufferedStreamSourceReader) ImageReadError!void {
-    var self = try Self.init(frame, stream);
+pub fn performScan(frame: *const Frame, restart_interval: u16, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!void {
+    var self = try Scan.init(frame, read_stream);
 
     var skips: u32 = 0;
 
@@ -173,12 +172,12 @@ pub fn performScan(frame: *const Frame, restart_interval: u16, stream: *buffered
     }
 }
 
-fn decodeBlockProgressive(self: *Self, component: *const ScanComponentSpec, block: *Block, component_index: usize, skips: *u32) ImageReadError!void {
+fn decodeBlockProgressive(self: *Scan, component: *const ScanComponentSpec, block: *Block, component_index: usize, skips: *u32) ImageUnmanaged.ReadError!void {
     if (self.start_of_spectral_selection == 0) {
         self.reader.setHuffmanTable(&self.frame.dc_huffman_tables[component.dc_table_selector].?);
         if (self.approximation_high == 0) {
             const maybe_magnitude = try self.reader.readCode();
-            if (maybe_magnitude > 11) return ImageReadError.InvalidData;
+            if (maybe_magnitude > 11) return ImageUnmanaged.ReadError.InvalidData;
             const diff = try self.reader.readMagnitudeCoded(@intCast(maybe_magnitude));
             const dc_coefficient = diff + self.prediction_values[component_index];
             self.prediction_values[component_index] = dc_coefficient;
@@ -206,7 +205,7 @@ fn decodeBlockProgressive(self: *Self, component: *const ScanComponentSpec, bloc
                             break; // process skips
                         } // no special case for zrl == 15
                     } else if (maybe_magnitude != 0) {
-                        if (maybe_magnitude > 10) return ImageReadError.InvalidData;
+                        if (maybe_magnitude > 10) return ImageUnmanaged.ReadError.InvalidData;
                         coeff = try self.reader.readMagnitudeCoded(@intCast(maybe_magnitude));
                     }
 
@@ -284,11 +283,11 @@ fn decodeBlockProgressive(self: *Self, component: *const ScanComponentSpec, bloc
     }
 }
 
-fn decodeBlockBaseline(self: *Self, component: *const ScanComponentSpec, block: *Block, component_destination: usize) ImageReadError!void {
+fn decodeBlockBaseline(self: *Scan, component: *const ScanComponentSpec, block: *Block, component_destination: usize) ImageUnmanaged.ReadError!void {
     // decode DC coefficient
     self.reader.setHuffmanTable(&self.frame.dc_huffman_tables[component.dc_table_selector].?);
     var maybe_magnitude = try self.reader.readCode();
-    if (maybe_magnitude > 11) return ImageReadError.InvalidData;
+    if (maybe_magnitude > 11) return ImageUnmanaged.ReadError.InvalidData;
     const diff: i32 = try self.reader.readMagnitudeCoded(@intCast(maybe_magnitude));
     const dc_coefficient = diff + self.prediction_values[component_destination];
     self.prediction_values[component_destination] = dc_coefficient;
@@ -310,7 +309,7 @@ fn decodeBlockBaseline(self: *Self, component: *const ScanComponentSpec, block: 
 
         const zero_run_length = zero_run_length_and_magnitude >> 4;
         maybe_magnitude = zero_run_length_and_magnitude & 0xF;
-        if (maybe_magnitude > 10) return ImageReadError.InvalidData;
+        if (maybe_magnitude > 10) return ImageUnmanaged.ReadError.InvalidData;
 
         const ac_coefficient: i11 = @intCast(try self.reader.readMagnitudeCoded(@intCast(maybe_magnitude)));
 
@@ -328,9 +327,9 @@ pub const ScanComponentSpec = struct {
     dc_table_selector: u4,
     ac_table_selector: u4,
 
-    pub fn read(reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!ScanComponentSpec {
-        const component_id = try reader.readByte();
-        const entropy_coding_selectors = try reader.readByte();
+    pub fn read(reader: *std.Io.Reader) ImageUnmanaged.ReadError!ScanComponentSpec {
+        const component_id = try reader.takeByte();
+        const entropy_coding_selectors = try reader.takeByte();
 
         const dc_table_selector: u4 = @intCast(entropy_coding_selectors >> 4);
         const ac_table_selector: u4 = @intCast(entropy_coding_selectors & 0b11);

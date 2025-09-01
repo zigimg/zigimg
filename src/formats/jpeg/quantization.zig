@@ -2,9 +2,8 @@
 
 const std = @import("std");
 
-const buffered_stream_source = @import("../../buffered_stream_source.zig");
-const Image = @import("../../Image.zig");
-const ImageReadError = Image.ReadError;
+const ImageUnmanaged = @import("../../ImageUnmanaged.zig");
+const io = @import("../../io.zig");
 
 const ZigzagOffsets = @import("./utils.zig").ZigzagOffsets;
 
@@ -12,7 +11,6 @@ const JPEG_DEBUG = false;
 
 pub const Header = struct {
     // TODO(angelo): ! substitute this implementation to `parseDefineQuantizationTables` in jpeg.zig
-    const Self = @This();
 
     //// Specifies the precision of the quantization table entries.
     ///  - 0 = 8 bits
@@ -25,10 +23,10 @@ pub const Header = struct {
 
     table: Table,
 
-    pub fn read(reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!Self {
-        _ = try reader.readInt(u16, .big); // read the size, but we don't need it
+    pub fn read(reader: *std.Io.Reader) ImageUnmanaged.ReadError!Header {
+        _ = try reader.takeInt(u16, .big); // read the size, but we don't need it
 
-        const precision_and_destination = try reader.readByte();
+        const precision_and_destination = try reader.takeByte();
         const table_precision = precision_and_destination >> 4;
         const table_destination = precision_and_destination & 0b11;
 
@@ -36,7 +34,7 @@ pub const Header = struct {
 
         // TODO: add check for: "An 8-bit DCT-based process shall not use a 16-bit precision quantization table."
 
-        return Self{
+        return Header{
             .table_precision = table_precision,
             .table_destination = table_destination,
             .table = table,
@@ -45,19 +43,18 @@ pub const Header = struct {
 };
 
 pub const Table = union(enum) {
-    const Self = @This();
     q8: [64]u8,
     q16: [64]u16,
 
-    pub fn read(precision: u8, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!Self {
+    pub fn read(precision: u8, reader: *std.Io.Reader) ImageUnmanaged.ReadError!Table {
         // 0 = 8 bits, 1 = 16 bits
         switch (precision) {
             0 => {
-                var table = Self{ .q8 = undefined };
+                var table = Table{ .q8 = undefined };
 
                 var offset: usize = 0;
                 while (offset < 64) : (offset += 1) {
-                    const value = try reader.readByte();
+                    const value = try reader.takeByte();
                     table.q8[ZigzagOffsets[offset]] = value;
                 }
 
@@ -75,17 +72,17 @@ pub const Table = union(enum) {
                 return table;
             },
             1 => {
-                var table = Self{ .q16 = undefined };
+                var table = Table{ .q16 = undefined };
 
                 var offset: usize = 0;
                 while (offset < 64) : (offset += 1) {
-                    const value = try reader.readInt(u16, .big);
+                    const value = try reader.takeInt(u16, .big);
                     table.q16[ZigzagOffsets[offset]] = value;
                 }
 
                 return table;
             },
-            else => return ImageReadError.InvalidData,
+            else => return ImageUnmanaged.ReadError.InvalidData,
         }
     }
 };
