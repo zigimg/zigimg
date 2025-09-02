@@ -16,11 +16,11 @@ const SupportedFormats = struct {
     pub const iff = formats.iff.IFF;
     pub const jpeg = formats.jpeg.JPEG;
     pub const pam = formats.pam.PAM;
-    // pub const pbm = formats.netpbm.PBM;
+    pub const pbm = formats.netpbm.PBM;
     // pub const pcx = formats.pcx.PCX;
-    // pub const pgm = formats.netpbm.PGM;
+    pub const pgm = formats.netpbm.PGM;
     // pub const png = formats.png.PNG;
-    // pub const ppm = formats.netpbm.PPM;
+    pub const ppm = formats.netpbm.PPM;
     // pub const qoi = formats.qoi.QOI;
     // pub const ras = formats.ras.RAS;
     // pub const sgi = formats.sgi.SGI;
@@ -38,11 +38,11 @@ pub const EncoderOptions = union(Format) {
     iff: void,
     jpeg: void,
     pam: SupportedFormats.pam.EncoderOptions,
-    // pbm: SupportedFormats.pbm.EncoderOptions,
+    pbm: SupportedFormats.pbm.EncoderOptions,
     // pcx: SupportedFormats.pcx.EncoderOptions,
-    // pgm: SupportedFormats.pgm.EncoderOptions,
+    pgm: SupportedFormats.pgm.EncoderOptions,
     // png: SupportedFormats.png.EncoderOptions,
-    // ppm: SupportedFormats.ppm.EncoderOptions,
+    ppm: SupportedFormats.ppm.EncoderOptions,
     // qoi: SupportedFormats.qoi.EncoderOptions,
     // ras: void,
     // sgi: void,
@@ -335,6 +335,7 @@ fn internalDetectFormat(read_stream: *io.ReadStream) !Format {
         // iff: no seek
         // jpeg: no seek
         // pam: no seek
+        // netpbm: no seek
         try read_stream.seekTo(0);
 
         const found = try formatInterface.formatDetect(read_stream);

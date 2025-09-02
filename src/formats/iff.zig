@@ -269,7 +269,10 @@ pub const IFF = struct {
     pub fn formatDetect(read_stream: *io.ReadStream) ImageUnmanaged.ReadError!bool {
         const reader = read_stream.reader();
 
-        const iff_format = try peekIffFormatId(reader);
+        const iff_format = peekIffFormatId(reader) catch {
+            return false;
+        };
+        
         return iff_format != .bad;
     }
 
