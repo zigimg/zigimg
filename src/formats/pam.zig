@@ -81,8 +81,12 @@ const Header = struct {
             defer line_buffer_stream.deinit();
 
             while (true) {
+                line_buffer_stream.clearRetainingCapacity();
+
                 // we fail on EOS here because a valid pam header must end with ENDHDR
                 _ = try reader.streamDelimiter(&line_buffer_stream.writer, '\n');
+                try reader.discardAll(1);
+
                 const line = line_buffer_stream.written(); // empty lines are meaningless
                 if (line.len == 0) continue;
                 if (line[0] == '#') { // comment
@@ -90,19 +94,19 @@ const Header = struct {
                     continue;
                 }
 
-                var tok_iter = std.mem.tokenizeAny(u8, line, &std.ascii.whitespace);
-                const first_token = tok_iter.next() orelse continue; // lines with 0 tokens are meaningless
+                var token_iterator = std.mem.tokenizeAny(u8, line, &std.ascii.whitespace);
+                const first_token = token_iterator.next() orelse continue; // lines with 0 tokens are meaningless
 
                 if (first_token.len > 8) return error.InvalidData; // the first token must be at most 8 bytes
 
                 if (std.mem.eql(u8, first_token, "ENDHDR")) break;
 
                 if (std.mem.eql(u8, first_token, "TUPLTYPE")) {
-                    maybe_tuple_type = try TupleType.fromString(tok_iter.rest());
+                    maybe_tuple_type = try TupleType.fromString(token_iterator.rest());
                     continue;
                 }
 
-                const second_token = tok_iter.next() orelse return error.InvalidData; // bad token
+                const second_token = token_iterator.next() orelse return error.InvalidData; // bad token
 
                 if (std.mem.eql(u8, first_token, "WIDTH")) {
                     maybe_width = std.fmt.parseUnsigned(usize, second_token, 10) catch return error.InvalidData; // bad width
@@ -113,8 +117,6 @@ const Header = struct {
                 } else if (std.mem.eql(u8, first_token, "MAXVAL")) {
                     maybe_maxval = std.fmt.parseUnsigned(u16, second_token, 10) catch return error.InvalidData; // bad maxval
                 } else return error.InvalidData; // invalid first token
-
-                line_buffer_stream.clearRetainingCapacity();
             }
         }
 

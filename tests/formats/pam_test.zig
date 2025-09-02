@@ -43,9 +43,10 @@ test "rejects PAM images with component values greater than maxval" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pam/value_greater_than_maxval.pam");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
-    const invalid = pam.PAM.readImage(helpers.zigimg_test_allocator, &stream_source);
+    const invalid = pam.PAM.readImage(helpers.zigimg_test_allocator, &read_stream);
     try helpers.expectError(invalid, zigimg.ImageUnmanaged.ReadError.InvalidData);
 }
 
@@ -274,7 +275,7 @@ test "reads rgba pam with maxval 65535" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pam/simple_rgba_maxval_65535.pam");
     defer file.close();
 
-      var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
     var image = try pam.PAM.readImage(helpers.zigimg_test_allocator, &read_stream);
