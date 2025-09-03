@@ -17,7 +17,7 @@ const SupportedFormats = struct {
     pub const jpeg = formats.jpeg.JPEG;
     pub const pam = formats.pam.PAM;
     pub const pbm = formats.netpbm.PBM;
-    // pub const pcx = formats.pcx.PCX;
+    pub const pcx = formats.pcx.PCX;
     pub const pgm = formats.netpbm.PGM;
     // pub const png = formats.png.PNG;
     pub const ppm = formats.netpbm.PPM;
@@ -39,7 +39,7 @@ pub const EncoderOptions = union(Format) {
     jpeg: void,
     pam: SupportedFormats.pam.EncoderOptions,
     pbm: SupportedFormats.pbm.EncoderOptions,
-    // pcx: SupportedFormats.pcx.EncoderOptions,
+    pcx: SupportedFormats.pcx.EncoderOptions,
     pgm: SupportedFormats.pgm.EncoderOptions,
     // png: SupportedFormats.png.EncoderOptions,
     ppm: SupportedFormats.ppm.EncoderOptions,
@@ -142,7 +142,7 @@ pub fn detectFormatFromFilePath(file_path: []const u8, read_buffer: []u8) !Forma
     var file = try std.fs.cwd().openFile(file_path, .{});
     defer file.close();
 
-    return detectFormatFromFile(&file, read_buffer);
+    return detectFormatFromFile(file, read_buffer);
 }
 
 /// Detect which image format is used by the file
@@ -336,6 +336,7 @@ fn internalDetectFormat(read_stream: *io.ReadStream) !Format {
         // jpeg: no seek
         // pam: no seek
         // netpbm: no seek
+        // pcx: no seek
         try read_stream.seekTo(0);
 
         const found = try formatInterface.formatDetect(read_stream);

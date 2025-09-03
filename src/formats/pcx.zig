@@ -1,17 +1,12 @@
 // Adapted from https://github.com/MasterQ32/zig-gamedev-lib/blob/master/src/pcx.zig
 // with permission from Felix Queißner
-const Allocator = std.mem.Allocator;
-const buffered_stream_source = @import("../buffered_stream_source.zig");
 const color = @import("../color.zig");
 const FormatInterface = @import("../FormatInterface.zig");
 const ImageUnmanaged = @import("../ImageUnmanaged.zig");
-const ImageError = ImageUnmanaged.Error;
-const ImageReadError = ImageUnmanaged.ReadError;
-const ImageWriteError = ImageUnmanaged.WriteError;
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const std = @import("std");
-const utils = @import("../utils.zig");
 const simd = @import("../simd.zig");
+const io = @import("../io.zig");
 
 const MagicHeader: u8 = 0x0A;
 const Version: u8 = 5;
@@ -62,17 +57,17 @@ const RLEDecoder = struct {
         remaining: usize,
     };
 
-    reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader,
+    reader: *std.Io.Reader,
     current_run: ?Run,
 
-    fn init(reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) RLEDecoder {
+    fn init(reader: *std.Io.Reader) RLEDecoder {
         return RLEDecoder{
             .reader = reader,
             .current_run = null,
         };
     }
 
-    fn readByte(self: *RLEDecoder) ImageReadError!u8 {
+    fn readByte(self: *RLEDecoder) ImageUnmanaged.ReadError!u8 {
         if (self.current_run) |*run| {
             const result = run.value;
             run.remaining -= 1;
@@ -82,13 +77,13 @@ const RLEDecoder = struct {
             return result;
         } else {
             while (true) {
-                const byte = try self.reader.readByte();
+                const byte = try self.reader.takeByte();
                 if (byte == RLEPairMask) // skip over "zero length runs"
                     continue;
                 if ((byte & RLEPairMask) == RLEPairMask) {
                     const len = byte & RLELengthMask;
                     std.debug.assert(len > 0);
-                    const result = try self.reader.readByte();
+                    const result = try self.reader.takeByte();
                     if (len > 1) {
                         // we only need to store a run in the decoder if it is longer than 1
                         self.current_run = .{
@@ -104,9 +99,9 @@ const RLEDecoder = struct {
         }
     }
 
-    fn finish(decoder: RLEDecoder) ImageReadError!void {
+    fn finish(decoder: RLEDecoder) ImageUnmanaged.ReadError!void {
         if (decoder.current_run != null) {
-            return ImageReadError.InvalidData;
+            return ImageUnmanaged.ReadError.InvalidData;
         }
     }
 };
@@ -119,7 +114,7 @@ const RLEPair = packed struct(u8) {
 const RLEMinLength = 2;
 const RLEMaxLength = (1 << 6) - 1;
 
-fn flushRLE(writer: anytype, value: u8, count: usize) !void {
+fn flushRLE(writer: *std.Io.Writer, value: u8, count: usize) !void {
     var current_count = count;
     while (current_count > 0) {
         const length_to_write = @min(current_count, RLEMaxLength);
@@ -134,7 +129,7 @@ fn flushRLE(writer: anytype, value: u8, count: usize) !void {
     }
 }
 
-inline fn flushRlePair(writer: anytype, value: u8, count: usize) !void {
+inline fn flushRlePair(writer: *std.Io.Writer, value: u8, count: usize) !void {
     const rle_pair = RLEPair{
         .length = @truncate(count),
     };
@@ -142,16 +137,14 @@ inline fn flushRlePair(writer: anytype, value: u8, count: usize) !void {
     try writer.writeByte(value);
 }
 
-inline fn flushRawBytes(writer: anytype, value: u8, count: usize) !void {
+inline fn flushRawBytes(writer: *std.Io.Writer, value: u8, count: usize) !void {
     // Must flush byte greater than 192 (0xC0) as a RLE pair
     if ((value & RLEPairMask) == RLEPairMask) {
         for (0..count) |_| {
             try flushRlePair(writer, value, 1);
         }
     } else {
-        for (0..count) |_| {
-            try writer.writeByte(value);
-        }
+        try writer.splatByteAll(value, count);
     }
 }
 
@@ -159,7 +152,7 @@ const RLEFastEncoder = struct {
     const LengthToCheck = 16;
     const VectorType = @Vector(LengthToCheck, u8);
 
-    pub fn encode(source_data: []const u8, writer: anytype) !void {
+    pub fn encode(source_data: []const u8, writer: *std.Io.Writer) !void {
         if (source_data.len == 0) {
             return;
         }
@@ -225,14 +218,12 @@ test "PCX RLE Fast encoder" {
     const uncompressed_data = [_]u8{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 64, 64, 2, 2, 2, 2, 2, 215, 215, 215, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 200, 200, 200, 200, 210, 210 };
     const compressed_data = [_]u8{ 0xC9, 0x01, 0xC2, 0x40, 0xC5, 0x02, 0xC3, 0xD7, 0xCA, 0x03, 0xC4, 0xC8, 0xC2, 0xD2 };
 
-    var result_list = std.ArrayList(u8).init(std.testing.allocator);
-    defer result_list.deinit();
+    var writer_alloc = std.io.Writer.Allocating.init(std.testing.allocator);
+    defer writer_alloc.deinit();
 
-    const writer = result_list.writer();
+    try RLEFastEncoder.encode(uncompressed_data[0..], &writer_alloc.writer);
 
-    try RLEFastEncoder.encode(uncompressed_data[0..], writer);
-
-    try std.testing.expectEqualSlices(u8, compressed_data[0..], result_list.items);
+    try std.testing.expectEqualSlices(u8, compressed_data[0..], writer_alloc.written());
 }
 
 test "PCX RLE Fast encoder should encore more than 63 bytes similar" {
@@ -242,27 +233,25 @@ test "PCX RLE Fast encoder should encore more than 63 bytes similar" {
 
     const compressed_data = [_]u8{ 0xFF, 0x45, 0x45, 0x45, 0xC4, 0x1 };
 
-    var result_list = std.ArrayList(u8).init(std.testing.allocator);
-    defer result_list.deinit();
+    var writer_alloc = std.io.Writer.Allocating.init(std.testing.allocator);
+    defer writer_alloc.deinit();
 
-    const writer = result_list.writer();
+    try RLEFastEncoder.encode(uncompressed_data[0..], &writer_alloc.writer);
 
-    try RLEFastEncoder.encode(uncompressed_data[0..], writer);
-
-    try std.testing.expectEqualSlices(u8, compressed_data[0..], result_list.items);
+    try std.testing.expectEqualSlices(u8, compressed_data[0..], writer_alloc.written());
 }
 
 const RLEStreamEncoder = struct {
     rle_byte: ?u8 = null,
     length: usize = 0,
 
-    pub fn encode(self: *RLEStreamEncoder, writer: anytype, bytes: []const u8) !void {
+    pub fn encode(self: *RLEStreamEncoder, writer: *std.Io.Writer, bytes: []const u8) !void {
         for (bytes) |byte| {
             try self.encodeByte(writer, byte);
         }
     }
 
-    pub fn encodeByte(self: *RLEStreamEncoder, writer: anytype, byte: u8) !void {
+    pub fn encodeByte(self: *RLEStreamEncoder, writer: *std.Io.Writer, byte: u8) !void {
         if (self.rle_byte == null) {
             self.rle_byte = byte;
             self.length = 1;
@@ -281,7 +270,7 @@ const RLEStreamEncoder = struct {
         }
     }
 
-    pub fn flush(self: *RLEStreamEncoder, writer: anytype) !void {
+    pub fn flush(self: *RLEStreamEncoder, writer: *std.Io.Writer) !void {
         if (self.length == 0) {
             return;
         }
@@ -305,28 +294,28 @@ pub const PCX = struct {
         };
     }
 
-    pub fn formatDetect(stream: *ImageUnmanaged.Stream) ImageReadError!bool {
-        var magic_number_bufffer: [2]u8 = undefined;
-        _ = try stream.read(magic_number_bufffer[0..]);
+    pub fn formatDetect(read_stream: *io.ReadStream) ImageUnmanaged.ReadError!bool {
+        const reader = read_stream.reader();
+        const magic_header = try reader.peek(2);
 
-        if (magic_number_bufffer[0] != MagicHeader) {
+        if (magic_header[0] != MagicHeader) {
             return false;
         }
 
-        if (magic_number_bufffer[1] > Version) {
+        if (magic_header[1] > Version) {
             return false;
         }
 
         return true;
     }
 
-    pub fn readImage(allocator: Allocator, stream: *ImageUnmanaged.Stream) ImageReadError!ImageUnmanaged {
+    pub fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!ImageUnmanaged {
         var result = ImageUnmanaged{};
         errdefer result.deinit(allocator);
 
         var pcx = PCX{};
 
-        const pixels = try pcx.read(allocator, stream);
+        const pixels = try pcx.read(allocator, read_stream);
 
         result.width = pcx.width();
         result.height = pcx.height();
@@ -335,14 +324,14 @@ pub const PCX = struct {
         return result;
     }
 
-    pub fn writeImage(allocator: Allocator, stream: *ImageUnmanaged.Stream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageWriteError!void {
+    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageUnmanaged.WriteError!void {
         _ = allocator;
         _ = encoder_options;
 
         var pcx = PCX{};
 
         if (image.width > std.math.maxInt(u16) or image.height > std.math.maxInt(u16)) {
-            return ImageWriteError.Unsupported;
+            return ImageUnmanaged.WriteError.Unsupported;
         }
 
         pcx.header.xmax = @truncate(image.width - 1);
@@ -371,7 +360,7 @@ pub const PCX = struct {
                 pcx.header.planes = 3;
             },
             else => {
-                return ImageWriteError.Unsupported;
+                return ImageUnmanaged.WriteError.Unsupported;
             },
         }
 
@@ -379,24 +368,24 @@ pub const PCX = struct {
         // Add one if the result is a odd number
         pcx.header.stride += (pcx.header.stride & 0x1);
 
-        try pcx.write(stream, image.pixels);
+        try pcx.write(write_stream, image.pixels);
     }
 
-    pub fn pixelFormat(self: PCX) ImageReadError!PixelFormat {
+    pub fn pixelFormat(self: PCX) ImageUnmanaged.ReadError!PixelFormat {
         if (self.header.planes == 1) {
             switch (self.header.bpp) {
                 1 => return PixelFormat.indexed1,
                 4 => return PixelFormat.indexed4,
                 8 => return PixelFormat.indexed8,
-                else => return ImageError.Unsupported,
+                else => return ImageUnmanaged.Error.Unsupported,
             }
         } else if (self.header.planes == 3) {
             switch (self.header.bpp) {
                 8 => return PixelFormat.rgb24,
-                else => return ImageError.Unsupported,
+                else => return ImageUnmanaged.Error.Unsupported,
             }
         } else {
-            return ImageError.Unsupported;
+            return ImageUnmanaged.Error.Unsupported;
         }
     }
 
@@ -408,21 +397,20 @@ pub const PCX = struct {
         return self.header.ymax - self.header.ymin + 1;
     }
 
-    pub fn read(self: *PCX, allocator: Allocator, stream: *ImageUnmanaged.Stream) ImageReadError!color.PixelStorage {
-        var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
-        const reader = buffered_stream.reader();
-        self.header = try utils.readStruct(reader, PCXHeader, .little);
+    pub fn read(self: *PCX, allocator: std.mem.Allocator, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!color.PixelStorage {
+        const reader = read_stream.reader();
+        self.header = try reader.takeStruct(PCXHeader, .little);
 
         if (self.header.id != 0x0A) {
-            return ImageReadError.InvalidData;
+            return ImageUnmanaged.ReadError.InvalidData;
         }
 
         if (self.header.version > 0x05) {
-            return ImageReadError.InvalidData;
+            return ImageUnmanaged.ReadError.InvalidData;
         }
 
         if (self.header.planes > 3) {
-            return ImageError.Unsupported;
+            return ImageUnmanaged.Error.Unsupported;
         }
 
         const pixel_format = try self.pixelFormat();
@@ -495,7 +483,7 @@ pub const PCX = struct {
                             x += 1;
                         }
                     },
-                    else => return ImageError.Unsupported,
+                    else => return ImageUnmanaged.Error.Unsupported,
                 }
             }
 
@@ -524,17 +512,17 @@ pub const PCX = struct {
             }
 
             if (pixels == .indexed8) {
-                const end_pos = try buffered_stream.getEndPos();
-                try buffered_stream.seekTo(end_pos - 769);
+                const end_pos = try read_stream.getEndPos();
+                try read_stream.seekTo(end_pos - 769);
 
-                if ((try reader.readByte()) != VGAPaletteIdentifier) {
-                    return ImageReadError.InvalidData;
+                if ((try reader.takeByte()) != VGAPaletteIdentifier) {
+                    return ImageUnmanaged.ReadError.InvalidData;
                 }
 
                 for (palette) |*current_entry| {
-                    current_entry.r = try reader.readByte();
-                    current_entry.g = try reader.readByte();
-                    current_entry.b = try reader.readByte();
+                    current_entry.r = try reader.takeByte();
+                    current_entry.g = try reader.takeByte();
+                    current_entry.b = try reader.takeByte();
                     current_entry.a = 255;
                 }
             }
@@ -543,7 +531,7 @@ pub const PCX = struct {
         return pixels;
     }
 
-    pub fn write(self: PCX, stream: *ImageUnmanaged.Stream, pixels: color.PixelStorage) ImageUnmanaged.WriteError!void {
+    pub fn write(self: PCX, write_stream: *io.WriteStream, pixels: color.PixelStorage) ImageUnmanaged.WriteError!void {
         switch (pixels) {
             .indexed1,
             .indexed4,
@@ -553,15 +541,13 @@ pub const PCX = struct {
                 // Do nothing
             },
             else => {
-                return ImageWriteError.Unsupported;
+                return ImageUnmanaged.WriteError.Unsupported;
             },
         }
 
-        var buffered_stream = buffered_stream_source.bufferedStreamSourceWriter(stream);
+        const writer = write_stream.writer();
 
-        const writer = buffered_stream.writer();
-
-        try utils.writeStruct(writer, self.header, .little);
+        try writer.writeStruct(self.header, .little);
 
         const actual_width = self.width();
         const is_even = ((actual_width & 0x1) == 0);
@@ -584,18 +570,18 @@ pub const PCX = struct {
                 try writer.writeByte(VGAPaletteIdentifier);
                 for (pixels.indexed8.palette) |current_entry| {
                     const rgb24_color = color.Rgb24.from.u32Rgba(current_entry.to.u32Rgba());
-                    try utils.writeStruct(writer, rgb24_color, .little);
+                    try writer.writeStruct(rgb24_color, .little);
                 }
             },
             .rgb24 => |data| {
                 try self.writeRgb24(writer, data);
             },
             else => {
-                return ImageWriteError.Unsupported;
+                return ImageUnmanaged.WriteError.Unsupported;
             },
         }
 
-        try buffered_stream.flush();
+        try write_stream.flush();
     }
 
     fn fillPalette(self: *PCX, palette: []const color.Rgba32) void {
@@ -607,7 +593,7 @@ pub const PCX = struct {
         }
     }
 
-    fn writeIndexed1(self: *const PCX, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: color.IndexedStorage1) ImageUnmanaged.WriteError!void {
+    fn writeIndexed1(self: *const PCX, writer: *std.Io.Writer, indexed: color.IndexedStorage1) ImageUnmanaged.WriteError!void {
         var rle_encoder = RLEStreamEncoder{};
 
         const image_width = self.width();
@@ -640,7 +626,7 @@ pub const PCX = struct {
         try rle_encoder.flush(writer);
     }
 
-    fn writeIndexed4(self: *const PCX, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: color.IndexedStorage4) ImageUnmanaged.WriteError!void {
+    fn writeIndexed4(self: *const PCX, writer: *std.Io.Writer, indexed: color.IndexedStorage4) ImageUnmanaged.WriteError!void {
         var rle_encoder = RLEStreamEncoder{};
 
         const image_width = self.width();
@@ -672,11 +658,11 @@ pub const PCX = struct {
         try rle_encoder.flush(writer);
     }
 
-    fn writeIndexed8Even(writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: color.IndexedStorage8) ImageUnmanaged.WriteError!void {
+    fn writeIndexed8Even(writer: *std.Io.Writer, indexed: color.IndexedStorage8) ImageUnmanaged.WriteError!void {
         try RLEFastEncoder.encode(indexed.indices, writer);
     }
 
-    fn writeIndexed8Odd(self: *const PCX, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: color.IndexedStorage8) ImageUnmanaged.WriteError!void {
+    fn writeIndexed8Odd(self: *const PCX, writer: *std.Io.Writer, indexed: color.IndexedStorage8) ImageUnmanaged.WriteError!void {
         var rle_encoder = RLEStreamEncoder{};
 
         const image_width = self.width();
@@ -693,7 +679,7 @@ pub const PCX = struct {
         try rle_encoder.flush(writer);
     }
 
-    fn writeRgb24(self: *const PCX, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, pixels: []const color.Rgb24) ImageUnmanaged.WriteError!void {
+    fn writeRgb24(self: *const PCX, writer: *std.Io.Writer, pixels: []const color.Rgb24) ImageUnmanaged.WriteError!void {
         var rle_encoder = RLEStreamEncoder{};
 
         const image_width = self.width();

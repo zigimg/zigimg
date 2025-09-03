@@ -42,7 +42,7 @@ pub fn detectFormatFromFilePath(file_path: []const u8, read_buffer: []u8) !Forma
 }
 
 /// Detect which image format is used by the file
-pub fn detectFormatFromFile(file: *std.fs.File, read_buffer: []u8) !Format {
+pub fn detectFormatFromFile(file: std.fs.File, read_buffer: []u8) !Format {
     return ImageUnmanaged.detectFormatFromFile(file, read_buffer);
 }
 
@@ -57,7 +57,7 @@ pub fn fromFilePath(allocator: std.mem.Allocator, file_path: []const u8, read_bu
 }
 
 /// Load an image from a standard library std.fs.File
-pub fn fromFile(allocator: std.mem.Allocator, file: *std.fs.File, read_buffer: []u8) !Image {
+pub fn fromFile(allocator: std.mem.Allocator, file: std.fs.File, read_buffer: []u8) !Image {
     return (try ImageUnmanaged.fromFile(allocator, file, read_buffer)).toManaged(allocator);
 }
 
