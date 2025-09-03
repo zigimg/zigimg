@@ -272,7 +272,7 @@ pub const IFF = struct {
         const iff_format = peekIffFormatId(reader) catch {
             return false;
         };
-        
+
         return iff_format != .bad;
     }
 
