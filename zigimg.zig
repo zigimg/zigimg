@@ -26,7 +26,7 @@ test {
         @import("tests/formats/netpbm_test.zig"),
         @import("tests/formats/pcx_test.zig"),
         // @import("tests/formats/png_test.zig"),
-        // @import("tests/formats/qoi_test.zig"),
+        @import("tests/formats/qoi_test.zig"),
         // @import("tests/formats/ras_test.zig"),
         // @import("tests/formats/sgi_test.zig"),
         // @import("tests/formats/tga_test.zig"),

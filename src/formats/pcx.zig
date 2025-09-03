@@ -3,10 +3,10 @@
 const color = @import("../color.zig");
 const FormatInterface = @import("../FormatInterface.zig");
 const ImageUnmanaged = @import("../ImageUnmanaged.zig");
-const PixelFormat = @import("../pixel_format.zig").PixelFormat;
-const std = @import("std");
-const simd = @import("../simd.zig");
 const io = @import("../io.zig");
+const PixelFormat = @import("../pixel_format.zig").PixelFormat;
+const simd = @import("../simd.zig");
+const std = @import("std");
 
 const MagicHeader: u8 = 0x0A;
 const Version: u8 = 5;

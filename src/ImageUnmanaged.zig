@@ -21,7 +21,7 @@ const SupportedFormats = struct {
     pub const pgm = formats.netpbm.PGM;
     // pub const png = formats.png.PNG;
     pub const ppm = formats.netpbm.PPM;
-    // pub const qoi = formats.qoi.QOI;
+    pub const qoi = formats.qoi.QOI;
     // pub const ras = formats.ras.RAS;
     // pub const sgi = formats.sgi.SGI;
     // pub const tga = formats.tga.TGA;
@@ -43,7 +43,7 @@ pub const EncoderOptions = union(Format) {
     pgm: SupportedFormats.pgm.EncoderOptions,
     // png: SupportedFormats.png.EncoderOptions,
     ppm: SupportedFormats.ppm.EncoderOptions,
-    // qoi: SupportedFormats.qoi.EncoderOptions,
+    qoi: SupportedFormats.qoi.EncoderOptions,
     // ras: void,
     // sgi: void,
     // tga: SupportedFormats.tga.EncoderOptions,
@@ -337,6 +337,7 @@ fn internalDetectFormat(read_stream: *io.ReadStream) !Format {
         // pam: no seek
         // netpbm: no seek
         // pcx: no seek
+        // qoi: no seek
         try read_stream.seekTo(0);
 
         const found = try formatInterface.formatDetect(read_stream);
