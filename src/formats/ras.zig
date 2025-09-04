@@ -163,7 +163,7 @@ pub const RAS = struct {
 
         const reader = read_stream.reader();
 
-        // Toss the header
+        // Toss the magic number
         reader.toss(Header.ras_magic_number.len);
 
         self.header = reader.takeStruct(Header, .big) catch return ImageUnmanaged.ReadError.InvalidData;

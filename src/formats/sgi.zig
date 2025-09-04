@@ -1,15 +1,9 @@
-const std = @import("std");
-const bigToNative = std.mem.bigToNative;
-const Allocator = std.mem.Allocator;
-
-const buffered_stream_source = @import("../buffered_stream_source.zig");
 const color = @import("../color.zig");
-const PixelStorage = color.PixelStorage;
 const FormatInterface = @import("../FormatInterface.zig");
 const ImageUnmanaged = @import("../ImageUnmanaged.zig");
-const ImageReadError = ImageUnmanaged.ReadError;
-const ImageError = ImageUnmanaged.Error;
+const io = @import("../io.zig");
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
+const std = @import("std");
 const utils = @import("../utils.zig");
 
 pub const CompressionFlag = enum(u8) {
@@ -83,46 +77,46 @@ pub const SGI = struct {
         };
     }
 
-    pub fn formatDetect(stream: *ImageUnmanaged.Stream) !bool {
-        var magic_buffer: [Header.magic_number.len]u8 = undefined;
+    pub fn formatDetect(read_stream: *io.ReadStream) ImageUnmanaged.ReadError!bool {
+        const reader = read_stream.reader();
 
-        _ = try stream.read(magic_buffer[0..]);
+        const magic_buffer = try reader.peek(Header.magic_number.len);
 
         return std.mem.eql(u8, magic_buffer[0..], Header.magic_number[0..]);
     }
 
-    pub fn pixelFormat(self: *SGI) ImageReadError!PixelFormat {
+    pub fn pixelFormat(self: *SGI) ImageUnmanaged.Error!PixelFormat {
         switch (self.header.pixel_format) {
             .normal => {
                 switch (self.header.dimension) {
                     .multi_channel => switch (self.header.z_size) {
-                        3 => return if (self.header.bytes_per_channel == 1) PixelFormat.rgb24 else PixelFormat.rgb48,
-                        4 => return if (self.header.bytes_per_channel == 1) PixelFormat.rgba32 else PixelFormat.rgba64,
-                        else => return ImageError.Unsupported,
+                        3 => return if (self.header.bytes_per_channel == 1) .rgb24 else .rgb48,
+                        4 => return if (self.header.bytes_per_channel == 1) .rgba32 else .rgba64,
+                        else => return ImageUnmanaged.Error.Unsupported,
                     },
                     // TODO: add support for 16-bit channel ie: grayscale16
-                    .single_channel => return PixelFormat.grayscale8,
-                    else => return ImageError.Unsupported,
+                    .single_channel => return .grayscale8,
+                    else => return ImageUnmanaged.Error.Unsupported,
                 }
             },
-            else => return ImageError.Unsupported,
+            else => return ImageUnmanaged.Error.Unsupported,
         }
     }
 
-    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *ImageUnmanaged.Stream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageUnmanaged.Stream.WriteError!void {
+    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageUnmanaged.WriteError!void {
         _ = allocator;
         _ = write_stream;
         _ = image;
         _ = encoder_options;
     }
 
-    pub fn readImage(allocator: std.mem.Allocator, stream: *ImageUnmanaged.Stream) ImageUnmanaged.ReadError!ImageUnmanaged {
+    pub fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!ImageUnmanaged {
         var result = ImageUnmanaged{};
         errdefer result.deinit(allocator);
 
         var sgi = SGI{};
 
-        const pixels = try sgi.read(stream, allocator);
+        const pixels = try sgi.read(allocator, read_stream);
 
         result.pixels = pixels;
         result.width = sgi.width();
@@ -131,11 +125,16 @@ pub const SGI = struct {
         return result;
     }
 
-    pub fn uncompressBitmap(self: *SGI, stream: *ImageUnmanaged.Stream, buffer: []u8, allocator: std.mem.Allocator) !void {
-        const reader = stream.reader();
+    pub fn uncompressBitmap(
+        self: *SGI,
+        allocator: std.mem.Allocator,
+        read_stream: *io.ReadStream,
+        buffer: []u8,
+    ) !void {
+        const reader = read_stream.reader();
 
         switch (self.header.compression) {
-            .uncompressed => _ = try reader.readAll(buffer[0..]),
+            .uncompressed => _ = try reader.readSliceAll(buffer[0..]),
             .rle => {
                 const image_width = self.width();
                 const image_height = self.height();
@@ -144,7 +143,7 @@ pub const SGI = struct {
                 const tables_buffer: []u8 = try allocator.alloc(u8, self.header.y_size * self.header.z_size * 2 * 4);
                 defer allocator.free(tables_buffer);
 
-                _ = try reader.readAll(tables_buffer[0..]);
+                _ = try reader.readSliceAll(tables_buffer[0..]);
 
                 const offsets: []u32 = @as(*const []u32, @ptrCast(&tables_buffer[0 .. self.header.y_size * self.header.z_size * 4])).*[0 .. self.header.y_size * self.header.z_size];
 
@@ -153,13 +152,13 @@ pub const SGI = struct {
                 // then read compressed_data that's following the tables
                 const data_buffer: []u8 = try allocator.alloc(
                     u8,
-                    std.math.cast(usize, try stream.getEndPos() - try stream.getPos()) orelse return ImageReadError.StreamTooLong,
+                    std.math.cast(usize, try read_stream.getEndPos() - read_stream.getPos()) orelse return ImageUnmanaged.ReadError.StreamTooLong,
                 );
                 defer allocator.free(data_buffer);
 
                 const data_start = 512 + tables_buffer.len;
 
-                _ = try reader.readAll(data_buffer[0..]);
+                _ = try reader.readSliceAll(data_buffer[0..]);
 
                 if (self.header.bytes_per_channel == 1) {
                     for (0..self.header.z_size) |z| {
@@ -230,14 +229,17 @@ pub const SGI = struct {
         }
     }
 
-    pub fn read(self: *SGI, stream: *ImageUnmanaged.Stream, allocator: std.mem.Allocator) ImageUnmanaged.ReadError!color.PixelStorage {
-        if (!try formatDetect(stream)) {
-            return ImageReadError.InvalidData;
+    pub fn read(self: *SGI, allocator: std.mem.Allocator, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!color.PixelStorage {
+        if (!try formatDetect(read_stream)) {
+            return ImageUnmanaged.ReadError.InvalidData;
         }
 
-        const reader = stream.reader();
+        const reader = read_stream.reader();
 
-        self.header = utils.readStruct(reader, Header, .big) catch return ImageReadError.InvalidData;
+        // Toss the magic number
+        reader.toss(Header.magic_number.len);
+
+        self.header = reader.takeStruct(Header, .big) catch return ImageUnmanaged.ReadError.InvalidData;
 
         const pixel_format = try self.pixelFormat();
 
@@ -253,7 +255,7 @@ pub const SGI = struct {
         const buffer: []u8 = try allocator.alloc(u8, buffer_size);
         defer allocator.free(buffer);
 
-        try self.uncompressBitmap(stream, buffer, allocator);
+        try self.uncompressBitmap(allocator, read_stream, buffer);
 
         // channel_size in pixels, not in bytes
         const channel_size = image_height * image_width;
@@ -273,7 +275,7 @@ pub const SGI = struct {
                 for (0..image_height) |y| {
                     for (0..image_width) |x| {
                         const offset = (image_height - y - 1) * image_width + x;
-                        storage[y * image_width + x] = color.Rgba64{ .r = bigToNative(u16, u16_buffer[offset]), .g = bigToNative(u16, u16_buffer[offset + channel_size]), .b = bigToNative(u16, u16_buffer[offset + channel_size * 2]), .a = bigToNative(u16, buffer[offset + channel_size * 3]) };
+                        storage[y * image_width + x] = color.Rgba64{ .r = std.mem.bigToNative(u16, u16_buffer[offset]), .g = std.mem.bigToNative(u16, u16_buffer[offset + channel_size]), .b = std.mem.bigToNative(u16, u16_buffer[offset + channel_size * 2]), .a = std.mem.bigToNative(u16, buffer[offset + channel_size * 3]) };
                     }
                 }
             },
@@ -282,7 +284,7 @@ pub const SGI = struct {
                 for (0..image_height) |y| {
                     for (0..image_width) |x| {
                         const offset = (image_height - y - 1) * image_width + x;
-                        storage[y * image_width + x] = color.Rgb48{ .r = bigToNative(u16, u16_buffer[offset]), .g = bigToNative(u16, u16_buffer[offset + channel_size]), .b = bigToNative(u16, u16_buffer[offset + channel_size * 2]) };
+                        storage[y * image_width + x] = color.Rgb48{ .r = std.mem.bigToNative(u16, u16_buffer[offset]), .g = std.mem.bigToNative(u16, u16_buffer[offset + channel_size]), .b = std.mem.bigToNative(u16, u16_buffer[offset + channel_size * 2]) };
                     }
                 }
             },
@@ -304,7 +306,7 @@ pub const SGI = struct {
                     }
                 }
             },
-            else => return ImageError.Unsupported,
+            else => return ImageUnmanaged.Error.Unsupported,
         }
 
         return pixels;
