@@ -1,14 +1,10 @@
-const Allocator = std.mem.Allocator;
-const buffered_stream_source = @import("../buffered_stream_source.zig");
 const color = @import("../color.zig");
 const FormatInterface = @import("../FormatInterface.zig");
 const ImageUnmanaged = @import("../ImageUnmanaged.zig");
-const ImageReadError = ImageUnmanaged.ReadError;
-const ImageError = ImageUnmanaged.Error;
-const utils = @import("../utils.zig");
-const std = @import("std");
-const PixelStorage = color.PixelStorage;
+const io = @import("../io.zig");
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
+const std = @import("std");
+const utils = @import("../utils.zig");
 
 pub const Type = enum(u32) {
     // bgr uncompressed data
@@ -74,32 +70,31 @@ pub const RAS = struct {
         };
     }
 
-    pub fn formatDetect(stream: *ImageUnmanaged.Stream) !bool {
-        var magic_buffer: [Header.ras_magic_number.len]u8 = undefined;
-
-        _ = try stream.read(magic_buffer[0..]);
+    pub fn formatDetect(read_stream: *io.ReadStream) ImageUnmanaged.ReadError!bool {
+        const reader = read_stream.reader();
+        const magic_buffer = try reader.peek(Header.ras_magic_number.len);
 
         return std.mem.eql(u8, magic_buffer[0..], Header.ras_magic_number[0..]);
     }
 
-    pub fn pixelFormat(self: *RAS) ImageReadError!PixelFormat {
+    pub fn pixelFormat(self: *RAS) ImageUnmanaged.Error!PixelFormat {
         switch (self.header.depth) {
-            24 => return if (self.header.type == .rgb) PixelFormat.rgb24 else PixelFormat.bgr24,
-            32 => return PixelFormat.rgba32,
-            8 => return if (self.header.color_map_length > 0) PixelFormat.indexed8 else PixelFormat.grayscale8,
+            24 => return if (self.header.type == .rgb) .rgb24 else .bgr24,
+            32 => return .rgba32,
+            8 => return if (self.header.color_map_length > 0) .indexed8 else .grayscale8,
             // some apps may use (2-color) color map when storing 1-bit files
-            1 => return if (self.header.color_map_length > 0) PixelFormat.indexed8 else PixelFormat.grayscale1,
-            else => return ImageError.Unsupported,
+            1 => return if (self.header.color_map_length > 0) .indexed8 else .grayscale1,
+            else => return ImageUnmanaged.Error.Unsupported,
         }
     }
 
-    pub fn readImage(allocator: std.mem.Allocator, stream: *ImageUnmanaged.Stream) ImageUnmanaged.ReadError!ImageUnmanaged {
+    pub fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!ImageUnmanaged {
         var result = ImageUnmanaged{};
         errdefer result.deinit(allocator);
 
         var ras = RAS{};
 
-        const pixels = try ras.read(stream, allocator);
+        const pixels = try ras.read(allocator, read_stream);
 
         result.pixels = pixels;
         result.width = ras.width();
@@ -108,24 +103,22 @@ pub const RAS = struct {
         return result;
     }
 
-    pub fn uncompressBitmap(self: *RAS, stream: *ImageUnmanaged.Stream, buffer: []u8) !void {
-        const reader = stream.reader();
-
+    pub fn uncompressBitmap(self: *RAS, reader: *std.Io.Reader, buffer: []u8) ImageUnmanaged.ReadError!void {
         switch (self.header.type) {
             // no compression for these types
-            .old, .standard, .rgb => _ = try reader.readAll(buffer[0..]),
+            .old, .standard, .rgb => _ = try reader.readSliceAll(buffer[0..]),
             // rle encoding with x80 trigger byte
             .byte_encoded => {
                 var position: usize = 0;
                 while (position < buffer.len) {
-                    const flag: u8 = try reader.readByte();
+                    const flag: u8 = try reader.takeByte();
                     if (flag == 0x80) {
-                        const count: u16 = try reader.readByte();
+                        const count: u16 = try reader.takeByte();
                         if (count == 0) {
                             buffer[position] = flag;
                             position += 1;
                         } else {
-                            const run = try reader.readByte();
+                            const run = try reader.takeByte();
                             for (0..count + 1) |_| {
                                 buffer[position] = run;
                                 position += 1;
@@ -139,12 +132,11 @@ pub const RAS = struct {
                     }
                 }
             },
-            else => return ImageError.Unsupported,
+            else => return ImageUnmanaged.Error.Unsupported,
         }
     }
 
-    pub fn readPalette(self: *RAS, stream: *ImageUnmanaged.Stream, allocator: std.mem.Allocator) !void {
-        const reader = stream.reader();
+    pub fn readPalette(self: *RAS, allocator: std.mem.Allocator, reader: *std.Io.Reader) ImageUnmanaged.ReadError!void {
         const header = self.header;
         switch (header.color_map_type) {
             .rgb_color_map => {
@@ -153,25 +145,28 @@ pub const RAS = struct {
                 const palette = self.palette.data;
                 const buffer: []u8 = try allocator.alloc(u8, header.color_map_length);
                 defer allocator.free(buffer);
-                _ = try reader.readAll(buffer);
+                _ = try reader.readSliceAll(buffer);
 
                 for (0..colors) |index| {
                     // palette components are stored in a separate plane
                     palette[index] = color.Rgba32.from.rgb(buffer[index], buffer[index + colors], buffer[index + 2 * colors]);
                 }
             },
-            else => return ImageError.Unsupported,
+            else => return ImageUnmanaged.Error.Unsupported,
         }
     }
 
-    pub fn read(self: *RAS, stream: *ImageUnmanaged.Stream, allocator: std.mem.Allocator) ImageUnmanaged.ReadError!color.PixelStorage {
-        if (!try formatDetect(stream)) {
-            return ImageReadError.InvalidData;
+    pub fn read(self: *RAS, allocator: std.mem.Allocator, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!color.PixelStorage {
+        if (!try formatDetect(read_stream)) {
+            return ImageUnmanaged.ReadError.InvalidData;
         }
 
-        const reader = stream.reader();
+        const reader = read_stream.reader();
 
-        self.header = utils.readStruct(reader, Header, .big) catch return ImageReadError.InvalidData;
+        // Toss the header
+        reader.toss(Header.ras_magic_number.len);
+
+        self.header = reader.takeStruct(Header, .big) catch return ImageUnmanaged.ReadError.InvalidData;
 
         const pixel_format = try self.pixelFormat();
 
@@ -179,7 +174,7 @@ pub const RAS = struct {
         const image_height = self.height();
 
         if (self.header.color_map_type != .no_color_map and self.header.color_map_length > 0) {
-            try self.readPalette(stream, allocator);
+            try self.readPalette(allocator, reader);
         }
 
         var pixels = try color.PixelStorage.init(allocator, pixel_format, image_width * image_height);
@@ -200,7 +195,7 @@ pub const RAS = struct {
         const buffer: []u8 = try allocator.alloc(u8, buffer_size);
         defer allocator.free(buffer);
 
-        try self.uncompressBitmap(stream, buffer);
+        try self.uncompressBitmap(reader, buffer);
 
         switch (pixels) {
             .grayscale1 => |*storage| {
@@ -246,13 +241,13 @@ pub const RAS = struct {
                     }
                 }
             },
-            else => return ImageError.Unsupported,
+            else => return ImageUnmanaged.Error.Unsupported,
         }
 
         return pixels;
     }
 
-    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *ImageUnmanaged.Stream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageUnmanaged.Stream.WriteError!void {
+    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageUnmanaged.WriteError!void {
         _ = allocator;
         _ = write_stream;
         _ = image;
