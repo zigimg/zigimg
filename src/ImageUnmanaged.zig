@@ -24,7 +24,7 @@ const SupportedFormats = struct {
     pub const qoi = formats.qoi.QOI;
     pub const ras = formats.ras.RAS;
     pub const sgi = formats.sgi.SGI;
-    // pub const tga = formats.tga.TGA;
+    pub const tga = formats.tga.TGA;
     // pub const tiff = formats.tiff.TIFF;
     // pub const xbm = formats.xbm.XBM;
 };
@@ -46,7 +46,7 @@ pub const EncoderOptions = union(Format) {
     qoi: SupportedFormats.qoi.EncoderOptions,
     ras: void,
     sgi: void,
-    // tga: SupportedFormats.tga.EncoderOptions,
+    tga: SupportedFormats.tga.EncoderOptions,
     // tiff: void,
     // xbm: void,
 };
@@ -62,6 +62,7 @@ pub const ReadError = Error ||
 
 pub const WriteError = Error ||
     std.mem.Allocator.Error ||
+    io.ReadStream.Error ||
     io.WriteStream.Error ||
     std.fs.File.OpenError ||
     error{ EndOfStream, InvalidData, UnfinishedBits };
@@ -340,6 +341,7 @@ fn internalDetectFormat(read_stream: *io.ReadStream) !Format {
         // qoi: no seek
         // ras: no seek
         // sgi: no seek
+        // tga: seek
         try read_stream.seekTo(0);
 
         const found = try formatInterface.formatDetect(read_stream);

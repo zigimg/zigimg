@@ -1,35 +1,32 @@
-const PixelFormat = @import("../../src/pixel_format.zig").PixelFormat;
-const assert = std.debug.assert;
-const tga = @import("../../src/formats/tga.zig");
-const color = @import("../../src/color.zig");
-const ImageReadError = Image.ReadError;
-const std = @import("std");
-const testing = std.testing;
-const Image = @import("../../src/Image.zig");
 const helpers = @import("../helpers.zig");
+const std = @import("std");
+const tga = zigimg.formats.tga;
+const zigimg = @import("zigimg");
 
 test "Should error on non TGA images" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
     var tga_file = tga.TGA{};
 
-    const invalidFile = tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    const invalidFile = tga_file.read(helpers.zigimg_test_allocator, &read_stream);
 
-    try helpers.expectError(invalidFile, ImageReadError.InvalidData);
+    try helpers.expectError(invalidFile, zigimg.Image.ReadError.InvalidData);
 }
 
 test "Read ubw8 TGA file" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/ubw8.tga");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
     var tga_file = tga.TGA{};
 
-    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(tga_file.width(), 128);
@@ -38,7 +35,7 @@ test "Read ubw8 TGA file" {
 
     const expected_strip = [_]u8{ 76, 149, 178, 0, 76, 149, 178, 254, 76, 149, 178, 0, 76, 149, 178, 254 };
 
-    try testing.expect(pixels == .grayscale8);
+    try std.testing.expect(pixels == .grayscale8);
 
     const width = tga_file.width();
     const height = tga_file.height();
@@ -61,11 +58,12 @@ test "Read ucm8 TGA file" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/ucm8.tga");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
     var tga_file = tga.TGA{};
 
-    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(tga_file.width(), 128);
@@ -74,7 +72,7 @@ test "Read ucm8 TGA file" {
 
     const expected_strip = [_]u8{ 64, 128, 192, 0, 64, 128, 192, 255, 64, 128, 192, 0, 64, 128, 192, 255 };
 
-    try testing.expect(pixels == .indexed8);
+    try std.testing.expect(pixels == .indexed8);
 
     try helpers.expectEq(pixels.indexed8.indices.len, 128 * 128);
 
@@ -105,11 +103,12 @@ test "Read utc16 TGA file" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/utc16.tga");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
     var tga_file = tga.TGA{};
 
-    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(tga_file.width(), 128);
@@ -118,7 +117,7 @@ test "Read utc16 TGA file" {
 
     const expected_strip = [_]u32{ 0xff0000, 0x00ff00, 0x0000ff, 0x000000, 0xff0000, 0x00ff00, 0x0000ff, 0xffffff, 0xff0000, 0x00ff00, 0x0000ff, 0x000000, 0xff0000, 0x00ff00, 0x0000ff, 0xffffff };
 
-    try testing.expect(pixels == .rgb555);
+    try std.testing.expect(pixels == .rgb555);
 
     try helpers.expectEq(pixels.rgb555.len, 128 * 128);
 
@@ -143,11 +142,12 @@ test "Read utc24 TGA file" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/utc24.tga");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
     var tga_file = tga.TGA{};
 
-    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(tga_file.width(), 128);
@@ -156,7 +156,7 @@ test "Read utc24 TGA file" {
 
     const expected_strip = [_]u32{ 0xff0000, 0x00ff00, 0x0000ff, 0x000000, 0xff0000, 0x00ff00, 0x0000ff, 0xffffff, 0xff0000, 0x00ff00, 0x0000ff, 0x000000, 0xff0000, 0x00ff00, 0x0000ff, 0xffffff };
 
-    try testing.expect(pixels == .bgr24);
+    try std.testing.expect(pixels == .bgr24);
 
     try helpers.expectEq(pixels.bgr24.len, 128 * 128);
 
@@ -181,11 +181,12 @@ test "Read utc32 TGA file" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/utc32.tga");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
     var tga_file = tga.TGA{};
 
-    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(tga_file.width(), 128);
@@ -194,7 +195,7 @@ test "Read utc32 TGA file" {
 
     const expected_strip = [_]u32{ 0xff0000, 0x00ff00, 0x0000ff, 0x000000, 0xff0000, 0x00ff00, 0x0000ff, 0xffffff, 0xff0000, 0x00ff00, 0x0000ff, 0x000000, 0xff0000, 0x00ff00, 0x0000ff, 0xffffff };
 
-    try testing.expect(pixels == .bgra32);
+    try std.testing.expect(pixels == .bgra32);
 
     try helpers.expectEq(pixels.bgra32.len, 128 * 128);
 
@@ -219,11 +220,12 @@ test "Read cbw8 TGA file" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/cbw8.tga");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
     var tga_file = tga.TGA{};
 
-    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(tga_file.width(), 128);
@@ -232,7 +234,7 @@ test "Read cbw8 TGA file" {
 
     const expected_strip = [_]u8{ 76, 149, 178, 0, 76, 149, 178, 254, 76, 149, 178, 0, 76, 149, 178, 254 };
 
-    try testing.expect(pixels == .grayscale8);
+    try std.testing.expect(pixels == .grayscale8);
 
     const width = tga_file.width();
     const height = tga_file.height();
@@ -255,11 +257,12 @@ test "Read ccm8 TGA file" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/ccm8.tga");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
     var tga_file = tga.TGA{};
 
-    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(tga_file.width(), 128);
@@ -268,7 +271,7 @@ test "Read ccm8 TGA file" {
 
     const expected_strip = [_]u8{ 64, 128, 192, 0, 64, 128, 192, 255, 64, 128, 192, 0, 64, 128, 192, 255 };
 
-    try testing.expect(pixels == .indexed8);
+    try std.testing.expect(pixels == .indexed8);
 
     try helpers.expectEq(pixels.indexed8.indices.len, 128 * 128);
 
@@ -299,11 +302,12 @@ test "Read ctc24 TGA file" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/ctc24.tga");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
     var tga_file = tga.TGA{};
 
-    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(tga_file.width(), 128);
@@ -312,7 +316,7 @@ test "Read ctc24 TGA file" {
 
     const expected_strip = [_]u32{ 0xff0000, 0x00ff00, 0x0000ff, 0x000000, 0xff0000, 0x00ff00, 0x0000ff, 0xffffff, 0xff0000, 0x00ff00, 0x0000ff, 0x000000, 0xff0000, 0x00ff00, 0x0000ff, 0xffffff };
 
-    try testing.expect(pixels == .bgr24);
+    try std.testing.expect(pixels == .bgr24);
 
     try helpers.expectEq(pixels.bgr24.len, 128 * 128);
 
@@ -337,18 +341,19 @@ test "Read matte-01 TGA file" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/matte-01.tga");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
     var tga_file = tga.TGA{};
 
-    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(tga_file.width(), 1280);
     try helpers.expectEq(tga_file.height(), 720);
     try helpers.expectEq(try tga_file.pixelFormat(), .bgra32);
 
-    try testing.expect(pixels == .bgra32);
+    try std.testing.expect(pixels == .bgra32);
 
     try helpers.expectEq(pixels.bgra32.len, 1280 * 720);
 
@@ -381,74 +386,77 @@ test "Read font TGA file" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/font.tga");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
     var tga_file = tga.TGA{};
 
-    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(tga_file.width(), 192);
     try helpers.expectEq(tga_file.height(), 256);
     try helpers.expectEq(try tga_file.pixelFormat(), .bgra32);
 
-    try testing.expect(pixels == .bgra32);
+    try std.testing.expect(pixels == .bgra32);
 
     try helpers.expectEq(pixels.bgra32.len, 192 * 256);
 
     const width = tga_file.width();
 
-    try helpers.expectEq(pixels.bgra32[64 * width + 16].to.color(color.Rgba32), color.Rgba32.from.rgba(0, 0, 0, 0));
-    try helpers.expectEq(pixels.bgra32[64 * width + 17].to.color(color.Rgba32), color.Rgba32.from.rgba(209, 209, 209, 255));
-    try helpers.expectEq(pixels.bgra32[65 * width + 17].to.color(color.Rgba32), color.Rgba32.from.rgba(255, 255, 255, 255));
+    try helpers.expectEq(pixels.bgra32[64 * width + 16].to.color(zigimg.color.Rgba32), zigimg.color.Rgba32.from.rgba(0, 0, 0, 0));
+    try helpers.expectEq(pixels.bgra32[64 * width + 17].to.color(zigimg.color.Rgba32), zigimg.color.Rgba32.from.rgba(209, 209, 209, 255));
+    try helpers.expectEq(pixels.bgra32[65 * width + 17].to.color(zigimg.color.Rgba32), zigimg.color.Rgba32.from.rgba(255, 255, 255, 255));
 }
 
 test "Read stopsignsmall TGA v1 file" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/stopsignsmall.tga");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
     var tga_file = tga.TGA{};
 
-    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(tga_file.width(), 216);
     try helpers.expectEq(tga_file.height(), 480);
     try helpers.expectEq(try tga_file.pixelFormat(), .bgr24);
 
-    try testing.expect(pixels == .bgr24);
+    try std.testing.expect(pixels == .bgr24);
     try helpers.expectEq(pixels.bgr24.len, 216 * 480);
 
     const width = tga_file.width();
 
-    try helpers.expectEq(pixels.bgr24[143 * width + 93], color.Bgr24.from.rgb(188, 34, 24));
-    try helpers.expectEq(pixels.bgr24[479 * width + 215], color.Bgr24.from.rgb(33, 29, 17));
+    try helpers.expectEq(pixels.bgr24[143 * width + 93], zigimg.color.Bgr24.from.rgb(188, 34, 24));
+    try helpers.expectEq(pixels.bgr24[479 * width + 215], zigimg.color.Bgr24.from.rgb(33, 29, 17));
 }
 
 test "Read stopsignsmallcompressed TGA v1 file" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/stopsignsmallcompressed.tga");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
     var tga_file = tga.TGA{};
 
-    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(tga_file.width(), 216);
     try helpers.expectEq(tga_file.height(), 480);
     try helpers.expectEq(try tga_file.pixelFormat(), .bgr24);
 
-    try testing.expect(pixels == .bgr24);
+    try std.testing.expect(pixels == .bgr24);
     try helpers.expectEq(pixels.bgr24.len, 216 * 480);
 
     const width = tga_file.width();
 
-    try helpers.expectEq(pixels.bgr24[143 * width + 93], color.Bgr24.from.rgb(188, 34, 24));
-    try helpers.expectEq(pixels.bgr24[479 * width + 215], color.Bgr24.from.rgb(33, 29, 17));
+    try helpers.expectEq(pixels.bgr24[143 * width + 93], zigimg.color.Bgr24.from.rgb(188, 34, 24));
+    try helpers.expectEq(pixels.bgr24[479 * width + 215], zigimg.color.Bgr24.from.rgb(33, 29, 17));
 }
 
 test "Write TGA uncompressed grayscale8" {
@@ -457,10 +465,12 @@ test "Write TGA uncompressed grayscale8" {
     var source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/ubw8.tga");
     defer source_file.close();
 
-    var source_image = try Image.fromFile(helpers.zigimg_test_allocator, &source_file);
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+
+    var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
     defer source_image.deinit();
 
-    const encoder_options = Image.EncoderOptions{
+    const encoder_options = zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = false,
             .color_map_depth = 16,
@@ -489,7 +499,8 @@ test "Write TGA uncompressed grayscale8" {
         },
     };
 
-    try source_image.writeToFilePath(image_file_name, encoder_options);
+    var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    try source_image.writeToFilePath(image_file_name, write_buffer[0..], encoder_options);
     defer {
         std.fs.cwd().deleteFile(image_file_name) catch {};
     }
@@ -497,11 +508,11 @@ test "Write TGA uncompressed grayscale8" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
 
     var tga_file = tga.TGA{};
 
-    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(tga_file.width(), 128);
@@ -510,17 +521,17 @@ test "Write TGA uncompressed grayscale8" {
 
     const expected_strip = [_]u8{ 76, 149, 178, 0, 76, 149, 178, 254, 76, 149, 178, 0, 76, 149, 178, 254 };
 
-    try testing.expect(pixels == .grayscale8);
+    try std.testing.expect(pixels == .grayscale8);
 
-    try testing.expect(tga_file.extension != null);
+    try std.testing.expect(tga_file.extension != null);
 
     if (tga_file.extension) |extension| {
-        try testing.expectStringStartsWith(extension.author_name[0..], encoder_options.tga.author_name);
+        try std.testing.expectStringStartsWith(extension.author_name[0..], encoder_options.tga.author_name);
 
-        try testing.expectStringStartsWith(extension.software_id[0..], encoder_options.tga.software_id);
+        try std.testing.expectStringStartsWith(extension.software_id[0..], encoder_options.tga.software_id);
         try helpers.expectEq(extension.software_version, encoder_options.tga.software_version);
 
-        try testing.expectStringStartsWith(extension.job_id[0..], encoder_options.tga.job_id);
+        try std.testing.expectStringStartsWith(extension.job_id[0..], encoder_options.tga.job_id);
         try helpers.expectEq(extension.job_time, encoder_options.tga.job_time);
 
         try helpers.expectEq(extension.timestamp, encoder_options.tga.timestamp);
@@ -549,10 +560,13 @@ test "Write TGA compressed grayscale8" {
     var source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/cbw8.tga");
     defer source_file.close();
 
-    var source_image = try Image.fromFile(helpers.zigimg_test_allocator, &source_file);
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+
+    var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
     defer source_image.deinit();
 
-    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+    var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = true,
             .color_map_depth = 16,
@@ -567,11 +581,11 @@ test "Write TGA compressed grayscale8" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
 
     var tga_file = tga.TGA{};
 
-    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(tga_file.width(), 128);
@@ -580,7 +594,7 @@ test "Write TGA compressed grayscale8" {
 
     const expected_strip = [_]u8{ 76, 149, 178, 0, 76, 149, 178, 254, 76, 149, 178, 0, 76, 149, 178, 254 };
 
-    try testing.expect(pixels == .grayscale8);
+    try std.testing.expect(pixels == .grayscale8);
 
     const width = tga_file.width();
     const height = tga_file.height();
@@ -605,10 +619,13 @@ test "Write uncompressed indexed8 (color map 16-bit)" {
     var source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/ucm8.tga");
     defer source_file.close();
 
-    var source_image = try Image.fromFile(helpers.zigimg_test_allocator, &source_file);
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+
+    var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
     defer source_image.deinit();
 
-    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+    var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = false,
             .color_map_depth = 16,
@@ -623,11 +640,11 @@ test "Write uncompressed indexed8 (color map 16-bit)" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
 
     var tga_file = tga.TGA{};
 
-    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(tga_file.width(), 128);
@@ -636,7 +653,7 @@ test "Write uncompressed indexed8 (color map 16-bit)" {
 
     const expected_strip = [_]u8{ 64, 128, 192, 0, 64, 128, 192, 255, 64, 128, 192, 0, 64, 128, 192, 255 };
 
-    try testing.expect(pixels == .indexed8);
+    try std.testing.expect(pixels == .indexed8);
 
     try helpers.expectEq(pixels.indexed8.indices.len, 128 * 128);
 
@@ -669,10 +686,13 @@ test "Write uncompressed indexed8 (color map 24-bit)" {
     var source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/ucm8.tga");
     defer source_file.close();
 
-    var source_image = try Image.fromFile(helpers.zigimg_test_allocator, &source_file);
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+
+    var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
     defer source_image.deinit();
 
-    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+    var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = false,
             .color_map_depth = 24,
@@ -687,11 +707,11 @@ test "Write uncompressed indexed8 (color map 24-bit)" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
 
     var tga_file = tga.TGA{};
 
-    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(tga_file.width(), 128);
@@ -700,7 +720,7 @@ test "Write uncompressed indexed8 (color map 24-bit)" {
 
     const expected_strip = [_]u8{ 64, 128, 192, 0, 64, 128, 192, 255, 64, 128, 192, 0, 64, 128, 192, 255 };
 
-    try testing.expect(pixels == .indexed8);
+    try std.testing.expect(pixels == .indexed8);
 
     try helpers.expectEq(pixels.indexed8.indices.len, 128 * 128);
 
@@ -733,10 +753,13 @@ test "Write compressed indexed8 (color map 16-bit)" {
     var source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/ccm8.tga");
     defer source_file.close();
 
-    var source_image = try Image.fromFile(helpers.zigimg_test_allocator, &source_file);
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+
+    var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
     defer source_image.deinit();
 
-    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+    var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = true,
             .color_map_depth = 16,
@@ -751,11 +774,11 @@ test "Write compressed indexed8 (color map 16-bit)" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
 
     var tga_file = tga.TGA{};
 
-    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(tga_file.width(), 128);
@@ -764,7 +787,7 @@ test "Write compressed indexed8 (color map 16-bit)" {
 
     const expected_strip = [_]u8{ 64, 128, 192, 0, 64, 128, 192, 255, 64, 128, 192, 0, 64, 128, 192, 255 };
 
-    try testing.expect(pixels == .indexed8);
+    try std.testing.expect(pixels == .indexed8);
 
     try helpers.expectEq(pixels.indexed8.indices.len, 128 * 128);
 
@@ -797,10 +820,13 @@ test "Write compressed indexed8 (color map 24-bit)" {
     var source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/ccm8.tga");
     defer source_file.close();
 
-    var source_image = try Image.fromFile(helpers.zigimg_test_allocator, &source_file);
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+
+    var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
     defer source_image.deinit();
 
-    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+    var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = true,
             .color_map_depth = 24,
@@ -815,11 +841,11 @@ test "Write compressed indexed8 (color map 24-bit)" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
 
     var tga_file = tga.TGA{};
 
-    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(tga_file.width(), 128);
@@ -828,7 +854,7 @@ test "Write compressed indexed8 (color map 24-bit)" {
 
     const expected_strip = [_]u8{ 64, 128, 192, 0, 64, 128, 192, 255, 64, 128, 192, 0, 64, 128, 192, 255 };
 
-    try testing.expect(pixels == .indexed8);
+    try std.testing.expect(pixels == .indexed8);
 
     try helpers.expectEq(pixels.indexed8.indices.len, 128 * 128);
 
@@ -861,10 +887,13 @@ test "Write uncompressed 16-bit true color TGA" {
     var source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/utc16.tga");
     defer source_file.close();
 
-    var source_image = try Image.fromFile(helpers.zigimg_test_allocator, &source_file);
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+
+    var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
     defer source_image.deinit();
 
-    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+    var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = false,
             .color_map_depth = 16,
@@ -879,11 +908,11 @@ test "Write uncompressed 16-bit true color TGA" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
 
     var tga_file = tga.TGA{};
 
-    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(tga_file.width(), 128);
@@ -892,7 +921,7 @@ test "Write uncompressed 16-bit true color TGA" {
 
     const expected_strip = [_]u32{ 0xff0000, 0x00ff00, 0x0000ff, 0x000000, 0xff0000, 0x00ff00, 0x0000ff, 0xffffff, 0xff0000, 0x00ff00, 0x0000ff, 0x000000, 0xff0000, 0x00ff00, 0x0000ff, 0xffffff };
 
-    try testing.expect(pixels == .rgb555);
+    try std.testing.expect(pixels == .rgb555);
 
     try helpers.expectEq(pixels.rgb555.len, 128 * 128);
 
@@ -919,10 +948,13 @@ test "Write compressed 16-bit true color TGA" {
     var source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/utc16.tga");
     defer source_file.close();
 
-    var source_image = try Image.fromFile(helpers.zigimg_test_allocator, &source_file);
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+
+    var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
     defer source_image.deinit();
 
-    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+    var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = true,
             .color_map_depth = 16,
@@ -937,11 +969,11 @@ test "Write compressed 16-bit true color TGA" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
 
     var tga_file = tga.TGA{};
 
-    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(tga_file.width(), 128);
@@ -950,7 +982,7 @@ test "Write compressed 16-bit true color TGA" {
 
     const expected_strip = [_]u32{ 0xff0000, 0x00ff00, 0x0000ff, 0x000000, 0xff0000, 0x00ff00, 0x0000ff, 0xffffff, 0xff0000, 0x00ff00, 0x0000ff, 0x000000, 0xff0000, 0x00ff00, 0x0000ff, 0xffffff };
 
-    try testing.expect(pixels == .rgb555);
+    try std.testing.expect(pixels == .rgb555);
 
     try helpers.expectEq(pixels.rgb555.len, 128 * 128);
 
@@ -977,10 +1009,13 @@ test "Write uncompressed 24-bit true color TGA" {
     var source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/utc24.tga");
     defer source_file.close();
 
-    var source_image = try Image.fromFile(helpers.zigimg_test_allocator, &source_file);
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+
+    var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
     defer source_image.deinit();
 
-    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+    var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = false,
             .color_map_depth = 24,
@@ -995,11 +1030,11 @@ test "Write uncompressed 24-bit true color TGA" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
 
     var tga_file = tga.TGA{};
 
-    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(tga_file.width(), 128);
@@ -1008,7 +1043,7 @@ test "Write uncompressed 24-bit true color TGA" {
 
     const expected_strip = [_]u32{ 0xff0000, 0x00ff00, 0x0000ff, 0x000000, 0xff0000, 0x00ff00, 0x0000ff, 0xffffff, 0xff0000, 0x00ff00, 0x0000ff, 0x000000, 0xff0000, 0x00ff00, 0x0000ff, 0xffffff };
 
-    try testing.expect(pixels == .bgr24);
+    try std.testing.expect(pixels == .bgr24);
 
     try helpers.expectEq(pixels.bgr24.len, 128 * 128);
 
@@ -1035,10 +1070,13 @@ test "Write compressed 24-bit true color TGA" {
     var source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/ctc24.tga");
     defer source_file.close();
 
-    var source_image = try Image.fromFile(helpers.zigimg_test_allocator, &source_file);
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+
+    var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
     defer source_image.deinit();
 
-    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+    var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = true,
             .color_map_depth = 24,
@@ -1053,11 +1091,11 @@ test "Write compressed 24-bit true color TGA" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
 
     var tga_file = tga.TGA{};
 
-    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(tga_file.width(), 128);
@@ -1066,7 +1104,7 @@ test "Write compressed 24-bit true color TGA" {
 
     const expected_strip = [_]u32{ 0xff0000, 0x00ff00, 0x0000ff, 0x000000, 0xff0000, 0x00ff00, 0x0000ff, 0xffffff, 0xff0000, 0x00ff00, 0x0000ff, 0x000000, 0xff0000, 0x00ff00, 0x0000ff, 0xffffff };
 
-    try testing.expect(pixels == .bgr24);
+    try std.testing.expect(pixels == .bgr24);
 
     try helpers.expectEq(pixels.bgr24.len, 128 * 128);
 
@@ -1093,10 +1131,13 @@ test "Write uncompressed 32-bit true color TGA" {
     var source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/utc32.tga");
     defer source_file.close();
 
-    var source_image = try Image.fromFile(helpers.zigimg_test_allocator, &source_file);
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+
+    var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
     defer source_image.deinit();
 
-    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+    var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = false,
             .color_map_depth = 24,
@@ -1111,11 +1152,11 @@ test "Write uncompressed 32-bit true color TGA" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
 
     var tga_file = tga.TGA{};
 
-    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(tga_file.width(), 128);
@@ -1124,7 +1165,7 @@ test "Write uncompressed 32-bit true color TGA" {
 
     const expected_strip = [_]u32{ 0xff0000, 0x00ff00, 0x0000ff, 0x000000, 0xff0000, 0x00ff00, 0x0000ff, 0xffffff, 0xff0000, 0x00ff00, 0x0000ff, 0x000000, 0xff0000, 0x00ff00, 0x0000ff, 0xffffff };
 
-    try testing.expect(pixels == .bgra32);
+    try std.testing.expect(pixels == .bgra32);
 
     try helpers.expectEq(pixels.bgra32.len, 128 * 128);
 
@@ -1151,10 +1192,13 @@ test "Write compressed 32-bit true color TGA" {
     var source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "tga/ctc32.tga");
     defer source_file.close();
 
-    var source_image = try Image.fromFile(helpers.zigimg_test_allocator, &source_file);
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+
+    var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
     defer source_image.deinit();
 
-    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+    var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = true,
             .color_map_depth = 24,
@@ -1169,11 +1213,11 @@ test "Write compressed 32-bit true color TGA" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
 
     var tga_file = tga.TGA{};
 
-    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(tga_file.width(), 128);
@@ -1182,7 +1226,7 @@ test "Write compressed 32-bit true color TGA" {
 
     const expected_strip = [_]u32{ 0xff0000, 0x00ff00, 0x0000ff, 0x000000, 0xff0000, 0x00ff00, 0x0000ff, 0xffffff, 0xff0000, 0x00ff00, 0x0000ff, 0x000000, 0xff0000, 0x00ff00, 0x0000ff, 0xffffff };
 
-    try testing.expect(pixels == .bgra32);
+    try std.testing.expect(pixels == .bgra32);
 
     try helpers.expectEq(pixels.bgra32.len, 128 * 128);
 
@@ -1206,7 +1250,7 @@ test "Write compressed 32-bit true color TGA" {
 test "Write uncompressed Rgb24 to TGA" {
     const image_file_name = "zigimg_tga_uncompressed_rgb24.tga";
 
-    const uncompressed_source = [_]color.Rgb24{
+    const uncompressed_source = [_]zigimg.color.Rgb24{
         .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
         .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
         .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
@@ -1220,12 +1264,13 @@ test "Write uncompressed Rgb24 to TGA" {
         .{ .r = 0x7, .g = 0x8, .b = 0x9 },
     };
 
-    var source_image = try Image.create(helpers.zigimg_test_allocator, uncompressed_source.len, 1, .rgb24);
+    var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, uncompressed_source.len, 1, .rgb24);
     defer source_image.deinit();
 
     @memcpy(source_image.pixels.rgb24[0..], uncompressed_source[0..]);
 
-    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+    var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = false,
             .color_map_depth = 24,
@@ -1240,11 +1285,12 @@ test "Write uncompressed Rgb24 to TGA" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
 
     var tga_file = tga.TGA{};
 
-    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(tga_file.width(), uncompressed_source.len);
@@ -1263,7 +1309,7 @@ test "Write uncompressed Rgb24 to TGA" {
 test "Write compressed Rgb24 to TGA" {
     const image_file_name = "zigimg_tga_compressed_rgb24.tga";
 
-    const uncompressed_source = [_]color.Rgb24{
+    const uncompressed_source = [_]zigimg.color.Rgb24{
         .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
         .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
         .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
@@ -1277,12 +1323,13 @@ test "Write compressed Rgb24 to TGA" {
         .{ .r = 0x7, .g = 0x8, .b = 0x9 },
     };
 
-    var source_image = try Image.create(helpers.zigimg_test_allocator, uncompressed_source.len, 1, .rgb24);
+    var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, uncompressed_source.len, 1, .rgb24);
     defer source_image.deinit();
 
     @memcpy(source_image.pixels.rgb24[0..], uncompressed_source[0..]);
 
-    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+    var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = true,
             .color_map_depth = 24,
@@ -1297,11 +1344,12 @@ test "Write compressed Rgb24 to TGA" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
 
     var tga_file = tga.TGA{};
 
-    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(tga_file.width(), uncompressed_source.len);
@@ -1320,7 +1368,7 @@ test "Write compressed Rgb24 to TGA" {
 test "Write uncompressed Rgba32 to TGA" {
     const image_file_name = "zigimg_tga_uncompressed_rgba32.tga";
 
-    const uncompressed_source = [_]color.Rgba32{
+    const uncompressed_source = [_]zigimg.color.Rgba32{
         .{ .r = 0xEF, .g = 0xCD, .b = 0xAB, .a = 0x60 },
         .{ .r = 0xEF, .g = 0xCD, .b = 0xAB, .a = 0x60 },
         .{ .r = 0xEF, .g = 0xCD, .b = 0xAB, .a = 0x60 },
@@ -1349,12 +1397,13 @@ test "Write uncompressed Rgba32 to TGA" {
         },
     };
 
-    var source_image = try Image.create(helpers.zigimg_test_allocator, uncompressed_source.len, 1, .rgba32);
+    var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, uncompressed_source.len, 1, .rgba32);
     defer source_image.deinit();
 
     @memcpy(source_image.pixels.rgba32[0..], uncompressed_source[0..]);
 
-    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+    var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = false,
             .color_map_depth = 24,
@@ -1369,11 +1418,12 @@ test "Write uncompressed Rgba32 to TGA" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
 
     var tga_file = tga.TGA{};
 
-    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(tga_file.width(), uncompressed_source.len);
@@ -1393,7 +1443,7 @@ test "Write uncompressed Rgba32 to TGA" {
 test "Write compressed Rgba32 to TGA" {
     const image_file_name = "zigimg_tga_compressed_rgba32.tga";
 
-    const uncompressed_source = [_]color.Rgba32{
+    const uncompressed_source = [_]zigimg.color.Rgba32{
         .{ .r = 0xEF, .g = 0xCD, .b = 0xAB, .a = 0x60 },
         .{ .r = 0xEF, .g = 0xCD, .b = 0xAB, .a = 0x60 },
         .{ .r = 0xEF, .g = 0xCD, .b = 0xAB, .a = 0x60 },
@@ -1422,12 +1472,13 @@ test "Write compressed Rgba32 to TGA" {
         },
     };
 
-    var source_image = try Image.create(helpers.zigimg_test_allocator, uncompressed_source.len, 1, .rgba32);
+    var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, uncompressed_source.len, 1, .rgba32);
     defer source_image.deinit();
 
     @memcpy(source_image.pixels.rgba32[0..], uncompressed_source[0..]);
 
-    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+    var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = true,
             .color_map_depth = 24,
@@ -1442,11 +1493,12 @@ test "Write compressed Rgba32 to TGA" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
 
     var tga_file = tga.TGA{};
 
-    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(tga_file.width(), uncompressed_source.len);
