@@ -489,9 +489,10 @@ test "TIFF/LE monochrome black Deflate" {
 
     var the_bitmap = tiff.TIFF{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
-    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    const pixels = try the_bitmap.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(the_bitmap.width(), 640);
