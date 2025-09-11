@@ -1,11 +1,11 @@
-const std = @import("std");
-const ImageUnmanaged = @import("../../ImageUnmanaged.zig");
-const ImageReadError = ImageUnmanaged.ReadError;
-const ImageError = ImageUnmanaged.Error;
-const PixelFormat = @import("../../pixel_format.zig").PixelFormat;
-const color = @import("../../color.zig");
-const utils = @import("../../utils.zig");
 const builtin = @import("builtin");
+const color = @import("../../color.zig");
+const ImageUnmanaged = @import("../../ImageUnmanaged.zig");
+const io = @import("../../io.zig");
+const PixelFormat = @import("../../pixel_format.zig").PixelFormat;
+const std = @import("std");
+const utils = @import("../../utils.zig");
+
 const native_endian = builtin.target.cpu.arch.endian();
 
 pub const CompressionType = enum(u16) {
@@ -113,7 +113,7 @@ pub const BitmapDescriptor = struct {
         std.log.debug("{}\n", .{self});
     }
 
-    pub fn guessPixelFormat(self: *BitmapDescriptor) ImageReadError!PixelFormat {
+    pub fn guessPixelFormat(self: *BitmapDescriptor) ImageUnmanaged.ReadError!PixelFormat {
         // only raw, packbits, lzw and ccitt_rle compression supported for now
         switch (self.compression) {
             .uncompressed,
@@ -123,7 +123,7 @@ pub const BitmapDescriptor = struct {
             .deflate,
             .pixar_deflate,
             => {},
-            else => return ImageError.Unsupported,
+            else => return ImageUnmanaged.Error.Unsupported,
         }
 
         switch (self.photometric_interpretation) {
@@ -133,11 +133,11 @@ pub const BitmapDescriptor = struct {
                 switch (bits_per_sample) {
                     // lower column values are stored in lower-order bits
                     // no support for bilevel files with a predictor
-                    1 => return if (self.fill_order == 1 and self.predictor == 1) PixelFormat.grayscale1 else ImageError.Unsupported,
+                    1 => return if (self.fill_order == 1 and self.predictor == 1) PixelFormat.grayscale1 else ImageUnmanaged.Error.Unsupported,
                     // TODO
-                    4 => return ImageError.Unsupported,
+                    4 => return ImageUnmanaged.Error.Unsupported,
                     8 => return PixelFormat.grayscale8,
-                    else => return ImageError.Unsupported,
+                    else => return ImageUnmanaged.Error.Unsupported,
                 }
             },
             // pictures with color_map
@@ -146,8 +146,8 @@ pub const BitmapDescriptor = struct {
                 switch (bits_per_sample) {
                     8 => return PixelFormat.indexed8,
                     // TODO
-                    4 => return ImageError.Unsupported,
-                    else => return ImageError.Unsupported,
+                    4 => return ImageUnmanaged.Error.Unsupported,
+                    else => return ImageUnmanaged.Error.Unsupported,
                 }
             },
             // RGB pictures
@@ -159,7 +159,7 @@ pub const BitmapDescriptor = struct {
                         if (bits[0] == 8 and bits[1] == 8 and bits[2] == 8)
                             return PixelFormat.rgb24;
 
-                        return ImageError.Unsupported;
+                        return ImageUnmanaged.Error.Unsupported;
                     },
                     4 => {
                         // 4 channels: RGBA or RGB/pre-multiplied
@@ -168,14 +168,14 @@ pub const BitmapDescriptor = struct {
                         if (bits[0] == 8 and bits[1] == 8 and bits[2] == 8 and bits[3] == 8 and (extra_sample_format == 2 or extra_sample_format == 1))
                             return PixelFormat.rgba32;
 
-                        return ImageError.Unsupported;
+                        return ImageUnmanaged.Error.Unsupported;
                     },
-                    else => return ImageError.Unsupported,
+                    else => return ImageUnmanaged.Error.Unsupported,
                 }
             },
-            else => return ImageError.Unsupported,
+            else => return ImageUnmanaged.Error.Unsupported,
         }
-        return ImageError.Unsupported;
+        return ImageUnmanaged.Error.Unsupported;
     }
 
     pub fn deinit(self: *BitmapDescriptor, allocator: std.mem.Allocator) void {
@@ -242,17 +242,17 @@ pub const TagField = extern struct {
         return if (endianess == .big) @truncate(self.data_offset >> 16) else @truncate(self.data_offset & 0xFFFF);
     }
 
-    pub fn readRational(self: *const TagField, stream: *ImageUnmanaged.Stream, endianess: std.builtin.Endian) ![2]u32 {
-        try stream.seekTo(self.data_offset);
-        const reader = stream.reader();
+    pub fn readRational(self: *const TagField, read_stream: *io.ReadStream, endianess: std.builtin.Endian) ![2]u32 {
+        try read_stream.seekTo(self.data_offset);
+        const reader = read_stream.reader();
 
         return [2]u32{
-            try reader.readInt(u32, endianess),
-            try reader.readInt(u32, endianess),
+            try reader.takeInt(u32, endianess),
+            try reader.takeInt(u32, endianess),
         };
     }
 
-    pub fn readTagData(self: *const TagField, stream: *ImageUnmanaged.Stream, allocator: std.mem.Allocator, endianess: std.builtin.Endian) ![]u32 {
+    pub fn readTagData(self: *const TagField, allocator: std.mem.Allocator, read_stream: *io.ReadStream, endianess: std.builtin.Endian) ![]u32 {
         const byte_size = if (self.data_type == @intFromEnum(TagType.short)) self.data_count * 2 else self.data_count * 4;
         const long_data: []u32 = try allocator.alloc(u32, self.data_count);
 
@@ -266,8 +266,11 @@ pub const TagField = extern struct {
         const data: []u8 = try allocator.alloc(u8, byte_size);
         defer allocator.free(data);
 
-        try stream.seekTo(self.data_offset);
-        _ = try stream.read(data[0..]);
+        try read_stream.seekTo(self.data_offset);
+
+        const reader = read_stream.reader();
+
+        _ = try reader.readSliceShort(data[0..]);
 
         if (self.data_type == @intFromEnum(TagType.long)) {
             if (endianess == native_endian) {
@@ -300,29 +303,29 @@ pub const IFD = struct {
     num_tag_entries: u16 = 0,
     tags_map: std.AutoHashMap(TagId, TagField),
     next_ifd_offset: u32 = 0,
-    stream: *ImageUnmanaged.Stream,
+    read_stream: *io.ReadStream,
     allocator: std.mem.Allocator,
 
-    pub fn init(stream: *ImageUnmanaged.Stream, allocator: std.mem.Allocator, ifd_offset: u32) !IFD {
+    pub fn init(allocator: std.mem.Allocator, read_stream: *io.ReadStream, ifd_offset: u32) !IFD {
         return .{
-            .stream = stream,
             .allocator = allocator,
+            .read_stream = read_stream,
             .ifd_offset = ifd_offset,
             .tags_map = std.AutoHashMap(TagId, TagField).init(allocator),
         };
     }
 
     pub fn readTags(self: *IFD, endianess: std.builtin.Endian) !void {
-        const stream = self.stream;
+        const read_stream = self.read_stream;
 
-        try stream.seekTo(self.ifd_offset);
-        const reader = stream.reader();
+        try read_stream.seekTo(self.ifd_offset);
+        const reader = read_stream.reader();
 
-        const num_tag_entries = try reader.readInt(u16, endianess);
+        const num_tag_entries = try reader.takeInt(u16, endianess);
         const tags_array: []u8 = try self.allocator.alloc(u8, @sizeOf(PackedTag) * num_tag_entries);
         defer self.allocator.free(tags_array);
-        _ = try reader.readAll(tags_array);
-        const next_ifd_offset = try reader.readInt(u32, endianess);
+        _ = try reader.readSliceAll(tags_array);
+        const next_ifd_offset = try reader.takeInt(u32, endianess);
         const tags_list = @as(*const []PackedTag, @ptrCast(&tags_array[0..])).*;
 
         for (0..num_tag_entries) |index| {

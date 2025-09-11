@@ -25,7 +25,7 @@ const SupportedFormats = struct {
     pub const ras = formats.ras.RAS;
     pub const sgi = formats.sgi.SGI;
     pub const tga = formats.tga.TGA;
-    // pub const tiff = formats.tiff.TIFF;
+    pub const tiff = formats.tiff.TIFF;
     // pub const xbm = formats.xbm.XBM;
 };
 
@@ -47,7 +47,7 @@ pub const EncoderOptions = union(Format) {
     ras: void,
     sgi: void,
     tga: SupportedFormats.tga.EncoderOptions,
-    // tiff: void,
+    tiff: void,
     // xbm: void,
 };
 
@@ -342,6 +342,7 @@ fn internalDetectFormat(read_stream: *io.ReadStream) !Format {
         // ras: no seek
         // sgi: no seek
         // tga: seek
+        // tiff: no seek
         try read_stream.seekTo(0);
 
         const found = try formatInterface.formatDetect(read_stream);

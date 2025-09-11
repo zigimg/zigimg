@@ -11,7 +11,7 @@ pub const qoi = @import("formats/qoi.zig");
 pub const ras = @import("formats/ras.zig");
 pub const sgi = @import("formats/sgi.zig");
 pub const tga = @import("formats/tga.zig");
-// pub const tiff = @import("formats/tiff.zig");
+pub const tiff = @import("formats/tiff.zig");
 // pub const xbm = @import("formats/xbm.zig");
 
 test {
