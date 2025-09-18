@@ -3,7 +3,7 @@ const std = @import("std");
 
 const native_endian = builtin.target.cpu.arch.endian();
 
-pub const StructReadError = error{ EndOfStream, InvalidData } || std.io.StreamSource.ReadError;
+pub const StructReadError = error{InvalidData} || std.Io.Reader.Error;
 pub const StructWriteError = std.io.StreamSource.WriteError;
 
 pub fn FixedStorage(comptime T: type, comptime storage_size: usize) type {
@@ -52,14 +52,14 @@ pub inline fn toMagicNumber(magic: []const u8, comptime wanted_endian: std.built
     };
 }
 
-// TODO: Remove ?
+// Only keeping this for PNG load header that can load invalid enum values so std.mem.byteSwapAllFields() is not valid
 fn checkEnumFields(data: anytype) StructReadError!void {
     const T = @typeInfo(@TypeOf(data)).pointer.child;
     inline for (std.meta.fields(T)) |entry| {
         switch (@typeInfo(entry.type)) {
             .@"enum" => {
                 const value = @intFromEnum(@field(data, entry.name));
-                _ = std.meta.intToEnum(entry.type, value) catch return StructReadError.InvalidData;
+                _ = std.enums.fromInt(entry.type, value) orelse return StructReadError.InvalidData;
             },
             .@"struct" => {
                 try checkEnumFields(&@field(data, entry.name));
@@ -69,9 +69,11 @@ fn checkEnumFields(data: anytype) StructReadError!void {
     }
 }
 
-// TODO: Remove ?
-pub fn readStructNative(reader: anytype, comptime T: type) StructReadError!T {
-    var result: T = try reader.readStruct(T);
+// Only keeping this for PNG load header that can load invalid enum values so std.mem.byteSwapAllFields() is not valid
+// Deprecated, try to use peek/take Struct from std.Io.Reader instead.
+pub fn takeStructNative(reader: *std.Io.Reader, comptime T: type) StructReadError!T {
+    const raw_data = try reader.take(@sizeOf(T));
+    var result: T = std.mem.bytesToValue(T, raw_data);
     try checkEnumFields(&result);
     return result;
 }
@@ -106,7 +108,7 @@ pub fn writeStructForeign(writer: anytype, value: anytype) StructWriteError!void
     }
 }
 
-// Extend std.mem.byteSwapAllFields to support enums
+// Extend std.mem.byteSwapAllFields to support enums with invalid data
 fn swapFieldBytes(data: anytype) StructReadError!void {
     const T = @typeInfo(@TypeOf(data)).pointer.child;
     inline for (std.meta.fields(T)) |entry| {
@@ -122,9 +124,9 @@ fn swapFieldBytes(data: anytype) StructReadError!void {
             .@"enum" => {
                 const value = @intFromEnum(@field(data, entry.name));
                 if (@bitSizeOf(@TypeOf(value)) > 8) {
-                    @field(data, entry.name) = std.meta.intToEnum(entry.type, @byteSwap(value)) catch return StructReadError.InvalidData;
+                    @field(data, entry.name) = std.enums.fromInt(entry.type, @byteSwap(value)) orelse return StructReadError.InvalidData;
                 } else {
-                    _ = std.meta.intToEnum(entry.type, value) catch return StructReadError.InvalidData;
+                    _ = std.enums.fromInt(entry.type, value) orelse return StructReadError.InvalidData;
                 }
             },
             .array => |array| {
@@ -140,26 +142,29 @@ fn swapFieldBytes(data: anytype) StructReadError!void {
     }
 }
 
-// TODO: Remove ?
-pub fn readStructForeign(reader: anytype, comptime T: type) StructReadError!T {
-    var result: T = try reader.readStruct(T);
+// Only keeping this for PNG load header that can load invalid enum values so std.mem.byteSwapAllFields() is not valid
+// Deprecated, try to use peek/take Struct from std.Io.Reader instead.
+pub fn takeStructForeign(reader: *std.Io.Reader, comptime T: type) StructReadError!T {
+    const raw_data = try reader.take(@sizeOf(T));
+    var result: T = std.mem.bytesToValue(T, raw_data);
     try swapFieldBytes(&result);
     return result;
 }
 
-// TODO: Remove ?
-pub inline fn readStruct(reader: anytype, comptime T: type, comptime wanted_endian: std.builtin.Endian) StructReadError!T {
+// Only keeping this for PNG load header that can load invalid enum values so std.mem.byteSwapAllFields() is not valid
+// Deprecated, try to use peek/take Struct from std.Io.Reader instead.
+pub inline fn takeStruct(reader: *std.Io.Reader, comptime T: type, comptime wanted_endian: std.builtin.Endian) StructReadError!T {
     return switch (native_endian) {
         .little => {
             return switch (wanted_endian) {
-                .little => readStructNative(reader, T),
-                .big => readStructForeign(reader, T),
+                .little => takeStructNative(reader, T),
+                .big => takeStructForeign(reader, T),
             };
         },
         .big => {
             return switch (wanted_endian) {
-                .little => readStructForeign(reader, T),
-                .big => readStructNative(reader, T),
+                .little => takeStructForeign(reader, T),
+                .big => takeStructNative(reader, T),
             };
         },
     };
