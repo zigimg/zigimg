@@ -1,6 +1,6 @@
 const std = @import("std");
-const testing = std.testing;
-const color = @import("../src/color.zig");
+const zigimg = @import("zigimg");
+const color = zigimg.color;
 const helpers = @import("helpers.zig");
 
 test "Convert color to premultipled alpha" {
