@@ -38,13 +38,14 @@ pub const XBM = struct {
     /// Takes a stream, Returns true if and only if the stream contains exactly two or four '#define' lines
     /// at the beginning.
     pub fn formatDetect(read_stream: *io.ReadStream) ImageUnmanaged.ReadError!bool {
+        defer read_stream.seekTo(0) catch {};
         const reader = read_stream.reader();
 
         var define_line_count: u32 = 0;
         var found_non_define = false;
 
         while (!found_non_define) {
-            const line = try reader.peekDelimiterInclusive('\n');
+            const line = try reader.takeDelimiterInclusive('\n');
             if (isDefineLine(line)) {
                 define_line_count += 1;
             } else {
