@@ -53,15 +53,15 @@ const LevelArgs = struct {
 };
 
 /// Compress plain data from reader into compressed stream written to writer.
-pub fn compress(comptime container: Container, reader: *std.Io.Writer, writer: *std.Io.Writer, options: Options) !void {
-    var c = try compressor(container, writer, options);
+pub fn compress(comptime container: Container, reader: *std.Io.Writer, writer: *std.Io.Writer, buffer: []u8, options: Options) !void {
+    var c = try compressor(container, writer, buffer, options);
     try c.compress(reader);
     try c.finish();
 }
 
 /// Create compressor for writer type.
-pub fn compressor(comptime container: Container, writer: *std.Io.Writer, options: Options) !Compressor(container) {
-    return try Compressor(container).init(writer, options);
+pub fn compressor(comptime container: Container, writer: *std.Io.Writer, buffer: []u8, options: Options) !Compressor(container) {
+    return try Compressor(container).init(writer, buffer, options);
 }
 
 /// Compressor type.
@@ -123,13 +123,7 @@ fn Deflate(comptime container: Container) type {
         block_writer: BlockWriter,
         level: LevelArgs,
         hasher: container.Hasher() = .{},
-        writer: std.Io.Writer = .{
-            .buffer = &.{},
-            .vtable = &std.Io.Writer.VTable{
-                .drain = drain,
-                .flush = flush,
-            },
-        },
+        writer: std.Io.Writer,
 
         // Match and literal at the previous position.
         // Used for lazy match finding in processWindow.
@@ -138,11 +132,18 @@ fn Deflate(comptime container: Container) type {
 
         const Self = @This();
 
-        pub fn init(wrt: *std.Io.Writer, options: Options) !Self {
+        pub fn init(wrt: *std.Io.Writer, buffer: []u8, options: Options) !Self {
             const self = Self{
                 .source_writer = wrt,
                 .block_writer = BlockWriter.init(wrt),
                 .level = LevelArgs.get(options.level),
+                .writer = .{
+                    .buffer = buffer,
+                    .vtable = &std.Io.Writer.VTable{
+                        .drain = drain,
+                        .flush = flush,
+                    },
+                },
             };
             try container.writeHeader(self.source_writer);
             return self;
@@ -357,6 +358,14 @@ fn Deflate(comptime container: Container) type {
             }
 
             var written: usize = 0;
+
+            if (w.end > 0) {
+                var fixed_reader = std.Io.Reader.fixed(w.buffered());
+                self.compress(&fixed_reader) catch return std.Io.Writer.Error.WriteFailed;
+                written += w.end;
+                w.end = 0;
+            }
+
             for (data[0 .. data.len - 1]) |bytes| {
                 var fixed_reader = std.Io.Reader.fixed(bytes);
                 self.compress(&fixed_reader) catch return std.Io.Writer.Error.WriteFailed;
@@ -379,6 +388,8 @@ fn Deflate(comptime container: Container) type {
 
         fn flush(w: *std.Io.Writer) std.Io.Writer.Error!void {
             const self: *Self = @alignCast(@fieldParentPtr("writer", w));
+
+            try w.defaultFlush();
 
             self.finish() catch return std.Io.Writer.Error.WriteFailed;
         }

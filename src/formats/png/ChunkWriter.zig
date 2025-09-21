@@ -2,26 +2,25 @@ const std = @import("std");
 const types = @import("types.zig");
 
 source_writer: *std.Io.Writer = undefined,
-buffer: [CHUNK_BUFFER_SIZE]u8 = undefined,
 chunk: types.Chunk = undefined,
 writer: std.Io.Writer = undefined,
 
 const ChunkWriter = @This();
-
-const CHUNK_BUFFER_SIZE = 1 << 14; // 16 Kb
 
 const vtable: std.Io.Writer.VTable = .{
     .drain = drain,
     .flush = flush,
 };
 
-pub fn init(self: *ChunkWriter, source_writer: *std.Io.Writer, chunk: types.Chunk) void {
-    self.source_writer = source_writer;
-    self.writer = .{
-        .buffer = self.buffer[0..],
-        .vtable = &vtable,
+pub fn init(source_writer: *std.Io.Writer, buffer: []u8, chunk: types.Chunk) ChunkWriter {
+    return .{
+        .source_writer = source_writer,
+        .chunk = chunk,
+        .writer = .{
+            .buffer = buffer,
+            .vtable = &vtable,
+        },
     };
-    self.chunk = chunk;
 }
 
 fn drain(w: *std.Io.Writer, data: []const []const u8, splat: usize) std.Io.Writer.Error!usize {
