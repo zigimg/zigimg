@@ -1,7 +1,7 @@
-const std = @import("std");
-const testing = std.testing;
-const PixelFormat = @import("../src/pixel_format.zig").PixelFormat;
 const helpers = @import("helpers.zig");
+const PixelFormat = zigimg.PixelFormat;
+const std = @import("std");
+const zigimg = @import("zigimg");
 
 test "PixelFormat should return the correct pixel stride" {
     try helpers.expectEq(PixelFormat.indexed1.pixelStride(), 1);
