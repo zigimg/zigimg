@@ -327,24 +327,6 @@ fn internalDetectFormat(read_stream: *io.ReadStream) !Format {
     for (all_interface_funcs, 0..) |intefaceFn, format_index| {
         const formatInterface = intefaceFn();
 
-        // TODO: Try to implement all formatDetect will no seeking if possible
-        // so we can remove this
-
-        // farbfeld: no seek
-        // bmp: no seek
-        // gif: no seek
-        // iff: no seek
-        // jpeg: no seek
-        // pam: no seek
-        // netpbm: no seek
-        // pcx: no seek
-        // qoi: no seek
-        // ras: no seek
-        // sgi: no seek
-        // tga: seek
-        // tiff: no seek
-        try read_stream.seekTo(0);
-
         const found = try formatInterface.formatDetect(read_stream);
         if (found) {
             return @enumFromInt(format_index);
@@ -356,10 +338,6 @@ fn internalDetectFormat(read_stream: *io.ReadStream) !Format {
 
 fn internalRead(allocator: std.mem.Allocator, read_stream: *io.ReadStream) !ImageUnmanaged {
     const format_interface = try findImageInterfaceFromStream(read_stream);
-
-    // TODO: Try to implement all formatDetect will no seeking if possible
-    // so we can remove this
-    try read_stream.seekTo(0);
 
     return try format_interface.readImage(allocator, read_stream);
 }
@@ -375,10 +353,6 @@ fn internalWrite(self: ImageUnmanaged, allocator: std.mem.Allocator, write_strea
 fn findImageInterfaceFromStream(read_stream: *io.ReadStream) !FormatInterface {
     for (all_interface_funcs) |intefaceFn| {
         const formatInterface = intefaceFn();
-
-        // TODO: Try to implement all formatDetect will no seeking if possible
-        // so we can remove this
-        try read_stream.seekTo(0);
 
         const found = try formatInterface.formatDetect(read_stream);
         if (found) {
