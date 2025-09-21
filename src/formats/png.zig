@@ -1,7 +1,7 @@
 // Implement PNG image format according to W3C Portable Network Graphics (PNG) specification second edition (ISO/IEC 15948:2003 (E))
 // Last version: https://www.w3.org/TR/PNG/
 
-const chunk_writer = @import("png/chunk_writer.zig");
+const ChunkWriter = @import("png/ChunkWriter.zig");
 const color = @import("../color.zig");
 const filter = @import("png/filtering.zig");
 const FormatInterface = @import("../FormatInterface.zig");
@@ -11,7 +11,7 @@ const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const reader = @import("png/reader.zig");
 const std = @import("std");
 const types = @import("png/types.zig");
-const ZlibCompressor = @import("png/zlib_compressor.zig").ZlibCompressor;
+const deflate = @import("../compressions/deflate.zig");
 
 pub const ChunkHeader = types.ChunkHeader;
 pub const ChunkProcessData = reader.ChunkProcessData;
@@ -146,129 +146,121 @@ pub const PNG = struct {
 
     // IHDR
     fn writeHeader(writer: *std.Io.Writer, header: HeaderData) ImageUnmanaged.WriteError!void {
-        _ = writer; // autofix
-        _ = header; // autofix
-        // var chunk = chunk_writer.chunkWriter(writer, "IHDR");
-        // var chunk_wr = chunk.writer();
+        var chunk: ChunkWriter = .{};
+        chunk.init(writer, Chunks.IHDR);
+        var chunk_writer = &chunk.writer;
 
-        // try chunk_wr.writeInt(u32, header.width, .big);
-        // try chunk_wr.writeInt(u32, header.height, .big);
-        // try chunk_wr.writeInt(u8, header.bit_depth, .big);
-        // try chunk_wr.writeInt(u8, @intFromEnum(header.color_type), .big);
-        // try chunk_wr.writeInt(u8, @intFromEnum(header.compression_method), .big);
-        // try chunk_wr.writeInt(u8, @intFromEnum(header.filter_method), .big);
-        // try chunk_wr.writeInt(u8, @intFromEnum(header.interlace_method), .big);
+        try chunk_writer.writeInt(u32, header.width, .big);
+        try chunk_writer.writeInt(u32, header.height, .big);
+        try chunk_writer.writeInt(u8, header.bit_depth, .big);
+        try chunk_writer.writeInt(u8, @intFromEnum(header.color_type), .big);
+        try chunk_writer.writeInt(u8, @intFromEnum(header.compression_method), .big);
+        try chunk_writer.writeInt(u8, @intFromEnum(header.filter_method), .big);
+        try chunk_writer.writeInt(u8, @intFromEnum(header.interlace_method), .big);
 
-        // try chunk.flush();
+        try chunk_writer.flush();
     }
 
     // IDAT (multiple maybe)
     fn writeData(allocator: std.mem.Allocator, writer: *std.Io.Writer, pixels: color.PixelStorage, header: HeaderData, filter_choice: filter.FilterChoice) ImageUnmanaged.WriteError!void {
-        _ = allocator; // autofix
-        _ = writer; // autofix
-        _ = pixels; // autofix
-        _ = header; // autofix
-        _ = filter_choice; // autofix
         // Note: there may be more than 1 chunk
         // TODO: provide choice of how much it buffers (how much data per idat chunk)
-        // var chunks = chunk_writer.chunkWriter(writer, "IDAT");
-        // const chunk_wr = chunks.writer();
+        var chunks: ChunkWriter = .{};
+        chunks.init(writer, Chunks.IDAT);
+        const chunk_writer = &chunks.writer;
 
-        // var zlib: ZlibCompressor(@TypeOf(chunk_wr)) = undefined;
-        // try zlib.init(chunk_wr);
+        var zlib_compressor = try deflate.compressor(.zlib, chunk_writer, .{ .level = .default });
+        try filter.filter(allocator, &zlib_compressor.writer, pixels, filter_choice, header);
+        try zlib_compressor.writer.flush();
 
-        // try zlib.begin();
-        // try filter.filter(allocator, zlib.writer(), pixels, filter_choice, header);
-        // try zlib.end();
-
-        // try chunks.flush();
+        try chunk_writer.flush();
     }
 
     // IEND chunk
     fn writeTrailer(writer: *std.Io.Writer) ImageUnmanaged.WriteError!void {
-        _ = writer; // autofix
-        // var chunk = chunk_writer.chunkWriter(writer, "IEND");
-        // try chunk.flush();
+        var chunk: ChunkWriter = .{};
+        chunk.init(writer, Chunks.IEND);
+        var chunk_writer = &chunk.writer;
+
+        try chunk_writer.flush();
     }
 
     // PLTE (if indexed storage)
     fn writePalette(writer: *std.Io.Writer, pixels: color.PixelStorage) ImageUnmanaged.WriteError!void {
-        _ = writer; // autofix
-        _ = pixels; // autofix
-        // var chunk = chunk_writer.chunkWriter(writer, "PLTE");
-        // var chunk_wr = chunk.writer();
+        var chunk: ChunkWriter = .{};
+        chunk.init(writer, Chunks.PLTE);
+        var chunk_writer = &chunk.writer;
 
-        // const palette = switch (pixels) {
-        //     .indexed1 => |d| d.palette,
-        //     .indexed2 => |d| d.palette,
-        //     .indexed4 => |d| d.palette,
-        //     .indexed8 => |d| d.palette,
-        //     .indexed16 => return ImageUnmanaged.WriteError.Unsupported,
-        //     else => unreachable,
-        // };
+        const palette = switch (pixels) {
+            .indexed1 => |d| d.palette,
+            .indexed2 => |d| d.palette,
+            .indexed4 => |d| d.palette,
+            .indexed8 => |d| d.palette,
+            .indexed16 => return ImageUnmanaged.WriteError.Unsupported,
+            else => unreachable,
+        };
 
-        // for (palette) |col| {
-        //     try chunk_wr.writeByte(col.r);
-        //     try chunk_wr.writeByte(col.g);
-        //     try chunk_wr.writeByte(col.b);
-        // }
+        for (palette) |col| {
+            try chunk_writer.writeByte(col.r);
+            try chunk_writer.writeByte(col.g);
+            try chunk_writer.writeByte(col.b);
+        }
 
-        // try chunk.flush();
+        try chunk_writer.flush();
     }
 
     // tRNS (Transparency information)
     fn writeTransparencyInfo(writer: *std.Io.Writer, pixels: color.PixelStorage) ImageUnmanaged.WriteError!void {
-        _ = writer; // autofix
-        _ = pixels; // autofix
         // TODO: For pixel format with alpha, try to check if the pixel with alpha are all the same color, if yes, we can change the format to their non-alpha counterpart with a tRNS chunk
         // TODO: For pixel format without alpha, add a write option to force which color should be consider transparent
 
-        // const TrnsIndexedWriter = struct {
-        //     pub fn write(writer_param: *std.Io.Writer, indexed: anytype) ImageUnmanaged.WriteError!void {
-        //         var write_trns: bool = false;
+        const TrnsIndexedWriter = struct {
+            pub fn write(writer_param: *std.Io.Writer, indexed: anytype) ImageUnmanaged.WriteError!void {
+                var write_trns: bool = false;
 
-        //         for (indexed.palette) |entry| {
-        //             if (entry.a < std.math.maxInt(u8)) {
-        //                 write_trns = true;
-        //                 break;
-        //             }
-        //         }
+                for (indexed.palette) |entry| {
+                    if (entry.a < std.math.maxInt(u8)) {
+                        write_trns = true;
+                        break;
+                    }
+                }
 
-        //         if (!write_trns) {
-        //             return;
-        //         }
+                if (!write_trns) {
+                    return;
+                }
 
-        //         var chunk = chunk_writer.chunkWriter(writer_param, "tRNS");
-        //         var chunk_wr = chunk.writer();
+                var chunk: ChunkWriter = .{};
+                chunk.init(writer_param, Chunks.tRNS);
+                var chunk_writer = &chunk.writer;
 
-        //         for (indexed.palette) |col| {
-        //             try chunk_wr.writeByte(col.a);
-        //         }
+                for (indexed.palette) |col| {
+                    try chunk_writer.writeByte(col.a);
+                }
 
-        //         try chunk.flush();
-        //     }
-        // };
+                try chunk_writer.flush();
+            }
+        };
 
-        // switch (pixels) {
-        //     .indexed1 => |indexed| {
-        //         return TrnsIndexedWriter.write(writer, indexed);
-        //     },
-        //     .indexed2 => |indexed| {
-        //         return TrnsIndexedWriter.write(writer, indexed);
-        //     },
-        //     .indexed4 => |indexed| {
-        //         return TrnsIndexedWriter.write(writer, indexed);
-        //     },
-        //     .indexed8 => |indexed| {
-        //         return TrnsIndexedWriter.write(writer, indexed);
-        //     },
-        //     .indexed16 => {
-        //         return ImageUnmanaged.WriteError.Unsupported;
-        //     },
-        //     else => {
-        //         // Do nothing
-        //     },
-        // }
+        switch (pixels) {
+            .indexed1 => |indexed| {
+                return TrnsIndexedWriter.write(writer, indexed);
+            },
+            .indexed2 => |indexed| {
+                return TrnsIndexedWriter.write(writer, indexed);
+            },
+            .indexed4 => |indexed| {
+                return TrnsIndexedWriter.write(writer, indexed);
+            },
+            .indexed8 => |indexed| {
+                return TrnsIndexedWriter.write(writer, indexed);
+            },
+            .indexed16 => {
+                return ImageUnmanaged.WriteError.Unsupported;
+            },
+            else => {
+                // Do nothing
+            },
+        }
     }
 };
 
