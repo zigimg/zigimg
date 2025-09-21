@@ -1,22 +1,21 @@
-const Image = @import("../src/Image.zig");
-const OctTreeQuantizer = @import("../src/OctTreeQuantizer.zig");
-const color = @import("../src/color.zig");
-const std = @import("std");
 const helpers = @import("helpers.zig");
+const OctTreeQuantizer = zigimg.OctTreeQuantizer;
+const std = @import("std");
+const zigimg = @import("zigimg");
 
 test "Build the oct tree with 3 colors" {
     var quantizer = OctTreeQuantizer.init(helpers.zigimg_test_allocator);
     defer quantizer.deinit();
 
-    const red = color.Rgba32.from.rgb(0xFF, 0, 0);
-    const green = color.Rgba32.from.rgb(0, 0xFF, 0);
-    const blue = color.Rgba32.from.rgb(0, 0, 0xFF);
+    const red = zigimg.color.Rgba32.from.rgb(0xFF, 0, 0);
+    const green = zigimg.color.Rgba32.from.rgb(0, 0xFF, 0);
+    const blue = zigimg.color.Rgba32.from.rgb(0, 0, 0xFF);
 
     try quantizer.addColor(red);
     try quantizer.addColor(green);
     try quantizer.addColor(blue);
 
-    var palette_storage: [256]color.Rgba32 = undefined;
+    var palette_storage: [256]zigimg.color.Rgba32 = undefined;
     const palette = quantizer.makePalette(256, palette_storage[0..]);
 
     try helpers.expectEq(palette.len, 3);
@@ -34,7 +33,7 @@ test "Build a oct tree with 32-bit RGBA bitmap" {
     var memory_rgba_bitmap: [200 * 1024]u8 = undefined;
     const buffer = try helpers.testReadFile(helpers.fixtures_path ++ "bmp/windows_rgba_v5.bmp", memory_rgba_bitmap[0..]);
 
-    var image = try Image.fromMemory(helpers.zigimg_test_allocator, buffer);
+    var image = try zigimg.Image.fromMemory(helpers.zigimg_test_allocator, buffer);
     defer image.deinit();
 
     var quantizer = OctTreeQuantizer.init(helpers.zigimg_test_allocator);
@@ -46,19 +45,19 @@ test "Build a oct tree with 32-bit RGBA bitmap" {
         try quantizer.addColor(pixel);
     }
 
-    var palette_storage: [256]color.Rgba32 = undefined;
+    var palette_storage: [256]zigimg.color.Rgba32 = undefined;
     const palette = quantizer.makePalette(255, palette_storage[0..]);
 
     try helpers.expectEq(palette.len, 255);
 
-    const palette_index = try quantizer.getPaletteIndex(color.Rgba32.from.rgba(110, 0, 0, 255));
+    const palette_index = try quantizer.getPaletteIndex(zigimg.color.Rgba32.from.rgba(110, 0, 0, 255));
     try helpers.expectEq(palette_index, 87);
     try helpers.expectEq(palette[palette_index].r, 110);
     try helpers.expectEq(palette[palette_index].g, 2);
     try helpers.expectEq(palette[palette_index].b, 2);
     try helpers.expectEq(palette[palette_index].a, 255);
 
-    const second_palette_index = try quantizer.getPaletteIndex(color.Rgba32.from.rgba(0, 0, 119, 255));
+    const second_palette_index = try quantizer.getPaletteIndex(zigimg.color.Rgba32.from.rgba(0, 0, 119, 255));
     try helpers.expectEq(second_palette_index, 50);
     try helpers.expectEq(palette[second_palette_index].r, 0);
     try helpers.expectEq(palette[second_palette_index].g, 0);
