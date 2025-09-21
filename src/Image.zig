@@ -14,6 +14,7 @@ pub const EncoderOptions = ImageUnmanaged.EncoderOptions;
 pub const AnimationLoopInfinite = ImageUnmanaged.AnimationLoopInfinite;
 pub const AnimationFrame = ImageUnmanaged.AnimationFrame;
 pub const Animation = ImageUnmanaged.Animation;
+pub const Editor = ImageEditor;
 
 // This layout must match the one in ImageUnmanaged
 width: usize = 0,

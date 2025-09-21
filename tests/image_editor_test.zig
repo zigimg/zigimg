@@ -1,9 +1,9 @@
-const std = @import("std");
-
-const color = @import("../src/color.zig");
-const Image = @import("../src/Image.zig");
-const ImageEditor = @import("../src/ImageEditor.zig");
+const color = zigimg.color;
 const helpers = @import("helpers.zig");
+const Image = zigimg.Image;
+const ImageEditor = zigimg.Image.Editor;
+const std = @import("std");
+const zigimg = @import("zigimg");
 
 test "Flip image vertically" {
     var unflipped = try Image.create(std.testing.allocator, 8, 8, .rgb24);
