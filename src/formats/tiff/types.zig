@@ -1,6 +1,6 @@
 const builtin = @import("builtin");
 const color = @import("../../color.zig");
-const ImageUnmanaged = @import("../../ImageUnmanaged.zig");
+const Image = @import("../../Image.zig");
 const io = @import("../../io.zig");
 const PixelFormat = @import("../../pixel_format.zig").PixelFormat;
 const std = @import("std");
@@ -113,7 +113,7 @@ pub const BitmapDescriptor = struct {
         std.log.debug("{}\n", .{self});
     }
 
-    pub fn guessPixelFormat(self: *BitmapDescriptor) ImageUnmanaged.ReadError!PixelFormat {
+    pub fn guessPixelFormat(self: *BitmapDescriptor) Image.ReadError!PixelFormat {
         // only raw, packbits, lzw and ccitt_rle compression supported for now
         switch (self.compression) {
             .uncompressed,
@@ -123,7 +123,7 @@ pub const BitmapDescriptor = struct {
             .deflate,
             .pixar_deflate,
             => {},
-            else => return ImageUnmanaged.Error.Unsupported,
+            else => return Image.Error.Unsupported,
         }
 
         switch (self.photometric_interpretation) {
@@ -133,11 +133,11 @@ pub const BitmapDescriptor = struct {
                 switch (bits_per_sample) {
                     // lower column values are stored in lower-order bits
                     // no support for bilevel files with a predictor
-                    1 => return if (self.fill_order == 1 and self.predictor == 1) PixelFormat.grayscale1 else ImageUnmanaged.Error.Unsupported,
+                    1 => return if (self.fill_order == 1 and self.predictor == 1) PixelFormat.grayscale1 else Image.Error.Unsupported,
                     // TODO
-                    4 => return ImageUnmanaged.Error.Unsupported,
+                    4 => return Image.Error.Unsupported,
                     8 => return PixelFormat.grayscale8,
-                    else => return ImageUnmanaged.Error.Unsupported,
+                    else => return Image.Error.Unsupported,
                 }
             },
             // pictures with color_map
@@ -146,8 +146,8 @@ pub const BitmapDescriptor = struct {
                 switch (bits_per_sample) {
                     8 => return PixelFormat.indexed8,
                     // TODO
-                    4 => return ImageUnmanaged.Error.Unsupported,
-                    else => return ImageUnmanaged.Error.Unsupported,
+                    4 => return Image.Error.Unsupported,
+                    else => return Image.Error.Unsupported,
                 }
             },
             // RGB pictures
@@ -159,7 +159,7 @@ pub const BitmapDescriptor = struct {
                         if (bits[0] == 8 and bits[1] == 8 and bits[2] == 8)
                             return PixelFormat.rgb24;
 
-                        return ImageUnmanaged.Error.Unsupported;
+                        return Image.Error.Unsupported;
                     },
                     4 => {
                         // 4 channels: RGBA or RGB/pre-multiplied
@@ -168,14 +168,14 @@ pub const BitmapDescriptor = struct {
                         if (bits[0] == 8 and bits[1] == 8 and bits[2] == 8 and bits[3] == 8 and (extra_sample_format == 2 or extra_sample_format == 1))
                             return PixelFormat.rgba32;
 
-                        return ImageUnmanaged.Error.Unsupported;
+                        return Image.Error.Unsupported;
                     },
-                    else => return ImageUnmanaged.Error.Unsupported,
+                    else => return Image.Error.Unsupported,
                 }
             },
-            else => return ImageUnmanaged.Error.Unsupported,
+            else => return Image.Error.Unsupported,
         }
-        return ImageUnmanaged.Error.Unsupported;
+        return Image.Error.Unsupported;
     }
 
     pub fn deinit(self: *BitmapDescriptor, allocator: std.mem.Allocator) void {

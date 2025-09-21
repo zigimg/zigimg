@@ -1,6 +1,6 @@
 const color = @import("../color.zig");
 const FormatInterface = @import("../FormatInterface.zig");
-const ImageUnmanaged = @import("../ImageUnmanaged.zig");
+const Image = @import("../Image.zig");
 const io = @import("../io.zig");
 const lzw = @import("../compressions/lzw.zig");
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
@@ -189,7 +189,7 @@ pub const GIF = struct {
         };
     }
 
-    pub fn formatDetect(read_stream: *io.ReadStream) ImageUnmanaged.ReadError!bool {
+    pub fn formatDetect(read_stream: *io.ReadStream) Image.ReadError!bool {
         const reader = read_stream.reader();
 
         const read_header = try reader.peek(6);
@@ -206,8 +206,8 @@ pub const GIF = struct {
         return false;
     }
 
-    pub fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!ImageUnmanaged {
-        var result = ImageUnmanaged{};
+    pub fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) Image.ReadError!Image {
+        var result = Image{};
         errdefer result.deinit(allocator);
 
         var gif = GIF.init(allocator);
@@ -215,7 +215,7 @@ pub const GIF = struct {
 
         const frames = try gif.read(read_stream);
         if (frames.items.len == 0) {
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
 
         result.width = gif.header.width;
@@ -226,7 +226,7 @@ pub const GIF = struct {
         return result;
     }
 
-    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageUnmanaged.WriteError!void {
+    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: Image, encoder_options: Image.EncoderOptions) Image.WriteError!void {
         _ = allocator;
         _ = write_stream;
         _ = image;
@@ -239,7 +239,7 @@ pub const GIF = struct {
                 if (std.mem.eql(u8, application_info.application_identifier[0..], anim_extension.identifier) and std.mem.eql(u8, application_info.authentification_code[0..], anim_extension.code)) {
                     const loop_count = std.mem.readPackedInt(u16, application_info.data[1..], 0, .little);
                     if (loop_count == 0) {
-                        return ImageUnmanaged.AnimationLoopInfinite;
+                        return Image.AnimationLoopInfinite;
                     }
                     return loop_count;
                 }
@@ -249,7 +249,7 @@ pub const GIF = struct {
         return 0;
     }
 
-    pub fn read(self: *GIF, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!ImageUnmanaged.Animation.FrameList {
+    pub fn read(self: *GIF, read_stream: *io.ReadStream) Image.ReadError!Image.Animation.FrameList {
         var context = ReaderContext{
             .reader = read_stream.reader(),
         };
@@ -257,7 +257,7 @@ pub const GIF = struct {
         self.header = try context.reader.takeStruct(Header, .little);
 
         if (!std.mem.eql(u8, self.header.magic[0..], MAGIC)) {
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
 
         var valid_version = false;
@@ -270,7 +270,7 @@ pub const GIF = struct {
         }
 
         if (!valid_version) {
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
 
         const global_color_table_size = @as(usize, 1) << (@as(COLOR_TABLE_SHIFT_TYPE, @intCast(self.header.flags.global_color_table_size)) + 1);
@@ -291,9 +291,9 @@ pub const GIF = struct {
     }
 
     // <Data> ::= <Graphic Block> | <Special-Purpose Block>
-    fn readData(self: *GIF, context: *ReaderContext) ImageUnmanaged.ReadError!void {
+    fn readData(self: *GIF, context: *ReaderContext) Image.ReadError!void {
         var current_block = context.reader.takeEnum(DataBlockKind, .little) catch {
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         };
 
         while (current_block != .end_of_file) {
@@ -325,7 +325,7 @@ pub const GIF = struct {
                         }
                     } else {
                         current_block = context.reader.takeEnum(DataBlockKind, .little) catch {
-                            return ImageUnmanaged.ReadError.InvalidData;
+                            return Image.ReadError.InvalidData;
                         };
                         continue;
                     }
@@ -342,13 +342,13 @@ pub const GIF = struct {
             }
 
             current_block = context.reader.takeEnum(DataBlockKind, .little) catch {
-                return ImageUnmanaged.ReadError.InvalidData;
+                return Image.ReadError.InvalidData;
             };
         }
     }
 
     // <Graphic Block> ::= [Graphic Control Extension] <Graphic-Rendering Block>
-    fn readGraphicBlock(self: *GIF, context: *ReaderContext, block_kind: DataBlockKind, extension_kind_opt: ?ExtensionKind) ImageUnmanaged.ReadError!void {
+    fn readGraphicBlock(self: *GIF, context: *ReaderContext, block_kind: DataBlockKind, extension_kind_opt: ?ExtensionKind) Image.ReadError!void {
         if (extension_kind_opt) |extension_kind| {
             if (extension_kind == .graphic_control) {
                 // If we are seeing a Graphics Control Extension block, it means we need to start a new animation frame
@@ -379,7 +379,7 @@ pub const GIF = struct {
                 };
 
                 const new_block_kind = context.reader.takeEnum(DataBlockKind, .little) catch {
-                    return ImageUnmanaged.ReadError.InvalidData;
+                    return Image.ReadError.InvalidData;
                 };
 
                 // Continue reading the graphics rendering block
@@ -399,7 +399,7 @@ pub const GIF = struct {
     }
 
     // <Graphic-Rendering Block> ::= <Table-Based Image> | Plain Text Extension
-    fn readGraphicRenderingBlock(self: *GIF, context: *ReaderContext, block_kind: DataBlockKind, extension_kind_opt: ?ExtensionKind) ImageUnmanaged.ReadError!void {
+    fn readGraphicRenderingBlock(self: *GIF, context: *ReaderContext, block_kind: DataBlockKind, extension_kind_opt: ?ExtensionKind) Image.ReadError!void {
         switch (block_kind) {
             .image_descriptor => {
                 try self.readImageDescriptorAndData(context);
@@ -410,7 +410,7 @@ pub const GIF = struct {
                     extension_kind = value;
                 } else {
                     extension_kind = context.reader.takeEnum(ExtensionKind, .little) catch {
-                        return ImageUnmanaged.ReadError.InvalidData;
+                        return Image.ReadError.InvalidData;
                     };
                 }
 
@@ -424,7 +424,7 @@ pub const GIF = struct {
                         try context.reader.discardAll(sub_data_size + 1);
                     },
                     else => {
-                        return ImageUnmanaged.ReadError.InvalidData;
+                        return Image.ReadError.InvalidData;
                     },
                 }
             },
@@ -435,7 +435,7 @@ pub const GIF = struct {
     }
 
     // <Special-Purpose Block> ::= Application Extension | Comment Extension
-    fn readSpecialPurposeBlock(self: *GIF, context: *ReaderContext, extension_kind: ExtensionKind) ImageUnmanaged.ReadError!void {
+    fn readSpecialPurposeBlock(self: *GIF, context: *ReaderContext, extension_kind: ExtensionKind) Image.ReadError!void {
         const gif_arena_allocator = self.arena_allocator.allocator();
 
         switch (extension_kind) {
@@ -509,13 +509,13 @@ pub const GIF = struct {
                 try self.application_infos.append(gif_arena_allocator, new_application_info);
             },
             else => {
-                return ImageUnmanaged.ReadError.InvalidData;
+                return Image.ReadError.InvalidData;
             },
         }
     }
 
     // <Table-Based Image> ::= Image Descriptor [Local Color Table] Image Data
-    fn readImageDescriptorAndData(self: *GIF, context: *ReaderContext) ImageUnmanaged.ReadError!void {
+    fn readImageDescriptorAndData(self: *GIF, context: *ReaderContext) Image.ReadError!void {
         const gif_arena_allocator = self.arena_allocator.allocator();
 
         if (context.current_frame_data) |current_frame_data| {
@@ -545,7 +545,7 @@ pub const GIF = struct {
             const lzw_minimum_code_size = try context.reader.takeByte();
 
             if (lzw_minimum_code_size == @intFromEnum(DataBlockKind.end_of_file)) {
-                return ImageUnmanaged.ReadError.InvalidData;
+                return Image.ReadError.InvalidData;
             }
 
             var temp_arena = std.heap.ArenaAllocator.init(self.arena_allocator.child_allocator);
@@ -568,7 +568,7 @@ pub const GIF = struct {
 
                 lzw_decoder.decode(&data_block_reader, &pixels_buffer_writer) catch |err| {
                     if (err != error.WriteFailed) {
-                        return ImageUnmanaged.ReadError.InvalidData;
+                        return Image.ReadError.InvalidData;
                     }
                 };
 
@@ -577,12 +577,12 @@ pub const GIF = struct {
         }
     }
 
-    fn render(self: *GIF) ImageUnmanaged.ReadError!ImageUnmanaged.Animation.FrameList {
+    fn render(self: *GIF) Image.ReadError!Image.Animation.FrameList {
         const final_pixel_format = self.findBestPixelFormat();
 
         const frame_list_allocator = self.arena_allocator.child_allocator;
 
-        var frame_list = ImageUnmanaged.Animation.FrameList{};
+        var frame_list = Image.Animation.FrameList{};
 
         if (self.frames.items.len == 0) {
             var current_animation_frame = try self.createNewAnimationFrame(frame_list_allocator, final_pixel_format);
@@ -673,7 +673,7 @@ pub const GIF = struct {
         return frame_list;
     }
 
-    fn fillPalette(current_frame: *ImageUnmanaged.AnimationFrame, effective_color_table: []const color.Rgb24, transparency_index_opt: ?u8) void {
+    fn fillPalette(current_frame: *Image.AnimationFrame, effective_color_table: []const color.Rgb24, transparency_index_opt: ?u8) void {
         // TODO: Support transparency index for indexed images
         _ = transparency_index_opt;
 
@@ -702,7 +702,7 @@ pub const GIF = struct {
         }
     }
 
-    fn fillWithBackgroundColor(current_frame: *ImageUnmanaged.AnimationFrame, effective_color_table: []const color.Rgb24, background_color_index: u8) void {
+    fn fillWithBackgroundColor(current_frame: *Image.AnimationFrame, effective_color_table: []const color.Rgb24, background_color_index: u8) void {
         if (background_color_index >= effective_color_table.len) {
             return;
         }
@@ -718,7 +718,7 @@ pub const GIF = struct {
         }
     }
 
-    fn copyFrame(source: *ImageUnmanaged.AnimationFrame, target: *ImageUnmanaged.AnimationFrame) void {
+    fn copyFrame(source: *Image.AnimationFrame, target: *Image.AnimationFrame) void {
         switch (target.pixels) {
             .indexed1 => |pixels| @memcpy(pixels.indices, source.pixels.indexed1.indices),
             .indexed2 => |pixels| @memcpy(pixels.indices, source.pixels.indexed2.indices),
@@ -730,7 +730,7 @@ pub const GIF = struct {
         }
     }
 
-    fn replaceWithBackground(self: *const GIF, sub_image: *const SubImage, canvas: *ImageUnmanaged.AnimationFrame, effective_color_table: []const color.Rgb24, transparency_index_opt: ?u8) void {
+    fn replaceWithBackground(self: *const GIF, sub_image: *const SubImage, canvas: *Image.AnimationFrame, effective_color_table: []const color.Rgb24, transparency_index_opt: ?u8) void {
         const background_color_index = if (transparency_index_opt != null) transparency_index_opt.? else self.header.background_color_index;
 
         for (0..sub_image.image_descriptor.height) |source_y| {
@@ -804,7 +804,7 @@ pub const GIF = struct {
         }
     }
 
-    fn renderSubImage(self: *const GIF, sub_image: *const SubImage, current_frame: *ImageUnmanaged.AnimationFrame, effective_color_table: []const color.Rgb24, transparency_index_opt: ?u8) void {
+    fn renderSubImage(self: *const GIF, sub_image: *const SubImage, current_frame: *Image.AnimationFrame, effective_color_table: []const color.Rgb24, transparency_index_opt: ?u8) void {
         if (sub_image.image_descriptor.flags.is_interlaced) {
             var source_y: usize = 0;
 
@@ -847,7 +847,7 @@ pub const GIF = struct {
         }
     }
 
-    fn plotPixel(sub_image: *const SubImage, current_frame: *ImageUnmanaged.AnimationFrame, effective_color_table: []const color.Rgb24, transparency_index_opt: ?u8, source_index: usize, target_index: usize) void {
+    fn plotPixel(sub_image: *const SubImage, current_frame: *Image.AnimationFrame, effective_color_table: []const color.Rgb24, transparency_index_opt: ?u8, source_index: usize, target_index: usize) void {
         if (source_index >= sub_image.pixels.len) {
             return;
         }
@@ -949,8 +949,8 @@ pub const GIF = struct {
         return new_frame;
     }
 
-    fn createNewAnimationFrame(self: *const GIF, allocator: std.mem.Allocator, pixel_format: PixelFormat) !ImageUnmanaged.AnimationFrame {
-        const new_frame = ImageUnmanaged.AnimationFrame{
+    fn createNewAnimationFrame(self: *const GIF, allocator: std.mem.Allocator, pixel_format: PixelFormat) !Image.AnimationFrame {
+        const new_frame = Image.AnimationFrame{
             .pixels = try color.PixelStorage.init(allocator, pixel_format, @as(usize, @intCast(self.header.width)) * @as(usize, @intCast(self.header.height))),
             .duration = 0.0,
         };

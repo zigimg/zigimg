@@ -7,9 +7,10 @@ const zigimg = @import("zigimg");
 
 test "Flip image vertically" {
     var unflipped = try Image.create(std.testing.allocator, 8, 8, .rgb24);
-    defer unflipped.deinit();
+    defer unflipped.deinit(helpers.zigimg_test_allocator);
+
     var flipped = try Image.create(std.testing.allocator, unflipped.width, unflipped.height, .rgb24);
-    defer flipped.deinit();
+    defer flipped.deinit(helpers.zigimg_test_allocator);
 
     for (0..unflipped.height) |y| {
         for (0..unflipped.width) |x| {
@@ -20,7 +21,8 @@ test "Flip image vertically" {
         }
     }
 
-    try unflipped.flipVertically();
+    try unflipped.flipVertically(helpers.zigimg_test_allocator);
+
     try std.testing.expectEqualSlices(color.Rgb24, unflipped.pixels.rgb24, flipped.pixels.rgb24);
 }
 
@@ -65,7 +67,7 @@ test "normalise_overflow2" {
 
 test "ImageEditor.crop: crop grayscale1 images" {
     var big_image = try Image.create(std.testing.allocator, 8, 8, .grayscale1);
-    defer big_image.deinit();
+    defer big_image.deinit(helpers.zigimg_test_allocator);
 
     // Set all pixels to black
     for (big_image.pixels.grayscale1) |*pixel| {
@@ -82,7 +84,7 @@ test "ImageEditor.crop: crop grayscale1 images" {
     }
 
     var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
-    defer cropped.deinit();
+    defer cropped.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expect(cropped.pixels == .grayscale1);
     try helpers.expectEq(cropped.width, 2);
@@ -95,7 +97,7 @@ test "ImageEditor.crop: crop grayscale1 images" {
 
 test "ImageEditor.crop: crop grayscale2 images" {
     var big_image = try Image.create(std.testing.allocator, 8, 8, .grayscale2);
-    defer big_image.deinit();
+    defer big_image.deinit(helpers.zigimg_test_allocator);
 
     // Set all pixels to black
     for (big_image.pixels.grayscale2) |*pixel| {
@@ -112,7 +114,7 @@ test "ImageEditor.crop: crop grayscale2 images" {
     }
 
     var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
-    defer cropped.deinit();
+    defer cropped.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expect(cropped.pixels == .grayscale2);
     try helpers.expectEq(cropped.width, 2);
@@ -125,7 +127,7 @@ test "ImageEditor.crop: crop grayscale2 images" {
 
 test "ImageEditor.crop: crop grayscale4 images" {
     var big_image = try Image.create(std.testing.allocator, 8, 8, .grayscale4);
-    defer big_image.deinit();
+    defer big_image.deinit(helpers.zigimg_test_allocator);
 
     // Set all pixels to black
     for (big_image.pixels.grayscale4) |*pixel| {
@@ -142,7 +144,7 @@ test "ImageEditor.crop: crop grayscale4 images" {
     }
 
     var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
-    defer cropped.deinit();
+    defer cropped.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expect(cropped.pixels == .grayscale4);
     try helpers.expectEq(cropped.width, 2);
@@ -155,7 +157,7 @@ test "ImageEditor.crop: crop grayscale4 images" {
 
 test "ImageEditor.crop: crop grayscale8 images" {
     var big_image = try Image.create(std.testing.allocator, 8, 8, .grayscale8);
-    defer big_image.deinit();
+    defer big_image.deinit(helpers.zigimg_test_allocator);
 
     // Set all pixels to black
     for (big_image.pixels.grayscale8) |*pixel| {
@@ -172,7 +174,7 @@ test "ImageEditor.crop: crop grayscale8 images" {
     }
 
     var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
-    defer cropped.deinit();
+    defer cropped.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expect(cropped.pixels == .grayscale8);
     try helpers.expectEq(cropped.width, 2);
@@ -185,7 +187,7 @@ test "ImageEditor.crop: crop grayscale8 images" {
 
 test "ImageEditor.crop: crop grayscale8Alpha images" {
     var big_image = try Image.create(std.testing.allocator, 8, 8, .grayscale8Alpha);
-    defer big_image.deinit();
+    defer big_image.deinit(helpers.zigimg_test_allocator);
 
     // Set all pixels to transparent black
     for (big_image.pixels.grayscale8Alpha) |*pixel| {
@@ -204,7 +206,7 @@ test "ImageEditor.crop: crop grayscale8Alpha images" {
     }
 
     var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
-    defer cropped.deinit();
+    defer cropped.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expect(cropped.pixels == .grayscale8Alpha);
     try helpers.expectEq(cropped.width, 2);
@@ -218,7 +220,7 @@ test "ImageEditor.crop: crop grayscale8Alpha images" {
 
 test "ImageEditor.crop: crop grayscale16 images" {
     var big_image = try Image.create(std.testing.allocator, 8, 8, .grayscale16);
-    defer big_image.deinit();
+    defer big_image.deinit(helpers.zigimg_test_allocator);
 
     // Set all pixels to black
     for (big_image.pixels.grayscale16) |*pixel| {
@@ -235,7 +237,7 @@ test "ImageEditor.crop: crop grayscale16 images" {
     }
 
     var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
-    defer cropped.deinit();
+    defer cropped.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expect(cropped.pixels == .grayscale16);
     try helpers.expectEq(cropped.width, 2);
@@ -248,7 +250,7 @@ test "ImageEditor.crop: crop grayscale16 images" {
 
 test "ImageEditor.crop: crop grayscale16Alpha images" {
     var big_image = try Image.create(std.testing.allocator, 8, 8, .grayscale16Alpha);
-    defer big_image.deinit();
+    defer big_image.deinit(helpers.zigimg_test_allocator);
 
     // Set all pixels to transparent black
     for (big_image.pixels.grayscale16Alpha) |*pixel| {
@@ -267,7 +269,7 @@ test "ImageEditor.crop: crop grayscale16Alpha images" {
     }
 
     var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
-    defer cropped.deinit();
+    defer cropped.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expect(cropped.pixels == .grayscale16Alpha);
     try helpers.expectEq(cropped.width, 2);
@@ -281,7 +283,7 @@ test "ImageEditor.crop: crop grayscale16Alpha images" {
 
 test "ImageEditor.crop: crop rgb24 images" {
     var big_image = try Image.create(std.testing.allocator, 8, 8, .rgb24);
-    defer big_image.deinit();
+    defer big_image.deinit(helpers.zigimg_test_allocator);
 
     // Set all pixels to black
     for (big_image.pixels.rgb24) |*pixel| {
@@ -298,7 +300,7 @@ test "ImageEditor.crop: crop rgb24 images" {
     }
 
     var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
-    defer cropped.deinit();
+    defer cropped.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expect(cropped.pixels == .rgb24);
     try helpers.expectEq(cropped.width, 2);
@@ -311,7 +313,7 @@ test "ImageEditor.crop: crop rgb24 images" {
 
 test "ImageEditor.crop: crop rgba32 images" {
     var big_image = try Image.create(std.testing.allocator, 8, 8, .rgba32);
-    defer big_image.deinit();
+    defer big_image.deinit(helpers.zigimg_test_allocator);
 
     // Set all pixels to transparent black
     for (big_image.pixels.rgba32) |*pixel| {
@@ -328,7 +330,7 @@ test "ImageEditor.crop: crop rgba32 images" {
     }
 
     var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
-    defer cropped.deinit();
+    defer cropped.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expect(cropped.pixels == .rgba32);
     try helpers.expectEq(cropped.width, 2);
@@ -341,7 +343,7 @@ test "ImageEditor.crop: crop rgba32 images" {
 
 test "ImageEditor.crop: crop rgb332 images" {
     var big_image = try Image.create(std.testing.allocator, 8, 8, .rgb332);
-    defer big_image.deinit();
+    defer big_image.deinit(helpers.zigimg_test_allocator);
 
     // Set all pixels to black
     for (big_image.pixels.rgb332) |*pixel| {
@@ -358,7 +360,7 @@ test "ImageEditor.crop: crop rgb332 images" {
     }
 
     var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
-    defer cropped.deinit();
+    defer cropped.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expect(cropped.pixels == .rgb332);
     try helpers.expectEq(cropped.width, 2);
@@ -371,7 +373,7 @@ test "ImageEditor.crop: crop rgb332 images" {
 
 test "ImageEditor.crop: crop rgb565 images" {
     var big_image = try Image.create(std.testing.allocator, 8, 8, .rgb565);
-    defer big_image.deinit();
+    defer big_image.deinit(helpers.zigimg_test_allocator);
 
     // Set all pixels to black
     for (big_image.pixels.rgb565) |*pixel| {
@@ -388,7 +390,7 @@ test "ImageEditor.crop: crop rgb565 images" {
     }
 
     var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
-    defer cropped.deinit();
+    defer cropped.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expect(cropped.pixels == .rgb565);
     try helpers.expectEq(cropped.width, 2);
@@ -401,7 +403,7 @@ test "ImageEditor.crop: crop rgb565 images" {
 
 test "ImageEditor.crop: crop rgb555 images" {
     var big_image = try Image.create(std.testing.allocator, 8, 8, .rgb555);
-    defer big_image.deinit();
+    defer big_image.deinit(helpers.zigimg_test_allocator);
 
     // Set all pixels to black
     for (big_image.pixels.rgb555) |*pixel| {
@@ -418,7 +420,7 @@ test "ImageEditor.crop: crop rgb555 images" {
     }
 
     var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
-    defer cropped.deinit();
+    defer cropped.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expect(cropped.pixels == .rgb555);
     try helpers.expectEq(cropped.width, 2);
@@ -431,7 +433,7 @@ test "ImageEditor.crop: crop rgb555 images" {
 
 test "ImageEditor.crop: crop bgr555 images" {
     var big_image = try Image.create(std.testing.allocator, 8, 8, .bgr555);
-    defer big_image.deinit();
+    defer big_image.deinit(helpers.zigimg_test_allocator);
 
     // Set all pixels to black
     for (big_image.pixels.bgr555) |*pixel| {
@@ -448,7 +450,7 @@ test "ImageEditor.crop: crop bgr555 images" {
     }
 
     var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
-    defer cropped.deinit();
+    defer cropped.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expect(cropped.pixels == .bgr555);
     try helpers.expectEq(cropped.width, 2);
@@ -461,7 +463,7 @@ test "ImageEditor.crop: crop bgr555 images" {
 
 test "ImageEditor.crop: crop bgr24 images" {
     var big_image = try Image.create(std.testing.allocator, 8, 8, .bgr24);
-    defer big_image.deinit();
+    defer big_image.deinit(helpers.zigimg_test_allocator);
 
     // Set all pixels to black
     for (big_image.pixels.bgr24) |*pixel| {
@@ -478,7 +480,7 @@ test "ImageEditor.crop: crop bgr24 images" {
     }
 
     var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
-    defer cropped.deinit();
+    defer cropped.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expect(cropped.pixels == .bgr24);
     try helpers.expectEq(cropped.width, 2);
@@ -491,7 +493,7 @@ test "ImageEditor.crop: crop bgr24 images" {
 
 test "ImageEditor.crop: crop bgra32 images" {
     var big_image = try Image.create(std.testing.allocator, 8, 8, .bgra32);
-    defer big_image.deinit();
+    defer big_image.deinit(helpers.zigimg_test_allocator);
 
     // Set all pixels to transparent black
     for (big_image.pixels.bgra32) |*pixel| {
@@ -508,7 +510,7 @@ test "ImageEditor.crop: crop bgra32 images" {
     }
 
     var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
-    defer cropped.deinit();
+    defer cropped.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expect(cropped.pixels == .bgra32);
     try helpers.expectEq(cropped.width, 2);
@@ -521,7 +523,7 @@ test "ImageEditor.crop: crop bgra32 images" {
 
 test "ImageEditor.crop: crop rgb48 images" {
     var big_image = try Image.create(std.testing.allocator, 8, 8, .rgb48);
-    defer big_image.deinit();
+    defer big_image.deinit(helpers.zigimg_test_allocator);
 
     // Set all pixels to black
     for (big_image.pixels.rgb48) |*pixel| {
@@ -538,7 +540,7 @@ test "ImageEditor.crop: crop rgb48 images" {
     }
 
     var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
-    defer cropped.deinit();
+    defer cropped.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expect(cropped.pixels == .rgb48);
     try helpers.expectEq(cropped.width, 2);
@@ -551,7 +553,7 @@ test "ImageEditor.crop: crop rgb48 images" {
 
 test "ImageEditor.crop: crop rgba64 images" {
     var big_image = try Image.create(std.testing.allocator, 8, 8, .rgba64);
-    defer big_image.deinit();
+    defer big_image.deinit(helpers.zigimg_test_allocator);
 
     // Set all pixels to transparant black
     for (big_image.pixels.rgba64) |*pixel| {
@@ -568,7 +570,7 @@ test "ImageEditor.crop: crop rgba64 images" {
     }
 
     var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
-    defer cropped.deinit();
+    defer cropped.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expect(cropped.pixels == .rgba64);
     try helpers.expectEq(cropped.width, 2);
@@ -581,7 +583,7 @@ test "ImageEditor.crop: crop rgba64 images" {
 
 test "ImageEditor.crop: crop float32 images" {
     var big_image = try Image.create(std.testing.allocator, 8, 8, .float32);
-    defer big_image.deinit();
+    defer big_image.deinit(helpers.zigimg_test_allocator);
 
     // Set all pixels to transparent black
     for (big_image.pixels.float32) |*pixel| {
@@ -598,7 +600,7 @@ test "ImageEditor.crop: crop float32 images" {
     }
 
     var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
-    defer cropped.deinit();
+    defer cropped.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expect(cropped.pixels == .float32);
     try helpers.expectEq(cropped.width, 2);
@@ -614,7 +616,7 @@ test "ImageEditor.crop: crop float32 images" {
 
 test "ImageEditor.crop: crop indexed1 images" {
     var big_image = try Image.create(std.testing.allocator, 8, 8, .indexed1);
-    defer big_image.deinit();
+    defer big_image.deinit(helpers.zigimg_test_allocator);
 
     // Setup the palette
     big_image.pixels.indexed1.palette[0] = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
@@ -635,7 +637,7 @@ test "ImageEditor.crop: crop indexed1 images" {
     }
 
     var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
-    defer cropped.deinit();
+    defer cropped.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expect(cropped.pixels == .indexed1);
     try helpers.expectEq(cropped.width, 2);
@@ -652,7 +654,7 @@ test "ImageEditor.crop: crop indexed1 images" {
 
 test "ImageEditor.crop: crop indexed2 images" {
     var big_image = try Image.create(std.testing.allocator, 8, 8, .indexed2);
-    defer big_image.deinit();
+    defer big_image.deinit(helpers.zigimg_test_allocator);
 
     // Setup the palette
     for (0..big_image.pixels.indexed2.palette.len) |palette_index| {
@@ -675,7 +677,7 @@ test "ImageEditor.crop: crop indexed2 images" {
     }
 
     var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
-    defer cropped.deinit();
+    defer cropped.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expect(cropped.pixels == .indexed2);
     try helpers.expectEq(cropped.width, 2);
@@ -692,7 +694,7 @@ test "ImageEditor.crop: crop indexed2 images" {
 
 test "ImageEditor.crop: crop indexed4 images" {
     var big_image = try Image.create(std.testing.allocator, 8, 8, .indexed4);
-    defer big_image.deinit();
+    defer big_image.deinit(helpers.zigimg_test_allocator);
 
     // Setup the palette
     for (0..big_image.pixels.indexed4.palette.len) |palette_index| {
@@ -715,7 +717,7 @@ test "ImageEditor.crop: crop indexed4 images" {
     }
 
     var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
-    defer cropped.deinit();
+    defer cropped.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expect(cropped.pixels == .indexed4);
     try helpers.expectEq(cropped.width, 2);
@@ -732,7 +734,7 @@ test "ImageEditor.crop: crop indexed4 images" {
 
 test "ImageEditor.crop: crop indexed8 images" {
     var big_image = try Image.create(std.testing.allocator, 8, 8, .indexed8);
-    defer big_image.deinit();
+    defer big_image.deinit(helpers.zigimg_test_allocator);
 
     // Setup the palette
     for (0..big_image.pixels.indexed8.palette.len) |palette_index| {
@@ -755,7 +757,7 @@ test "ImageEditor.crop: crop indexed8 images" {
     }
 
     var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
-    defer cropped.deinit();
+    defer cropped.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expect(cropped.pixels == .indexed8);
     try helpers.expectEq(cropped.width, 2);
@@ -772,7 +774,7 @@ test "ImageEditor.crop: crop indexed8 images" {
 
 test "ImageEditor.crop: crop indexed16 images" {
     var big_image = try Image.create(std.testing.allocator, 8, 8, .indexed16);
-    defer big_image.deinit();
+    defer big_image.deinit(helpers.zigimg_test_allocator);
 
     // Setup the palette
     for (0..big_image.pixels.indexed16.palette.len) |palette_index| {
@@ -795,7 +797,7 @@ test "ImageEditor.crop: crop indexed16 images" {
     }
 
     var cropped = try big_image.crop(helpers.zigimg_test_allocator, .{ .x = 2, .y = 2, .width = 2, .height = 2 });
-    defer cropped.deinit();
+    defer cropped.deinit(helpers.zigimg_test_allocator);
 
     try std.testing.expect(cropped.pixels == .indexed16);
     try helpers.expectEq(cropped.width, 2);

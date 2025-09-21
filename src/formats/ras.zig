@@ -1,6 +1,6 @@
 const color = @import("../color.zig");
 const FormatInterface = @import("../FormatInterface.zig");
-const ImageUnmanaged = @import("../ImageUnmanaged.zig");
+const Image = @import("../Image.zig");
 const io = @import("../io.zig");
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const std = @import("std");
@@ -70,26 +70,26 @@ pub const RAS = struct {
         };
     }
 
-    pub fn formatDetect(read_stream: *io.ReadStream) ImageUnmanaged.ReadError!bool {
+    pub fn formatDetect(read_stream: *io.ReadStream) Image.ReadError!bool {
         const reader = read_stream.reader();
         const magic_buffer = try reader.peek(Header.ras_magic_number.len);
 
         return std.mem.eql(u8, magic_buffer[0..], Header.ras_magic_number[0..]);
     }
 
-    pub fn pixelFormat(self: *RAS) ImageUnmanaged.Error!PixelFormat {
+    pub fn pixelFormat(self: *RAS) Image.Error!PixelFormat {
         switch (self.header.depth) {
             24 => return if (self.header.type == .rgb) .rgb24 else .bgr24,
             32 => return .rgba32,
             8 => return if (self.header.color_map_length > 0) .indexed8 else .grayscale8,
             // some apps may use (2-color) color map when storing 1-bit files
             1 => return if (self.header.color_map_length > 0) .indexed8 else .grayscale1,
-            else => return ImageUnmanaged.Error.Unsupported,
+            else => return Image.Error.Unsupported,
         }
     }
 
-    pub fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!ImageUnmanaged {
-        var result = ImageUnmanaged{};
+    pub fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) Image.ReadError!Image {
+        var result = Image{};
         errdefer result.deinit(allocator);
 
         var ras = RAS{};
@@ -103,7 +103,7 @@ pub const RAS = struct {
         return result;
     }
 
-    pub fn uncompressBitmap(self: *RAS, reader: *std.Io.Reader, buffer: []u8) ImageUnmanaged.ReadError!void {
+    pub fn uncompressBitmap(self: *RAS, reader: *std.Io.Reader, buffer: []u8) Image.ReadError!void {
         switch (self.header.type) {
             // no compression for these types
             .old, .standard, .rgb => _ = try reader.readSliceAll(buffer[0..]),
@@ -132,11 +132,11 @@ pub const RAS = struct {
                     }
                 }
             },
-            else => return ImageUnmanaged.Error.Unsupported,
+            else => return Image.Error.Unsupported,
         }
     }
 
-    pub fn readPalette(self: *RAS, allocator: std.mem.Allocator, reader: *std.Io.Reader) ImageUnmanaged.ReadError!void {
+    pub fn readPalette(self: *RAS, allocator: std.mem.Allocator, reader: *std.Io.Reader) Image.ReadError!void {
         const header = self.header;
         switch (header.color_map_type) {
             .rgb_color_map => {
@@ -152,13 +152,13 @@ pub const RAS = struct {
                     palette[index] = color.Rgba32.from.rgb(buffer[index], buffer[index + colors], buffer[index + 2 * colors]);
                 }
             },
-            else => return ImageUnmanaged.Error.Unsupported,
+            else => return Image.Error.Unsupported,
         }
     }
 
-    pub fn read(self: *RAS, allocator: std.mem.Allocator, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!color.PixelStorage {
+    pub fn read(self: *RAS, allocator: std.mem.Allocator, read_stream: *io.ReadStream) Image.ReadError!color.PixelStorage {
         if (!try formatDetect(read_stream)) {
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
 
         const reader = read_stream.reader();
@@ -166,7 +166,7 @@ pub const RAS = struct {
         // Toss the magic number
         reader.toss(Header.ras_magic_number.len);
 
-        self.header = reader.takeStruct(Header, .big) catch return ImageUnmanaged.ReadError.InvalidData;
+        self.header = reader.takeStruct(Header, .big) catch return Image.ReadError.InvalidData;
 
         const pixel_format = try self.pixelFormat();
 
@@ -241,13 +241,13 @@ pub const RAS = struct {
                     }
                 }
             },
-            else => return ImageUnmanaged.Error.Unsupported,
+            else => return Image.Error.Unsupported,
         }
 
         return pixels;
     }
 
-    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageUnmanaged.WriteError!void {
+    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: Image, encoder_options: Image.EncoderOptions) Image.WriteError!void {
         _ = allocator;
         _ = write_stream;
         _ = image;

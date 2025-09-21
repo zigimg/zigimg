@@ -226,7 +226,7 @@ test "Write bitmap(grayscale1) ASCII PBM file" {
     const height = 1;
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, width, height, .grayscale1);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     const source = source_image.pixels;
     for (grayscales, 0..) |value, index| {
@@ -234,7 +234,7 @@ test "Write bitmap(grayscale1) ASCII PBM file" {
     }
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], .{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
         .pbm = .{ .binary = false },
     });
 
@@ -244,7 +244,7 @@ test "Write bitmap(grayscale1) ASCII PBM file" {
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     var read_image = try zigimg.Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name, read_buffer[0..]);
-    defer read_image.deinit();
+    defer read_image.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(read_image.width, width);
     try helpers.expectEq(read_image.height, height);
@@ -272,7 +272,7 @@ test "Write bitmap(Grayscale1) binary PBM file" {
     const height = 1;
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, width, height, .grayscale1);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     const source = source_image.pixels;
 
@@ -281,7 +281,7 @@ test "Write bitmap(Grayscale1) binary PBM file" {
     }
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], .{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
         .pbm = .{ .binary = true },
     });
 
@@ -291,7 +291,7 @@ test "Write bitmap(Grayscale1) binary PBM file" {
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     var read_image = try zigimg.Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name, read_buffer[0..]);
-    defer read_image.deinit();
+    defer read_image.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(read_image.width, width);
     try helpers.expectEq(read_image.height, height);
@@ -316,7 +316,7 @@ test "Write grayscale8 ASCII PGM file" {
     const height = 1;
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, width, height, .grayscale8);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     const source = source_image.pixels;
     for (grayscales, 0..) |value, index| {
@@ -324,7 +324,7 @@ test "Write grayscale8 ASCII PGM file" {
     }
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], .{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
         .pgm = .{ .binary = false },
     });
 
@@ -334,7 +334,7 @@ test "Write grayscale8 ASCII PGM file" {
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     var read_image = try zigimg.Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name, read_buffer[0..]);
-    defer read_image.deinit();
+    defer read_image.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(read_image.width, width);
     try helpers.expectEq(read_image.height, height);
@@ -359,7 +359,7 @@ test "Write grayscale8 binary PGM file" {
     const height = 1;
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, width, height, .grayscale8);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     const source = source_image.pixels;
     for (grayscales, 0..) |value, index| {
@@ -367,7 +367,7 @@ test "Write grayscale8 binary PGM file" {
     }
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], .{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
         .pgm = .{ .binary = true },
     });
 
@@ -377,7 +377,7 @@ test "Write grayscale8 binary PGM file" {
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     var read_image = try zigimg.Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name, read_buffer[0..]);
-    defer read_image.deinit();
+    defer read_image.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(read_image.width, width);
     try helpers.expectEq(read_image.height, height);
@@ -398,7 +398,7 @@ test "Writing Rgb24 ASCII PPM format" {
     const height = 1;
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, width, height, .rgb24);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     const pixels = source_image.pixels;
 
@@ -420,7 +420,7 @@ test "Writing Rgb24 ASCII PPM format" {
     pixels.rgb24[7] = zigimg.color.Rgb24.from.rgb(255, 255, 0);
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], .{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
         .ppm = .{ .binary = false },
     });
 
@@ -430,7 +430,7 @@ test "Writing Rgb24 ASCII PPM format" {
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     var read_image = try zigimg.Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name, read_buffer[0..]);
-    defer read_image.deinit();
+    defer read_image.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(read_image.width, width);
     try helpers.expectEq(read_image.height, height);
@@ -452,7 +452,7 @@ test "Writing Rgb24 binary PPM format" {
     const height = 1;
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, width, height, .rgb24);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     const pixels = source_image.pixels;
 
@@ -474,7 +474,7 @@ test "Writing Rgb24 binary PPM format" {
     pixels.rgb24[7] = zigimg.color.Rgb24.from.rgb(255, 255, 0);
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], .{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
         .ppm = .{ .binary = true },
     });
 
@@ -484,7 +484,7 @@ test "Writing Rgb24 binary PPM format" {
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     var read_image = try zigimg.Image.fromFilePath(helpers.zigimg_test_allocator, image_file_name, read_buffer[0..]);
-    defer read_image.deinit();
+    defer read_image.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(read_image.width, width);
     try helpers.expectEq(read_image.height, height);
@@ -502,7 +502,7 @@ test "Trying to write a bitmap or grayscale Netpbm with an true color pixel form
     const image_file_name = "zigimg_ppm_rgb24_error_test.ppm";
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, 8, 1, .rgb24);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     defer {
         std.fs.cwd().deleteFile(image_file_name) catch unreachable;
@@ -527,12 +527,12 @@ test "Trying to write a bitmap or grayscale Netpbm with an true color pixel form
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
 
     {
-        const write_error = source_image.writeToFilePath(image_file_name, write_buffer[0..], .{ .pbm = .{} });
+        const write_error = source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{ .pbm = .{} });
         try std.testing.expectError(zigimg.Image.WriteError.Unsupported, write_error);
     }
 
     {
-        const write_error = source_image.writeToFilePath(image_file_name, write_buffer[0..], .{ .pgm = .{} });
+        const write_error = source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{ .pgm = .{} });
         try std.testing.expectError(zigimg.Image.WriteError.Unsupported, write_error);
     }
 }
@@ -548,7 +548,7 @@ test "Trying to write a bitmap or true color Netpbm with a 8-bit grayscale pixel
     const height = 1;
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, width, height, .grayscale8);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     defer {
         std.fs.cwd().deleteFile(image_file_name) catch unreachable;
@@ -562,12 +562,12 @@ test "Trying to write a bitmap or true color Netpbm with a 8-bit grayscale pixel
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
 
     {
-        const write_error = source_image.writeToFilePath(image_file_name, write_buffer[0..], .{ .pbm = .{} });
+        const write_error = source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{ .pbm = .{} });
         try std.testing.expectError(zigimg.Image.WriteError.Unsupported, write_error);
     }
 
     {
-        const write_error = source_image.writeToFilePath(image_file_name, write_buffer[0..], .{ .ppm = .{} });
+        const write_error = source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{ .ppm = .{} });
         try std.testing.expectError(zigimg.Image.WriteError.Unsupported, write_error);
     }
 }
@@ -586,7 +586,7 @@ test "Trying to write a grayscale or true color Netbpm with a 1-bit grayscale pi
     const height = 1;
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, width, height, .grayscale1);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     defer {
         std.fs.cwd().deleteFile(image_file_name) catch unreachable;
@@ -601,12 +601,12 @@ test "Trying to write a grayscale or true color Netbpm with a 1-bit grayscale pi
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
 
     {
-        const write_error = source_image.writeToFilePath(image_file_name, write_buffer[0..], .{ .pgm = .{} });
+        const write_error = source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{ .pgm = .{} });
         try std.testing.expectError(zigimg.Image.WriteError.Unsupported, write_error);
     }
 
     {
-        const write_error = source_image.writeToFilePath(image_file_name, write_buffer[0..], .{ .ppm = .{} });
+        const write_error = source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{ .ppm = .{} });
         try std.testing.expectError(zigimg.Image.WriteError.Unsupported, write_error);
     }
 }

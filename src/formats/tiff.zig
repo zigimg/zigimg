@@ -1,7 +1,7 @@
 const ccitt = @import("../compressions/ccitt.zig");
 const color = @import("../color.zig");
 const FormatInterface = @import("../FormatInterface.zig");
-const ImageUnmanaged = @import("../ImageUnmanaged.zig");
+const Image = @import("../Image.zig");
 const io = @import("../io.zig");
 const lzw = @import("../compressions/lzw.zig");
 const packbits = @import("../compressions/packbits.zig");
@@ -112,7 +112,7 @@ pub const TIFF = struct {
                                 bits_per_sample.data[index] = @truncate(components_bits_per_sample[index]);
                             }
                         },
-                        else => return ImageUnmanaged.Error.Unsupported,
+                        else => return Image.Error.Unsupported,
                     }
                 },
                 .extra_samples => {
@@ -120,7 +120,7 @@ pub const TIFF = struct {
                     extra_samples.resize(tag.data_count);
                     switch (tag.data_count) {
                         1 => extra_samples.data[0] = tag.toShort(endianess),
-                        else => return ImageUnmanaged.Error.Unsupported,
+                        else => return Image.Error.Unsupported,
                     }
                 },
                 .x_resolution => {
@@ -150,7 +150,7 @@ pub const TIFF = struct {
         var zlib_decompress = std.compress.flate.Decompress.init(reader, .zlib, decompress_buffer[0..]);
 
         _ = zlib_decompress.reader.streamRemaining(&writer) catch {
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         };
     }
 
@@ -160,7 +160,7 @@ pub const TIFF = struct {
         defer lzw_decoder.deinit();
 
         lzw_decoder.decode(read_stream.reader(), &writer) catch {
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         };
     }
 
@@ -170,7 +170,7 @@ pub const TIFF = struct {
         var ccitt_decoder = try ccitt.Decoder.init(image_width, num_rows, @truncate(self.bitmap.photometric_interpretation));
 
         ccitt_decoder.decode(read_stream.reader(), &writer) catch {
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         };
     }
 
@@ -188,10 +188,10 @@ pub const TIFF = struct {
             return bitmap.image_width * (total_bits / 8);
         }
 
-        return ImageUnmanaged.Error.Unsupported;
+        return Image.Error.Unsupported;
     }
 
-    pub fn readStrips(self: *TIFF, allocator: std.mem.Allocator, read_stream: *io.ReadStream, pixel_storage: *color.PixelStorage) ImageUnmanaged.ReadError!void {
+    pub fn readStrips(self: *TIFF, allocator: std.mem.Allocator, read_stream: *io.ReadStream, pixel_storage: *color.PixelStorage) Image.ReadError!void {
         const bitmap = &self.bitmap;
         const total_strips = (bitmap.image_height + bitmap.rows_per_strip - 1) / bitmap.rows_per_strip;
         const byte_counts_array = bitmap.strip_byte_counts.?;
@@ -226,7 +226,7 @@ pub const TIFF = struct {
                 .ccitt_rle => _ = try self.uncompressCCITT(read_stream, strip_buffer, image_width, current_row_size),
                 .lzw => _ = try self.uncompressLZW(allocator, read_stream, strip_buffer),
                 .deflate, .pixar_deflate => _ = try self.uncompressDeflate(read_stream, strip_buffer),
-                else => return ImageUnmanaged.Error.Unsupported,
+                else => return Image.Error.Unsupported,
             }
 
             blk: switch (pixel_storage.*) {
@@ -299,12 +299,12 @@ pub const TIFF = struct {
                             break :blk;
                     }
                 },
-                else => return ImageUnmanaged.Error.Unsupported,
+                else => return Image.Error.Unsupported,
             }
         }
     }
 
-    pub fn read(self: *TIFF, allocator: std.mem.Allocator, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!color.PixelStorage {
+    pub fn read(self: *TIFF, allocator: std.mem.Allocator, read_stream: *io.ReadStream) Image.ReadError!color.PixelStorage {
         self.endianess = try takeEndianess(read_stream);
 
         const reader = read_stream.reader();
@@ -332,14 +332,14 @@ pub const TIFF = struct {
 
         switch (pixels) {
             .grayscale1, .grayscale8, .indexed8, .rgb24, .rgba32 => try self.readStrips(allocator, read_stream, &pixels),
-            else => return ImageUnmanaged.Error.Unsupported,
+            else => return Image.Error.Unsupported,
         }
 
         return pixels;
     }
 
-    pub fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!ImageUnmanaged {
-        var result = ImageUnmanaged{};
+    pub fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) Image.ReadError!Image {
+        var result = Image{};
         errdefer result.deinit(allocator);
 
         var tiff = TIFF{};
@@ -353,14 +353,14 @@ pub const TIFF = struct {
         return result;
     }
 
-    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageUnmanaged.WriteError!void {
+    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: Image, encoder_options: Image.EncoderOptions) Image.WriteError!void {
         _ = allocator;
         _ = write_stream;
         _ = image;
         _ = encoder_options;
     }
 
-    fn peekEndianess(read_stream: *io.ReadStream) ImageUnmanaged.ReadError!std.builtin.Endian {
+    fn peekEndianess(read_stream: *io.ReadStream) Image.ReadError!std.builtin.Endian {
         const reader = read_stream.reader();
 
         const magic_buffer = try reader.peek(Header.little_endian_magic.len);
@@ -371,10 +371,10 @@ pub const TIFF = struct {
             return std.builtin.Endian.big;
         }
 
-        return ImageUnmanaged.ReadError.InvalidData;
+        return Image.ReadError.InvalidData;
     }
 
-    fn takeEndianess(read_stream: *io.ReadStream) ImageUnmanaged.ReadError!std.builtin.Endian {
+    fn takeEndianess(read_stream: *io.ReadStream) Image.ReadError!std.builtin.Endian {
         const reader = read_stream.reader();
 
         const endianess = try peekEndianess(read_stream);
@@ -383,7 +383,7 @@ pub const TIFF = struct {
         return endianess;
     }
 
-    pub fn formatDetect(read_stream: *io.ReadStream) ImageUnmanaged.ReadError!bool {
+    pub fn formatDetect(read_stream: *io.ReadStream) Image.ReadError!bool {
         _ = peekEndianess(read_stream) catch return false;
 
         return true;

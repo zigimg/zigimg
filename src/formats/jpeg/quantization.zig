@@ -2,7 +2,7 @@
 
 const std = @import("std");
 
-const ImageUnmanaged = @import("../../ImageUnmanaged.zig");
+const Image = @import("../../Image.zig");
 const io = @import("../../io.zig");
 
 const ZigzagOffsets = @import("./utils.zig").ZigzagOffsets;
@@ -23,7 +23,7 @@ pub const Header = struct {
 
     table: Table,
 
-    pub fn read(reader: *std.Io.Reader) ImageUnmanaged.ReadError!Header {
+    pub fn read(reader: *std.Io.Reader) Image.ReadError!Header {
         _ = try reader.takeInt(u16, .big); // read the size, but we don't need it
 
         const precision_and_destination = try reader.takeByte();
@@ -46,7 +46,7 @@ pub const Table = union(enum) {
     q8: [64]u8,
     q16: [64]u16,
 
-    pub fn read(precision: u8, reader: *std.Io.Reader) ImageUnmanaged.ReadError!Table {
+    pub fn read(precision: u8, reader: *std.Io.Reader) Image.ReadError!Table {
         // 0 = 8 bits, 1 = 16 bits
         switch (precision) {
             0 => {
@@ -82,7 +82,7 @@ pub const Table = union(enum) {
 
                 return table;
             },
-            else => return ImageUnmanaged.ReadError.InvalidData,
+            else => return Image.ReadError.InvalidData,
         }
     }
 };

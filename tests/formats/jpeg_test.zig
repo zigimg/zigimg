@@ -21,7 +21,7 @@ test "Should error on non JPEG images" {
         }
     }
 
-    try helpers.expectError(invalidFile, zigimg.ImageUnmanaged.ReadError.InvalidData);
+    try helpers.expectError(invalidFile, zigimg.Image.ReadError.InvalidData);
 }
 
 test "Read JFIF header properly and decode simple Huffman stream" {

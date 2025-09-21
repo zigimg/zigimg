@@ -17,7 +17,7 @@ test "Should error on non QOI images" {
 
     const invalid_file = qoi_file.read(helpers.zigimg_test_allocator, &read_stream);
 
-    try helpers.expectError(invalid_file, zigimg.ImageUnmanaged.ReadError.InvalidData);
+    try helpers.expectError(invalid_file, zigimg.Image.ReadError.InvalidData);
 }
 
 test "Read zero.qoi file" {
@@ -46,7 +46,7 @@ test "Read zero.qoi file" {
 
 test "Write qoi file" {
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, 512, 512, .rgba32);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     var buffer: [1025 * 1024]u8 = undefined;
     const zero_raw_pixels = try helpers.testReadFile(zero_raw_file, buffer[0..]);
@@ -55,7 +55,7 @@ test "Write qoi file" {
     var image_buffer: [100 * 1024]u8 = undefined;
     var zero_qoi = try helpers.testReadFile(zero_qoi_file, buffer[0..]);
 
-    const result_image = try source_image.writeToMemory(image_buffer[0..], .{ .qoi = .{} });
+    const result_image = try source_image.writeToMemory(helpers.zigimg_test_allocator, image_buffer[0..], .{ .qoi = .{} });
 
     try std.testing.expectEqualSlices(u8, zero_qoi[0..], result_image);
 }

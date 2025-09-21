@@ -1,7 +1,7 @@
 const builtin = @import("builtin");
 const color = @import("../color.zig");
 const FormatInterface = @import("../FormatInterface.zig");
-const ImageUnmanaged = @import("../ImageUnmanaged.zig");
+const Image = @import("../Image.zig");
 const io = @import("../io.zig");
 const std = @import("std");
 
@@ -37,7 +37,7 @@ pub const XBM = struct {
 
     /// Takes a stream, Returns true if and only if the stream contains exactly two or four '#define' lines
     /// at the beginning.
-    pub fn formatDetect(read_stream: *io.ReadStream) ImageUnmanaged.ReadError!bool {
+    pub fn formatDetect(read_stream: *io.ReadStream) Image.ReadError!bool {
         defer read_stream.seekTo(0) catch {};
         const reader = read_stream.reader();
 
@@ -86,7 +86,7 @@ pub const XBM = struct {
         }
     }
 
-    pub fn read(self: *XBM, allocator: std.mem.Allocator, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!color.PixelStorage {
+    pub fn read(self: *XBM, allocator: std.mem.Allocator, read_stream: *io.ReadStream) Image.ReadError!color.PixelStorage {
         const reader = read_stream.reader();
 
         //  --- Parse #define lines ---
@@ -113,7 +113,7 @@ pub const XBM = struct {
                         hotspot_y = value;
                     }
                 } else {
-                    return ImageUnmanaged.ReadError.InvalidData;
+                    return Image.ReadError.InvalidData;
                 }
             } else {
                 //  Reached first non-define line – treat as pixel data
@@ -125,7 +125,7 @@ pub const XBM = struct {
         }
 
         if (width == null or height == null) {
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
 
         self.width = width.?;
@@ -165,7 +165,7 @@ pub const XBM = struct {
         }
 
         if (byte_list.items.len < expected_bytes) {
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
 
         //  --- Decode bits into pixel indices ---
@@ -182,8 +182,8 @@ pub const XBM = struct {
         return pixels;
     }
 
-    pub fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!ImageUnmanaged {
-        var result: ImageUnmanaged = .{};
+    pub fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) Image.ReadError!Image {
+        var result: Image = .{};
         errdefer result.deinit(allocator);
 
         var xbm: XBM = .{};
@@ -196,7 +196,7 @@ pub const XBM = struct {
     pub fn writeImage(
         _: std.mem.Allocator,
         _: *io.WriteStream,
-        _: ImageUnmanaged,
-        _: ImageUnmanaged.EncoderOptions,
-    ) ImageUnmanaged.WriteError!void {}
+        _: Image,
+        _: Image.EncoderOptions,
+    ) Image.WriteError!void {}
 };

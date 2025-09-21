@@ -2,7 +2,6 @@ pub const color = @import("src/color.zig");
 pub const FormatInterface = @import("src/FormatInterface.zig");
 pub const formats = @import("src/formats.zig");
 pub const Image = @import("src/Image.zig");
-pub const ImageUnmanaged = @import("src/ImageUnmanaged.zig");
 pub const math = @import("src/math.zig");
 pub const OctTreeQuantizer = @import("src/OctTreeQuantizer.zig");
 pub const PixelFormat = @import("src/pixel_format.zig").PixelFormat;

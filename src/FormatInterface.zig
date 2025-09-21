@@ -1,5 +1,5 @@
 const color = @import("color.zig");
-const ImageUnmanaged = @import("ImageUnmanaged.zig");
+const Image = @import("Image.zig");
 const io = @import("io.zig");
 const std = @import("std");
 
@@ -8,6 +8,6 @@ formatDetect: *const FormatDetectFn,
 readImage: *const ReadImageFn,
 writeImage: *const WriteImageFn,
 
-pub const FormatDetectFn = fn (read_stream: *io.ReadStream) ImageUnmanaged.ReadError!bool;
-pub const ReadImageFn = fn (allocator: std.mem.Allocator, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!ImageUnmanaged;
-pub const WriteImageFn = fn (allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageUnmanaged.WriteError!void;
+pub const FormatDetectFn = fn (read_stream: *io.ReadStream) Image.ReadError!bool;
+pub const ReadImageFn = fn (allocator: std.mem.Allocator, read_stream: *io.ReadStream) Image.ReadError!Image;
+pub const WriteImageFn = fn (allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: Image, encoder_options: Image.EncoderOptions) Image.WriteError!void;

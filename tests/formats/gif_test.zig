@@ -14,7 +14,7 @@ test "Should error on non GIF images" {
     defer gif_file.deinit();
 
     const invalid_file = gif_file.read(&read_stream);
-    try helpers.expectError(invalid_file, zigimg.ImageUnmanaged.ReadError.InvalidData);
+    try helpers.expectError(invalid_file, zigimg.Image.ReadError.InvalidData);
 }
 
 const SINGLE_GIF_FILE_TEST = false;

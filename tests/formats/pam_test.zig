@@ -12,7 +12,7 @@ test "rejects non-PAM images" {
 
     const invalid = pam.PAM.readImage(helpers.zigimg_test_allocator, &read_stream);
 
-    try helpers.expectError(invalid, zigimg.ImageUnmanaged.ReadError.InvalidData);
+    try helpers.expectError(invalid, zigimg.Image.ReadError.InvalidData);
 }
 
 test "rejects PAM images with unsupported depth" {
@@ -24,7 +24,7 @@ test "rejects PAM images with unsupported depth" {
 
     const invalid = pam.PAM.readImage(helpers.zigimg_test_allocator, &read_stream);
 
-    try helpers.expectError(invalid, zigimg.ImageUnmanaged.ReadError.Unsupported);
+    try helpers.expectError(invalid, zigimg.Image.ReadError.Unsupported);
 }
 
 test "rejects PAM images with invalid maxval" {
@@ -36,7 +36,7 @@ test "rejects PAM images with invalid maxval" {
 
     const invalid = pam.PAM.readImage(helpers.zigimg_test_allocator, &read_stream);
 
-    try helpers.expectError(invalid, zigimg.ImageUnmanaged.ReadError.InvalidData);
+    try helpers.expectError(invalid, zigimg.Image.ReadError.InvalidData);
 }
 
 test "rejects PAM images with component values greater than maxval" {
@@ -47,7 +47,7 @@ test "rejects PAM images with component values greater than maxval" {
     var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
     const invalid = pam.PAM.readImage(helpers.zigimg_test_allocator, &read_stream);
-    try helpers.expectError(invalid, zigimg.ImageUnmanaged.ReadError.InvalidData);
+    try helpers.expectError(invalid, zigimg.Image.ReadError.InvalidData);
 }
 
 test "rejects PAM images with unknown tuple type" {
@@ -59,7 +59,7 @@ test "rejects PAM images with unknown tuple type" {
 
     const invalid = pam.PAM.readImage(helpers.zigimg_test_allocator, &read_stream);
 
-    try helpers.expectError(invalid, zigimg.ImageUnmanaged.ReadError.Unsupported);
+    try helpers.expectError(invalid, zigimg.Image.ReadError.Unsupported);
 }
 
 test "rejects PAM images with invalid first token" {
@@ -71,7 +71,7 @@ test "rejects PAM images with invalid first token" {
 
     const invalid = pam.PAM.readImage(helpers.zigimg_test_allocator, &read_stream);
 
-    try helpers.expectError(invalid, zigimg.ImageUnmanaged.ReadError.InvalidData);
+    try helpers.expectError(invalid, zigimg.Image.ReadError.InvalidData);
 }
 
 test "rejects PAM images with tuple type not matching other parameters" {
@@ -83,7 +83,7 @@ test "rejects PAM images with tuple type not matching other parameters" {
 
     const invalid = pam.PAM.readImage(helpers.zigimg_test_allocator, &read_stream);
 
-    try helpers.expectError(invalid, zigimg.ImageUnmanaged.ReadError.InvalidData);
+    try helpers.expectError(invalid, zigimg.Image.ReadError.InvalidData);
 }
 
 test "accepts comments" {

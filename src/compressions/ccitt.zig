@@ -1,4 +1,4 @@
-const ImageUnmanaged = @import("../ImageUnmanaged.zig");
+const Image = @import("../Image.zig");
 const io = @import("../io.zig");
 const std = @import("std");
 
@@ -283,7 +283,7 @@ pub const Decoder = struct {
 
             // malfornmed file
             if (pixels_to_decode != 0) {
-                return ImageUnmanaged.ReadError.InvalidData;
+                return Image.ReadError.InvalidData;
             }
         }
     }

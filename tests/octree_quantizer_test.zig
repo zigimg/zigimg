@@ -34,7 +34,7 @@ test "Build a oct tree with 32-bit RGBA bitmap" {
     const buffer = try helpers.testReadFile(helpers.fixtures_path ++ "bmp/windows_rgba_v5.bmp", memory_rgba_bitmap[0..]);
 
     var image = try zigimg.Image.fromMemory(helpers.zigimg_test_allocator, buffer);
-    defer image.deinit();
+    defer image.deinit(helpers.zigimg_test_allocator);
 
     var quantizer = OctTreeQuantizer.init(helpers.zigimg_test_allocator);
     defer quantizer.deinit();

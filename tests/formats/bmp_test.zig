@@ -182,7 +182,7 @@ test "Should error when reading an invalid file" {
     var the_bitmap = bmp.BMP{};
 
     const invalid_file = the_bitmap.read(helpers.zigimg_test_allocator, &read_stream);
-    try helpers.expectError(invalid_file, zigimg.ImageUnmanaged.ReadError.InvalidData);
+    try helpers.expectError(invalid_file, zigimg.Image.ReadError.InvalidData);
 }
 
 test "Write a v4 bitmap when writing an image with bgr24 pixel format" {
@@ -193,7 +193,7 @@ test "Write a v4 bitmap when writing an image with bgr24 pixel format" {
     const height = 1;
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, width, height, .bgr24);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     const pixels = source_image.pixels;
 
@@ -215,7 +215,7 @@ test "Write a v4 bitmap when writing an image with bgr24 pixel format" {
     pixels.bgr24[7] = zigimg.color.Bgr24.from.rgb(255, 255, 0);
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], .{ .bmp = .{} });
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{ .bmp = .{} });
 
     defer {
         std.fs.cwd().deleteFile(image_file_name) catch {};
@@ -252,7 +252,7 @@ test "Write a v5 bitmap when writing an image with bgra32 pixel format" {
     const height = 1;
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, width, height, .bgra32);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     const pixels = source_image.pixels;
 
@@ -277,7 +277,7 @@ test "Write a v5 bitmap when writing an image with bgra32 pixel format" {
     pixels.bgra32[8] = zigimg.color.Bgra32.from.rgba(0, 0, 0, 0);
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], .{ .bmp = .{} });
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{ .bmp = .{} });
 
     defer {
         std.fs.cwd().deleteFile(image_file_name) catch {};

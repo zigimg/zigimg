@@ -3,7 +3,7 @@
 
 const std = @import("std");
 
-const ImageUnmanaged = @import("../../ImageUnmanaged.zig");
+const Image = @import("../../Image.zig");
 const io = @import("../../io.zig");
 
 const Markers = @import("utils.zig").Markers;
@@ -16,7 +16,7 @@ const Component = struct {
     vertical_sampling_factor: u4,
     quantization_table_id: u8,
 
-    pub fn read(reader: *std.Io.Reader) ImageUnmanaged.ReadError!Component {
+    pub fn read(reader: *std.Io.Reader) Image.ReadError!Component {
         const component_id = try reader.takeByte();
         const sampling_factors = try reader.takeByte();
         const quantization_table_id = try reader.takeByte();
@@ -26,17 +26,17 @@ const Component = struct {
 
         if (horizontal_sampling_factor < 1 or horizontal_sampling_factor > 4) {
             // TODO(angelo): error, create custom error
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
 
         if (vertical_sampling_factor < 1 or vertical_sampling_factor > 4) {
             // TODO(angelo): error, create custom error
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
 
         if (quantization_table_id > 3) {
             // TODO(angelo): error, create custom error
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
 
         return Component{
@@ -56,7 +56,7 @@ height: u16,
 width: u16,
 components: []Component,
 
-pub fn read(allocator: std.mem.Allocator, reader: *std.Io.Reader) ImageUnmanaged.ReadError!FrameHeader {
+pub fn read(allocator: std.mem.Allocator, reader: *std.Io.Reader) Image.ReadError!FrameHeader {
     const segment_size = try reader.takeInt(u16, .big);
     if (JPEG_DEBUG) std.debug.print("StartOfFrame: frame size = 0x{X}\n", .{segment_size});
 
@@ -68,7 +68,7 @@ pub fn read(allocator: std.mem.Allocator, reader: *std.Io.Reader) ImageUnmanaged
 
     if (component_count != 1 and component_count != 3) {
         // TODO(angelo): use jpeg error here, for components
-        return ImageUnmanaged.ReadError.InvalidData;
+        return Image.ReadError.InvalidData;
     }
 
     if (JPEG_DEBUG) std.debug.print("  {}x{}, precision={}, {} components\n", .{ height, width, sample_precision, component_count });

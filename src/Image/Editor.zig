@@ -1,8 +1,8 @@
 const std = @import("std");
 pub const Error = std.mem.Allocator.Error;
 
-const color = @import("color.zig");
-const ImageUnmanaged = @import("ImageUnmanaged.zig");
+const color = @import("../color.zig");
+const Image = @import("../Image.zig");
 
 /// Flip the image vertically, along the X axis.
 pub fn flipVertically(pixels: *const color.PixelStorage, height: usize, allocator: std.mem.Allocator) Error!void {
@@ -21,7 +21,7 @@ pub fn flipVertically(pixels: *const color.PixelStorage, height: usize, allocato
 }
 
 /// Create and allocate a cropped subsection of this image.
-pub fn crop(image: *const ImageUnmanaged, allocator: std.mem.Allocator, crop_area: Box) Error!ImageUnmanaged {
+pub fn crop(image: *const Image, allocator: std.mem.Allocator, crop_area: Box) Error!Image {
     const box = crop_area.clamp(image.width, image.height);
 
     var cropped_pixels = try color.PixelStorage.init(
@@ -42,7 +42,7 @@ pub fn crop(image: *const ImageUnmanaged, allocator: std.mem.Allocator, crop_are
     if (box.width == 0 or box.height == 0 or
         image.width == 0 or image.height == 0)
     {
-        return ImageUnmanaged{
+        return Image{
             .width = box.width,
             .height = box.height,
             .pixels = cropped_pixels,
@@ -64,7 +64,7 @@ pub fn crop(image: *const ImageUnmanaged, allocator: std.mem.Allocator, crop_are
         @memcpy(destination, source);
     }
 
-    return ImageUnmanaged{
+    return Image{
         .width = box.width,
         .height = box.height,
         .pixels = cropped_pixels,

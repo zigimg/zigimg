@@ -2,7 +2,7 @@
 // with permission from Felix Queißner
 const color = @import("../color.zig");
 const FormatInterface = @import("../FormatInterface.zig");
-const ImageUnmanaged = @import("../ImageUnmanaged.zig");
+const Image = @import("../Image.zig");
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const std = @import("std");
 const io = @import("../io.zig");
@@ -32,7 +32,7 @@ pub const Header = struct {
     max_value: usize,
 };
 
-fn parseHeader(reader: *std.Io.Reader) ImageUnmanaged.ReadError!Header {
+fn parseHeader(reader: *std.Io.Reader) Image.ReadError!Header {
     var header: Header = undefined;
 
     const magic = try reader.take(2);
@@ -58,7 +58,7 @@ fn parseHeader(reader: *std.Io.Reader) ImageUnmanaged.ReadError!Header {
         header.binary = true;
         header.format = .rgb;
     } else {
-        return ImageUnmanaged.ReadError.InvalidData;
+        return Image.ReadError.InvalidData;
     }
 
     var read_buffer: [16]u8 = undefined;
@@ -80,7 +80,7 @@ fn isWhitespace(b: u8) bool {
     };
 }
 
-fn readNextByte(reader: *std.Io.Reader) ImageUnmanaged.ReadError!u8 {
+fn readNextByte(reader: *std.Io.Reader) Image.ReadError!u8 {
     while (true) {
         const read_byte = try reader.takeByte();
         switch (read_byte) {
@@ -107,13 +107,13 @@ fn readNextByte(reader: *std.Io.Reader) ImageUnmanaged.ReadError!u8 {
 
 /// skips whitespace and comments, then reads a number from the stream.
 /// this function reads one whitespace behind the number as a terminator.
-fn parseNumber(reader: *std.Io.Reader, buffer: []u8) ImageUnmanaged.ReadError!usize {
+fn parseNumber(reader: *std.Io.Reader, buffer: []u8) Image.ReadError!usize {
     var input_length: usize = 0;
     while (true) {
         const b = try readNextByte(reader);
         if (isWhitespace(b)) {
             if (input_length > 0) {
-                return std.fmt.parseInt(usize, buffer[0..input_length], 10) catch return ImageUnmanaged.ReadError.InvalidData;
+                return std.fmt.parseInt(usize, buffer[0..input_length], 10) catch return Image.ReadError.InvalidData;
             } else {
                 continue;
             }
@@ -126,7 +126,7 @@ fn parseNumber(reader: *std.Io.Reader, buffer: []u8) ImageUnmanaged.ReadError!us
     }
 }
 
-fn loadBinaryBitmap(header: Header, data: []color.Grayscale1, reader: *std.Io.Reader) ImageUnmanaged.ReadError!void {
+fn loadBinaryBitmap(header: Header, data: []color.Grayscale1, reader: *std.Io.Reader) Image.ReadError!void {
     var bit_reader: io.BitReader(.big) = .{
         .reader = reader,
     };
@@ -139,7 +139,7 @@ fn loadBinaryBitmap(header: Header, data: []color.Grayscale1, reader: *std.Io.Re
     }
 }
 
-fn loadAsciiBitmap(header: Header, data: []color.Grayscale1, reader: *std.Io.Reader) ImageUnmanaged.ReadError!void {
+fn loadAsciiBitmap(header: Header, data: []color.Grayscale1, reader: *std.Io.Reader) Image.ReadError!void {
     var data_index: usize = 0;
     const data_end = header.width * header.height;
 
@@ -158,14 +158,14 @@ fn loadAsciiBitmap(header: Header, data: []color.Grayscale1, reader: *std.Io.Rea
     }
 }
 
-fn readLinearizedValue(reader: *std.Io.Reader, max_value: usize) ImageUnmanaged.ReadError!u8 {
+fn readLinearizedValue(reader: *std.Io.Reader, max_value: usize) Image.ReadError!u8 {
     return if (max_value > 255)
         @truncate(255 * @as(usize, try reader.takeInt(u16, .big)) / max_value)
     else
         @truncate(255 * @as(usize, try reader.takeByte()) / max_value);
 }
 
-fn loadBinaryGraymap(header: Header, pixels: *color.PixelStorage, reader: *std.Io.Reader) ImageUnmanaged.ReadError!void {
+fn loadBinaryGraymap(header: Header, pixels: *color.PixelStorage, reader: *std.Io.Reader) Image.ReadError!void {
     var data_index: usize = 0;
     const data_end = header.width * header.height;
     if (header.max_value <= 255) {
@@ -179,7 +179,7 @@ fn loadBinaryGraymap(header: Header, pixels: *color.PixelStorage, reader: *std.I
     }
 }
 
-fn loadAsciiGraymap(header: Header, pixels: *color.PixelStorage, reader: *std.Io.Reader) ImageUnmanaged.ReadError!void {
+fn loadAsciiGraymap(header: Header, pixels: *color.PixelStorage, reader: *std.Io.Reader) Image.ReadError!void {
     var read_buffer: [16]u8 = undefined;
 
     var data_index: usize = 0;
@@ -196,7 +196,7 @@ fn loadAsciiGraymap(header: Header, pixels: *color.PixelStorage, reader: *std.Io
     }
 }
 
-fn loadBinaryRgbmap(header: Header, data: []color.Rgb24, reader: *std.Io.Reader) ImageUnmanaged.ReadError!void {
+fn loadBinaryRgbmap(header: Header, data: []color.Rgb24, reader: *std.Io.Reader) Image.ReadError!void {
     var data_index: usize = 0;
     const data_end = header.width * header.height;
 
@@ -209,7 +209,7 @@ fn loadBinaryRgbmap(header: Header, data: []color.Rgb24, reader: *std.Io.Reader)
     }
 }
 
-fn loadAsciiRgbmap(header: Header, data: []color.Rgb24, reader: *std.Io.Reader) ImageUnmanaged.ReadError!void {
+fn loadAsciiRgbmap(header: Header, data: []color.Rgb24, reader: *std.Io.Reader) Image.ReadError!void {
     var read_buffer: [16]u8 = undefined;
 
     var data_index: usize = 0;
@@ -246,7 +246,7 @@ fn Netpbm(comptime header_numbers: []const u8, comptime supported_format: Format
             };
         }
 
-        pub fn formatDetect(read_stream: *io.ReadStream) ImageUnmanaged.ReadError!bool {
+        pub fn formatDetect(read_stream: *io.ReadStream) Image.ReadError!bool {
             const reader = read_stream.reader();
 
             const magic_number_buffer = try reader.peek(2);
@@ -266,8 +266,8 @@ fn Netpbm(comptime header_numbers: []const u8, comptime supported_format: Format
             return found;
         }
 
-        pub fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!ImageUnmanaged {
-            var result = ImageUnmanaged{};
+        pub fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) Image.ReadError!Image {
+            var result = Image{};
             errdefer result.deinit(allocator);
 
             var netpbm_file = Self{};
@@ -281,7 +281,7 @@ fn Netpbm(comptime header_numbers: []const u8, comptime supported_format: Format
             return result;
         }
 
-        pub fn writeImage(allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageUnmanaged.WriteError!void {
+        pub fn writeImage(allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: Image, encoder_options: Image.EncoderOptions) Image.WriteError!void {
             _ = allocator;
 
             var netpbm_file = Self{};
@@ -298,7 +298,7 @@ fn Netpbm(comptime header_numbers: []const u8, comptime supported_format: Format
                 .grayscale1 => Format.bitmap,
                 .grayscale8, .grayscale16 => Format.grayscale,
                 .rgb24 => Format.rgb,
-                else => return ImageUnmanaged.Error.Unsupported,
+                else => return Image.Error.Unsupported,
             };
 
             netpbm_file.header.max_value = switch (image.pixels) {
@@ -310,7 +310,7 @@ fn Netpbm(comptime header_numbers: []const u8, comptime supported_format: Format
             try netpbm_file.write(write_stream, image.pixels);
         }
 
-        pub fn pixelFormat(self: Self) ImageUnmanaged.ReadError!PixelFormat {
+        pub fn pixelFormat(self: Self) Image.ReadError!PixelFormat {
             return switch (self.header.format) {
                 .bitmap => PixelFormat.grayscale1,
                 .grayscale => switch (self.header.max_value) {
@@ -321,7 +321,7 @@ fn Netpbm(comptime header_numbers: []const u8, comptime supported_format: Format
             };
         }
 
-        pub fn read(self: *Self, allocator: std.mem.Allocator, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!color.PixelStorage {
+        pub fn read(self: *Self, allocator: std.mem.Allocator, read_stream: *io.ReadStream) Image.ReadError!color.PixelStorage {
             const reader = read_stream.reader();
             self.header = try parseHeader(reader);
 
@@ -357,9 +357,9 @@ fn Netpbm(comptime header_numbers: []const u8, comptime supported_format: Format
             return pixels;
         }
 
-        pub fn write(self: *Self, write_stream: *io.WriteStream, pixels: color.PixelStorage) ImageUnmanaged.WriteError!void {
+        pub fn write(self: *Self, write_stream: *io.WriteStream, pixels: color.PixelStorage) Image.WriteError!void {
             if (self.header.format != supported_format) {
-                return ImageUnmanaged.Error.Unsupported;
+                return Image.Error.Unsupported;
             }
 
             const image_type = if (self.header.binary) header_numbers[1] else header_numbers[0];
@@ -392,7 +392,7 @@ fn Netpbm(comptime header_numbers: []const u8, comptime supported_format: Format
                                 }
                             },
                             else => {
-                                return ImageUnmanaged.Error.Unsupported;
+                                return Image.Error.Unsupported;
                             },
                         }
                     },
@@ -410,7 +410,7 @@ fn Netpbm(comptime header_numbers: []const u8, comptime supported_format: Format
                                 }
                             },
                             else => {
-                                return ImageUnmanaged.Error.Unsupported;
+                                return Image.Error.Unsupported;
                             },
                         }
                     },
@@ -424,7 +424,7 @@ fn Netpbm(comptime header_numbers: []const u8, comptime supported_format: Format
                                 }
                             },
                             else => {
-                                return ImageUnmanaged.Error.Unsupported;
+                                return Image.Error.Unsupported;
                             },
                         }
                     },
@@ -440,7 +440,7 @@ fn Netpbm(comptime header_numbers: []const u8, comptime supported_format: Format
                                 _ = try writer.write("\n");
                             },
                             else => {
-                                return ImageUnmanaged.Error.Unsupported;
+                                return Image.Error.Unsupported;
                             },
                         }
                     },
@@ -469,7 +469,7 @@ fn Netpbm(comptime header_numbers: []const u8, comptime supported_format: Format
                                 _ = try writer.write("\n");
                             },
                             else => {
-                                return ImageUnmanaged.Error.Unsupported;
+                                return Image.Error.Unsupported;
                             },
                         }
                     },
@@ -481,7 +481,7 @@ fn Netpbm(comptime header_numbers: []const u8, comptime supported_format: Format
                                 }
                             },
                             else => {
-                                return ImageUnmanaged.Error.Unsupported;
+                                return Image.Error.Unsupported;
                             },
                         }
                     },

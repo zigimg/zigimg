@@ -45,7 +45,7 @@ test "Farbfeld: invalid file format" {
     var farbfeld_image = farbfeld.Farbfeld{};
     const image_error = farbfeld_image.read(helpers.zigimg_test_allocator, &read_stream);
 
-    try std.testing.expectError(zigimg.ImageUnmanaged.ReadError.InvalidData, image_error);
+    try std.testing.expectError(zigimg.Image.ReadError.InvalidData, image_error);
 }
 
 test "Farbfeld: read writeImage output" {

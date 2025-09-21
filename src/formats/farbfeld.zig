@@ -1,7 +1,7 @@
 const builtin = @import("builtin");
 const color = @import("../color.zig");
 const FormatInterface = @import("../FormatInterface.zig");
-const ImageUnmanaged = @import("../ImageUnmanaged.zig");
+const Image = @import("../Image.zig");
 const io = @import("../io.zig");
 const std = @import("std");
 
@@ -38,7 +38,7 @@ pub const Farbfeld = struct {
     }
 
     /// Taken a stream, Returns true if and only if the stream contains the magic value "fabfeld"
-    pub fn formatDetect(read_stream: *io.ReadStream) ImageUnmanaged.ReadError!bool {
+    pub fn formatDetect(read_stream: *io.ReadStream) Image.ReadError!bool {
         const reader = read_stream.reader();
 
         const read_magic_header = try reader.peek(Header.MAGIC_VALUE.len);
@@ -46,8 +46,8 @@ pub const Farbfeld = struct {
         return read_magic_header.len == Header.MAGIC_VALUE.len and std.mem.eql(u8, read_magic_header, Header.MAGIC_VALUE[0..]);
     }
 
-    pub fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!ImageUnmanaged {
-        var result: ImageUnmanaged = .{};
+    pub fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) Image.ReadError!Image {
+        var result: Image = .{};
         errdefer result.deinit(allocator);
 
         var farbfeld: Farbfeld = .{};
@@ -58,7 +58,7 @@ pub const Farbfeld = struct {
         return result;
     }
 
-    pub fn writeImage(_: std.mem.Allocator, write_stream: *io.WriteStream, image: ImageUnmanaged, _: ImageUnmanaged.EncoderOptions) ImageUnmanaged.WriteError!void {
+    pub fn writeImage(_: std.mem.Allocator, write_stream: *io.WriteStream, image: Image, _: Image.EncoderOptions) Image.WriteError!void {
         const farbfeld: Farbfeld = .{
             .header = .{
                 .width = @intCast(image.width),
@@ -69,32 +69,32 @@ pub const Farbfeld = struct {
         try farbfeld.write(write_stream, image.pixels);
     }
 
-    pub fn read(self: *Farbfeld, allocator: std.mem.Allocator, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!color.PixelStorage {
+    pub fn read(self: *Farbfeld, allocator: std.mem.Allocator, read_stream: *io.ReadStream) Image.ReadError!color.PixelStorage {
         // read header magic value
         const reader = read_stream.reader();
 
-        const magic_header = reader.take(Header.MAGIC_VALUE.len) catch return ImageUnmanaged.ReadError.InvalidData;
+        const magic_header = reader.take(Header.MAGIC_VALUE.len) catch return Image.ReadError.InvalidData;
         if (!std.mem.eql(u8, magic_header, Header.MAGIC_VALUE[0..])) {
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
 
         // read width and height
-        self.header = reader.takeStruct(Header, .big) catch return ImageUnmanaged.ReadError.InvalidData;
+        self.header = reader.takeStruct(Header, .big) catch return Image.ReadError.InvalidData;
 
         const pixels = try color.PixelStorage.init(allocator, .rgba64, @as(usize, self.header.width) * @as(usize, self.header.height));
         errdefer pixels.deinit(allocator);
 
         for (pixels.rgba64) |*pixel| {
-            const pixel_color = reader.takeStruct(color.Rgba64, .big) catch return ImageUnmanaged.ReadError.InvalidData;
+            const pixel_color = reader.takeStruct(color.Rgba64, .big) catch return Image.ReadError.InvalidData;
             pixel.* = pixel_color;
         }
 
         return pixels;
     }
 
-    pub fn write(self: Farbfeld, write_stream: *io.WriteStream, pixels: color.PixelStorage) ImageUnmanaged.WriteError!void {
+    pub fn write(self: Farbfeld, write_stream: *io.WriteStream, pixels: color.PixelStorage) Image.WriteError!void {
         if (pixels != .rgba64) {
-            return ImageUnmanaged.WriteError.Unsupported;
+            return Image.WriteError.Unsupported;
         }
 
         // Setup the buffered stream

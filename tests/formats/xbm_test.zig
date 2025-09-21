@@ -38,7 +38,7 @@ test "XBM: invalid file format" {
         var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
         const actual_error = the_xbm.read(helpers.zigimg_test_allocator, &read_stream);
-        try helpers.expectError(actual_error, zigimg.ImageUnmanaged.ReadError.InvalidData);
+        try helpers.expectError(actual_error, zigimg.Image.ReadError.InvalidData);
     }
 
     {
@@ -51,7 +51,7 @@ test "XBM: invalid file format" {
         var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
         const actual_error = the_xbm.read(helpers.zigimg_test_allocator, &read_stream);
-        try helpers.expectError(actual_error, zigimg.ImageUnmanaged.ReadError.InvalidData);
+        try helpers.expectError(actual_error, zigimg.Image.ReadError.InvalidData);
     }
 }
 

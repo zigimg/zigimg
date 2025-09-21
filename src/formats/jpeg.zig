@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const ImageUnmanaged = @import("../ImageUnmanaged.zig");
+const Image = @import("../Image.zig");
 const FormatInterface = @import("../FormatInterface.zig");
 const color = @import("../color.zig");
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
@@ -43,7 +43,7 @@ pub const JPEG = struct {
         }
     }
 
-    fn parseDefineQuantizationTables(self: *JPEG, reader: *std.Io.Reader) ImageUnmanaged.ReadError!void {
+    fn parseDefineQuantizationTables(self: *JPEG, reader: *std.Io.Reader) Image.ReadError!void {
         var segment_size = try reader.takeInt(u16, .big);
         if (JPEG_DEBUG) std.debug.print("DefineQuantizationTables: segment size = 0x{X}\n", .{segment_size});
         segment_size -= 2;
@@ -64,15 +64,15 @@ pub const JPEG = struct {
         }
     }
 
-    fn parseScan(self: *JPEG, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!void {
+    fn parseScan(self: *JPEG, read_stream: *io.ReadStream) Image.ReadError!void {
         if (self.frame) |frame| {
             try Scan.performScan(&frame, self.restart_interval, read_stream);
         } else {
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
     }
 
-    fn initializePixels(self: *JPEG, pixels_opt: *?color.PixelStorage) ImageUnmanaged.ReadError!void {
+    fn initializePixels(self: *JPEG, pixels_opt: *?color.PixelStorage) Image.ReadError!void {
         if (self.frame) |frame| {
             var pixel_format: PixelFormat = undefined;
             switch (frame.frame_header.components.len) {
@@ -84,11 +84,11 @@ pub const JPEG = struct {
             const pixel_count = @as(usize, @intCast(frame.frame_header.width)) * @as(usize, @intCast(frame.frame_header.height));
             pixels_opt.* = try color.PixelStorage.init(self.allocator, pixel_format, pixel_count);
         } else {
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
     }
 
-    pub fn read(self: *JPEG, read_stream: *io.ReadStream, pixels_opt: *?color.PixelStorage) ImageUnmanaged.ReadError!Frame {
+    pub fn read(self: *JPEG, read_stream: *io.ReadStream, pixels_opt: *?color.PixelStorage) Image.ReadError!Frame {
         errdefer {
             if (pixels_opt.*) |pixels| {
                 pixels.deinit(self.allocator);
@@ -100,7 +100,7 @@ pub const JPEG = struct {
         var marker = try reader.takeInt(u16, .big);
 
         if (marker != @intFromEnum(Markers.start_of_image)) {
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
 
         while (marker != @intFromEnum(Markers.end_of_image)) {
@@ -111,24 +111,24 @@ pub const JPEG = struct {
             switch (@as(Markers, @enumFromInt(marker))) {
                 .sof0, .sof2 => { // Baseline DCT, progressive DCT Huffman coding
                     if (self.frame != null) {
-                        return ImageUnmanaged.Error.Unsupported;
+                        return Image.Error.Unsupported;
                     }
 
                     self.frame = try Frame.read(self.allocator, @enumFromInt(marker), &self.quantization_tables, &self.dc_huffman_tables, &self.ac_huffman_tables, reader);
                     try self.initializePixels(pixels_opt);
                 },
 
-                .sof1 => return ImageUnmanaged.Error.Unsupported, // extended sequential DCT Huffman coding
-                .sof3 => return ImageUnmanaged.Error.Unsupported, // lossless (sequential) Huffman coding
-                .sof5 => return ImageUnmanaged.Error.Unsupported,
-                .sof6 => return ImageUnmanaged.Error.Unsupported,
-                .sof7 => return ImageUnmanaged.Error.Unsupported,
-                .sof9 => return ImageUnmanaged.Error.Unsupported, // extended sequential DCT arithmetic coding
-                .sof10 => return ImageUnmanaged.Error.Unsupported, // progressive DCT arithmetic coding
-                .sof11 => return ImageUnmanaged.Error.Unsupported, // lossless (sequential) arithmetic coding
-                .sof13 => return ImageUnmanaged.Error.Unsupported,
-                .sof14 => return ImageUnmanaged.Error.Unsupported,
-                .sof15 => return ImageUnmanaged.Error.Unsupported,
+                .sof1 => return Image.Error.Unsupported, // extended sequential DCT Huffman coding
+                .sof3 => return Image.Error.Unsupported, // lossless (sequential) Huffman coding
+                .sof5 => return Image.Error.Unsupported,
+                .sof6 => return Image.Error.Unsupported,
+                .sof7 => return Image.Error.Unsupported,
+                .sof9 => return Image.Error.Unsupported, // extended sequential DCT arithmetic coding
+                .sof10 => return Image.Error.Unsupported, // progressive DCT arithmetic coding
+                .sof11 => return Image.Error.Unsupported, // lossless (sequential) arithmetic coding
+                .sof13 => return Image.Error.Unsupported,
+                .sof14 => return Image.Error.Unsupported,
+                .sof15 => return Image.Error.Unsupported,
                 .define_huffman_tables => {
                     try self.parseDefineHuffmanTables(reader);
                 },
@@ -162,7 +162,7 @@ pub const JPEG = struct {
                     continue;
                 },
                 else => {
-                    return ImageUnmanaged.ReadError.InvalidData;
+                    return Image.ReadError.InvalidData;
                 },
             }
         }
@@ -175,7 +175,7 @@ pub const JPEG = struct {
             return frame.*;
         }
 
-        return ImageUnmanaged.ReadError.InvalidData;
+        return Image.ReadError.InvalidData;
     }
 
     // Format interface
@@ -187,14 +187,14 @@ pub const JPEG = struct {
         };
     }
 
-    fn formatDetect(read_stream: *io.ReadStream) ImageUnmanaged.ReadError!bool {
+    fn formatDetect(read_stream: *io.ReadStream) Image.ReadError!bool {
         const reader = read_stream.reader();
         const maybe_start_of_image = try reader.peekInt(u16, .big);
         return maybe_start_of_image == @intFromEnum(Markers.start_of_image);
     }
 
-    fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!ImageUnmanaged {
-        var result = ImageUnmanaged{};
+    fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) Image.ReadError!Image {
+        var result = Image{};
         errdefer result.deinit(allocator);
 
         var jpeg = JPEG.init(allocator);
@@ -210,20 +210,20 @@ pub const JPEG = struct {
         if (pixels_opt) |pixels| {
             result.pixels = pixels;
         } else {
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
 
         return result;
     }
 
-    fn writeImage(allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageUnmanaged.WriteError!void {
+    fn writeImage(allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: Image, encoder_options: Image.EncoderOptions) Image.WriteError!void {
         _ = allocator;
         _ = write_stream;
         _ = image;
         _ = encoder_options;
     }
 
-    fn parseDefineHuffmanTables(self: *JPEG, reader: *std.Io.Reader) ImageUnmanaged.ReadError!void {
+    fn parseDefineHuffmanTables(self: *JPEG, reader: *std.Io.Reader) Image.ReadError!void {
         var segment_size = try reader.takeInt(u16, .big);
         if (JPEG_DEBUG) std.debug.print("DefineHuffmanTables: segment size = 0x{X}\n", .{segment_size});
         segment_size -= 2;

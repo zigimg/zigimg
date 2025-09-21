@@ -152,23 +152,23 @@ pub const CheckTrnsPresentProcessor = struct {
         );
     }
 
-    pub fn processChunk(self: *Self, data: *png.ChunkProcessData) zigimg.ImageUnmanaged.ReadError!zigimg.PixelFormat {
+    pub fn processChunk(self: *Self, data: *png.ChunkProcessData) zigimg.Image.ReadError!zigimg.PixelFormat {
         self.present = true;
         return self.trns_processor.processChunk(data);
     }
 
-    pub fn processPalette(self: *Self, data: *png.PaletteProcessData) zigimg.ImageUnmanaged.ReadError!void {
+    pub fn processPalette(self: *Self, data: *png.PaletteProcessData) zigimg.Image.ReadError!void {
         return self.trns_processor.processPalette(data);
     }
 
-    pub fn processDataRow(self: *Self, data: *png.RowProcessData) zigimg.ImageUnmanaged.ReadError!zigimg.PixelFormat {
+    pub fn processDataRow(self: *Self, data: *png.RowProcessData) zigimg.Image.ReadError!zigimg.PixelFormat {
         return self.trns_processor.processDataRow(data);
     }
 };
 
 test "png: Don't write tRNS chunk in indexed format when there is no alpha" {
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, 8, 1, .indexed8);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     source_image.pixels.indexed8.palette[0] = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
     source_image.pixels.indexed8.palette[1] = .{ .r = 255, .g = 255, .b = 255, .a = 255 };
@@ -180,7 +180,7 @@ test "png: Don't write tRNS chunk in indexed format when there is no alpha" {
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     const image_file_name = "zigimg_png_indexed_no_trns.png";
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .png = .{},
     });
     defer {
@@ -208,7 +208,7 @@ test "png: Don't write tRNS chunk in indexed format when there is no alpha" {
 
 test "png: Write tRNS chunk in indexed format only when alpha is present" {
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, 8, 1, .indexed8);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     source_image.pixels.indexed8.palette[0] = .{ .r = 0, .g = 0, .b = 0, .a = 0 };
     source_image.pixels.indexed8.palette[1] = .{ .r = 255, .g = 255, .b = 255, .a = 255 };
@@ -220,7 +220,7 @@ test "png: Write tRNS chunk in indexed format only when alpha is present" {
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     const image_file_name = "zigimg_png_indexed_trns.png";
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .png = .{},
     });
     defer {
@@ -251,7 +251,7 @@ test "png: Write indexed1 format" {
     const SOURCE_HEIGHT = 512;
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, SOURCE_WIDTH, SOURCE_HEIGHT, .indexed1);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     for (0..2) |palette_index| {
         source_image.pixels.indexed1.palette[palette_index] = .{
@@ -268,7 +268,7 @@ test "png: Write indexed1 format" {
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     const image_file_name = "zigimg_png_indexed1.png";
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], .{ .png = .{} });
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{ .png = .{} });
     defer {
         std.fs.cwd().deleteFile(image_file_name) catch {};
     }
@@ -305,7 +305,7 @@ test "png: Write indexed2 format" {
     const SOURCE_HEIGHT = 524;
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, SOURCE_WIDTH, SOURCE_HEIGHT, .indexed2);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     for (0..4) |palette_index| {
         source_image.pixels.indexed2.palette[palette_index] = .{
@@ -322,7 +322,7 @@ test "png: Write indexed2 format" {
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     const image_file_name = "zigimg_png_indexed2.png";
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], .{ .png = .{} });
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{ .png = .{} });
     defer {
         std.fs.cwd().deleteFile(image_file_name) catch {};
     }
@@ -359,7 +359,7 @@ test "png: Write indexed4 format" {
     const SOURCE_HEIGHT = 486;
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, SOURCE_WIDTH, SOURCE_HEIGHT, .indexed4);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     for (0..16) |palette_index| {
         source_image.pixels.indexed4.palette[palette_index] = .{
@@ -376,7 +376,7 @@ test "png: Write indexed4 format" {
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     const image_file_name = "zigimg_png_indexed4.png";
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], .{ .png = .{} });
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{ .png = .{} });
     defer {
         std.fs.cwd().deleteFile(image_file_name) catch {};
     }
@@ -413,7 +413,7 @@ test "png: Write indexed8 format" {
     const SOURCE_HEIGHT = 612;
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, SOURCE_WIDTH, SOURCE_HEIGHT, .indexed8);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     for (0..256) |index| {
         source_image.pixels.indexed8.palette[index] = .{
@@ -430,7 +430,7 @@ test "png: Write indexed8 format" {
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     const image_file_name = "zigimg_png_indexed8.png";
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], .{ .png = .{} });
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{ .png = .{} });
     defer {
         std.fs.cwd().deleteFile(image_file_name) catch {};
     }
@@ -467,7 +467,7 @@ test "png: Write grayscale1 format" {
     const SOURCE_HEIGHT = 534;
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, SOURCE_WIDTH, SOURCE_HEIGHT, .grayscale1);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     for (0..(SOURCE_WIDTH * SOURCE_HEIGHT)) |index| {
         source_image.pixels.grayscale1[index].value = @truncate(index % 2);
@@ -475,7 +475,7 @@ test "png: Write grayscale1 format" {
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     const image_file_name = "zigimg_png_grayscale1.png";
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], .{ .png = .{} });
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{ .png = .{} });
     defer {
         std.fs.cwd().deleteFile(image_file_name) catch {};
     }
@@ -505,7 +505,7 @@ test "png: Write grayscale2 format" {
     const SOURCE_HEIGHT = 568;
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, SOURCE_WIDTH, SOURCE_HEIGHT, .grayscale2);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     for (0..(SOURCE_WIDTH * SOURCE_HEIGHT)) |index| {
         source_image.pixels.grayscale2[index].value = @truncate(index % 4);
@@ -513,7 +513,7 @@ test "png: Write grayscale2 format" {
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     const image_file_name = "zigimg_png_grayscale2.png";
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], .{ .png = .{} });
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{ .png = .{} });
     defer {
         std.fs.cwd().deleteFile(image_file_name) catch {};
     }
@@ -543,7 +543,7 @@ test "png: Write grayscale4 format" {
     const SOURCE_HEIGHT = 568;
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, SOURCE_WIDTH, SOURCE_HEIGHT, .grayscale4);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     for (0..(SOURCE_WIDTH * SOURCE_HEIGHT)) |index| {
         source_image.pixels.grayscale4[index].value = @truncate(index % 16);
@@ -551,7 +551,7 @@ test "png: Write grayscale4 format" {
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     const image_file_name = "zigimg_png_grayscale4.png";
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], .{ .png = .{} });
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{ .png = .{} });
     defer {
         std.fs.cwd().deleteFile(image_file_name) catch {};
     }
@@ -581,7 +581,7 @@ test "png: Write grayscale8 format" {
     const SOURCE_HEIGHT = 457;
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, SOURCE_WIDTH, SOURCE_HEIGHT, .grayscale8);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     for (0..(SOURCE_WIDTH * SOURCE_HEIGHT)) |index| {
         source_image.pixels.grayscale8[index].value = @truncate(index % 256);
@@ -589,7 +589,7 @@ test "png: Write grayscale8 format" {
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     const image_file_name = "zigimg_png_grayscale8.png";
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], .{ .png = .{} });
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{ .png = .{} });
     defer {
         std.fs.cwd().deleteFile(image_file_name) catch {};
     }
@@ -619,7 +619,7 @@ test "png: Write grayscale8Alpha format" {
     const SOURCE_HEIGHT = 612;
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, SOURCE_WIDTH, SOURCE_HEIGHT, .grayscale8Alpha);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     for (0..(SOURCE_WIDTH * SOURCE_HEIGHT)) |index| {
         source_image.pixels.grayscale8Alpha[index].value = @truncate(index % 256);
@@ -628,7 +628,7 @@ test "png: Write grayscale8Alpha format" {
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     const image_file_name = "zigimg_png_grayscale8Alpha.png";
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], .{ .png = .{} });
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{ .png = .{} });
     defer {
         std.fs.cwd().deleteFile(image_file_name) catch {};
     }
@@ -659,7 +659,7 @@ test "png: Write grayscale16 format" {
     const SOURCE_HEIGHT = 567;
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, SOURCE_WIDTH, SOURCE_HEIGHT, .grayscale16);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     for (0..(SOURCE_WIDTH * SOURCE_HEIGHT)) |index| {
         source_image.pixels.grayscale16[index].value = @truncate(index % 65535);
@@ -667,7 +667,7 @@ test "png: Write grayscale16 format" {
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     const image_file_name = "zigimg_png_grayscale16.png";
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], .{ .png = .{} });
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{ .png = .{} });
     defer {
         std.fs.cwd().deleteFile(image_file_name) catch {};
     }
@@ -697,7 +697,7 @@ test "png: Write grayscale16Alpha format" {
     const SOURCE_HEIGHT = 658;
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, SOURCE_WIDTH, SOURCE_HEIGHT, .grayscale16Alpha);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     for (0..(SOURCE_WIDTH * SOURCE_HEIGHT)) |index| {
         source_image.pixels.grayscale16Alpha[index].value = @truncate(index % 65535);
@@ -706,7 +706,7 @@ test "png: Write grayscale16Alpha format" {
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     const image_file_name = "zigimg_png_grayscale16Alpha.png";
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], .{ .png = .{} });
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{ .png = .{} });
     defer {
         std.fs.cwd().deleteFile(image_file_name) catch {};
     }
@@ -737,7 +737,7 @@ test "png: Write rgb24 format" {
     const SOURCE_HEIGHT = 512;
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, SOURCE_WIDTH, SOURCE_HEIGHT, .rgb24);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     for (0..(SOURCE_WIDTH * SOURCE_HEIGHT)) |index| {
         source_image.pixels.rgb24[index].r = @truncate(index % 256);
@@ -747,7 +747,7 @@ test "png: Write rgb24 format" {
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     const image_file_name = "zigimg_png_rgb24.png";
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], .{ .png = .{} });
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{ .png = .{} });
     defer {
         std.fs.cwd().deleteFile(image_file_name) catch {};
     }
@@ -779,7 +779,7 @@ test "png: Write rgba32 format" {
     const SOURCE_HEIGHT = 327;
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, SOURCE_WIDTH, SOURCE_HEIGHT, .rgba32);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     for (0..(SOURCE_WIDTH * SOURCE_HEIGHT)) |index| {
         source_image.pixels.rgba32[index].r = @truncate(index % 256);
@@ -790,7 +790,7 @@ test "png: Write rgba32 format" {
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     const image_file_name = "zigimg_png_rgba32.png";
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], .{ .png = .{} });
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{ .png = .{} });
     defer {
         std.fs.cwd().deleteFile(image_file_name) catch {};
     }
@@ -823,7 +823,7 @@ test "png: Write rgb48 format" {
     const SOURCE_HEIGHT = 217;
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, SOURCE_WIDTH, SOURCE_HEIGHT, .rgb48);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     for (0..(SOURCE_WIDTH * SOURCE_HEIGHT)) |index| {
         source_image.pixels.rgb48[index].r = @truncate(index % 65535);
@@ -833,7 +833,7 @@ test "png: Write rgb48 format" {
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     const image_file_name = "zigimg_png_rgb48.png";
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], .{ .png = .{} });
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{ .png = .{} });
     defer {
         std.fs.cwd().deleteFile(image_file_name) catch {};
     }
@@ -865,7 +865,7 @@ test "png: Write rgba64 format" {
     const SOURCE_HEIGHT = 464;
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, SOURCE_WIDTH, SOURCE_HEIGHT, .rgba64);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     for (0..(SOURCE_WIDTH * SOURCE_HEIGHT)) |index| {
         source_image.pixels.rgba64[index].r = @truncate(index % 65535);
@@ -876,7 +876,7 @@ test "png: Write rgba64 format" {
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     const image_file_name = "zigimg_png_rgba64.png";
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], .{ .png = .{} });
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{ .png = .{} });
     defer {
         std.fs.cwd().deleteFile(image_file_name) catch {};
     }

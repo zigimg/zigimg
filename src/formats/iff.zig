@@ -1,6 +1,6 @@
 const color = @import("../color.zig");
 const FormatInterface = @import("../FormatInterface.zig");
-const ImageUnmanaged = @import("../ImageUnmanaged.zig");
+const Image = @import("../Image.zig");
 const utils = @import("../utils.zig");
 const std = @import("std");
 const PixelStorage = color.PixelStorage;
@@ -162,14 +162,14 @@ pub const IffHeader = union(Header) {
     }
 };
 
-fn getIffFormatId(magic_buffer: []const u8) ImageUnmanaged.ReadError!IffFormat {
+fn getIffFormatId(magic_buffer: []const u8) Image.ReadError!IffFormat {
     if (magic_buffer.len != iff_description_length) {
-        return ImageUnmanaged.ReadError.InvalidData;
+        return Image.ReadError.InvalidData;
     }
 
     const is_iff = std.mem.eql(u8, magic_buffer[0..4], IFFMagicHeader[0..]);
     if (!is_iff) {
-        return ImageUnmanaged.ReadError.InvalidData;
+        return Image.ReadError.InvalidData;
     }
 
     if (std.mem.eql(u8, magic_buffer[8..], PBMMagicHeader[0..]))
@@ -181,33 +181,33 @@ fn getIffFormatId(magic_buffer: []const u8) ImageUnmanaged.ReadError!IffFormat {
     if (std.mem.eql(u8, magic_buffer[8..], ACBMMagicHeader[0..]))
         return IffFormat.acbm;
 
-    return ImageUnmanaged.ReadError.InvalidData;
+    return Image.ReadError.InvalidData;
 }
 
-pub fn peekIffFormatId(reader: *std.Io.Reader) ImageUnmanaged.ReadError!IffFormat {
+pub fn peekIffFormatId(reader: *std.Io.Reader) Image.ReadError!IffFormat {
     const magic_buffer = try reader.peek(iff_description_length);
 
     return getIffFormatId(magic_buffer);
 }
 
-pub fn takeIffFormatId(reader: *std.Io.Reader) ImageUnmanaged.ReadError!IffFormat {
+pub fn takeIffFormatId(reader: *std.Io.Reader) Image.ReadError!IffFormat {
     const magic_buffer = try reader.take(iff_description_length);
 
     return getIffFormatId(magic_buffer);
 }
 
-pub fn decodeBmhdChunk(read_stream: *io.ReadStream) ImageUnmanaged.ReadError!BmhdHeader {
+pub fn decodeBmhdChunk(read_stream: *io.ReadStream) Image.ReadError!BmhdHeader {
     const reader = read_stream.reader();
 
     const chunk = try reader.takeStruct(ChunkHeader, .big);
-    if (chunk.type != Chunks.BMHD.id) return ImageUnmanaged.ReadError.InvalidData;
-    if (chunk.length != @sizeOf(BmhdHeader)) return ImageUnmanaged.ReadError.InvalidData;
+    if (chunk.type != Chunks.BMHD.id) return Image.ReadError.InvalidData;
+    if (chunk.length != @sizeOf(BmhdHeader)) return Image.ReadError.InvalidData;
 
     const header = try reader.takeStruct(BmhdHeader, .big);
     return header;
 }
 
-pub fn decodeDbglChunk(_: *io.ReadStream) ImageUnmanaged.ReadError!DgblHeader {
+pub fn decodeDbglChunk(_: *io.ReadStream) Image.ReadError!DgblHeader {
     return DgblHeader{
         .width = 0,
         .height = 0,
@@ -217,7 +217,7 @@ pub fn decodeDbglChunk(_: *io.ReadStream) ImageUnmanaged.ReadError!DgblHeader {
     };
 }
 
-pub fn loadHeader(read_stream: *io.ReadStream, format_id: IffFormat) ImageUnmanaged.ReadError!IffHeader {
+pub fn loadHeader(read_stream: *io.ReadStream, format_id: IffFormat) Image.ReadError!IffHeader {
     return if (format_id == IffFormat.deep) IffHeader{ .dgbl = try decodeDbglChunk(read_stream) } else IffHeader{ .bmhd = try decodeBmhdChunk(read_stream) };
 }
 
@@ -248,13 +248,13 @@ pub const IFF = struct {
         return self.header.height();
     }
 
-    pub fn pixelFormat(self: *IFF) ImageUnmanaged.Error!PixelFormat {
+    pub fn pixelFormat(self: *IFF) Image.Error!PixelFormat {
         if (ViewportMode.isHam(self.viewport_mode) or self.header.bmhd.planes == 24) {
             return PixelFormat.rgb24;
         } else if (self.header.bmhd.planes <= 8) {
             return PixelFormat.indexed8;
         } else {
-            return ImageUnmanaged.Error.Unsupported;
+            return Image.Error.Unsupported;
         }
     }
 
@@ -266,7 +266,7 @@ pub const IFF = struct {
         };
     }
 
-    pub fn formatDetect(read_stream: *io.ReadStream) ImageUnmanaged.ReadError!bool {
+    pub fn formatDetect(read_stream: *io.ReadStream) Image.ReadError!bool {
         const reader = read_stream.reader();
 
         const iff_format = peekIffFormatId(reader) catch {
@@ -276,8 +276,8 @@ pub const IFF = struct {
         return iff_format != .bad;
     }
 
-    pub fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!ImageUnmanaged {
-        var result = ImageUnmanaged{};
+    pub fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) Image.ReadError!Image {
+        var result = Image{};
         errdefer result.deinit(allocator);
 
         var iff = IFF{};
@@ -291,14 +291,14 @@ pub const IFF = struct {
         return result;
     }
 
-    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageUnmanaged.WriteError!void {
+    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: Image, encoder_options: Image.EncoderOptions) Image.WriteError!void {
         _ = allocator;
         _ = write_stream;
         _ = image;
         _ = encoder_options;
     }
 
-    pub fn read(self: *IFF, read_stream: *io.ReadStream, allocator: std.mem.Allocator) ImageUnmanaged.ReadError!color.PixelStorage {
+    pub fn read(self: *IFF, read_stream: *io.ReadStream, allocator: std.mem.Allocator) Image.ReadError!color.PixelStorage {
         const reader = read_stream.reader();
 
         self.format_id = try takeIffFormatId(reader);
@@ -327,7 +327,7 @@ pub const IFF = struct {
             }
         }
 
-        return ImageUnmanaged.Error.Unsupported;
+        return Image.Error.Unsupported;
     }
 
     pub fn decodeByteRun2(self: *IFF, read_stream: *io.ReadStream, tmp_buffer: []u8, allocator: std.mem.Allocator) !void {

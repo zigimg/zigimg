@@ -468,7 +468,7 @@ test "Write TGA uncompressed grayscale8" {
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
 
     var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     const encoder_options = zigimg.Image.EncoderOptions{
         .tga = .{
@@ -500,7 +500,7 @@ test "Write TGA uncompressed grayscale8" {
     };
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], encoder_options);
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], encoder_options);
     defer {
         std.fs.cwd().deleteFile(image_file_name) catch {};
     }
@@ -563,10 +563,10 @@ test "Write TGA compressed grayscale8" {
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
 
     var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = true,
             .color_map_depth = 16,
@@ -622,10 +622,10 @@ test "Write uncompressed indexed8 (color map 16-bit)" {
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
 
     var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = false,
             .color_map_depth = 16,
@@ -689,10 +689,10 @@ test "Write uncompressed indexed8 (color map 24-bit)" {
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
 
     var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = false,
             .color_map_depth = 24,
@@ -756,10 +756,10 @@ test "Write compressed indexed8 (color map 16-bit)" {
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
 
     var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = true,
             .color_map_depth = 16,
@@ -823,10 +823,10 @@ test "Write compressed indexed8 (color map 24-bit)" {
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
 
     var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = true,
             .color_map_depth = 24,
@@ -890,10 +890,10 @@ test "Write uncompressed 16-bit true color TGA" {
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
 
     var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = false,
             .color_map_depth = 16,
@@ -951,10 +951,10 @@ test "Write compressed 16-bit true color TGA" {
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
 
     var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = true,
             .color_map_depth = 16,
@@ -1012,10 +1012,10 @@ test "Write uncompressed 24-bit true color TGA" {
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
 
     var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = false,
             .color_map_depth = 24,
@@ -1073,10 +1073,10 @@ test "Write compressed 24-bit true color TGA" {
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
 
     var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = true,
             .color_map_depth = 24,
@@ -1134,10 +1134,10 @@ test "Write uncompressed 32-bit true color TGA" {
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
 
     var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = false,
             .color_map_depth = 24,
@@ -1195,10 +1195,10 @@ test "Write compressed 32-bit true color TGA" {
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
 
     var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = true,
             .color_map_depth = 24,
@@ -1265,12 +1265,12 @@ test "Write uncompressed Rgb24 to TGA" {
     };
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, uncompressed_source.len, 1, .rgb24);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     @memcpy(source_image.pixels.rgb24[0..], uncompressed_source[0..]);
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = false,
             .color_map_depth = 24,
@@ -1324,12 +1324,12 @@ test "Write compressed Rgb24 to TGA" {
     };
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, uncompressed_source.len, 1, .rgb24);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     @memcpy(source_image.pixels.rgb24[0..], uncompressed_source[0..]);
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = true,
             .color_map_depth = 24,
@@ -1398,12 +1398,12 @@ test "Write uncompressed Rgba32 to TGA" {
     };
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, uncompressed_source.len, 1, .rgba32);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     @memcpy(source_image.pixels.rgba32[0..], uncompressed_source[0..]);
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = false,
             .color_map_depth = 24,
@@ -1473,12 +1473,12 @@ test "Write compressed Rgba32 to TGA" {
     };
 
     var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, uncompressed_source.len, 1, .rgba32);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     @memcpy(source_image.pixels.rgba32[0..], uncompressed_source[0..]);
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], zigimg.Image.EncoderOptions{
         .tga = .{
             .rle_compressed = true,
             .color_map_depth = 24,

@@ -1,6 +1,6 @@
 const color = @import("../color.zig");
 const FormatInterface = @import("../FormatInterface.zig");
-const ImageUnmanaged = @import("../ImageUnmanaged.zig");
+const Image = @import("../Image.zig");
 const io = @import("../io.zig");
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const std = @import("std");
@@ -77,7 +77,7 @@ pub const SGI = struct {
         };
     }
 
-    pub fn formatDetect(read_stream: *io.ReadStream) ImageUnmanaged.ReadError!bool {
+    pub fn formatDetect(read_stream: *io.ReadStream) Image.ReadError!bool {
         const reader = read_stream.reader();
 
         const magic_buffer = try reader.peek(Header.magic_number.len);
@@ -85,33 +85,33 @@ pub const SGI = struct {
         return std.mem.eql(u8, magic_buffer[0..], Header.magic_number[0..]);
     }
 
-    pub fn pixelFormat(self: *SGI) ImageUnmanaged.Error!PixelFormat {
+    pub fn pixelFormat(self: *SGI) Image.Error!PixelFormat {
         switch (self.header.pixel_format) {
             .normal => {
                 switch (self.header.dimension) {
                     .multi_channel => switch (self.header.z_size) {
                         3 => return if (self.header.bytes_per_channel == 1) .rgb24 else .rgb48,
                         4 => return if (self.header.bytes_per_channel == 1) .rgba32 else .rgba64,
-                        else => return ImageUnmanaged.Error.Unsupported,
+                        else => return Image.Error.Unsupported,
                     },
                     // TODO: add support for 16-bit channel ie: grayscale16
                     .single_channel => return .grayscale8,
-                    else => return ImageUnmanaged.Error.Unsupported,
+                    else => return Image.Error.Unsupported,
                 }
             },
-            else => return ImageUnmanaged.Error.Unsupported,
+            else => return Image.Error.Unsupported,
         }
     }
 
-    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageUnmanaged.WriteError!void {
+    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: Image, encoder_options: Image.EncoderOptions) Image.WriteError!void {
         _ = allocator;
         _ = write_stream;
         _ = image;
         _ = encoder_options;
     }
 
-    pub fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!ImageUnmanaged {
-        var result = ImageUnmanaged{};
+    pub fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) Image.ReadError!Image {
+        var result = Image{};
         errdefer result.deinit(allocator);
 
         var sgi = SGI{};
@@ -152,7 +152,7 @@ pub const SGI = struct {
                 // then read compressed_data that's following the tables
                 const data_buffer: []u8 = try allocator.alloc(
                     u8,
-                    std.math.cast(usize, try read_stream.getEndPos() - read_stream.getPos()) orelse return ImageUnmanaged.ReadError.StreamTooLong,
+                    std.math.cast(usize, try read_stream.getEndPos() - read_stream.getPos()) orelse return Image.ReadError.StreamTooLong,
                 );
                 defer allocator.free(data_buffer);
 
@@ -229,9 +229,9 @@ pub const SGI = struct {
         }
     }
 
-    pub fn read(self: *SGI, allocator: std.mem.Allocator, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!color.PixelStorage {
+    pub fn read(self: *SGI, allocator: std.mem.Allocator, read_stream: *io.ReadStream) Image.ReadError!color.PixelStorage {
         if (!try formatDetect(read_stream)) {
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
 
         const reader = read_stream.reader();
@@ -239,7 +239,7 @@ pub const SGI = struct {
         // Toss the magic number
         reader.toss(Header.magic_number.len);
 
-        self.header = reader.takeStruct(Header, .big) catch return ImageUnmanaged.ReadError.InvalidData;
+        self.header = reader.takeStruct(Header, .big) catch return Image.ReadError.InvalidData;
 
         const pixel_format = try self.pixelFormat();
 
@@ -306,7 +306,7 @@ pub const SGI = struct {
                     }
                 }
             },
-            else => return ImageUnmanaged.Error.Unsupported,
+            else => return Image.Error.Unsupported,
         }
 
         return pixels;

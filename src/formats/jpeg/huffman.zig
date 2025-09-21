@@ -3,7 +3,7 @@
 
 const std = @import("std");
 
-const ImageUnmanaged = @import("../../ImageUnmanaged.zig");
+const Image = @import("../../Image.zig");
 const io = @import("../../io.zig");
 
 const HuffmanCode = struct { length_minus_one: u4, code: u16 };
@@ -24,13 +24,13 @@ pub const Table = struct {
 
     table_class: u8,
 
-    pub fn read(allocator: std.mem.Allocator, table_class: u8, reader: *std.Io.Reader) ImageUnmanaged.ReadError!Table {
+    pub fn read(allocator: std.mem.Allocator, table_class: u8, reader: *std.Io.Reader) Image.ReadError!Table {
         if (table_class & 1 != table_class)
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
 
         var code_counts: [16]u8 = undefined;
         if ((try reader.readSliceShort(code_counts[0..])) < 16) {
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
 
         if (JPEG_DEBUG) std.debug.print("  Code counts: {any}\n", .{code_counts});
@@ -61,7 +61,7 @@ pub const Table = struct {
             while (j < count) : (j += 1) {
                 // Check if we hit all 1s, i.e. 111111 for i == 6, which is an invalid value
                 if (code == (@as(u17, @intCast(1)) << (@as(u5, @intCast(i)) + 1)) - 1) {
-                    return ImageUnmanaged.ReadError.InvalidData;
+                    return Image.ReadError.InvalidData;
                 }
 
                 const byte = try reader.takeByte();
@@ -118,9 +118,9 @@ pub const Reader = struct {
         self.table = table;
     }
 
-    pub fn peekBits(self: *Reader, num_bits: u5) ImageUnmanaged.ReadError!u32 {
+    pub fn peekBits(self: *Reader, num_bits: u5) Image.ReadError!u32 {
         if (num_bits > 16) {
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
 
         try self.fillBits(num_bits);
@@ -128,7 +128,7 @@ pub const Reader = struct {
         return (self.bit_buffer >> 1) >> (31 - num_bits);
     }
 
-    pub fn fillBits(self: *Reader, num_bits: u5) ImageUnmanaged.ReadError!void {
+    pub fn fillBits(self: *Reader, num_bits: u5) Image.ReadError!void {
         while (self.bit_count < num_bits) {
             var byte_curr: u32 = try self.reader.takeByte();
 
@@ -143,7 +143,7 @@ pub const Reader = struct {
                     byte_curr = try self.reader.takeByte();
                 } else {
                     try self.stream.seekBy(-2);
-                    return ImageUnmanaged.ReadError.InvalidData;
+                    return Image.ReadError.InvalidData;
                 }
             }
 
@@ -159,7 +159,7 @@ pub const Reader = struct {
         self.bit_count -= num_bits;
     }
 
-    pub fn readBits(self: *Reader, num_bits: u5) ImageUnmanaged.ReadError!u32 {
+    pub fn readBits(self: *Reader, num_bits: u5) Image.ReadError!u32 {
         const bits: u32 = try peekBits(self, num_bits);
         consumeBits(self, num_bits);
         return bits;
@@ -180,7 +180,7 @@ pub const Reader = struct {
         }
     }
 
-    pub fn readCode(self: *Reader) ImageUnmanaged.ReadError!u8 {
+    pub fn readCode(self: *Reader) Image.ReadError!u8 {
         const fast_index = self.peekBits(fast_bits) catch 0;
 
         if (self.bit_count >= fast_bits) {
@@ -204,11 +204,11 @@ pub const Reader = struct {
         }
 
         if (JPEG_DEBUG) std.debug.print("found unknown code: {x}\n", .{code});
-        return ImageUnmanaged.ReadError.InvalidData;
+        return Image.ReadError.InvalidData;
     }
 
     /// This function implements T.81 section F1.2.1, Huffman encoding of DC coefficients.
-    pub fn readMagnitudeCoded(self: *Reader, magnitude: u5) ImageUnmanaged.ReadError!i32 {
+    pub fn readMagnitudeCoded(self: *Reader, magnitude: u5) Image.ReadError!i32 {
         if (magnitude == 0)
             return 0;
 

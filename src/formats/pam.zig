@@ -1,6 +1,6 @@
 const color = @import("../color.zig");
 const FormatInterface = @import("../FormatInterface.zig");
-const ImageUnmanaged = @import("../ImageUnmanaged.zig");
+const Image = @import("../Image.zig");
 const io = @import("../io.zig");
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const std = @import("std");
@@ -64,7 +64,7 @@ const Header = struct {
     /// fails, `error.InvalidData` if the header does not conform to
     /// the PAM specification, or another error specific to `reader`
     /// if reading fails.
-    fn read(allocator: std.mem.Allocator, reader: *std.Io.Reader) ImageUnmanaged.ReadError!Header {
+    fn read(allocator: std.mem.Allocator, reader: *std.Io.Reader) Image.ReadError!Header {
         var maybe_width: ?usize = null;
         var maybe_height: ?usize = null;
         var maybe_depth: ?usize = null;
@@ -202,8 +202,8 @@ const Header = struct {
 
     /// Initializes an `Image` with the values that `header`
     /// contains. Returns `error.OutOfMemory` if allocation fails.
-    fn initImage(header: Header, allocator: std.mem.Allocator) error{OutOfMemory}!ImageUnmanaged {
-        var image = ImageUnmanaged{};
+    fn initImage(header: Header, allocator: std.mem.Allocator) error{OutOfMemory}!Image {
+        var image = Image{};
         image.width = header.width;
         image.height = header.height;
         image.pixels = try color.PixelStorage.init(allocator, header.getPixelFormat(), header.width * header.height);
@@ -213,7 +213,7 @@ const Header = struct {
     /// Initializes a `Header` from `image`. Returns
     /// `error.Unsupported` if the pixel format of `image` cannot be
     /// easily represented in PAM.
-    fn fromImage(image: ImageUnmanaged) error{Unsupported}!Header {
+    fn fromImage(image: Image) error{Unsupported}!Header {
         var header: Header = undefined;
         switch (image.pixelFormat()) {
             .invalid,
@@ -324,22 +324,22 @@ pub const PAM = struct {
 
     /// Returns `true` if the image will be able to be decoded, or a
     /// `stream`-specific error if reading fails.
-    pub fn formatDetect(read_stream: *io.ReadStream) ImageUnmanaged.ReadError!bool {
+    pub fn formatDetect(read_stream: *io.ReadStream) Image.ReadError!bool {
         const reader = read_stream.reader();
         const magic = try reader.peek(3);
 
         return std.mem.eql(u8, magic, "P7\n"); // no possibility of misdetecting xv thumbnails (magic "P7 332")
     }
 
-    pub fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!ImageUnmanaged {
-        var result = ImageUnmanaged{};
+    pub fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) Image.ReadError!Image {
+        var result = Image{};
         errdefer result.deinit(allocator);
 
         var image_list = try read(allocator, read_stream);
         defer image_list.deinit(allocator);
 
         if (image_list.items.len == 0) {
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
 
         // Result image will be the first image
@@ -349,19 +349,19 @@ pub const PAM = struct {
         for (1..image_list.items.len) |index| {
             const frame = image_list.items[index];
             if (frame.width != image.width or frame.height != image.height or std.meta.activeTag(frame.pixels) != std.meta.activeTag(image.pixels)) {
-                return ImageUnmanaged.ReadError.Unsupported; // no obvious way to have multiple frames with different dimensions
+                return Image.ReadError.Unsupported; // no obvious way to have multiple frames with different dimensions
             }
 
-            try image.animation.frames.append(allocator, ImageUnmanaged.AnimationFrame{ .pixels = frame.pixels, .duration = 0 });
+            try image.animation.frames.append(allocator, Image.AnimationFrame{ .pixels = frame.pixels, .duration = 0 });
         }
 
         return image;
     }
 
-    pub fn read(allocator: std.mem.Allocator, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!std.ArrayList(ImageUnmanaged) {
+    pub fn read(allocator: std.mem.Allocator, read_stream: *io.ReadStream) Image.ReadError!std.ArrayList(Image) {
         const reader = read_stream.reader();
 
-        var image_list: std.ArrayList(ImageUnmanaged) = .empty;
+        var image_list: std.ArrayList(Image) = .empty;
         errdefer image_list.deinit(allocator);
 
         while (try readFrame(allocator, reader)) |image| {
@@ -384,20 +384,20 @@ pub const PAM = struct {
         return @intCast(@min(std.math.maxInt(T), @as(W, dst_maxval) * @as(W, val) / @as(W, src_maxval)));
     }
 
-    fn readFrame(allocator: std.mem.Allocator, reader: *std.Io.Reader) ImageUnmanaged.ReadError!?ImageUnmanaged {
+    fn readFrame(allocator: std.mem.Allocator, reader: *std.Io.Reader) Image.ReadError!?Image {
         // we don't use catch switch here because error.EndOfStream
         // might be the only possible error (and would thus trigger a
         // compile error because of an unreachable else prong)
         const magic = reader.take(3) catch |e| return if (e == error.EndOfStream) null else e;
         const is_pam = std.mem.eql(u8, magic, "P7\n");
         if (!is_pam) {
-            return ImageUnmanaged.ReadError.InvalidData; // invalid magic number or extraneous data at eof
+            return Image.ReadError.InvalidData; // invalid magic number or extraneous data at eof
         }
 
         var header = try Header.read(allocator, reader);
         defer header.deinit(allocator);
 
-        var image: ImageUnmanaged = try header.initImage(allocator);
+        var image: Image = try header.initImage(allocator);
         errdefer image.deinit(allocator);
 
         for (0..image.height) |row| {
@@ -444,7 +444,7 @@ pub const PAM = struct {
         return image;
     }
 
-    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageUnmanaged.WriteError!void {
+    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: Image, encoder_options: Image.EncoderOptions) Image.WriteError!void {
         const writer = write_stream.writer();
 
         var comments: std.ArrayList([]const u8) = .empty;
@@ -479,7 +479,7 @@ pub const PAM = struct {
                 if (add_duration_as_comment) _ = comments.pop();
             }
 
-            const frame_img = ImageUnmanaged{ .pixels = frame.pixels, .width = image.width, .height = image.height };
+            const frame_img = Image{ .pixels = frame.pixels, .width = image.width, .height = image.height };
 
             try writeFrame(writer, frame_img, .{ .pam = .{ .comments = comments.items } });
         }
@@ -487,7 +487,7 @@ pub const PAM = struct {
         try write_stream.flush();
     }
 
-    pub fn writeFrame(writer: *std.Io.Writer, frame: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageUnmanaged.WriteError!void {
+    pub fn writeFrame(writer: *std.Io.Writer, frame: Image, encoder_options: Image.EncoderOptions) Image.WriteError!void {
         var header = try Header.fromImage(frame);
         header.comments = encoder_options.pam.comments;
         try header.write(writer);

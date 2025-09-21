@@ -2,7 +2,7 @@
 // with permission from Felix Queißner
 const color = @import("../color.zig");
 const FormatInterface = @import("../FormatInterface.zig");
-const ImageUnmanaged = @import("../ImageUnmanaged.zig");
+const Image = @import("../Image.zig");
 const io = @import("../io.zig");
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const simd = @import("../simd.zig");
@@ -67,7 +67,7 @@ const RLEDecoder = struct {
         };
     }
 
-    fn readByte(self: *RLEDecoder) ImageUnmanaged.ReadError!u8 {
+    fn readByte(self: *RLEDecoder) Image.ReadError!u8 {
         if (self.current_run) |*run| {
             const result = run.value;
             run.remaining -= 1;
@@ -99,9 +99,9 @@ const RLEDecoder = struct {
         }
     }
 
-    fn finish(decoder: RLEDecoder) ImageUnmanaged.ReadError!void {
+    fn finish(decoder: RLEDecoder) Image.ReadError!void {
         if (decoder.current_run != null) {
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
     }
 };
@@ -294,7 +294,7 @@ pub const PCX = struct {
         };
     }
 
-    pub fn formatDetect(read_stream: *io.ReadStream) ImageUnmanaged.ReadError!bool {
+    pub fn formatDetect(read_stream: *io.ReadStream) Image.ReadError!bool {
         const reader = read_stream.reader();
         const magic_header = try reader.peek(2);
 
@@ -309,8 +309,8 @@ pub const PCX = struct {
         return true;
     }
 
-    pub fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!ImageUnmanaged {
-        var result = ImageUnmanaged{};
+    pub fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) Image.ReadError!Image {
+        var result = Image{};
         errdefer result.deinit(allocator);
 
         var pcx = PCX{};
@@ -324,14 +324,14 @@ pub const PCX = struct {
         return result;
     }
 
-    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageUnmanaged.WriteError!void {
+    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: Image, encoder_options: Image.EncoderOptions) Image.WriteError!void {
         _ = allocator;
         _ = encoder_options;
 
         var pcx = PCX{};
 
         if (image.width > std.math.maxInt(u16) or image.height > std.math.maxInt(u16)) {
-            return ImageUnmanaged.WriteError.Unsupported;
+            return Image.WriteError.Unsupported;
         }
 
         pcx.header.xmax = @truncate(image.width - 1);
@@ -360,7 +360,7 @@ pub const PCX = struct {
                 pcx.header.planes = 3;
             },
             else => {
-                return ImageUnmanaged.WriteError.Unsupported;
+                return Image.WriteError.Unsupported;
             },
         }
 
@@ -371,21 +371,21 @@ pub const PCX = struct {
         try pcx.write(write_stream, image.pixels);
     }
 
-    pub fn pixelFormat(self: PCX) ImageUnmanaged.ReadError!PixelFormat {
+    pub fn pixelFormat(self: PCX) Image.ReadError!PixelFormat {
         if (self.header.planes == 1) {
             switch (self.header.bpp) {
                 1 => return PixelFormat.indexed1,
                 4 => return PixelFormat.indexed4,
                 8 => return PixelFormat.indexed8,
-                else => return ImageUnmanaged.Error.Unsupported,
+                else => return Image.Error.Unsupported,
             }
         } else if (self.header.planes == 3) {
             switch (self.header.bpp) {
                 8 => return PixelFormat.rgb24,
-                else => return ImageUnmanaged.Error.Unsupported,
+                else => return Image.Error.Unsupported,
             }
         } else {
-            return ImageUnmanaged.Error.Unsupported;
+            return Image.Error.Unsupported;
         }
     }
 
@@ -397,20 +397,20 @@ pub const PCX = struct {
         return self.header.ymax - self.header.ymin + 1;
     }
 
-    pub fn read(self: *PCX, allocator: std.mem.Allocator, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!color.PixelStorage {
+    pub fn read(self: *PCX, allocator: std.mem.Allocator, read_stream: *io.ReadStream) Image.ReadError!color.PixelStorage {
         const reader = read_stream.reader();
         self.header = try reader.takeStruct(PCXHeader, .little);
 
         if (self.header.id != 0x0A) {
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
 
         if (self.header.version > 0x05) {
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
 
         if (self.header.planes > 3) {
-            return ImageUnmanaged.Error.Unsupported;
+            return Image.Error.Unsupported;
         }
 
         const pixel_format = try self.pixelFormat();
@@ -483,7 +483,7 @@ pub const PCX = struct {
                             x += 1;
                         }
                     },
-                    else => return ImageUnmanaged.Error.Unsupported,
+                    else => return Image.Error.Unsupported,
                 }
             }
 
@@ -516,7 +516,7 @@ pub const PCX = struct {
                 try read_stream.seekTo(end_pos - 769);
 
                 if ((try reader.takeByte()) != VGAPaletteIdentifier) {
-                    return ImageUnmanaged.ReadError.InvalidData;
+                    return Image.ReadError.InvalidData;
                 }
 
                 for (palette) |*current_entry| {
@@ -531,7 +531,7 @@ pub const PCX = struct {
         return pixels;
     }
 
-    pub fn write(self: PCX, write_stream: *io.WriteStream, pixels: color.PixelStorage) ImageUnmanaged.WriteError!void {
+    pub fn write(self: PCX, write_stream: *io.WriteStream, pixels: color.PixelStorage) Image.WriteError!void {
         switch (pixels) {
             .indexed1,
             .indexed4,
@@ -541,7 +541,7 @@ pub const PCX = struct {
                 // Do nothing
             },
             else => {
-                return ImageUnmanaged.WriteError.Unsupported;
+                return Image.WriteError.Unsupported;
             },
         }
 
@@ -577,7 +577,7 @@ pub const PCX = struct {
                 try self.writeRgb24(writer, data);
             },
             else => {
-                return ImageUnmanaged.WriteError.Unsupported;
+                return Image.WriteError.Unsupported;
             },
         }
 
@@ -593,7 +593,7 @@ pub const PCX = struct {
         }
     }
 
-    fn writeIndexed1(self: *const PCX, writer: *std.Io.Writer, indexed: color.IndexedStorage1) ImageUnmanaged.WriteError!void {
+    fn writeIndexed1(self: *const PCX, writer: *std.Io.Writer, indexed: color.IndexedStorage1) Image.WriteError!void {
         var rle_encoder = RLEStreamEncoder{};
 
         const image_width = self.width();
@@ -626,7 +626,7 @@ pub const PCX = struct {
         try rle_encoder.flush(writer);
     }
 
-    fn writeIndexed4(self: *const PCX, writer: *std.Io.Writer, indexed: color.IndexedStorage4) ImageUnmanaged.WriteError!void {
+    fn writeIndexed4(self: *const PCX, writer: *std.Io.Writer, indexed: color.IndexedStorage4) Image.WriteError!void {
         var rle_encoder = RLEStreamEncoder{};
 
         const image_width = self.width();
@@ -658,11 +658,11 @@ pub const PCX = struct {
         try rle_encoder.flush(writer);
     }
 
-    fn writeIndexed8Even(writer: *std.Io.Writer, indexed: color.IndexedStorage8) ImageUnmanaged.WriteError!void {
+    fn writeIndexed8Even(writer: *std.Io.Writer, indexed: color.IndexedStorage8) Image.WriteError!void {
         try RLEFastEncoder.encode(indexed.indices, writer);
     }
 
-    fn writeIndexed8Odd(self: *const PCX, writer: *std.Io.Writer, indexed: color.IndexedStorage8) ImageUnmanaged.WriteError!void {
+    fn writeIndexed8Odd(self: *const PCX, writer: *std.Io.Writer, indexed: color.IndexedStorage8) Image.WriteError!void {
         var rle_encoder = RLEStreamEncoder{};
 
         const image_width = self.width();
@@ -679,7 +679,7 @@ pub const PCX = struct {
         try rle_encoder.flush(writer);
     }
 
-    fn writeRgb24(self: *const PCX, writer: *std.Io.Writer, pixels: []const color.Rgb24) ImageUnmanaged.WriteError!void {
+    fn writeRgb24(self: *const PCX, writer: *std.Io.Writer, pixels: []const color.Rgb24) Image.WriteError!void {
         var rle_encoder = RLEStreamEncoder{};
 
         const image_width = self.width();

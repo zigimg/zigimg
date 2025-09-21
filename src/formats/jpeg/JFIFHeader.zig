@@ -3,7 +3,7 @@
 
 const std = @import("std");
 
-const ImageUnmanaged = @import("../../ImageUnmanaged.zig");
+const Image = @import("../../Image.zig");
 const io = @import("../../io.zig");
 
 const Markers = @import("./utils.zig").Markers;

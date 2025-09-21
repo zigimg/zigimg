@@ -173,10 +173,10 @@ test "Write PCX indexed1 (odd width)" {
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], .{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
         .pcx = .{},
     });
 
@@ -220,7 +220,7 @@ test "Write PCX indexed 1 (even width)" {
     const checker_size = 32;
 
     var image_pattern = try zigimg.Image.create(helpers.zigimg_test_allocator, image_width, image_height, .indexed1);
-    defer image_pattern.deinit();
+    defer image_pattern.deinit(helpers.zigimg_test_allocator);
 
     // Generate palette
     image_pattern.pixels.indexed1.palette[0] = zigimg.color.Rgba32.from.rgb(0, 0, 0);
@@ -242,7 +242,7 @@ test "Write PCX indexed 1 (even width)" {
     const image_file_name = "zigimg_pcx_indexed1_even.pcx";
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try image_pattern.writeToFilePath(image_file_name, write_buffer[0..], .{
+    try image_pattern.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
         .pcx = .{},
     });
     defer {
@@ -289,10 +289,10 @@ test "Write PCX indexed4 (odd width)" {
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], .{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
         .pcx = .{},
     });
 
@@ -331,7 +331,7 @@ test "Write PCX indexed4 (odd width)" {
 
 test "Write PCX indexed 4 (even width)" {
     var rainbow_test = try zigimg.Image.create(helpers.zigimg_test_allocator, 16, 16, .indexed4);
-    defer rainbow_test.deinit();
+    defer rainbow_test.deinit(helpers.zigimg_test_allocator);
 
     // Generate palette
     const colors_per_channel = 16 / 3;
@@ -359,7 +359,7 @@ test "Write PCX indexed 4 (even width)" {
     const image_file_name = "zigimg_pcx_indexed4_even.pcx";
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try rainbow_test.writeToFilePath(image_file_name, write_buffer[0..], .{
+    try rainbow_test.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
         .pcx = .{},
     });
     defer {
@@ -404,10 +404,10 @@ test "Write PCX indexed8 (odd width)" {
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], .{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
         .pcx = .{},
     });
 
@@ -440,7 +440,7 @@ test "Write PCX indexed8 (odd width)" {
 
 test "Write PCX indexed 8 (even width)" {
     var rainbow_test = try zigimg.Image.create(helpers.zigimg_test_allocator, 256, 256, .indexed8);
-    defer rainbow_test.deinit();
+    defer rainbow_test.deinit(helpers.zigimg_test_allocator);
 
     // Generate palette
     const colors_per_channel = 256 / 3;
@@ -472,7 +472,7 @@ test "Write PCX indexed 8 (even width)" {
     const image_file_name = "zigimg_pcx_indexed8_even.pcx";
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try rainbow_test.writeToFilePath(image_file_name, write_buffer[0..], .{
+    try rainbow_test.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
         .pcx = .{},
     });
     defer {
@@ -517,10 +517,10 @@ test "Write PCX rgb24 (odd width)" {
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
-    defer source_image.deinit();
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(image_file_name, write_buffer[0..], .{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
         .pcx = .{},
     });
 
@@ -570,7 +570,7 @@ test "Write PCX rgb24 (odd width)" {
 
 test "Write PCX rgb24 (even width)" {
     var rainbow_test = try zigimg.Image.create(helpers.zigimg_test_allocator, 256, 256, .rgb24);
-    defer rainbow_test.deinit();
+    defer rainbow_test.deinit(helpers.zigimg_test_allocator);
 
     // Generate pattern
     const image_size = rainbow_test.width * rainbow_test.height;
@@ -594,7 +594,7 @@ test "Write PCX rgb24 (even width)" {
     const image_file_name = "zigimg_pcx_rgb24_even.pcx";
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try rainbow_test.writeToFilePath(image_file_name, write_buffer[0..], .{
+    try rainbow_test.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
         .pcx = .{},
     });
     defer {

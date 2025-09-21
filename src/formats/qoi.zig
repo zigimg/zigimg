@@ -2,7 +2,7 @@
 // with permission from Felix Queißner
 const color = @import("../color.zig");
 const FormatInterface = @import("../FormatInterface.zig");
-const ImageUnmanaged = @import("../ImageUnmanaged.zig");
+const Image = @import("../Image.zig");
 const io = @import("../io.zig");
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const std = @import("std");
@@ -112,7 +112,7 @@ pub const QOI = struct {
         };
     }
 
-    pub fn formatDetect(read_stream: *io.ReadStream) ImageUnmanaged.ReadError!bool {
+    pub fn formatDetect(read_stream: *io.ReadStream) Image.ReadError!bool {
         const reader = read_stream.reader();
 
         const magic_buffer = try reader.peek(Header.correct_magic.len);
@@ -120,8 +120,8 @@ pub const QOI = struct {
         return std.mem.eql(u8, magic_buffer[0..], Header.correct_magic[0..]);
     }
 
-    pub fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!ImageUnmanaged {
-        var result = ImageUnmanaged{};
+    pub fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) Image.ReadError!Image {
+        var result = Image{};
         errdefer result.deinit(allocator);
 
         var qoi = Self{};
@@ -135,7 +135,7 @@ pub const QOI = struct {
         return result;
     }
 
-    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageUnmanaged.WriteError!void {
+    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: Image, encoder_options: Image.EncoderOptions) Image.WriteError!void {
         _ = allocator;
 
         var qoi = Self{};
@@ -144,7 +144,7 @@ pub const QOI = struct {
         qoi.header.format = switch (image.pixels) {
             .rgb24 => Format.rgb,
             .rgba32 => Format.rgba,
-            else => return ImageUnmanaged.Error.Unsupported,
+            else => return Image.Error.Unsupported,
         };
         switch (encoder_options) {
             .qoi => |qoi_encode_options| {
@@ -173,16 +173,16 @@ pub const QOI = struct {
         };
     }
 
-    pub fn read(self: *Self, allocator: std.mem.Allocator, read_stream: *io.ReadStream) ImageUnmanaged.ReadError!color.PixelStorage {
+    pub fn read(self: *Self, allocator: std.mem.Allocator, read_stream: *io.ReadStream) Image.ReadError!color.PixelStorage {
         const reader = read_stream.reader();
 
         const magic_buffer = try reader.take(Header.correct_magic.len);
 
         if (!std.mem.eql(u8, magic_buffer[0..], Header.correct_magic[0..])) {
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
 
-        self.header = reader.takeStruct(Header, .big) catch return ImageUnmanaged.ReadError.InvalidData;
+        self.header = reader.takeStruct(Header, .big) catch return Image.ReadError.InvalidData;
 
         const pixel_format = try self.pixelFormat();
 
@@ -246,7 +246,7 @@ pub const QOI = struct {
             // this will happen when a file has an invalid run length
             // and we would decode more pixels than there are in the image.
             if (index + count > pixels_size) {
-                return ImageUnmanaged.ReadError.InvalidData;
+                return Image.ReadError.InvalidData;
             }
 
             while (count > 0) {
@@ -270,7 +270,7 @@ pub const QOI = struct {
         return pixels;
     }
 
-    pub fn write(self: Self, write_stream: *io.WriteStream, pixels: color.PixelStorage) ImageUnmanaged.WriteError!void {
+    pub fn write(self: Self, write_stream: *io.WriteStream, pixels: color.PixelStorage) Image.WriteError!void {
         const writer = write_stream.writer();
         try writer.writeAll(&self.header.encode());
 
@@ -282,7 +282,7 @@ pub const QOI = struct {
                 try writeData(writer, data);
             },
             else => {
-                return ImageUnmanaged.Error.Unsupported;
+                return Image.Error.Unsupported;
             },
         }
 
@@ -300,7 +300,7 @@ pub const QOI = struct {
         try write_stream.flush();
     }
 
-    fn writeData(writer: *std.Io.Writer, pixels_data: anytype) ImageUnmanaged.WriteError!void {
+    fn writeData(writer: *std.Io.Writer, pixels_data: anytype) Image.WriteError!void {
         var color_lut = std.mem.zeroes([64]QoiColor);
 
         var previous_pixel = QoiColor{ .r = 0, .g = 0, .b = 0, .a = 0xFF };

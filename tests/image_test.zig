@@ -1,6 +1,5 @@
 const std = @import("std");
 const Image = zigimg.Image;
-const ImageUnmanaged = zigimg.ImageUnmanaged;
 const color = zigimg.color;
 const Colors = zigimg.Colors;
 const PixelFormat = zigimg.PixelFormat;
@@ -9,7 +8,7 @@ const helpers = @import("helpers.zig");
 
 test "Create Image indexed1" {
     var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed1);
-    defer test_image.deinit();
+    defer test_image.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
@@ -24,7 +23,7 @@ test "Create Image indexed1" {
 
 test "Create Image indexed2" {
     var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed2);
-    defer test_image.deinit();
+    defer test_image.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
@@ -39,7 +38,7 @@ test "Create Image indexed2" {
 
 test "Create Image indexed4" {
     var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed4);
-    defer test_image.deinit();
+    defer test_image.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
@@ -54,7 +53,7 @@ test "Create Image indexed4" {
 
 test "Create Image indexed8" {
     var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed8);
-    defer test_image.deinit();
+    defer test_image.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
@@ -69,7 +68,7 @@ test "Create Image indexed8" {
 
 test "Create Image indexed16" {
     var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.indexed16);
-    defer test_image.deinit();
+    defer test_image.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
@@ -84,7 +83,7 @@ test "Create Image indexed16" {
 
 test "Create Image Rgb24" {
     var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.rgb24);
-    defer test_image.deinit();
+    defer test_image.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
@@ -98,7 +97,7 @@ test "Create Image Rgb24" {
 
 test "Create Image Rgba32" {
     var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.rgba32);
-    defer test_image.deinit();
+    defer test_image.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
@@ -112,7 +111,7 @@ test "Create Image Rgba32" {
 
 test "Create Image Rgb332" {
     var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.rgb332);
-    defer test_image.deinit();
+    defer test_image.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
@@ -126,7 +125,7 @@ test "Create Image Rgb332" {
 
 test "Create Image Rgb565" {
     var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.rgb565);
-    defer test_image.deinit();
+    defer test_image.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
@@ -140,7 +139,7 @@ test "Create Image Rgb565" {
 
 test "Create Image Rgb555" {
     var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.rgb555);
-    defer test_image.deinit();
+    defer test_image.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
@@ -154,7 +153,7 @@ test "Create Image Rgb555" {
 
 test "Create Image Bgra32" {
     var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.bgra32);
-    defer test_image.deinit();
+    defer test_image.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
@@ -168,7 +167,7 @@ test "Create Image Bgra32" {
 
 test "Create Image float32" {
     var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.float32);
-    defer test_image.deinit();
+    defer test_image.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(test_image.width, 24);
     try helpers.expectEq(test_image.height, 32);
@@ -188,11 +187,11 @@ test "Should detect BMP properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
         try std.testing.expect(format == .bmp);
 
         var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
-        defer test_image.deinit();
+        defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
@@ -200,11 +199,11 @@ test "Should detect Memory BMP properly" {
     var MemoryRGBABitmap: [200 * 1024]u8 = undefined;
     const buffer = try helpers.testReadFile(helpers.fixtures_path ++ "bmp/windows_rgba_v5.bmp", MemoryRGBABitmap[0..]);
 
-    const format = try ImageUnmanaged.detectFormatFromMemory(buffer);
+    const format = try Image.detectFormatFromMemory(buffer);
     try std.testing.expect(format == .bmp);
 
     var test_image = try Image.fromMemory(helpers.zigimg_test_allocator, buffer);
-    defer test_image.deinit();
+    defer test_image.deinit(helpers.zigimg_test_allocator);
 }
 
 test "Should detect GIF properly" {
@@ -214,11 +213,11 @@ test "Should detect GIF properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
         try std.testing.expect(format == .gif);
 
         var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
-        defer test_image.deinit();
+        defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
@@ -232,11 +231,11 @@ test "Should detect PCX properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
         try std.testing.expect(format == .pcx);
 
         var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
-        defer test_image.deinit();
+        defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
@@ -248,11 +247,11 @@ test "Should detect PBM properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
         try std.testing.expect(format == .pbm);
 
         var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
-        defer test_image.deinit();
+        defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
@@ -266,11 +265,11 @@ test "Should detect PGM properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
         try std.testing.expect(format == .pgm);
 
         var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
-        defer test_image.deinit();
+        defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
@@ -282,11 +281,11 @@ test "Should detect PPM properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
         try std.testing.expect(format == .ppm);
 
         var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
-        defer test_image.deinit();
+        defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
@@ -298,11 +297,11 @@ test "Should detect PNG properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
         try std.testing.expect(format == .png);
 
         var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
-        defer test_image.deinit();
+        defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
@@ -322,11 +321,11 @@ test "Should detect TGA properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
         try std.testing.expect(format == .tga);
 
         var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
-        defer test_image.deinit();
+        defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
@@ -335,11 +334,11 @@ test "Should detect QOI properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
         try std.testing.expect(format == .qoi);
 
         var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
-        defer test_image.deinit();
+        defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
@@ -351,11 +350,11 @@ test "Should detect JPEG properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
         try std.testing.expect(format == .jpeg);
 
         var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
-        defer test_image.deinit();
+        defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
@@ -367,11 +366,11 @@ test "Should detect Farbfeld properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
         try std.testing.expect(format == .farbfeld);
 
         var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
-        defer test_image.deinit();
+        defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
@@ -382,11 +381,11 @@ test "Should detect IFF/PBM properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
         try std.testing.expect(format == .iff);
 
         var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
-        defer test_image.deinit();
+        defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
@@ -397,11 +396,11 @@ test "Should detect RAS properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
         try std.testing.expect(format == .ras);
 
         var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
-        defer test_image.deinit();
+        defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
@@ -412,11 +411,11 @@ test "Should detect SGI properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
         try std.testing.expect(format == .sgi);
 
         var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
-        defer test_image.deinit();
+        defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
@@ -427,11 +426,11 @@ test "Should detect TIFF properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
         try std.testing.expect(format == .tiff);
 
         var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
-        defer test_image.deinit();
+        defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
@@ -450,11 +449,11 @@ test "Should detect XBM properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try ImageUnmanaged.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
         try std.testing.expect(format == .xbm);
 
         var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
-        defer test_image.deinit();
+        defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
@@ -467,7 +466,7 @@ test "Should error on invalid file" {
 test "Should read a 24-bit bitmap" {
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     var test_image = try helpers.testImageFromFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp", read_buffer[0..]);
-    defer test_image.deinit();
+    defer test_image.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(test_image.width, 8);
     try helpers.expectEq(test_image.height, 1);
@@ -520,7 +519,7 @@ test "Should read a 24-bit bitmap" {
 test "Test Colorf32 iterator" {
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     var test_image = try helpers.testImageFromFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp", read_buffer[0..]);
-    defer test_image.deinit();
+    defer test_image.deinit(helpers.zigimg_test_allocator);
 
     const expectedColors = [_]color.Colorf32{
         color.Colorf32.from.rgb(1.0, 0.0, 0.0),
@@ -550,7 +549,7 @@ test "Test Colorf32 iterator" {
 test "Convert Image from rgb24 to float32 (Colorf32)" {
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     var test_image = try helpers.testImageFromFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp", read_buffer[0..]);
-    defer test_image.deinit();
+    defer test_image.deinit(helpers.zigimg_test_allocator);
 
     const expected_colors = [_]color.Colorf32{
         color.Colorf32.from.rgb(1.0, 0.0, 0.0),
@@ -566,7 +565,7 @@ test "Convert Image from rgb24 to float32 (Colorf32)" {
     try helpers.expectEq(test_image.width, 8);
     try helpers.expectEq(test_image.height, 1);
 
-    try test_image.convert(.float32);
+    try test_image.convert(helpers.zigimg_test_allocator, .float32);
 
     for (0..expected_colors.len) |index| {
         const actual = test_image.pixels.float32[index];
@@ -581,7 +580,7 @@ test "Convert Image from rgb24 to float32 (Colorf32)" {
 test "Should return a valid byte slice with rawByte()" {
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     var test_image = try helpers.testImageFromFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp", read_buffer[0..]);
-    defer test_image.deinit();
+    defer test_image.deinit(helpers.zigimg_test_allocator);
 
     const slice = test_image.rawBytes();
 
@@ -617,7 +616,7 @@ test "Should return a valid byte slice with rawByte()" {
 test "Should return a valid row size with rowByteSize()" {
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     var test_image = try helpers.testImageFromFile(helpers.fixtures_path ++ "bmp/windows_rgba_v5.bmp", read_buffer[0..]);
-    defer test_image.deinit();
+    defer test_image.deinit(helpers.zigimg_test_allocator);
 
     const row_size = test_image.rowByteSize();
 
@@ -627,7 +626,7 @@ test "Should return a valid row size with rowByteSize()" {
 test "Should return a valid byte size with imageByteSize()" {
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     var test_image = try helpers.testImageFromFile(helpers.fixtures_path ++ "bmp/windows_rgba_v5.bmp", read_buffer[0..]);
-    defer test_image.deinit();
+    defer test_image.deinit(helpers.zigimg_test_allocator);
 
     const image_size = test_image.imageByteSize();
 
@@ -647,7 +646,7 @@ test "Should import raw pixels and take ownership of the pixel data" {
     };
 
     const pixel_data = std.mem.sliceAsBytes(color_data);
-    const image = try ImageUnmanaged.fromRawPixelsOwned(8, 1, pixel_data, .rgb24);
+    const image = try Image.fromRawPixelsOwned(8, 1, pixel_data, .rgb24);
 
     try helpers.expectEq(std.meta.activeTag(image.pixels), .rgb24);
     try helpers.expectEq(image.width, 8);
@@ -677,7 +676,7 @@ test "Should import raw pixels and create a copy of pixel data" {
 
     const pixel_data = std.mem.sliceAsBytes(color_data);
     var image = try Image.fromRawPixels(helpers.zigimg_test_allocator, 8, 1, pixel_data, .rgb24);
-    defer image.deinit();
+    defer image.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(std.meta.activeTag(image.pixels), .rgb24);
     try helpers.expectEq(image.width, 8);
@@ -691,4 +690,54 @@ test "Should import raw pixels and create a copy of pixel data" {
     try helpers.expectEq(image.pixels.rgb24[5], Colors(color.Rgb24).Yellow);
     try helpers.expectEq(image.pixels.rgb24[6], Colors(color.Rgb24).Black);
     try helpers.expectEq(image.pixels.rgb24[7], Colors(color.Rgb24).White);
+}
+
+test "Image to Managed" {
+    var test_image = try Image.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.rgb24);
+    defer test_image.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(test_image.width, 24);
+    try helpers.expectEq(test_image.height, 32);
+    try helpers.expectEq(test_image.pixelFormat(), PixelFormat.rgb24);
+
+    const pixels = test_image.pixels;
+
+    try std.testing.expect(pixels == .rgb24);
+    try std.testing.expect(pixels.rgb24.len == 24 * 32);
+
+    var managed_image = test_image.toManaged(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(managed_image.width, 24);
+    try helpers.expectEq(managed_image.height, 32);
+    try helpers.expectEq(managed_image.pixelFormat(), PixelFormat.rgb24);
+
+    const managed_pixels = managed_image.pixels;
+
+    try std.testing.expect(managed_pixels == .rgb24);
+    try std.testing.expect(managed_pixels.rgb24.len == 24 * 32);
+}
+
+test "Managed to Image" {
+    var managed_image = try Image.Managed.create(helpers.zigimg_test_allocator, 24, 32, PixelFormat.rgb24);
+    defer managed_image.deinit();
+
+    try helpers.expectEq(managed_image.width, 24);
+    try helpers.expectEq(managed_image.height, 32);
+    try helpers.expectEq(managed_image.pixelFormat(), PixelFormat.rgb24);
+
+    const pixels = managed_image.pixels;
+
+    try std.testing.expect(pixels == .rgb24);
+    try std.testing.expect(pixels.rgb24.len == 24 * 32);
+
+    var image = managed_image.toUnmanaged();
+
+    try helpers.expectEq(image.width, 24);
+    try helpers.expectEq(image.height, 32);
+    try helpers.expectEq(image.pixelFormat(), PixelFormat.rgb24);
+
+    const managed_pixels = image.pixels;
+
+    try std.testing.expect(managed_pixels == .rgb24);
+    try std.testing.expect(managed_pixels.rgb24.len == 24 * 32);
 }
