@@ -1144,7 +1144,7 @@ fn FastRgba32Shuffle(comptime source_format: PixelFormat, comptime destination_f
 fn rgba32ToColorf32(comptime source_format: PixelFormat, source: *const color.PixelStorage, destination: *color.PixelStorage) void {
     const source_pixels = @field(source, getFieldNameFromPixelFormat(source_format));
     var destination_pixels = destination.float32;
-    var destination_f32: [*]f32 = @alignCast(@ptrCast(destination_pixels.ptr));
+    var destination_f32: [*]f32 = @ptrCast(@alignCast(destination_pixels.ptr));
 
     const vector_length = std.simd.suggestVectorLength(u8) orelse 4;
     const color_count = vector_length / 4;
@@ -1175,7 +1175,7 @@ fn rgba32ToColorf32(comptime source_format: PixelFormat, source: *const color.Pi
 fn bgra32ToColorf32(comptime source_format: PixelFormat, source: *const color.PixelStorage, destination: *color.PixelStorage) void {
     const source_pixels = @field(source, getFieldNameFromPixelFormat(source_format));
     var destination_pixels = destination.float32;
-    var destination_f32: [*]f32 = @alignCast(@ptrCast(destination_pixels.ptr));
+    var destination_f32: [*]f32 = @ptrCast(@alignCast(destination_pixels.ptr));
 
     const vector_length = std.simd.suggestVectorLength(u8) orelse 4;
     const color_count = vector_length / 4;
@@ -1285,7 +1285,7 @@ fn colorf32ToRgbaColor(comptime destination_format: PixelFormat, source: *const 
 
 fn colorf32ToRgba32(comptime destination_format: PixelFormat, source: *const color.PixelStorage, destination: *color.PixelStorage) void {
     const source_pixels = source.float32;
-    var source_f32: [*]f32 = @alignCast(@ptrCast(source_pixels.ptr));
+    var source_f32: [*]f32 = @ptrCast(@alignCast(source_pixels.ptr));
 
     var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
     const destination_type = @TypeOf(destination_pixels[0]);
@@ -1317,7 +1317,7 @@ fn colorf32ToRgba32(comptime destination_format: PixelFormat, source: *const col
 
 fn colorf32ToBgra32(comptime destination_format: PixelFormat, source: *const color.PixelStorage, destination: *color.PixelStorage) void {
     const source_pixels = source.float32;
-    var source_f32: [*]f32 = @alignCast(@ptrCast(source_pixels.ptr));
+    var source_f32: [*]f32 = @ptrCast(@alignCast(source_pixels.ptr));
 
     var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
     const destination_type = @TypeOf(destination_pixels[0]);

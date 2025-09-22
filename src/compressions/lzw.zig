@@ -1,5 +1,5 @@
 const std = @import("std");
-const Image = @import("../Image.zig");
+const io = @import("../io.zig");
 
 // Implement a variable code size LZW decoder with support for clear code and end of information code required for GIF decoding
 pub fn Decoder(comptime endian: std.builtin.Endian) type {
@@ -46,8 +46,10 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
             self.dictionary.deinit();
         }
 
-        pub fn decode(self: *Self, reader: Image.Stream.Reader, writer: anytype) !void {
-            var bit_reader = std.io.bitReader(endian, reader);
+        pub fn decode(self: *Self, reader: *std.Io.Reader, writer: *std.Io.Writer) !void {
+            var bit_reader: io.BitReader(endian) = .{
+                .reader = reader,
+            };
 
             var bits_to_read = self.code_size + 1;
 
@@ -162,20 +164,17 @@ test "Should decode a simple LZW little-endian stream" {
     const initial_code_size = 2;
     const test_data = [_]u8{ 0x4c, 0x01 };
 
-    var reader = Image.Stream{
-        .const_buffer = std.io.fixedBufferStream(&test_data),
-    };
+    var read_stream = io.ReadStream.initMemory(test_data[0..]);
 
     var out_data_storage: [256]u8 = undefined;
-    var out_data_buffer = Image.Stream{
-        .buffer = std.io.fixedBufferStream(&out_data_storage),
-    };
+    var out_write_stream = io.WriteStream.initMemory(out_data_storage[0..]);
 
     var lzw = try Decoder(.little).init(std.testing.allocator, initial_code_size, 0);
     defer lzw.deinit();
 
-    try lzw.decode(reader.reader(), out_data_buffer.writer());
+    const out_writer = out_write_stream.writer();
+    try lzw.decode(read_stream.reader(), out_writer);
 
-    try std.testing.expectEqual(@as(usize, 1), out_data_buffer.buffer.pos);
+    try std.testing.expectEqual(@as(usize, 1), out_writer.end);
     try std.testing.expectEqual(@as(u8, 1), out_data_storage[0]);
 }

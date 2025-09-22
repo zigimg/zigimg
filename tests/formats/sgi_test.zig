@@ -1,38 +1,36 @@
-const PixelFormat = zigimg.PixelFormat;
-const sgi = zigimg.formats.sgi;
-const color = zigimg.color;
-const zigimg = @import("../../zigimg.zig");
-const Image = zigimg.Image;
-const std = @import("std");
-const testing = std.testing;
 const helpers = @import("../helpers.zig");
+const sgi = zigimg.formats.sgi;
+const std = @import("std");
+const zigimg = @import("zigimg");
 
 test "Should error on non SGI images" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
     var sgi_file = sgi.SGI{};
 
-    const invalid_file = sgi_file.read(&stream_source, helpers.zigimg_test_allocator);
-    try helpers.expectError(invalid_file, Image.ReadError.InvalidData);
+    const invalid_file = sgi_file.read(helpers.zigimg_test_allocator, &read_stream);
+    try helpers.expectError(invalid_file, zigimg.Image.ReadError.InvalidData);
 }
 
 test "SGI 24-bit uncompressed" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "sgi/sample-rgb24.sgi");
     defer file.close();
 
-    var the_bitmap = sgi.SGI{};
+    var sgi_file = sgi.SGI{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
-    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    const pixels = try sgi_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(the_bitmap.width(), 664);
-    try helpers.expectEq(the_bitmap.height(), 248);
-    try testing.expect(pixels == .rgb24);
+    try helpers.expectEq(sgi_file.width(), 664);
+    try helpers.expectEq(sgi_file.height(), 248);
+    try std.testing.expect(pixels == .rgb24);
 
     const indexes = [_]usize{ 8_754, 43_352, 42_224 };
     const expected_colors = [_]u32{
@@ -50,16 +48,17 @@ test "SGI grayscale uncompressed" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "sgi/sample-blackwhite.sgi");
     defer file.close();
 
-    var the_bitmap = sgi.SGI{};
+    var sgi_file = sgi.SGI{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
-    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    const pixels = try sgi_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(the_bitmap.width(), 1250);
-    try helpers.expectEq(the_bitmap.height(), 438);
-    try testing.expect(pixels == .grayscale8);
+    try helpers.expectEq(sgi_file.width(), 1250);
+    try helpers.expectEq(sgi_file.height(), 438);
+    try std.testing.expect(pixels == .grayscale8);
 
     try helpers.expectEq(pixels.grayscale8[141].value, 255);
     try helpers.expectEq(pixels.grayscale8[1_716].value, 0);
@@ -69,16 +68,17 @@ test "SGI 32-bit RGBA uncompressed" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "sgi/sample-rgba.sgi");
     defer file.close();
 
-    var the_bitmap = sgi.SGI{};
+    var sgi_file = sgi.SGI{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
-    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    const pixels = try sgi_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(the_bitmap.width(), 240);
-    try helpers.expectEq(the_bitmap.height(), 160);
-    try testing.expect(pixels == .rgba32);
+    try helpers.expectEq(sgi_file.width(), 240);
+    try helpers.expectEq(sgi_file.height(), 160);
+    try std.testing.expect(pixels == .rgba32);
 
     const indexes = [_]usize{ 8_754, 3, 28_224 };
     const expected_colors = [_]u32{
@@ -96,16 +96,17 @@ test "SGI RGB48be uncompressed" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "sgi/sample-rgb48be.sgi");
     defer file.close();
 
-    var the_bitmap = sgi.SGI{};
+    var sgi_file = sgi.SGI{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
-    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    const pixels = try sgi_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(the_bitmap.width(), 240);
-    try helpers.expectEq(the_bitmap.height(), 160);
-    try testing.expect(pixels == .rgb48);
+    try helpers.expectEq(sgi_file.width(), 240);
+    try helpers.expectEq(sgi_file.height(), 160);
+    try std.testing.expect(pixels == .rgb48);
 
     const indexes = [_]usize{ 8_754, 3, 28_224 };
     const expected_colors = [_]u32{
@@ -123,16 +124,17 @@ test "SGI grayscale rle compressed" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "sgi/sample-gray-rle.sgi");
     defer file.close();
 
-    var the_bitmap = sgi.SGI{};
+    var sgi_file = sgi.SGI{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
-    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    const pixels = try sgi_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(the_bitmap.width(), 1250);
-    try helpers.expectEq(the_bitmap.height(), 438);
-    try testing.expect(pixels == .grayscale8);
+    try helpers.expectEq(sgi_file.width(), 1250);
+    try helpers.expectEq(sgi_file.height(), 438);
+    try std.testing.expect(pixels == .grayscale8);
 
     try helpers.expectEq(pixels.grayscale8[141].value, 255);
     try helpers.expectEq(pixels.grayscale8[1_716].value, 0);
@@ -142,16 +144,17 @@ test "SGI 24-bit rle compressed" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "sgi/sample-24bit-rle.sgi");
     defer file.close();
 
-    var the_bitmap = sgi.SGI{};
+    var sgi_file = sgi.SGI{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
-    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    const pixels = try sgi_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(the_bitmap.width(), 664);
-    try helpers.expectEq(the_bitmap.height(), 248);
-    try testing.expect(pixels == .rgb24);
+    try helpers.expectEq(sgi_file.width(), 664);
+    try helpers.expectEq(sgi_file.height(), 248);
+    try std.testing.expect(pixels == .rgb24);
 
     const indexes = [_]usize{ 8_754, 43_352, 42_224 };
     const expected_colors = [_]u32{
@@ -169,16 +172,17 @@ test "SGI RGB48be rle uncompressed" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "sgi/sample-rgb48be-rle.sgi");
     defer file.close();
 
-    var the_bitmap = sgi.SGI{};
+    var sgi_file = sgi.SGI{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
-    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    const pixels = try sgi_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(the_bitmap.width(), 240);
-    try helpers.expectEq(the_bitmap.height(), 160);
-    try testing.expect(pixels == .rgb48);
+    try helpers.expectEq(sgi_file.width(), 240);
+    try helpers.expectEq(sgi_file.height(), 160);
+    try std.testing.expect(pixels == .rgb48);
 
     const indexes = [_]usize{ 8_754, 3, 28_224 };
     const expected_colors = [_]u32{
@@ -196,16 +200,17 @@ test "SGI 32-bit RGBA rle compressed" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "sgi/sample-rgba-rle.sgi");
     defer file.close();
 
-    var the_bitmap = sgi.SGI{};
+    var sgi_file = sgi.SGI{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
-    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    const pixels = try sgi_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(the_bitmap.width(), 240);
-    try helpers.expectEq(the_bitmap.height(), 160);
-    try testing.expect(pixels == .rgba32);
+    try helpers.expectEq(sgi_file.width(), 240);
+    try helpers.expectEq(sgi_file.height(), 160);
+    try std.testing.expect(pixels == .rgba32);
 
     const indexes = [_]usize{ 8_754, 3, 28_224 };
     const expected_colors = [_]u32{

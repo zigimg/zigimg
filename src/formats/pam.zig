@@ -1,20 +1,9 @@
-const std = @import("std");
-const io = std.io;
-const mem = std.mem;
-const math = std.math;
-const ascii = std.ascii;
-const fmt = std.fmt;
-const meta = std.meta;
-const Allocator = std.mem.Allocator;
-const buffered_stream_source = @import("../buffered_stream_source.zig");
 const color = @import("../color.zig");
 const FormatInterface = @import("../FormatInterface.zig");
-const PixelStorage = color.PixelStorage;
+const Image = @import("../Image.zig");
+const io = @import("../io.zig");
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
-const ImageUnmanaged = @import("../ImageUnmanaged.zig");
-const ImageError = ImageUnmanaged.Error;
-const ImageReadError = ImageUnmanaged.ReadError;
-const ImageWriteError = ImageUnmanaged.WriteError;
+const std = @import("std");
 const utils = @import("../utils.zig");
 
 /// Represents all supported values for `TUPLTYPE`.
@@ -30,12 +19,12 @@ const TupleType = enum {
     /// `error.Unsupported` if it is unknown.
     fn fromString(string: []const u8) error{Unsupported}!TupleType {
         // zig fmt: off
-        return if(mem.eql(u8, string, "BLACKANDWHITE")) .mono
-        else if(mem.eql(u8, string, "BLACKANDWHITE_ALPHA")) .mono_a
-        else if(mem.eql(u8, string, "GRAYSCALE")) .gray
-        else if(mem.eql(u8, string, "GRAYSCALE_ALPHA")) .gray_a
-        else if(mem.eql(u8, string, "RGB")) .rgb
-        else if(mem.eql(u8, string, "RGB_ALPHA")) .rgb_a
+        return if(std.mem.eql(u8, string, "BLACKANDWHITE")) .mono
+        else if(std.mem.eql(u8, string, "BLACKANDWHITE_ALPHA")) .mono_a
+        else if(std.mem.eql(u8, string, "GRAYSCALE")) .gray
+        else if(std.mem.eql(u8, string, "GRAYSCALE_ALPHA")) .gray_a
+        else if(std.mem.eql(u8, string, "RGB")) .rgb
+        else if(std.mem.eql(u8, string, "RGB_ALPHA")) .rgb_a
         else error.Unsupported; // Unknown tuple type
         // zig fmt: on
     }
@@ -75,7 +64,7 @@ const Header = struct {
     /// fails, `error.InvalidData` if the header does not conform to
     /// the PAM specification, or another error specific to `reader`
     /// if reading fails.
-    fn read(allocator: Allocator, reader: anytype) (error{ InvalidData, Unsupported, OutOfMemory, EndOfStream, StreamTooLong } || @TypeOf(reader).Error)!Header {
+    fn read(allocator: std.mem.Allocator, reader: *std.Io.Reader) Image.ReadError!Header {
         var maybe_width: ?usize = null;
         var maybe_height: ?usize = null;
         var maybe_depth: ?usize = null;
@@ -88,41 +77,45 @@ const Header = struct {
         }
 
         {
-            var buf = try std.ArrayList(u8).initCapacity(allocator, 32);
-            defer buf.deinit();
+            var line_buffer_stream = try std.io.Writer.Allocating.initCapacity(allocator, 32);
+            defer line_buffer_stream.deinit();
 
             while (true) {
+                line_buffer_stream.clearRetainingCapacity();
+
                 // we fail on EOS here because a valid pam header must end with ENDHDR
-                try reader.readUntilDelimiterArrayList(&buf, '\n', math.maxInt(usize));
-                const line = buf.items; // empty lines are meaningless
+                _ = try reader.streamDelimiter(&line_buffer_stream.writer, '\n');
+                try reader.discardAll(1);
+
+                const line = line_buffer_stream.written(); // empty lines are meaningless
                 if (line.len == 0) continue;
                 if (line[0] == '#') { // comment
                     try comments.append(allocator, try allocator.dupe(u8, line[1..]));
                     continue;
                 }
 
-                var tok_iter = mem.tokenizeAny(u8, line, &ascii.whitespace);
-                const first_token = tok_iter.next() orelse continue; // lines with 0 tokens are meaningless
+                var token_iterator = std.mem.tokenizeAny(u8, line, &std.ascii.whitespace);
+                const first_token = token_iterator.next() orelse continue; // lines with 0 tokens are meaningless
 
                 if (first_token.len > 8) return error.InvalidData; // the first token must be at most 8 bytes
 
-                if (mem.eql(u8, first_token, "ENDHDR")) break;
+                if (std.mem.eql(u8, first_token, "ENDHDR")) break;
 
-                if (mem.eql(u8, first_token, "TUPLTYPE")) {
-                    maybe_tuple_type = try TupleType.fromString(tok_iter.rest());
+                if (std.mem.eql(u8, first_token, "TUPLTYPE")) {
+                    maybe_tuple_type = try TupleType.fromString(token_iterator.rest());
                     continue;
                 }
 
-                const second_token = tok_iter.next() orelse return error.InvalidData; // bad token
+                const second_token = token_iterator.next() orelse return error.InvalidData; // bad token
 
-                if (mem.eql(u8, first_token, "WIDTH")) {
-                    maybe_width = fmt.parseUnsigned(usize, second_token, 10) catch return error.InvalidData; // bad width
-                } else if (mem.eql(u8, first_token, "HEIGHT")) {
-                    maybe_height = fmt.parseUnsigned(usize, second_token, 10) catch return error.InvalidData; // bad height
-                } else if (mem.eql(u8, first_token, "DEPTH")) {
-                    maybe_depth = fmt.parseUnsigned(usize, second_token, 10) catch return error.InvalidData; // bad depth
-                } else if (mem.eql(u8, first_token, "MAXVAL")) {
-                    maybe_maxval = fmt.parseUnsigned(u16, second_token, 10) catch return error.InvalidData; // bad maxval
+                if (std.mem.eql(u8, first_token, "WIDTH")) {
+                    maybe_width = std.fmt.parseUnsigned(usize, second_token, 10) catch return error.InvalidData; // bad width
+                } else if (std.mem.eql(u8, first_token, "HEIGHT")) {
+                    maybe_height = std.fmt.parseUnsigned(usize, second_token, 10) catch return error.InvalidData; // bad height
+                } else if (std.mem.eql(u8, first_token, "DEPTH")) {
+                    maybe_depth = std.fmt.parseUnsigned(usize, second_token, 10) catch return error.InvalidData; // bad depth
+                } else if (std.mem.eql(u8, first_token, "MAXVAL")) {
+                    maybe_maxval = std.fmt.parseUnsigned(u16, second_token, 10) catch return error.InvalidData; // bad maxval
                 } else return error.InvalidData; // invalid first token
             }
         }
@@ -164,7 +157,7 @@ const Header = struct {
 
     /// Writes the PAM representation of `header` to `writer`. If
     /// writing fails, returns an error specific to `writer`.
-    fn write(header: Header, writer: anytype) @TypeOf(writer).Error!void {
+    fn write(header: Header, writer: *std.Io.Writer) std.Io.Writer.Error!void {
         try writer.writeAll("P7\n");
 
         for (header.comments) |comment|
@@ -183,7 +176,7 @@ const Header = struct {
     }
 
     /// Invalidates `header` and frees all comments with `allocator`.
-    fn deinit(header: *Header, allocator: Allocator) void {
+    fn deinit(header: *Header, allocator: std.mem.Allocator) void {
         for (header.comments) |comment| {
             allocator.free(comment);
         }
@@ -192,7 +185,7 @@ const Header = struct {
     }
 
     fn hasTwoBytesPerComponent(header: Header) bool {
-        return header.maxval > math.maxInt(u8);
+        return header.maxval > std.math.maxInt(u8);
     }
 
     fn getPixelFormat(header: Header) PixelFormat {
@@ -209,18 +202,18 @@ const Header = struct {
 
     /// Initializes an `Image` with the values that `header`
     /// contains. Returns `error.OutOfMemory` if allocation fails.
-    fn initImage(header: Header, allocator: Allocator) error{OutOfMemory}!ImageUnmanaged {
-        var image = ImageUnmanaged{};
+    fn initImage(header: Header, allocator: std.mem.Allocator) error{OutOfMemory}!Image {
+        var image = Image{};
         image.width = header.width;
         image.height = header.height;
-        image.pixels = try PixelStorage.init(allocator, header.getPixelFormat(), header.width * header.height);
+        image.pixels = try color.PixelStorage.init(allocator, header.getPixelFormat(), header.width * header.height);
         return image;
     }
 
     /// Initializes a `Header` from `image`. Returns
     /// `error.Unsupported` if the pixel format of `image` cannot be
     /// easily represented in PAM.
-    fn fromImage(image: ImageUnmanaged) error{Unsupported}!Header {
+    fn fromImage(image: Image) error{Unsupported}!Header {
         var header: Header = undefined;
         switch (image.pixelFormat()) {
             .invalid,
@@ -241,57 +234,57 @@ const Header = struct {
             },
             .grayscale2 => {
                 header.depth = 1;
-                header.maxval = math.maxInt(u2);
+                header.maxval = std.math.maxInt(u2);
                 header.tuple_type = .gray;
             },
             .grayscale4 => {
                 header.depth = 1;
-                header.maxval = math.maxInt(u4);
+                header.maxval = std.math.maxInt(u4);
                 header.tuple_type = .gray;
             },
             .grayscale8 => {
                 header.depth = 1;
-                header.maxval = math.maxInt(u8);
+                header.maxval = std.math.maxInt(u8);
                 header.tuple_type = .gray;
             },
             .grayscale8Alpha => {
                 header.depth = 2;
-                header.maxval = math.maxInt(u8);
+                header.maxval = std.math.maxInt(u8);
                 header.tuple_type = .gray_a;
             },
             .grayscale16 => {
                 header.depth = 1;
-                header.maxval = math.maxInt(u16);
+                header.maxval = std.math.maxInt(u16);
                 header.tuple_type = .gray;
             },
             .grayscale16Alpha => {
                 header.depth = 2;
-                header.maxval = math.maxInt(u16);
+                header.maxval = std.math.maxInt(u16);
                 header.tuple_type = .gray_a;
             },
             .rgb555, .bgr555 => {
                 header.depth = 3;
-                header.maxval = math.maxInt(u5);
+                header.maxval = std.math.maxInt(u5);
                 header.tuple_type = .rgb;
             },
             .rgb24, .bgr24 => {
                 header.depth = 3;
-                header.maxval = math.maxInt(u8);
+                header.maxval = std.math.maxInt(u8);
                 header.tuple_type = .rgb;
             },
             .rgba32, .bgra32 => {
                 header.depth = 4;
-                header.maxval = math.maxInt(u8);
+                header.maxval = std.math.maxInt(u8);
                 header.tuple_type = .rgb_a;
             },
             .rgb48 => {
                 header.depth = 3;
-                header.maxval = math.maxInt(u16);
+                header.maxval = std.math.maxInt(u16);
                 header.tuple_type = .rgb;
             },
             .rgba64 => {
                 header.depth = 4;
-                header.maxval = math.maxInt(u16);
+                header.maxval = std.math.maxInt(u16);
                 header.tuple_type = .rgb_a;
             },
         }
@@ -331,20 +324,22 @@ pub const PAM = struct {
 
     /// Returns `true` if the image will be able to be decoded, or a
     /// `stream`-specific error if reading fails.
-    pub fn formatDetect(stream: *ImageUnmanaged.Stream) ImageReadError!bool {
-        const magic = try stream.reader().readBytesNoEof(3);
-        return mem.eql(u8, &magic, "P7\n"); // no possibility of misdetecting xv thumbnails (magic "P7 332")
+    pub fn formatDetect(read_stream: *io.ReadStream) Image.ReadError!bool {
+        const reader = read_stream.reader();
+        const magic = try reader.peek(3);
+
+        return std.mem.eql(u8, magic, "P7\n"); // no possibility of misdetecting xv thumbnails (magic "P7 332")
     }
 
-    pub fn readImage(allocator: Allocator, stream: *ImageUnmanaged.Stream) ImageReadError!ImageUnmanaged {
-        var result = ImageUnmanaged{};
+    pub fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) Image.ReadError!Image {
+        var result = Image{};
         errdefer result.deinit(allocator);
 
-        const image_list = try read(allocator, stream);
-        defer image_list.deinit();
+        var image_list = try read(allocator, read_stream);
+        defer image_list.deinit(allocator);
 
         if (image_list.items.len == 0) {
-            return ImageReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
 
         // Result image will be the first image
@@ -353,25 +348,24 @@ pub const PAM = struct {
         // Try to make the other images "animation" frames if they have the same width and height as the first image
         for (1..image_list.items.len) |index| {
             const frame = image_list.items[index];
-            if (frame.width != image.width or frame.height != image.height or meta.activeTag(frame.pixels) != meta.activeTag(image.pixels)) {
-                return ImageReadError.Unsupported; // no obvious way to have multiple frames with different dimensions
+            if (frame.width != image.width or frame.height != image.height or std.meta.activeTag(frame.pixels) != std.meta.activeTag(image.pixels)) {
+                return Image.ReadError.Unsupported; // no obvious way to have multiple frames with different dimensions
             }
 
-            try image.animation.frames.append(allocator, ImageUnmanaged.AnimationFrame{ .pixels = frame.pixels, .duration = 0 });
+            try image.animation.frames.append(allocator, Image.AnimationFrame{ .pixels = frame.pixels, .duration = 0 });
         }
 
         return image;
     }
 
-    pub fn read(allocator: Allocator, stream: *ImageUnmanaged.Stream) ImageReadError!std.ArrayList(ImageUnmanaged) {
-        var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
-        const reader = buffered_stream.reader();
+    pub fn read(allocator: std.mem.Allocator, read_stream: *io.ReadStream) Image.ReadError!std.ArrayList(Image) {
+        const reader = read_stream.reader();
 
-        var image_list = std.ArrayList(ImageUnmanaged).init(allocator);
-        errdefer image_list.deinit();
+        var image_list: std.ArrayList(Image) = .empty;
+        errdefer image_list.deinit(allocator);
 
         while (try readFrame(allocator, reader)) |image| {
-            try image_list.append(image);
+            try image_list.append(allocator, image);
         }
 
         return image_list;
@@ -386,60 +380,62 @@ pub const PAM = struct {
 
         if (src_maxval == dst_maxval) return val;
 
-        const W = meta.Int(.unsigned, @bitSizeOf(T) * 2);
-        return @intCast(@min(math.maxInt(T), @as(W, dst_maxval) * @as(W, val) / @as(W, src_maxval)));
+        const W = std.meta.Int(.unsigned, @bitSizeOf(T) * 2);
+        return @intCast(@min(std.math.maxInt(T), @as(W, dst_maxval) * @as(W, val) / @as(W, src_maxval)));
     }
 
-    fn readFrame(allocator: Allocator, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageReadError!?ImageUnmanaged {
+    fn readFrame(allocator: std.mem.Allocator, reader: *std.Io.Reader) Image.ReadError!?Image {
         // we don't use catch switch here because error.EndOfStream
         // might be the only possible error (and would thus trigger a
         // compile error because of an unreachable else prong)
-        const magic = reader.readBytesNoEof(3) catch |e| return if (e == error.EndOfStream) null else e;
-        const is_pam = mem.eql(u8, &magic, "P7\n");
-        if (!is_pam) return ImageReadError.InvalidData; // invalid magic number or extraneous data at eof
+        const magic = reader.take(3) catch |e| return if (e == error.EndOfStream) null else e;
+        const is_pam = std.mem.eql(u8, magic, "P7\n");
+        if (!is_pam) {
+            return Image.ReadError.InvalidData; // invalid magic number or extraneous data at eof
+        }
 
         var header = try Header.read(allocator, reader);
         defer header.deinit(allocator);
 
-        var image: ImageUnmanaged = try header.initImage(allocator);
+        var image: Image = try header.initImage(allocator);
         errdefer image.deinit(allocator);
 
         for (0..image.height) |row| {
             const offset = row * image.width;
             for (0..image.width) |column| {
                 switch (image.pixels) {
-                    .grayscale1 => |g| g[offset + column].value = @intCast(if (header.tuple_type == .mono) try mapValue(u8, try reader.readByte(), 1, 1) else try mapValue(u8, try reader.readByte(), 1, 1) & try mapValue(u8, try reader.readByte(), 1, 1)),
-                    .grayscale8 => |g| g[offset + column].value = try mapValue(u8, try reader.readByte(), @as(u8, @intCast(header.maxval)), math.maxInt(u8)),
+                    .grayscale1 => |g| g[offset + column].value = @intCast(if (header.tuple_type == .mono) try mapValue(u8, try reader.takeByte(), 1, 1) else try mapValue(u8, try reader.takeByte(), 1, 1) & try mapValue(u8, try reader.takeByte(), 1, 1)),
+                    .grayscale8 => |g| g[offset + column].value = try mapValue(u8, try reader.takeByte(), @as(u8, @intCast(header.maxval)), std.math.maxInt(u8)),
                     .grayscale8Alpha => |g| g[offset + column] = .{
-                        .value = try mapValue(u8, try reader.readByte(), @as(u8, @intCast(header.maxval)), math.maxInt(u8)),
-                        .alpha = try mapValue(u8, try reader.readByte(), @as(u8, @intCast(header.maxval)), math.maxInt(u8)),
+                        .value = try mapValue(u8, try reader.takeByte(), @as(u8, @intCast(header.maxval)), std.math.maxInt(u8)),
+                        .alpha = try mapValue(u8, try reader.takeByte(), @as(u8, @intCast(header.maxval)), std.math.maxInt(u8)),
                     },
-                    .grayscale16 => |g| g[offset + column].value = try mapValue(u16, try reader.readInt(u16, .little), header.maxval, math.maxInt(u16)),
+                    .grayscale16 => |g| g[offset + column].value = try mapValue(u16, try reader.takeInt(u16, .little), header.maxval, std.math.maxInt(u16)),
                     .grayscale16Alpha => |g| g[offset + column] = .{
-                        .value = try mapValue(u16, try reader.readInt(u16, .little), header.maxval, math.maxInt(u16)),
-                        .alpha = try mapValue(u16, try reader.readInt(u16, .little), header.maxval, math.maxInt(u16)),
+                        .value = try mapValue(u16, try reader.takeInt(u16, .little), header.maxval, std.math.maxInt(u16)),
+                        .alpha = try mapValue(u16, try reader.takeInt(u16, .little), header.maxval, std.math.maxInt(u16)),
                     },
                     .rgb24 => |x| x[offset + column] = .{
-                        .r = try mapValue(u8, try reader.readByte(), @as(u8, @intCast(header.maxval)), math.maxInt(u8)),
-                        .g = try mapValue(u8, try reader.readByte(), @as(u8, @intCast(header.maxval)), math.maxInt(u8)),
-                        .b = try mapValue(u8, try reader.readByte(), @as(u8, @intCast(header.maxval)), math.maxInt(u8)),
+                        .r = try mapValue(u8, try reader.takeByte(), @as(u8, @intCast(header.maxval)), std.math.maxInt(u8)),
+                        .g = try mapValue(u8, try reader.takeByte(), @as(u8, @intCast(header.maxval)), std.math.maxInt(u8)),
+                        .b = try mapValue(u8, try reader.takeByte(), @as(u8, @intCast(header.maxval)), std.math.maxInt(u8)),
                     },
                     .rgba32 => |x| x[offset + column] = .{
-                        .r = try mapValue(u8, try reader.readByte(), @as(u8, @intCast(header.maxval)), math.maxInt(u8)),
-                        .g = try mapValue(u8, try reader.readByte(), @as(u8, @intCast(header.maxval)), math.maxInt(u8)),
-                        .b = try mapValue(u8, try reader.readByte(), @as(u8, @intCast(header.maxval)), math.maxInt(u8)),
-                        .a = try mapValue(u8, try reader.readByte(), @as(u8, @intCast(header.maxval)), math.maxInt(u8)),
+                        .r = try mapValue(u8, try reader.takeByte(), @as(u8, @intCast(header.maxval)), std.math.maxInt(u8)),
+                        .g = try mapValue(u8, try reader.takeByte(), @as(u8, @intCast(header.maxval)), std.math.maxInt(u8)),
+                        .b = try mapValue(u8, try reader.takeByte(), @as(u8, @intCast(header.maxval)), std.math.maxInt(u8)),
+                        .a = try mapValue(u8, try reader.takeByte(), @as(u8, @intCast(header.maxval)), std.math.maxInt(u8)),
                     },
                     .rgb48 => |x| x[offset + column] = .{
-                        .r = try mapValue(u16, try reader.readInt(u16, .little), header.maxval, math.maxInt(u16)),
-                        .g = try mapValue(u16, try reader.readInt(u16, .little), header.maxval, math.maxInt(u16)),
-                        .b = try mapValue(u16, try reader.readInt(u16, .little), header.maxval, math.maxInt(u16)),
+                        .r = try mapValue(u16, try reader.takeInt(u16, .little), header.maxval, std.math.maxInt(u16)),
+                        .g = try mapValue(u16, try reader.takeInt(u16, .little), header.maxval, std.math.maxInt(u16)),
+                        .b = try mapValue(u16, try reader.takeInt(u16, .little), header.maxval, std.math.maxInt(u16)),
                     },
                     .rgba64 => |x| x[offset + column] = .{
-                        .r = try mapValue(u16, try reader.readInt(u16, .little), header.maxval, math.maxInt(u16)),
-                        .g = try mapValue(u16, try reader.readInt(u16, .little), header.maxval, math.maxInt(u16)),
-                        .b = try mapValue(u16, try reader.readInt(u16, .little), header.maxval, math.maxInt(u16)),
-                        .a = try mapValue(u16, try reader.readInt(u16, .little), header.maxval, math.maxInt(u16)),
+                        .r = try mapValue(u16, try reader.takeInt(u16, .little), header.maxval, std.math.maxInt(u16)),
+                        .g = try mapValue(u16, try reader.takeInt(u16, .little), header.maxval, std.math.maxInt(u16)),
+                        .b = try mapValue(u16, try reader.takeInt(u16, .little), header.maxval, std.math.maxInt(u16)),
+                        .a = try mapValue(u16, try reader.takeInt(u16, .little), header.maxval, std.math.maxInt(u16)),
                     },
                     else => unreachable,
                 }
@@ -448,13 +444,13 @@ pub const PAM = struct {
         return image;
     }
 
-    pub fn writeImage(allocator: Allocator, stream: *ImageUnmanaged.Stream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageWriteError!void {
-        var buffered_stream = buffered_stream_source.bufferedStreamSourceWriter(stream);
-        const writer = buffered_stream.writer();
+    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: Image, encoder_options: Image.EncoderOptions) Image.WriteError!void {
+        const writer = write_stream.writer();
 
-        var comments = std.ArrayList([]const u8).init(allocator);
-        defer comments.deinit();
-        try comments.appendSlice(switch (encoder_options) {
+        var comments: std.ArrayList([]const u8) = .empty;
+        defer comments.deinit(allocator);
+
+        try comments.appendSlice(allocator, switch (encoder_options) {
             .pam => |p| p.comments,
             else => &.{},
         });
@@ -467,7 +463,7 @@ pub const PAM = struct {
 
         {
             if (add_duration_as_comment and image.isAnimation()) {
-                try comments.append(try fmt.bufPrint(&duration_buffer, "loop count: {d}", .{image.animation.loop_count}));
+                try comments.append(allocator, try std.fmt.bufPrint(&duration_buffer, "loop count: {d}", .{image.animation.loop_count}));
             }
             defer {
                 if (add_duration_as_comment and image.isAnimation()) _ = comments.pop();
@@ -478,20 +474,20 @@ pub const PAM = struct {
 
         for (image.animation.frames.items) |frame| {
             if (add_duration_as_comment)
-                try comments.append(try fmt.bufPrint(&duration_buffer, "duration: {d}", .{frame.duration}));
+                try comments.append(allocator, try std.fmt.bufPrint(&duration_buffer, "duration: {d}", .{frame.duration}));
             defer {
                 if (add_duration_as_comment) _ = comments.pop();
             }
 
-            const frame_img = ImageUnmanaged{ .pixels = frame.pixels, .width = image.width, .height = image.height };
+            const frame_img = Image{ .pixels = frame.pixels, .width = image.width, .height = image.height };
 
             try writeFrame(writer, frame_img, .{ .pam = .{ .comments = comments.items } });
         }
 
-        try buffered_stream.flush();
+        try write_stream.flush();
     }
 
-    pub fn writeFrame(writer: anytype, frame: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageWriteError!void {
+    pub fn writeFrame(writer: *std.Io.Writer, frame: Image, encoder_options: Image.EncoderOptions) Image.WriteError!void {
         var header = try Header.fromImage(frame);
         header.comments = encoder_options.pam.comments;
         try header.write(writer);

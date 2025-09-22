@@ -1,27 +1,23 @@
-const PixelFormat = @import("../../src/pixel_format.zig").PixelFormat;
-const assert = std.debug.assert;
-const iff = @import("../../src/formats/iff.zig");
-const color = @import("../../src/color.zig");
-const ImageReadError = Image.ReadError;
-const std = @import("std");
-const testing = std.testing;
-const Image = @import("../../src/Image.zig");
 const helpers = @import("../helpers.zig");
+const iff = zigimg.formats.iff;
+const std = @import("std");
+const zigimg = @import("zigimg");
 
 test "IFF-PBM indexed8 (chunky Deluxe Paint DOS file)" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ilbm/sample-pbm.iff");
     defer file.close();
 
-    var the_bitmap = iff.IFF{};
+    var the_iff = iff.IFF{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
-    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    const pixels = try the_iff.read(&read_stream, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(the_bitmap.width(), 380);
-    try helpers.expectEq(the_bitmap.height(), 133);
-    try testing.expect(pixels == .indexed8);
+    try helpers.expectEq(the_iff.width(), 380);
+    try helpers.expectEq(the_iff.height(), 133);
+    try std.testing.expect(pixels == .indexed8);
 
     try helpers.expectEq(pixels.indexed8.indices[0], 0);
     try helpers.expectEq(pixels.indexed8.indices[141], 58);
@@ -43,16 +39,17 @@ test "IFF-ILBM indexed8 8 bitplanes" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ilbm/sample-ilbm-8bit-compressed.iff");
     defer file.close();
 
-    var the_bitmap = iff.IFF{};
+    var the_iff = iff.IFF{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
-    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    const pixels = try the_iff.read(&read_stream, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(the_bitmap.width(), 380);
-    try helpers.expectEq(the_bitmap.height(), 200);
-    try testing.expect(pixels == .indexed8);
+    try helpers.expectEq(the_iff.width(), 380);
+    try helpers.expectEq(the_iff.height(), 200);
+    try std.testing.expect(pixels == .indexed8);
 
     const palette2 = pixels.indexed8.palette[2];
 
@@ -68,16 +65,17 @@ test "IFF-ILBM indexed8 8 bitplanes uncompressed" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ilbm/sample-ilbm-8bit-uncompressed.iff");
     defer file.close();
 
-    var the_bitmap = iff.IFF{};
+    var the_iff = iff.IFF{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
-    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    const pixels = try the_iff.read(&read_stream, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(the_bitmap.width(), 380);
-    try helpers.expectEq(the_bitmap.height(), 200);
-    try testing.expect(pixels == .indexed8);
+    try helpers.expectEq(the_iff.width(), 380);
+    try helpers.expectEq(the_iff.height(), 200);
+    try std.testing.expect(pixels == .indexed8);
 
     const palette2 = pixels.indexed8.palette[2];
 
@@ -93,16 +91,17 @@ test "IFF-ILBM indexed8 6 bitplanes EHB" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ilbm/sample-ehb.iff");
     defer file.close();
 
-    var the_bitmap = iff.IFF{};
+    var the_iff = iff.IFF{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
-    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    const pixels = try the_iff.read(&read_stream, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(the_bitmap.width(), 320);
-    try helpers.expectEq(the_bitmap.height(), 256);
-    try testing.expect(pixels == .indexed8);
+    try helpers.expectEq(the_iff.width(), 320);
+    try helpers.expectEq(the_iff.height(), 256);
+    try std.testing.expect(pixels == .indexed8);
 
     const palette2 = pixels.indexed8.palette[2];
 
@@ -124,17 +123,18 @@ test "IFF-ILBM indexed8 4 bitplanes HAM" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ilbm/sample-ham.iff");
     defer file.close();
 
-    var the_bitmap = iff.IFF{};
+    var the_iff = iff.IFF{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
-    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    const pixels = try the_iff.read(&read_stream, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(the_bitmap.width(), 640);
-    try helpers.expectEq(the_bitmap.height(), 480);
+    try helpers.expectEq(the_iff.width(), 640);
+    try helpers.expectEq(the_iff.height(), 480);
 
-    try testing.expect(pixels == .rgb24);
+    try std.testing.expect(pixels == .rgb24);
 
     const indexes = [_]usize{ 26_505, 193_174, 244_089 };
     const expected_colors = [_]u32{
@@ -152,17 +152,18 @@ test "IFF-ILBM indexed8 6 bitplanes HAM8" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ilbm/sample-ham8.iff");
     defer file.close();
 
-    var the_bitmap = iff.IFF{};
+    var the_iff = iff.IFF{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
-    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    const pixels = try the_iff.read(&read_stream, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(the_bitmap.width(), 640);
-    try helpers.expectEq(the_bitmap.height(), 480);
+    try helpers.expectEq(the_iff.width(), 640);
+    try helpers.expectEq(the_iff.height(), 480);
 
-    try testing.expect(pixels == .rgb24);
+    try std.testing.expect(pixels == .rgb24);
 
     const indexes = [_]usize{ 26_505, 193_174, 244_089 };
     const expected_colors = [_]u32{
@@ -180,17 +181,18 @@ test "IFF-ILBM 24bit" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ilbm/sample-24bit.iff");
     defer file.close();
 
-    var the_bitmap = iff.IFF{};
+    var the_iff = iff.IFF{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
-    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    const pixels = try the_iff.read(&read_stream, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(the_bitmap.width(), 640);
-    try helpers.expectEq(the_bitmap.height(), 480);
+    try helpers.expectEq(the_iff.width(), 640);
+    try helpers.expectEq(the_iff.height(), 480);
 
-    try testing.expect(pixels == .rgb24);
+    try std.testing.expect(pixels == .rgb24);
 
     const indexes = [_]usize{ 26_505, 193_174, 244_089 };
     const expected_colors = [_]u32{
@@ -208,16 +210,17 @@ test "IFF-ILBM indexed8 4 bitplanes Atari ST" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ilbm/sample-ilbm-4bit-compressed-atari.iff");
     defer file.close();
 
-    var the_bitmap = iff.IFF{};
+    var the_iff = iff.IFF{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
-    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    const pixels = try the_iff.read(&read_stream, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(the_bitmap.width(), 320);
-    try helpers.expectEq(the_bitmap.height(), 200);
-    try testing.expect(pixels == .indexed8);
+    try helpers.expectEq(the_iff.width(), 320);
+    try helpers.expectEq(the_iff.height(), 200);
+    try std.testing.expect(pixels == .indexed8);
 
     const palette4 = pixels.indexed8.palette[4];
 
@@ -239,16 +242,17 @@ test "IFF-ACBM indexed8 3 bitplanes uncompressed" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ilbm/sample-8bit.acbm");
     defer file.close();
 
-    var the_bitmap = iff.IFF{};
+    var the_iff = iff.IFF{};
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
-    const pixels = try the_bitmap.read(&stream_source, helpers.zigimg_test_allocator);
+    const pixels = try the_iff.read(&read_stream, helpers.zigimg_test_allocator);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(the_bitmap.width(), 320);
-    try helpers.expectEq(the_bitmap.height(), 200);
-    try testing.expect(pixels == .indexed8);
+    try helpers.expectEq(the_iff.width(), 320);
+    try helpers.expectEq(the_iff.height(), 200);
+    try std.testing.expect(pixels == .indexed8);
 
     const palette0 = pixels.indexed8.palette[0];
 

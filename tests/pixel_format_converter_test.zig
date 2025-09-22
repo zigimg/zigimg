@@ -1,9 +1,9 @@
 const std = @import("std");
-const testing = std.testing;
-const color = @import("../src/color.zig");
-const Colors = @import("../src/predefined_colors.zig").Colors;
-const PixelFormatConverter = @import("../src/PixelFormatConverter.zig");
+const color = zigimg.color;
+const Colors = zigimg.Colors;
+const PixelFormatConverter = zigimg.PixelFormatConverter;
 const helpers = @import("helpers.zig");
+const zigimg = @import("zigimg");
 
 // mlarouche: Not all conversion are tested, just the most important ones
 // If any pixel conversion cause issues, we will add a test for it

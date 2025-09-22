@@ -3,11 +3,12 @@
 
 const std = @import("std");
 
-const buffered_stream_source = @import("../../buffered_stream_source.zig");
 const Image = @import("../../Image.zig");
+const io = @import("../../io.zig");
+
 const Markers = @import("./utils.zig").Markers;
 
-const Self = @This();
+const JFIFHeader = @This();
 
 /// see https://www.ecma-international.org/wp-content/uploads/ECMA_TR-98_1st_edition_june_2009.pdf
 /// chapt 10.
@@ -22,35 +23,33 @@ density_unit: DensityUnit,
 x_density: u16,
 y_density: u16,
 
-pub fn read(buffered_stream: *buffered_stream_source.DefaultBufferedStreamSourceReader) !Self {
+pub fn read(read_stream: *io.ReadStream) !JFIFHeader {
     // Read the first APP0 header.
-    const reader = buffered_stream.reader();
-    try buffered_stream.seekTo(2);
-    const maybe_app0_marker = try reader.readInt(u16, .big);
+    const reader = read_stream.reader();
+    try read_stream.seekTo(2);
+    const maybe_app0_marker = try reader.takeInt(u16, .big);
     if (maybe_app0_marker != @intFromEnum(Markers.app0)) {
         return error.App0MarkerDoesNotExist;
     }
 
     // Header length
-    _ = try reader.readInt(u16, .big);
+    _ = try reader.takeInt(u16, .big);
 
-    var identifier_buffer: [4]u8 = undefined;
-    _ = try reader.readAll(identifier_buffer[0..]);
-
+    const identifier_buffer = try reader.take(4);
     if (!std.mem.eql(u8, identifier_buffer[0..], "JFIF")) {
         return error.JfifIdentifierNotSet;
     }
 
     // NUL byte after JFIF
-    _ = try reader.readByte();
+    try reader.discardAll(1);
 
-    const jfif_revision = try reader.readInt(u16, .big);
-    const density_unit: DensityUnit = @enumFromInt(try reader.readByte());
-    const x_density = try reader.readInt(u16, .big);
-    const y_density = try reader.readInt(u16, .big);
+    const jfif_revision = try reader.takeInt(u16, .big);
+    const density_unit: DensityUnit = @enumFromInt(try reader.takeByte());
+    const x_density = try reader.takeInt(u16, .big);
+    const y_density = try reader.takeInt(u16, .big);
 
-    const thumbnailWidth = try reader.readByte();
-    const thumbnailHeight = try reader.readByte();
+    const thumbnailWidth = try reader.takeByte();
+    const thumbnailHeight = try reader.takeByte();
 
     if (thumbnailWidth != 0 or thumbnailHeight != 0) {
         // TODO: Support thumbnails (not important)
@@ -61,13 +60,13 @@ pub fn read(buffered_stream: *buffered_stream_source.DefaultBufferedStreamSource
     // TODO: Support application markers, present in versions 1.02 and above.
     // see https://www.ecma-international.org/wp-content/uploads/ECMA_TR-98_1st_edition_june_2009.pdf
     // chapt 10.1
-    if (((try reader.readInt(u16, .big)) & 0xFFF0) == @intFromEnum(Markers.app0)) {
+    if (((try reader.takeInt(u16, .big)) & 0xFFF0) == @intFromEnum(Markers.app0)) {
         return error.ExtraneousApplicationMarker;
     }
 
-    try buffered_stream.seekBy(-2);
+    try read_stream.seekBy(-2);
 
-    return Self{
+    return JFIFHeader{
         .jfif_revision = jfif_revision,
         .density_unit = density_unit,
         .x_density = x_density,

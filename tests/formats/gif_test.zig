@@ -1,59 +1,65 @@
-const PixelFormat = zigimg.PixelFormat;
 const gif = zigimg.formats.gif;
-const color = zigimg.color;
-const zigimg = @import("../../zigimg.zig");
-const Image = zigimg.Image;
-const std = @import("std");
-const testing = std.testing;
 const helpers = @import("../helpers.zig");
+const std = @import("std");
+const zigimg = @import("zigimg");
 
 test "Should error on non GIF images" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
     var gif_file = gif.GIF.init(helpers.zigimg_test_allocator);
     defer gif_file.deinit();
 
-    const invalid_file = gif_file.read(&stream_source);
-    try helpers.expectError(invalid_file, Image.ReadError.InvalidData);
+    const invalid_file = gif_file.read(&read_stream);
+    try helpers.expectError(invalid_file, zigimg.Image.ReadError.InvalidData);
 }
 
-const SingleGifFileTest = false;
+const SINGLE_GIF_FILE_TEST = false;
 
 test "GIF test suite" {
-    if (SingleGifFileTest) {
+    if (SINGLE_GIF_FILE_TEST) {
         return error.SkipZigTest;
     }
 
-    var test_list = std.ArrayList([]const u8).init(helpers.zigimg_test_allocator);
-    defer test_list.deinit();
+    var test_list: std.ArrayList([]const u8) = .empty;
+    defer test_list.deinit(helpers.zigimg_test_allocator);
 
     const test_list_file = try helpers.testOpenFile(helpers.fixtures_path ++ "gif/TESTS");
     defer test_list_file.close();
 
-    var buffered_reader = std.io.bufferedReader(test_list_file.reader());
-    var reader = buffered_reader.reader();
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(test_list_file, read_buffer[0..]);
+
+    var reader = read_stream.reader();
 
     var area_alloc = std.heap.ArenaAllocator.init(helpers.zigimg_test_allocator);
     const area_allocator = area_alloc.allocator();
     defer area_alloc.deinit();
 
-    var read_line_opt = try reader.readUntilDelimiterOrEofAlloc(area_allocator, '\n', std.math.maxInt(u16));
+    var read_line: []u8 = reader.takeDelimiterExclusive('\n') catch &.{};
 
-    while (read_line_opt) |read_line| {
-        try test_list.append(read_line);
-        read_line_opt = try reader.readUntilDelimiterOrEofAlloc(area_allocator, '\n', std.math.maxInt(u16));
+    while (read_line.len > 0) {
+        try test_list.append(helpers.zigimg_test_allocator, try area_allocator.dupe(u8, read_line));
+        read_line = reader.takeDelimiterExclusive('\n') catch &.{};
     }
+
+    var has_failed_file = false;
 
     for (test_list.items) |entry| {
         doGifTest(entry) catch |err| {
+            has_failed_file = true;
             std.debug.print("Error: {}\n", .{err});
             continue;
         };
 
         std.debug.print("OK\n", .{});
+    }
+
+    if (has_failed_file) {
+        return error.GifTestSuiteFailed;
     }
 }
 
@@ -61,17 +67,18 @@ test "Rotating Earth GIF" {
     const gif_input_file = try helpers.testOpenFile(helpers.fixtures_path ++ "gif/rotating_earth.gif");
     defer gif_input_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = gif_input_file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(gif_input_file, read_buffer[0..]);
 
     var gif_file = gif.GIF.init(helpers.zigimg_test_allocator);
     defer gif_file.deinit();
 
-    var frames = try gif_file.read(&stream_source);
+    var frames = try gif_file.read(&read_stream);
     defer {
         for (frames.items) |entry| {
-            entry.pixels.deinit(gif_file.allocator);
+            entry.pixels.deinit(helpers.zigimg_test_allocator);
         }
-        frames.deinit(gif_file.allocator);
+        frames.deinit(helpers.zigimg_test_allocator);
     }
 
     try helpers.expectEq(gif_file.header.width, 400);
@@ -84,11 +91,11 @@ test "Rotating Earth GIF" {
 }
 
 test "Iterate on a single GIF file" {
-    if (!SingleGifFileTest) {
+    if (!SINGLE_GIF_FILE_TEST) {
         return error.SkipZigTest;
     }
 
-    try doGifTest("dispose-restore-previous");
+    try doGifTest("high-color");
 }
 
 const IniFile = struct {
@@ -98,7 +105,7 @@ const IniFile = struct {
     const SectionEntry = struct {
         dict: std.StringArrayHashMapUnmanaged(Value) = .{},
 
-        pub fn getValue(self: SectionEntry, key: []const u8) ?Value {
+        pub fn getValue(self: *const SectionEntry, key: []const u8) ?Value {
             return self.dict.get(key);
         }
     };
@@ -108,15 +115,13 @@ const IniFile = struct {
         string: []const u8,
     };
 
-    const Self = @This();
-
-    pub fn init(allocator: std.mem.Allocator) Self {
+    pub fn init(allocator: std.mem.Allocator) IniFile {
         return .{
             .area_allocator = std.heap.ArenaAllocator.init(allocator),
         };
     }
 
-    pub fn deinit(self: *Self) void {
+    pub fn deinit(self: *IniFile) void {
         for (self.sections.values()) |*entry| {
             entry.dict.deinit(self.area_allocator.allocator());
         }
@@ -124,13 +129,20 @@ const IniFile = struct {
         self.area_allocator.deinit();
     }
 
-    pub fn parse(self: *Self, reader: anytype) !void {
+    pub fn parse(self: *IniFile, reader: *std.Io.Reader) !void {
         const allocator = self.area_allocator.allocator();
-        var read_line_opt = try reader.readUntilDelimiterOrEofAlloc(allocator, '\n', std.math.maxInt(u16));
+
+        var line_writer = std.Io.Writer.Allocating.init(allocator);
+        defer line_writer.deinit();
+
+        var read_size = try reader.streamDelimiter(&line_writer.writer, '\n');
+        try reader.discardAll(1);
+
+        var read_line: []u8 = line_writer.written();
 
         var current_section: []const u8 = "";
 
-        while (read_line_opt) |read_line| {
+        while (true) {
             if (read_line.len > 0) {
                 switch (read_line[0]) {
                     '#' => {
@@ -140,7 +152,7 @@ const IniFile = struct {
                         const end_bracket_position_opt = std.mem.lastIndexOf(u8, read_line[0..], "]");
 
                         if (end_bracket_position_opt) |end_bracket_position| {
-                            current_section = read_line[1..end_bracket_position];
+                            current_section = try allocator.dupe(u8, read_line[1..end_bracket_position]);
 
                             try self.sections.put(allocator, current_section, SectionEntry{});
                         } else {
@@ -159,7 +171,7 @@ const IniFile = struct {
                                     if (string_value.len > 0 and std.ascii.isDigit(string_value[0])) {
                                         const parsed_number = std.fmt.parseInt(u32, string_value, 10) catch {
                                             break :blk Value{
-                                                .string = string_value,
+                                                .string = try allocator.dupe(u8, string_value),
                                             };
                                         };
 
@@ -169,21 +181,33 @@ const IniFile = struct {
                                     }
 
                                     break :blk Value{
-                                        .string = string_value,
+                                        .string = try allocator.dupe(u8, string_value),
                                     };
                                 };
-                                try section_entry.dict.put(allocator, key_name, value);
+                                try section_entry.dict.put(allocator, try allocator.dupe(u8, key_name), value);
                             }
                         }
                     },
                 }
             }
 
-            read_line_opt = try reader.readUntilDelimiterOrEofAlloc(allocator, '\n', std.math.maxInt(u16));
+            line_writer.clearRetainingCapacity();
+
+            read_size = reader.streamDelimiter(&line_writer.writer, '\n') catch |err| {
+                if (err == error.EndOfStream) {
+                    break;
+                } else {
+                    return err;
+                }
+            };
+
+            try reader.discardAll(1);
+
+            read_line = line_writer.written();
         }
     }
 
-    pub fn getSection(self: Self, section_name: []const u8) ?SectionEntry {
+    pub fn getSection(self: *const IniFile, section_name: []const u8) ?SectionEntry {
         return self.sections.get(section_name);
     }
 };
@@ -204,9 +228,10 @@ fn doGifTest(entry_name: []const u8) !void {
     var config_ini = IniFile.init(helpers.zigimg_test_allocator);
     defer config_ini.deinit();
 
-    var buffered_reader = std.io.bufferedReader(config_file.reader());
+    var ini_read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var ini_read_stream = zigimg.io.ReadStream.initFile(config_file, ini_read_buffer[0..]);
 
-    try config_ini.parse(buffered_reader.reader());
+    try config_ini.parse(ini_read_stream.reader());
 
     if (config_ini.getSection("config")) |config_section| {
         const input_filename = config_section.getValue("input") orelse return error.InvalidGifConfigFile;
@@ -216,10 +241,10 @@ fn doGifTest(entry_name: []const u8) !void {
 
         const expected_background_color_opt = blk: {
             if (config_section.getValue("background")) |string_background_color| {
-                break :blk @as(?color.Rgba32, try color.Rgba32.from.htmlHex(string_background_color.string));
+                break :blk @as(?zigimg.color.Rgba32, try zigimg.color.Rgba32.from.htmlHex(string_background_color.string));
             }
 
-            break :blk @as(?color.Rgba32, null);
+            break :blk @as(?zigimg.color.Rgba32, null);
         };
 
         const expected_loop_count = if (config_section.getValue("loop-count")) |loop_value|
@@ -234,17 +259,18 @@ fn doGifTest(entry_name: []const u8) !void {
         const gif_input_file = try helpers.testOpenFile(gif_input_filepath);
         defer gif_input_file.close();
 
-        var stream_source = std.io.StreamSource{ .file = gif_input_file };
+        var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+        var read_stream = zigimg.io.ReadStream.initFile(gif_input_file, read_buffer[0..]);
 
         var gif_file = gif.GIF.init(helpers.zigimg_test_allocator);
         defer gif_file.deinit();
 
-        var frames = try gif_file.read(&stream_source);
+        var frames = try gif_file.read(&read_stream);
         defer {
             for (frames.items) |entry| {
-                entry.pixels.deinit(gif_file.allocator);
+                entry.pixels.deinit(helpers.zigimg_test_allocator);
             }
-            frames.deinit(gif_file.allocator);
+            frames.deinit(helpers.zigimg_test_allocator);
         }
 
         try helpers.expectEqSlice(u8, gif_file.header.magic[0..], expected_version.string[0..3]);
@@ -285,40 +311,45 @@ fn doGifTest(entry_name: []const u8) !void {
                     const pixels_file = try helpers.testOpenFile(pixels_filepath);
                     defer pixels_file.close();
 
-                    var pixels_buffred_reader = std.io.bufferedReader(pixels_file.reader());
-                    var pixels_reader = pixels_buffred_reader.reader();
+                    var pixels_read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+                    var pixels_read_stream = zigimg.io.ReadStream.initFile(pixels_file, pixels_read_buffer[0..]);
 
-                    var pixel_list = std.ArrayList(color.Rgba32).init(area_allocator);
-                    defer pixel_list.deinit();
+                    var pixels_reader = pixels_read_stream.reader();
 
-                    var read_buffer: [@sizeOf(color.Rgba32)]u8 = undefined;
+                    var pixel_list: std.ArrayList(zigimg.color.Rgba32) = .empty;
+                    defer pixel_list.deinit(helpers.zigimg_test_allocator);
 
-                    var read_size = try pixels_reader.readAll(read_buffer[0..]);
+                    var read_color_buffer: [@sizeOf(zigimg.color.Rgba32)]u8 = undefined;
+
+                    var read_size = try pixels_reader.readSliceShort(read_color_buffer[0..]);
                     while (read_size > 0) {
-                        const read_color = std.mem.bytesAsValue(color.Rgba32, read_buffer[0..]);
-                        try pixel_list.append(read_color.*);
+                        const read_color = std.mem.bytesAsValue(zigimg.color.Rgba32, read_color_buffer[0..]);
+                        try pixel_list.append(helpers.zigimg_test_allocator, read_color.*);
 
-                        read_size = try pixels_reader.readAll(read_buffer[0..]);
+                        read_size = try pixels_reader.readSliceShort(read_color_buffer[0..]);
                     }
 
-                    var frame_data_iterator = color.PixelStorageIterator.init(&frames.items[frame_index].pixels);
+                    var frame_data_iterator = zigimg.color.PixelStorageIterator.init(&frames.items[frame_index].pixels);
 
                     const background_color_index = gif_file.header.background_color_index;
 
                     const gif_background_color = switch (frames.items[frame_index].pixels) {
-                        .indexed1 => |pixels| if (background_color_index < pixels.palette.len) pixels.palette[background_color_index] else color.Rgba32.from.rgba(0, 0, 0, 0),
-                        .indexed2 => |pixels| if (background_color_index < pixels.palette.len) pixels.palette[background_color_index] else color.Rgba32.from.rgba(0, 0, 0, 0),
-                        .indexed4 => |pixels| if (background_color_index < pixels.palette.len) pixels.palette[background_color_index] else color.Rgba32.from.rgba(0, 0, 0, 0),
-                        .indexed8 => |pixels| if (background_color_index < pixels.palette.len) pixels.palette[background_color_index] else color.Rgba32.from.rgba(0, 0, 0, 0),
-                        else => color.Rgba32.from.rgba(0, 0, 0, 0),
+                        .indexed1 => |pixels| if (background_color_index < pixels.palette.len) pixels.palette[background_color_index] else zigimg.color.Rgba32.from.rgba(0, 0, 0, 0),
+                        .indexed2 => |pixels| if (background_color_index < pixels.palette.len) pixels.palette[background_color_index] else zigimg.color.Rgba32.from.rgba(0, 0, 0, 0),
+                        .indexed4 => |pixels| if (background_color_index < pixels.palette.len) pixels.palette[background_color_index] else zigimg.color.Rgba32.from.rgba(0, 0, 0, 0),
+                        .indexed8 => |pixels| if (background_color_index < pixels.palette.len) pixels.palette[background_color_index] else zigimg.color.Rgba32.from.rgba(0, 0, 0, 0),
+                        else => zigimg.color.Rgba32.from.rgba(0, 0, 0, 0),
                     };
 
-                    for (pixel_list.items) |expected_color| {
+                    for (pixel_list.items, 0..) |expected_color, index| {
                         if (frame_data_iterator.next()) |actual_color| {
                             if (expected_color.to.u32Rgba() == 0) {
-                                try helpers.expectEq(actual_color.to.color(color.Rgba32), gif_background_color);
+                                try helpers.expectEq(actual_color.to.color(zigimg.color.Rgba32), gif_background_color);
                             } else {
-                                try helpers.expectEq(actual_color.to.color(color.Rgba32), expected_color);
+                                helpers.expectEq(actual_color.to.color(zigimg.color.Rgba32), expected_color) catch |err| {
+                                    std.debug.print("Pixel #{} does not match: expected={}, actual={}\n", .{ index, expected_color, actual_color.to.color(zigimg.color.Rgba32) });
+                                    return err;
+                                };
                             }
                         }
                     }

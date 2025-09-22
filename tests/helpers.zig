@@ -1,6 +1,5 @@
 const std = @import("std");
-const testing = std.testing;
-const Image = @import("../src/Image.zig");
+const zigimg = @import("zigimg");
 
 pub const zigimg_test_allocator = std.testing.allocator;
 pub const fixtures_path = "../test-suite/fixtures/";
@@ -12,23 +11,23 @@ pub const TestInput = struct {
 };
 
 pub inline fn expectEq(actual: anytype, expected: anytype) !void {
-    try testing.expectEqual(@as(@TypeOf(actual), expected), actual);
+    try std.testing.expectEqual(@as(@TypeOf(actual), expected), actual);
 }
 
 pub inline fn expectEqSlice(comptime T: type, actual: []const T, expected: []const T) !void {
-    try testing.expectEqualSlices(T, expected, actual);
+    try std.testing.expectEqualSlices(T, expected, actual);
 }
 
 pub inline fn expectError(actual: anytype, expected: anyerror) !void {
-    try testing.expectError(expected, actual);
+    try std.testing.expectError(expected, actual);
 }
 
 pub inline fn expectApproxEqAbs(actual: anytype, expected: anytype, tolerance: anytype) !void {
-    return try testing.expectApproxEqAbs(expected, actual, tolerance);
+    return try std.testing.expectApproxEqAbs(expected, actual, tolerance);
 }
 
 pub inline fn expectApproxEqRel(actual: anytype, expected: anytype, tolerance: anytype) !void {
-    return try testing.expectApproxEqRel(expected, actual, tolerance);
+    return try std.testing.expectApproxEqRel(expected, actual, tolerance);
 }
 
 pub fn testOpenFile(file_path: []const u8) !std.fs.File {
@@ -36,8 +35,8 @@ pub fn testOpenFile(file_path: []const u8) !std.fs.File {
         if (err == error.FileNotFound) return error.SkipZigTest else return err;
 }
 
-pub fn testImageFromFile(image_path: []const u8) !Image {
-    return Image.fromFilePath(zigimg_test_allocator, image_path) catch |err|
+pub fn testImageFromFile(image_path: []const u8, buffer: []u8) !zigimg.Image {
+    return zigimg.Image.fromFilePath(zigimg_test_allocator, image_path, buffer) catch |err|
         if (err == error.FileNotFound) return error.SkipZigTest else return err;
 }
 

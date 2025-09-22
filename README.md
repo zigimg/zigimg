@@ -8,7 +8,7 @@ This is a work in progress library to create, process, read and write different 
 
 ## Install & Build
 
-This library currently uses zig [0.14.1](https://ziglang.org/download/), we do plan to go back to using mach nominated zig until a newer version than 0.14.1 will be nominated.
+This library currently uses zig [0.15.1](https://ziglang.org/download/), we do plan to go back to using mach nominated zig until a newer version than 0.15.1 will be nominated.
 
 ### Use zigimg in your project
 
@@ -200,13 +200,17 @@ Currently, this only supports a subset of PAMs where:
 
 ## Design philosophy
 
-zigimg offers color and image functionality. The library is designed around either using the convenient `Image` (or `ImageUnmanaged`) struct that can read and write image formats no matter the format.
+zigimg offers color and image functionality. The library is designed around either using the convenient `Image` (or `Image.Managed`) struct that can read and write image formats no matter the format.
 
 Or you can also use the image format directly in case you want to extract more data from the image format. So if you find that `Image` does not give you the information that you need from a PNG or other format, you can use the PNG format albeit with a more manual API that `Image` hide from you.
 
-## `Image` vs `ImageUnmanaged`
+## `Image` vs `Image.Managed`
 
-`Image` bundle a memory allocator and `ImageUnmanaged` does not. Similar to `std.ArrayList()` and `std.ArrayListUnmanaged()` in Zig standard library. For all the examples we are going to use `Image` but it is similar with `ImageUnmanaged`. 
+`Image` does not bundle a memory allocator and `Image.Managed` does, similar to `std.ArrayList()` and `std.array_list.Managed` in Zig standard library. For all the examples we are going to use `Image` but the API is similar when using `Image.Managed`.
+
+## Buffer requirements
+
+Starting with Zig 0.15, all the I/O operations on file can accept a buffer for buffering. zigimg requires valid buffering buffers for reading from files and writing images to file. You can use `zigimg.io.DEFAULT_BUFFER_SIZE` as a size for the buffer you pass to the various file functions.
 
 ## Read an image
 
@@ -221,13 +225,11 @@ const std = @import("std");
 const zigimg = @import("zigimg");
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
+    const allocator = std.heap.smp_allocator;
 
-    const allocator = gpa.allocator();
-
-    var image = try zigimg.Image.fromFilePath(allocator, "my_image.png");
-    defer image.deinit();
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var image = try zigimg.Image.fromFilePath(allocator, read_buffer[0..], "my_image.png");
+    defer image.deinit(allocator);
 
     // Do something with your image
 }
@@ -240,16 +242,14 @@ const std = @import("std");
 const zigimg = @import("zigimg");
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-
-    const allocator = gpa.allocator();
+    const allocator = std.heap.smp_allocator;
 
     var file = try std.fs.cwd().openFile(file_path, .{});
     defer file.close();
 
-    var image = try zigimg.Image.fromFile(allocator, &file);
-    defer image.deinit();
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var image = try zigimg.Image.fromFile(allocator, read_buffer[0..], &file);
+    defer image.deinit(allocator);
 
     // Do something with your image
 }
@@ -264,13 +264,10 @@ const zigimg = @import("zigimg");
 const image_data = @embedFile("test.bmp");
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-
-    const allocator = gpa.allocator();
+    const allocator = std.heap.smp_allocator;
 
     const image = try zigimg.Image.fromMemory(allocator, image_data[0..]);
-    defer image.deinit();
+    defer image.deinit(allocator);
 
     // Do something with your image
 }
@@ -386,7 +383,8 @@ const std = @import("std");
 const zigimg = @import("zigimg");
 
 pub fn main() !void {
-    const image_format = try zigimg.Image.detectFormatFromFilePath(allocator, "my_image.png");
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    const image_format = try zigimg.Image.detectFormatFromFilePath(allocator, "my_image.png", read_buffer[0..]);
 
     // Will print png
     std.log.debug("Image format: {}", .{image_format});
@@ -403,7 +401,8 @@ pub fn main() !void {
     var file = try std.fs.cwd().openFile("my_image.gif", .{});
     defer file.close();
 
-    const image_format = try zigimg.Image.detectFormatFromFile(allocator, file);
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    const image_format = try zigimg.Image.detectFormatFromFile(allocator, file, read_buffer[0..]);
 
     // Will print gif
     std.log.debug("Image format: {}", .{image_format});
@@ -437,10 +436,11 @@ pub fn example() !void {
     // [...]
     // Assuming you already have an image loaded
 
-    try image.writeToFilePath("my_new_image.png", .{ .png = .{} });
+    var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    try image.writeToFilePath("my_new_image.png", write_buffer[0..], .{ .png = .{} });
 
     // Or with encoder options
-    try image.writeToFilePath("my_new_image.png", .{ .png = .{ .interlaced = true } });
+    try image.writeToFilePath("my_new_image.png", write_buffer[0..]. .{ .png = .{ .interlaced = true } });
 }
 ```
 
@@ -451,7 +451,8 @@ pub fn example() !void {
     // [...]
     // Assuming you already have an image loaded and the file already created
 
-    try image.writeToFile(file, .{ .bmp = .{} });
+    var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    try image.writeToFile(file, write_buffer[0..], .{ .bmp = .{} });
 }
 ```
 
@@ -477,13 +478,10 @@ const std = @import("std");
 const zigimg = @import("zigimg");
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-
-    const allocator = gpa.allocator();
+    const allocator = std.heap.smp_allocator;
 
     var image = try zigimg.Image.create(allocator, 1920, 1080, .rgba32);
-    defer image.deinit();
+    defer image.deinit(allocator);
 
     // Do something with your image
 }
@@ -491,7 +489,7 @@ pub fn main() !void {
 
 ## Interpret raw pixels
 
-If you are not dealing with a image format, you can import your pixel data using `Image.fromRawPixels()`. It will create a copy of the pixels data. If you want the image to take ownership or just pass the data along to write it to a image format, use `ImageUnmanaged.fromRawPixelsOwned()`.
+If you are not dealing with a image format, you can import your pixel data using `Image.fromRawPixels()`. It will create a copy of the pixels data. If you want the image to take ownership or just pass the data along to write it to a image format, use `Image.fromRawPixelsOwned()`.
 
 Using `fromRawPixel()`:
 ```zig
@@ -499,15 +497,12 @@ const std = @import("std");
 const zigimg = @import("zigimg");
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-
-    const allocator = gpa.allocator();
+    const allocator = std.heap.smp_allocator;
 
     const my_raw_pixels = @embedData("raw_bgra32.bin");
 
     var image = try zigimg.Image.fromRawPixels(allocator, 1920, 1080, my_raw_pixels[0..], .bgra32);
-    defer image.deinit();
+    defer image.deinit(allocator);
 
     // Do something with your image
 }
@@ -519,14 +514,11 @@ const std = @import("std");
 const zigimg = @import("zigimg");
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-
-    const allocator = gpa.allocator();
+    const allocator = std.heap.smp_allocator;
 
     const my_raw_pixels = @embedData("raw_bgra32.bin");
 
-    var image = try zigimg.ImageUnmanaged.fromRawPixelsOwned(1920, 1080, my_raw_pixels[0..], .bgra32);
+    var image = try zigimg.Image.fromRawPixelsOwned(1920, 1080, my_raw_pixels[0..], .bgra32);
 
     // Do something with your image
 }
@@ -541,18 +533,15 @@ const std = @import("std");
 const zigimg = @import("zigimg");
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-
-    const allocator = gpa.allocator();
+    const allocator = std.heap.smp_allocator;
 
     const image_data = @embedFile("windows_rgba_v5.bmp");
 
-    var stream_source = std.io.StreamSource{ .const_buffer = std.io.fixedBufferStream(image_data) };
+    var read_stream = zigimg.io.ReadStream.initMemory(image_data);
 
     var bmp = zigimg.formats.bmp.BMP{};
 
-    const pixels = try bmp.read(allocator, &stream_source);
+    const pixels = try bmp.read(allocator, read_stream.reader());
     defer pixels.deinit(allocator);
 
     std.log.info("BMP info header: {}", .{bmp.info_header});
@@ -573,7 +562,7 @@ pub fn example() !void {
     // [...]
     // Assuming you already have an image loaded
 
-    try image.convert(.float32);
+    try image.convert(allocator, .float32);
 }
 ```
 
@@ -602,7 +591,7 @@ pub fn example(allocator: std.mem.Allocator) !void {
     const image_data = @embedFile("windows_rgba_v5.bmp");
 
     var image = try zigimg.Image.fromMemory(allocator, image_data[0..]);
-    defer image.deinit();
+    defer image.deinit(allocator);
 
     var quantizer = zigimg.OctTreeQuantizer.init(allocator);
     defer quantizer.deinit();
@@ -650,7 +639,7 @@ pub fn main() !void {
 
 ## Color management & color space
 
-While zigimg does not support ICC profile yet (see #36) it does support a variety of color models and color spaces. All color space and color model are done in 32-bit floating point. So if you are not using `Colorf32` / `float32` as your pixel format, you'll need to convert to that format first.
+While zigimg does not support ICC profile yet (see issue #36) it does support a variety of color models and color spaces. All color space and color model are done in 32-bit floating point. So if you are not using `Colorf32` / `float32` as your pixel format, you'll need to convert to that format first.
 
 The following device-dependent color model are supported:
 * HSL (Hue, Saturation, Luminance)

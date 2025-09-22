@@ -1,10 +1,9 @@
-const std = @import("std");
 const builtin = @import("builtin");
-const ImageUnmanaged = @import("../ImageUnmanaged.zig");
-const FormatInterface = @import("../FormatInterface.zig");
 const color = @import("../color.zig");
-const utils = @import("../utils.zig");
-const buffered_stream_source = @import("../buffered_stream_source.zig");
+const FormatInterface = @import("../FormatInterface.zig");
+const Image = @import("../Image.zig");
+const io = @import("../io.zig");
+const std = @import("std");
 
 /// XBM is a monochrome bitmap format in which data is stored as a C language data array.
 /// Primarily used for the storage of cursor and icon bitmaps for use in the X graphical user interface.
@@ -38,16 +37,15 @@ pub const XBM = struct {
 
     /// Takes a stream, Returns true if and only if the stream contains exactly two or four '#define' lines
     /// at the beginning.
-    pub fn formatDetect(stream: *ImageUnmanaged.Stream) ImageUnmanaged.ReadError!bool {
-        var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
-        const reader = buffered_stream.reader();
+    pub fn formatDetect(read_stream: *io.ReadStream) Image.ReadError!bool {
+        defer read_stream.seekTo(0) catch {};
+        const reader = read_stream.reader();
 
-        var define_buf: [64]u8 = undefined;
         var define_line_count: u32 = 0;
         var found_non_define = false;
 
         while (!found_non_define) {
-            const line = try reader.readUntilDelimiterOrEof(&define_buf, '\n') orelse break;
+            const line = try reader.takeDelimiterInclusive('\n');
             if (isDefineLine(line)) {
                 define_line_count += 1;
             } else {
@@ -72,7 +70,7 @@ pub const XBM = struct {
         return null;
     }
 
-    fn collectHexBytes(line: []const u8, bytes: *std.ArrayList(u8)) !void {
+    fn collectHexBytes(line: []const u8, bytes: *std.array_list.Managed(u8)) !void {
         var it = std.mem.tokenizeAny(u8, line, ", \t\n{};");
         while (it.next()) |tok| {
             if (tok.len >= 2 and (tok[0] == '0' and (tok[1] == 'x' or tok[1] == 'X'))) {
@@ -88,12 +86,10 @@ pub const XBM = struct {
         }
     }
 
-    pub fn read(self: *XBM, allocator: std.mem.Allocator, stream: *ImageUnmanaged.Stream) ImageUnmanaged.ReadError!color.PixelStorage {
-        var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
-        const reader = buffered_stream.reader();
+    pub fn read(self: *XBM, allocator: std.mem.Allocator, read_stream: *io.ReadStream) Image.ReadError!color.PixelStorage {
+        const reader = read_stream.reader();
 
         //  --- Parse #define lines ---
-        var define_buf: [128]u8 = undefined;
         var width: ?u32 = null;
         var height: ?u32 = null;
         var hotspot_x: u32 = 0;
@@ -102,8 +98,8 @@ pub const XBM = struct {
         var first_pixel_line: []const u8 = &[_]u8{};
         var have_first_pixel_line = false;
 
-        var line_opt = try reader.readUntilDelimiterOrEof(define_buf[0..], '\n');
-        while (line_opt) |line_full| {
+        var line_full = try reader.takeDelimiterInclusive('\n');
+        while (line_full.len > 0) {
             const line = std.mem.trimRight(u8, line_full, " \r\n");
             if (isDefineLine(line)) {
                 if (parseDefineValue(line)) |value| {
@@ -117,7 +113,7 @@ pub const XBM = struct {
                         hotspot_y = value;
                     }
                 } else {
-                    return ImageUnmanaged.ReadError.InvalidData;
+                    return Image.ReadError.InvalidData;
                 }
             } else {
                 //  Reached first non-define line – treat as pixel data
@@ -125,11 +121,11 @@ pub const XBM = struct {
                 have_first_pixel_line = true;
                 break;
             }
-            line_opt = try reader.readUntilDelimiterOrEof(define_buf[0..], '\n');
+            line_full = try reader.takeDelimiterInclusive('\n');
         }
 
         if (width == null or height == null) {
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
 
         self.width = width.?;
@@ -146,7 +142,7 @@ pub const XBM = struct {
         pixels.indexed1.palette[1] = color.Rgba32.from.rgba(0, 0, 0, 255);
 
         //  --- Collect hex bytes ---
-        var byte_list = std.ArrayList(u8).init(allocator);
+        var byte_list = std.array_list.Managed(u8).init(allocator);
         defer byte_list.deinit();
 
         const expected_bytes = (pixel_count + 7) / 8;
@@ -158,12 +154,18 @@ pub const XBM = struct {
 
         //  Read remaining lines till EOF and gather bytes
         while (true) {
-            const l = try reader.readUntilDelimiterOrEof(define_buf[0..], '\n') orelse break;
+            const l = reader.takeDelimiterInclusive('\n') catch |err| {
+                if (err == error.EndOfStream) {
+                    break;
+                } else {
+                    return err;
+                }
+            };
             try collectHexBytes(l, &byte_list);
         }
 
         if (byte_list.items.len < expected_bytes) {
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
 
         //  --- Decode bits into pixel indices ---
@@ -180,12 +182,12 @@ pub const XBM = struct {
         return pixels;
     }
 
-    pub fn readImage(allocator: std.mem.Allocator, stream: *ImageUnmanaged.Stream) ImageUnmanaged.ReadError!ImageUnmanaged {
-        var result: ImageUnmanaged = .{};
+    pub fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) Image.ReadError!Image {
+        var result: Image = .{};
         errdefer result.deinit(allocator);
 
         var xbm: XBM = .{};
-        result.pixels = try xbm.read(allocator, stream);
+        result.pixels = try xbm.read(allocator, read_stream);
         result.width = @intCast(xbm.width);
         result.height = @intCast(xbm.height);
         return result;
@@ -193,8 +195,8 @@ pub const XBM = struct {
 
     pub fn writeImage(
         _: std.mem.Allocator,
-        _: *ImageUnmanaged.Stream,
-        _: ImageUnmanaged,
-        _: ImageUnmanaged.EncoderOptions,
-    ) ImageUnmanaged.WriteError!void {}
+        _: *io.WriteStream,
+        _: Image,
+        _: Image.EncoderOptions,
+    ) Image.WriteError!void {}
 };
