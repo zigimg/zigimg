@@ -37,7 +37,7 @@ pub const ReadStream = union(enum) {
                     return SeekError.Unseekable;
                 }
 
-                memory.seek = offset;
+                memory.seek = @intCast(offset);
             },
             .file => |*file_reader| {
                 const file_size = file_reader.getSize() catch {
@@ -136,7 +136,7 @@ pub const WriteStream = union(enum) {
                     return SeekError.Unseekable;
                 }
 
-                memory.end = offset;
+                memory.end = @intCast(offset);
             },
             .file => |*file_writer| {
                 self.flush() catch {

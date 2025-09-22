@@ -1071,7 +1071,7 @@ test "png: InfoProcessor on Png Test suite" {
                 var file_writer = test_output_file.writer(write_buffer[0..]);
                 var writer = &file_writer.interface;
 
-                try writer.writeAll(info_buffer[0..info_stream.getPos()]);
+                try writer.writeAll(info_buffer[0..@intCast(info_stream.getPos())]);
             }
         }
     }
