@@ -1,9 +1,10 @@
-const std = @import("std");
-const color = @import("../../color.zig");
-const PixelFormat = @import("../../pixel_format.zig").PixelFormat;
-const Image = @import("../../Image.zig");
-const HeaderData = @import("types.zig").HeaderData;
 const builtin = @import("builtin");
+const color = @import("../../color.zig");
+const HeaderData = @import("types.zig").HeaderData;
+const Image = @import("../../Image.zig");
+const io = @import("../../io.zig");
+const PixelFormat = @import("../../pixel_format.zig").PixelFormat;
+const std = @import("std");
 
 pub const FilterType = enum(u8) {
     none = 0,
@@ -25,7 +26,7 @@ pub const FilterChoice = union(FilterChoiceStrategies) {
     specified: FilterType,
 };
 
-pub fn filter(allocator: std.mem.Allocator, writer: anytype, pixels: color.PixelStorage, filter_choice: FilterChoice, header: HeaderData) Image.WriteError!void {
+pub fn filter(allocator: std.mem.Allocator, writer: *std.Io.Writer, pixels: color.PixelStorage, filter_choice: FilterChoice, header: HeaderData) Image.WriteError!void {
     const line_bytes = header.lineBytes();
     const scanline_allocation_size = 2 * line_bytes;
 
@@ -192,9 +193,6 @@ fn paeth(b4: u8, up: u8, b4_up: u8) u8 {
 }
 
 test "filtering 16-bit grayscale pixels uses correct endianess" {
-    var output_bytes = std.ArrayList(u8).init(std.testing.allocator);
-    defer output_bytes.deinit();
-
     const pixels = try std.testing.allocator.dupe(color.Grayscale16, &.{
         .{ .value = 0xF },
         .{ .value = 0xFF },
@@ -207,8 +205,11 @@ test "filtering 16-bit grayscale pixels uses correct endianess" {
     });
     defer std.testing.allocator.free(pixels);
 
+    var allocating_writer = std.Io.Writer.Allocating.init(std.testing.allocator);
+    defer allocating_writer.deinit();
+
     // We specify the endianess as none to simplify the test
-    try filter(std.testing.allocator, output_bytes.writer(), .{ .grayscale16 = pixels }, .{ .specified = .none }, .{
+    try filter(std.testing.allocator, &allocating_writer.writer, .{ .grayscale16 = pixels }, .{ .specified = .none }, .{
         .width = 4,
         .height = 2,
         .bit_depth = 16,
@@ -221,5 +222,5 @@ test "filtering 16-bit grayscale pixels uses correct endianess" {
     try std.testing.expectEqualSlices(u8, &.{
         0x00, 0x00, 0x0F, 0x00, 0xFF, 0x0F, 0xFF, 0xFF, 0xFF, //
         0x00, 0x00, 0x0F, 0x00, 0xFF, 0x0F, 0xFF, 0xFF, 0xFF, //
-    }, output_bytes.items);
+    }, allocating_writer.written());
 }

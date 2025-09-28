@@ -1,5 +1,5 @@
 const std = @import("std");
-const ImageUnmanaged = @import("../../ImageUnmanaged.zig");
+const Image = @import("../../Image.zig");
 const color = @import("../../color.zig");
 const PixelFormat = @import("../../pixel_format.zig").PixelFormat;
 const math = std.math;
@@ -191,8 +191,8 @@ fn initHuffmanLUT(spec: HuffmanSpec) [256]u32 {
 
 /// JPEGWriter handles encoding images to JPEG format
 pub const JPEGWriter = struct {
-    writer: std.io.AnyWriter,
-    err: ?ImageUnmanaged.WriteError = null,
+    writer: *std.Io.Writer,
+    err: ?Image.WriteError = null,
     buf: [16]u8 = undefined,
     bits: u32 = 0,
     n_bits: u32 = 0,
@@ -200,7 +200,7 @@ pub const JPEGWriter = struct {
     huffman_lut: [nHuffIndex][256]u32 = undefined, // Huffman look-up tables
 
     /// Initialize a new JPEG writer
-    pub fn init(writer: std.io.AnyWriter) JPEGWriter {
+    pub fn init(writer: *std.Io.Writer) JPEGWriter {
         var jpeg_writer = JPEGWriter{
             .writer = writer,
         };
@@ -214,11 +214,11 @@ pub const JPEGWriter = struct {
     }
 
     /// Encode an image to JPEG format (based on Go's Encode function)
-    pub fn encode(self: *JPEGWriter, image: ImageUnmanaged, quality: u8) ImageUnmanaged.WriteError!void {
+    pub fn encode(self: *JPEGWriter, image: Image, quality: u8) Image.WriteError!void {
 
         // Validate image dimensions
         if (image.width >= 1 << 16 or image.height >= 1 << 16) {
-            return ImageUnmanaged.WriteError.InvalidData;
+            return Image.WriteError.InvalidData;
         }
 
         // Clip quality to [1, 100]
@@ -263,7 +263,7 @@ pub const JPEGWriter = struct {
     }
 
     /// Initialize quantization tables based on quality parameter
-    fn initializeQuantizationTables(self: *JPEGWriter, quality: u8) ImageUnmanaged.WriteError!void {
+    fn initializeQuantizationTables(self: *JPEGWriter, quality: u8) Image.WriteError!void {
         // Convert from a quality rating to a scaling factor
         var scale_factor: i32 = undefined;
         if (quality < 50) {
@@ -298,7 +298,7 @@ pub const JPEGWriter = struct {
     }
 
     /// Get the number of components based on image pixel format
-    fn getComponentCount(self: *JPEGWriter, image: ImageUnmanaged) u8 {
+    fn getComponentCount(self: *JPEGWriter, image: Image) u8 {
         _ = self;
         // For now, assume RGB images have 3 components, grayscale have 1
         switch (image.pixels) {
@@ -309,27 +309,27 @@ pub const JPEGWriter = struct {
     }
 
     /// Write Start of Image marker
-    pub fn writeSOI(self: *JPEGWriter) ImageUnmanaged.WriteError!void {
+    pub fn writeSOI(self: *JPEGWriter) Image.WriteError!void {
         self.buf[0] = 0xff;
         self.buf[1] = 0xd8; // SOI marker
         _ = self.writer.write(self.buf[0..2]) catch {
-            self.err = ImageUnmanaged.WriteError.InvalidData;
-            return ImageUnmanaged.WriteError.InvalidData;
+            self.err = Image.WriteError.InvalidData;
+            return Image.WriteError.InvalidData;
         };
     }
 
     /// Write End of Image marker
-    pub fn writeEOI(self: *JPEGWriter) ImageUnmanaged.WriteError!void {
+    pub fn writeEOI(self: *JPEGWriter) Image.WriteError!void {
         self.buf[0] = 0xff;
         self.buf[1] = 0xd9; // EOI marker
         _ = self.writer.write(self.buf[0..2]) catch {
-            self.err = ImageUnmanaged.WriteError.InvalidData;
-            return ImageUnmanaged.WriteError.InvalidData;
+            self.err = Image.WriteError.InvalidData;
+            return Image.WriteError.InvalidData;
         };
     }
 
     /// Write Start of Frame (Baseline DCT) marker
-    pub fn writeSOF0(self: *JPEGWriter, width: u16, height: u16, components: u8) ImageUnmanaged.WriteError!void {
+    pub fn writeSOF0(self: *JPEGWriter, width: u16, height: u16, components: u8) Image.WriteError!void {
         const markerlen = 8 + 3 * @as(usize, components);
         self.writeMarkerHeader(@as(u8, @intCast(@intFromEnum(utils.Markers.sof0) & 0xFF)), markerlen); // SOF0 marker
 
@@ -344,8 +344,8 @@ pub const JPEGWriter = struct {
         self.buf[5] = components;
 
         _ = self.writer.write(self.buf[0..6]) catch {
-            self.err = ImageUnmanaged.WriteError.InvalidData;
-            return ImageUnmanaged.WriteError.InvalidData;
+            self.err = Image.WriteError.InvalidData;
+            return Image.WriteError.InvalidData;
         };
 
         // Component specifications
@@ -355,8 +355,8 @@ pub const JPEGWriter = struct {
             self.buf[1] = 0x11; // 4:4:4 subsampling
             self.buf[2] = 0; // Quantization table
             _ = self.writer.write(self.buf[0..3]) catch {
-                self.err = ImageUnmanaged.WriteError.InvalidData;
-                return ImageUnmanaged.WriteError.InvalidData;
+                self.err = Image.WriteError.InvalidData;
+                return Image.WriteError.InvalidData;
             };
         } else {
             // Color components
@@ -368,14 +368,14 @@ pub const JPEGWriter = struct {
                 self.buf[3 * i + 2] = quant_tables[i]; // Quantization table
             }
             _ = self.writer.write(self.buf[0 .. 3 * @as(usize, components)]) catch {
-                self.err = ImageUnmanaged.WriteError.InvalidData;
-                return ImageUnmanaged.WriteError.InvalidData;
+                self.err = Image.WriteError.InvalidData;
+                return Image.WriteError.InvalidData;
             };
         }
     }
 
     /// Write Define Quantization Tables marker
-    pub fn writeDQT(self: *JPEGWriter) ImageUnmanaged.WriteError!void {
+    pub fn writeDQT(self: *JPEGWriter) Image.WriteError!void {
         const markerlen = 2 + quant_index * (1 + block_size);
         self.writeMarkerHeader(@as(u8, @intCast(@intFromEnum(utils.Markers.define_quantization_tables) & 0xFF)), markerlen); // DQT marker
 
@@ -383,19 +383,19 @@ pub const JPEGWriter = struct {
             // Write table index (8-bit precision, destination i)
             self.buf[0] = @as(u8, @intCast(i)); // table index
             _ = self.writer.write(self.buf[0..1]) catch {
-                self.err = ImageUnmanaged.WriteError.InvalidData;
-                return ImageUnmanaged.WriteError.InvalidData;
+                self.err = Image.WriteError.InvalidData;
+                return Image.WriteError.InvalidData;
             };
             // Write quantization table data
             _ = self.writer.write(&self.quant[i]) catch {
-                self.err = ImageUnmanaged.WriteError.InvalidData;
-                return ImageUnmanaged.WriteError.InvalidData;
+                self.err = Image.WriteError.InvalidData;
+                return Image.WriteError.InvalidData;
             };
         }
     }
 
     /// Write Define Huffman Tables marker
-    pub fn writeDHT(self: *JPEGWriter, nComponent: u8) ImageUnmanaged.WriteError!void {
+    pub fn writeDHT(self: *JPEGWriter, nComponent: u8) Image.WriteError!void {
 
         // Calculate marker length
         var markerlen: usize = 2;
@@ -415,26 +415,26 @@ pub const JPEGWriter = struct {
             // Write table class and destination
             self.buf[0] = table_classes[i];
             _ = self.writer.write(self.buf[0..1]) catch {
-                self.err = ImageUnmanaged.WriteError.InvalidData;
-                return ImageUnmanaged.WriteError.InvalidData;
+                self.err = Image.WriteError.InvalidData;
+                return Image.WriteError.InvalidData;
             };
 
             // Write bit counts (16 bytes)
             _ = self.writer.write(&s.count) catch {
-                self.err = ImageUnmanaged.WriteError.InvalidData;
-                return ImageUnmanaged.WriteError.InvalidData;
+                self.err = Image.WriteError.InvalidData;
+                return Image.WriteError.InvalidData;
             };
 
             // Write Huffman values
             _ = self.writer.write(s.value) catch {
-                self.err = ImageUnmanaged.WriteError.InvalidData;
-                return ImageUnmanaged.WriteError.InvalidData;
+                self.err = Image.WriteError.InvalidData;
+                return Image.WriteError.InvalidData;
             };
         }
     }
 
     /// Write Start of Scan marker
-    pub fn writeSOS(self: *JPEGWriter, image: ImageUnmanaged) ImageUnmanaged.WriteError!void {
+    pub fn writeSOS(self: *JPEGWriter, image: Image) Image.WriteError!void {
         const nComponent = self.getComponentCount(image);
 
         // Write SOS header based on component count
@@ -442,8 +442,8 @@ pub const JPEGWriter = struct {
             // Grayscale SOS header
             const sosHeaderY = [_]u8{ 0xff, 0xda, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3f, 0x00 };
             _ = self.writer.write(&sosHeaderY) catch {
-                self.err = ImageUnmanaged.WriteError.InvalidData;
-                return ImageUnmanaged.WriteError.InvalidData;
+                self.err = Image.WriteError.InvalidData;
+                return Image.WriteError.InvalidData;
             };
         } else {
             // Color SOS header
@@ -455,8 +455,8 @@ pub const JPEGWriter = struct {
                 0x00, 0x3f, 0x00, // Start/end spectral selection, successive approximation
             };
             _ = self.writer.write(&sosHeaderYCbCr) catch {
-                self.err = ImageUnmanaged.WriteError.InvalidData;
-                return ImageUnmanaged.WriteError.InvalidData;
+                self.err = Image.WriteError.InvalidData;
+                return Image.WriteError.InvalidData;
             };
         }
 
@@ -471,12 +471,12 @@ pub const JPEGWriter = struct {
         self.buf[2] = @as(u8, @intCast(markerlen >> 8));
         self.buf[3] = @as(u8, @intCast(markerlen & 0xff));
         _ = self.writer.write(self.buf[0..4]) catch {
-            self.err = ImageUnmanaged.WriteError.InvalidData;
+            self.err = Image.WriteError.InvalidData;
         };
     }
 
     /// Emit bits to the output stream
-    pub fn emit(self: *JPEGWriter, bits: u32, n_bits: u32) ImageUnmanaged.WriteError!void {
+    pub fn emit(self: *JPEGWriter, bits: u32, n_bits: u32) Image.WriteError!void {
 
         // Preconditions: bits < 1<<n_bits && n_bits <= 16
         std.debug.assert(bits < (@as(u32, 1) << @as(u5, @intCast(@min(n_bits, 31)))));
@@ -503,14 +503,14 @@ pub const JPEGWriter = struct {
     /// Write a single byte, handling errors
     fn writeByte(self: *JPEGWriter, b: u8) void {
         if (self.err != null) return;
-        _ = self.writer.write(std.mem.asBytes(&b)) catch {
-            self.err = ImageUnmanaged.WriteError.InvalidData;
+        self.writer.writeByte(b) catch {
+            self.err = Image.WriteError.InvalidData;
             return;
         };
     }
 
     /// Emit Huffman-encoded value
-    pub fn emitHuff(self: *JPEGWriter, huff_index: usize, value: i32) ImageUnmanaged.WriteError!void {
+    pub fn emitHuff(self: *JPEGWriter, huff_index: usize, value: i32) Image.WriteError!void {
         if (self.err != null) return;
 
         // Get Huffman code from LUT (don't clamp - Huffman tables handle the full range)
@@ -525,7 +525,7 @@ pub const JPEGWriter = struct {
     }
 
     /// Process and write an 8x8 DCT block
-    pub fn writeBlock(self: *JPEGWriter, block: *[64]i32, quant_idx: usize, prev_dc: i32) ImageUnmanaged.WriteError!i32 {
+    pub fn writeBlock(self: *JPEGWriter, block: *[64]i32, quant_idx: usize, prev_dc: i32) Image.WriteError!i32 {
         if (self.err != null) return 0;
 
         // Debug: Print first block's input values
@@ -602,7 +602,7 @@ pub const JPEGWriter = struct {
     }
 
     /// Convert RGB image data to YCbCr color space for a single 8x8 block
-    pub fn rgbToYCbCr(self: *JPEGWriter, image: ImageUnmanaged, px: i32, py: i32, y_block: *[64]i32, cb_block: *[64]i32, cr_block: *[64]i32) ImageUnmanaged.WriteError!void {
+    pub fn rgbToYCbCr(self: *JPEGWriter, image: Image, px: i32, py: i32, y_block: *[64]i32, cb_block: *[64]i32, cr_block: *[64]i32) Image.WriteError!void {
         _ = self;
 
         for (0..8) |j| {
@@ -663,7 +663,7 @@ pub const JPEGWriter = struct {
     }
 
     /// Convert grayscale image data to Y block
-    pub fn grayToY(self: *JPEGWriter, image: ImageUnmanaged, px: i32, py: i32, y_block: *[64]i32) ImageUnmanaged.WriteError!void {
+    pub fn grayToY(self: *JPEGWriter, image: Image, px: i32, py: i32, y_block: *[64]i32) Image.WriteError!void {
         _ = self;
 
         for (0..8) |j| {
@@ -847,7 +847,7 @@ pub const JPEGWriter = struct {
     }
 
     /// Flush any remaining buffered data
-    pub fn flush(self: *JPEGWriter) ImageUnmanaged.WriteError!void {
+    pub fn flush(self: *JPEGWriter) Image.WriteError!void {
         if (self.err != null) return;
 
         // Flush any remaining bits
@@ -855,14 +855,12 @@ pub const JPEGWriter = struct {
             try self.emit(0x7f, 7); // Pad with 1's
         }
 
-        // Flush the writer if it supports flushing
-        if (@hasDecl(std.io.AnyWriter, "flush")) {
-            try self.writer.flush();
-        }
+        // Flush the writer
+        try self.writer.flush();
     }
 
     /// Write the actual image data (scan/entropy coded data)
-    pub fn writeImageData(self: *JPEGWriter, image: ImageUnmanaged, nComponent: u8) ImageUnmanaged.WriteError!void {
+    pub fn writeImageData(self: *JPEGWriter, image: Image, nComponent: u8) Image.WriteError!void {
         if (self.err != null) return;
 
         // Scratch blocks for YCbCr conversion
@@ -932,7 +930,7 @@ pub const JPEGWriter = struct {
     }
 
     /// Emit Huffman-encoded value with run-length encoding
-    pub fn emitHuffRLE(self: *JPEGWriter, huff_index: usize, run_length: i32, value: i32) ImageUnmanaged.WriteError!void {
+    pub fn emitHuffRLE(self: *JPEGWriter, huff_index: usize, run_length: i32, value: i32) Image.WriteError!void {
         if (self.err != null) return;
 
         // Handle value encoding (same as Go implementation)
@@ -986,25 +984,25 @@ pub const JPEGWriter = struct {
     }
 
     /// Validate that an image can be encoded as JPEG
-    pub fn validateImage(image: ImageUnmanaged) ImageUnmanaged.WriteError!void {
+    pub fn validateImage(image: Image) Image.WriteError!void {
         // Check supported pixel formats
         switch (image.pixels) {
             .grayscale8, .rgb24 => {
                 // These formats are supported
             },
             else => {
-                return ImageUnmanaged.WriteError.InvalidData;
+                return Image.WriteError.InvalidData;
             },
         }
 
         // Check image dimensions
         if (image.width == 0 or image.height == 0) {
-            return ImageUnmanaged.WriteError.InvalidData;
+            return Image.WriteError.InvalidData;
         }
 
         // Check maximum dimensions (JPEG spec limit)
         if (image.width >= 1 << 16 or image.height >= 1 << 16) {
-            return ImageUnmanaged.WriteError.InvalidData;
+            return Image.WriteError.InvalidData;
         }
     }
 };

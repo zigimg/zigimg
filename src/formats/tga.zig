@@ -1,8 +1,8 @@
 const FormatInterface = @import("../FormatInterface.zig");
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
-const buffered_stream_source = @import("../buffered_stream_source.zig");
+const io = @import("../io.zig");
 const color = @import("../color.zig");
-const ImageUnmanaged = @import("../ImageUnmanaged.zig");
+const Image = @import("../Image.zig");
 const std = @import("std");
 const simd = @import("../simd.zig");
 const utils = @import("../utils.zig");
@@ -152,16 +152,17 @@ const RLEPacketHeader = packed struct {
 };
 
 const TargaRLEDecoder = struct {
-    source_reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader,
+    source_reader: *std.Io.Reader,
+
     allocator: std.mem.Allocator,
     bytes_per_pixel: usize,
 
     state: State = .read_header,
     repeat_count: usize = 0,
     repeat_data: []u8 = undefined,
-    data_stream: std.io.FixedBufferStream([]u8) = undefined,
+    wrote_repeat_data: usize = 0,
 
-    pub const Reader = std.io.Reader(*TargaRLEDecoder, ImageUnmanaged.ReadError, read);
+    reader: std.Io.Reader,
 
     const State = enum {
         read_header,
@@ -169,15 +170,24 @@ const TargaRLEDecoder = struct {
         raw,
     };
 
-    pub fn init(allocator: std.mem.Allocator, source_reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader, bytes_per_pixels: usize) !TargaRLEDecoder {
+    const vtable: std.Io.Reader.VTable = .{
+        .stream = stream,
+    };
+
+    pub fn init(allocator: std.mem.Allocator, source_reader: *std.Io.Reader, bytes_per_pixels: usize, decompress_buffer: []u8) !TargaRLEDecoder {
         var result = TargaRLEDecoder{
             .allocator = allocator,
             .source_reader = source_reader,
             .bytes_per_pixel = bytes_per_pixels,
+            .reader = .{
+                .vtable = &vtable,
+                .buffer = decompress_buffer,
+                .seek = 0,
+                .end = 0,
+            },
         };
 
         result.repeat_data = try allocator.alloc(u8, bytes_per_pixels);
-        result.data_stream = std.io.fixedBufferStream(result.repeat_data);
         return result;
     }
 
@@ -185,79 +195,98 @@ const TargaRLEDecoder = struct {
         self.allocator.free(self.repeat_data);
     }
 
-    pub fn read(self: *TargaRLEDecoder, dest: []u8) ImageUnmanaged.ReadError!usize {
-        var read_count: usize = 0;
+    // Reader interface
+    fn stream(reader: *std.Io.Reader, writer: *std.Io.Writer, limit: std.Io.Limit) std.Io.Reader.StreamError!usize {
+        const self: *TargaRLEDecoder = @alignCast(@fieldParentPtr("reader", reader));
 
-        if (self.state == .read_header) {
-            const packet_header = try utils.readStruct(self.source_reader, RLEPacketHeader, .little);
+        var remaining: usize = @intFromEnum(limit);
 
-            if (packet_header.packet_type == .repeated) {
-                self.state = .repeated;
+        state_machine: switch (self.state) {
+            .read_header => {
+                const packet_header = try self.source_reader.takeStruct(RLEPacketHeader, .little);
 
-                self.repeat_count = @as(usize, @intCast(packet_header.count)) + 1;
+                switch (packet_header.packet_type) {
+                    .repeated => {
+                        self.state = .repeated;
+                        self.repeat_count = @as(usize, @intCast(packet_header.count)) + 1;
+                        try self.source_reader.readSliceAll(self.repeat_data);
 
-                _ = try self.source_reader.readAll(self.repeat_data);
+                        continue :state_machine .repeated;
+                    },
+                    .raw => {
+                        self.state = .raw;
+                        self.repeat_count = (@as(usize, @intCast(packet_header.count)) + 1) * self.bytes_per_pixel;
 
-                self.data_stream.reset();
-            } else if (packet_header.packet_type == .raw) {
-                self.state = .raw;
-
-                self.repeat_count = (@as(usize, @intCast(packet_header.count)) + 1) * self.bytes_per_pixel;
-            }
-        }
-
-        switch (self.state) {
-            .repeated => {
-                _ = try self.data_stream.read(dest);
-
-                const end_pos = try self.data_stream.getEndPos();
-                if (self.data_stream.pos >= end_pos) {
-                    self.data_stream.reset();
-
-                    self.repeat_count -= 1;
+                        continue :state_machine .raw;
+                    },
                 }
-
-                read_count = dest.len;
             },
             .raw => {
-                const read_bytes = try self.source_reader.readAll(dest);
-
-                self.repeat_count -= read_bytes;
-
-                read_count = read_bytes;
+                if (self.repeat_count > 0) {
+                    const read_count = try self.source_reader.stream(writer, .min(.limited(remaining), .limited(self.repeat_count)));
+                    self.repeat_count -|= read_count;
+                    remaining -|= read_count;
+                    if (self.repeat_count == 0 and remaining > 0) {
+                        self.state = .read_header;
+                        continue :state_machine .read_header;
+                    } else {
+                        return @intFromEnum(limit) - remaining;
+                    }
+                } else {
+                    self.state = .read_header;
+                    continue :state_machine .read_header;
+                }
             },
-            else => {
-                return ImageUnmanaged.ReadError.InvalidData;
+            .repeated => {
+                if (self.wrote_repeat_data > 0 and self.wrote_repeat_data < self.repeat_data.len) {
+                    const to_write = @min(self.repeat_data.len - self.wrote_repeat_data, remaining);
+                    const written = try writer.write(self.repeat_data[self.wrote_repeat_data..(self.wrote_repeat_data + to_write)]);
+                    remaining -|= written;
+
+                    if ((self.wrote_repeat_data + written) == self.repeat_data.len) {
+                        self.wrote_repeat_data = 0;
+                        self.repeat_count -|= 1;
+                    } else {
+                        self.wrote_repeat_data += written;
+                    }
+                } else {
+                    const repeat_byte_size = self.repeat_count * self.repeat_data.len;
+                    const effective_repeat_count = if (remaining > repeat_byte_size) self.repeat_count else @min(remaining / self.repeat_data.len, self.repeat_count);
+                    const repeated_byte_count = try writer.writeSplat(&.{self.repeat_data}, effective_repeat_count);
+                    if (repeated_byte_count > 0) {
+                        self.repeat_count -|= repeated_byte_count / self.repeat_data.len;
+                        remaining -|= repeated_byte_count;
+                    } else {
+                        const to_write = @min(self.repeat_data.len - self.wrote_repeat_data, remaining);
+                        const written = try writer.write(self.repeat_data[self.wrote_repeat_data..(self.wrote_repeat_data + to_write)]);
+                        remaining -|= written;
+
+                        if ((self.wrote_repeat_data + written) == self.repeat_data.len) {
+                            self.wrote_repeat_data = 0;
+                            self.repeat_count -|= 1;
+                        } else {
+                            self.wrote_repeat_data += written;
+                        }
+                    }
+                }
+
+                if (self.repeat_count == 0) {
+                    self.state = .read_header;
+                }
+
+                if (remaining > 0) {
+                    if (self.state == .read_header) {
+                        continue :state_machine .read_header;
+                    } else if (self.state == .repeated) {
+                        continue :state_machine .repeated;
+                    }
+                } else {
+                    return @intFromEnum(limit) - remaining;
+                }
             },
         }
 
-        if (self.repeat_count == 0) {
-            self.state = .read_header;
-        }
-
-        return read_count;
-    }
-
-    pub fn reader(self: *TargaRLEDecoder) Reader {
-        return .{ .context = self };
-    }
-};
-
-pub const TargaStream = union(enum) {
-    image: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader,
-    rle: TargaRLEDecoder,
-
-    pub const Reader = std.io.Reader(*TargaStream, ImageUnmanaged.ReadError, read);
-
-    pub fn read(self: *TargaStream, dest: []u8) ImageUnmanaged.ReadError!usize {
-        switch (self.*) {
-            .image => |*x| return x.read(dest),
-            .rle => |*x| return x.read(dest),
-        }
-    }
-
-    pub fn reader(self: *TargaStream) Reader {
-        return .{ .context = self };
+        return 0;
     }
 };
 
@@ -266,7 +295,7 @@ const RLEMinLength = 2;
 const RLEMaxLength = RLEPacketMask;
 
 const RunLengthEncoderCommon = struct {
-    pub fn flush(comptime IntType: type, writer: anytype, value: IntType, count: usize) !void {
+    pub fn flush(comptime IntType: type, writer: *std.Io.Writer, value: IntType, count: usize) !void {
         var current_count = count;
         while (current_count > 0) {
             const length_to_write = @min(current_count, RLEMaxLength);
@@ -281,7 +310,7 @@ const RunLengthEncoderCommon = struct {
         }
     }
 
-    pub inline fn flushRLE(comptime IntType: type, writer: anytype, value: IntType, count: usize) !void {
+    pub inline fn flushRLE(comptime IntType: type, writer: *std.Io.Writer, value: IntType, count: usize) !void {
         const rle_packet_header = RLEPacketHeader{
             .count = @truncate(count - 1),
             .packet_type = .repeated,
@@ -290,7 +319,7 @@ const RunLengthEncoderCommon = struct {
         try writer.writeInt(IntType, value, .little);
     }
 
-    pub inline fn flushRaw(comptime IntType: type, writer: anytype, value: IntType, count: usize) !void {
+    pub inline fn flushRaw(comptime IntType: type, writer: *std.Io.Writer, value: IntType, count: usize) !void {
         const rle_packet_header = RLEPacketHeader{
             .count = @truncate(count - 1),
             .packet_type = .raw,
@@ -305,20 +334,20 @@ const RunLengthEncoderCommon = struct {
 
 fn RunLengthSimpleEncoder(comptime IntType: type) type {
     return struct {
-        pub fn encode(source_data: []const u8, writer: anytype) !void {
+        pub fn encode(source_data: []const u8, writer: *std.Io.Writer) !void {
             if (source_data.len == 0) {
                 return;
             }
 
-            var fixed_stream = std.io.fixedBufferStream(source_data);
+            var fixed_stream = io.ReadStream.initMemory(source_data);
             const reader = fixed_stream.reader();
 
             var total_similar_count: usize = 0;
-            var compared_value = try reader.readInt(IntType, .little);
+            var compared_value = try reader.takeInt(IntType, .little);
             total_similar_count = 1;
 
-            while ((try fixed_stream.getPos()) < (try fixed_stream.getEndPos())) {
-                const read_value = try reader.readInt(IntType, .little);
+            while (fixed_stream.getPos() < (try fixed_stream.getEndPos())) {
+                const read_value = try reader.takeInt(IntType, .little);
                 if (read_value == compared_value) {
                     total_similar_count += 1;
                 } else {
@@ -353,7 +382,7 @@ fn RunLengthSIMDEncoder(
             }
         }
 
-        pub fn encode(source_data: []const u8, writer: anytype) !void {
+        pub fn encode(source_data: []const u8, writer: *std.Io.Writer) !void {
             if (source_data.len == 0) {
                 return;
             }
@@ -362,14 +391,14 @@ fn RunLengthSIMDEncoder(
 
             var total_similar_count: usize = 0;
 
-            var fixed_stream = std.io.fixedBufferStream(source_data);
+            var fixed_stream = io.ReadStream.initMemory(source_data);
             const reader = fixed_stream.reader();
 
-            var compared_value = try reader.readInt(IntType, .little);
+            var compared_value = try reader.takeInt(IntType, .little);
             try fixed_stream.seekTo(0);
 
             while (index < source_data.len and ((index + IndexStep) <= source_data.len)) {
-                const read_value = try reader.readInt(IntType, .little);
+                const read_value = try reader.takeInt(IntType, .little);
 
                 const current_byte_splatted: VectorType = @splat(read_value);
                 const compare_chunk = simd.loadBytes(source_data[index..], VectorType, 0);
@@ -382,7 +411,7 @@ fn RunLengthSIMDEncoder(
                     total_similar_count += current_similar_count;
                     index += current_similar_count * BytesPerPixels;
 
-                    try reader.skipBytes((current_similar_count - 1) * BytesPerPixels, .{});
+                    try reader.discardAll((current_similar_count - 1) * BytesPerPixels);
 
                     compared_value = read_value;
                 } else {
@@ -401,7 +430,7 @@ fn RunLengthSIMDEncoder(
 
                     index += current_similar_count * BytesPerPixels;
 
-                    try reader.skipBytes((current_similar_count - 1) * BytesPerPixels, .{});
+                    try reader.discardAll((current_similar_count - 1) * BytesPerPixels);
                 }
             }
 
@@ -426,7 +455,7 @@ fn RLEStreamEncoder(comptime ColorType: type) type {
             else => @compileError("Not supported color format"),
         };
 
-        pub fn encode(self: *@This(), writer: anytype, value: ColorType) !void {
+        pub fn encode(self: *@This(), writer: *std.Io.Writer, value: ColorType) !void {
             if (self.rle_value == null) {
                 self.rle_value = value;
                 self.length = 1;
@@ -445,7 +474,7 @@ fn RLEStreamEncoder(comptime ColorType: type) type {
             }
         }
 
-        pub fn flush(self: *@This(), writer: anytype) !void {
+        pub fn flush(self: *@This(), writer: *std.Io.Writer) !void {
             if (self.length == 0) {
                 return;
             }
@@ -463,13 +492,11 @@ test "TGA RLE SIMD u8 (bytes) encoder" {
 
     const Test = struct {
         pub fn do(comptime vector_length: comptime_int) !void {
-            var result_list = std.ArrayList(u8).init(std.testing.allocator);
-            defer result_list.deinit();
+            var allocating_writer = std.Io.Writer.Allocating.init(std.testing.allocator);
+            defer allocating_writer.deinit();
 
-            const writer = result_list.writer();
-
-            try RunLengthSIMDEncoder(u8, .{ .vector_length = vector_length }).encode(uncompressed_data[0..], writer);
-            try std.testing.expectEqualSlices(u8, compressed_data[0..], result_list.items);
+            try RunLengthSIMDEncoder(u8, .{ .vector_length = vector_length }).encode(uncompressed_data[0..], &allocating_writer.writer);
+            try std.testing.expectEqualSlices(u8, compressed_data[0..], allocating_writer.written());
         }
     };
 
@@ -488,14 +515,12 @@ test "TGA RLE SIMD u8 (bytes) encoder should encore more than 128 bytes similar"
 
     const Test = struct {
         pub fn do(comptime vector_length: comptime_int) !void {
-            var result_list = std.ArrayList(u8).init(std.testing.allocator);
-            defer result_list.deinit();
+            var allocating_writer = std.Io.Writer.Allocating.init(std.testing.allocator);
+            defer allocating_writer.deinit();
 
-            const writer = result_list.writer();
+            try RunLengthSIMDEncoder(u8, .{ .vector_length = vector_length }).encode(uncompressed_data[0..], &allocating_writer.writer);
 
-            try RunLengthSIMDEncoder(u8, .{ .vector_length = vector_length }).encode(uncompressed_data[0..], writer);
-
-            try std.testing.expectEqualSlices(u8, compressed_data[0..], result_list.items);
+            try std.testing.expectEqualSlices(u8, compressed_data[0..], allocating_writer.written());
         }
     };
 
@@ -513,14 +538,12 @@ test "TGA RLE SIMD u16 encoder" {
 
     const Test = struct {
         pub fn do(comptime vector_length: comptime_int, compressed_data_param: []const u8, uncompressed_data_param: []const u8) !void {
-            var result_list = std.ArrayList(u8).init(std.testing.allocator);
-            defer result_list.deinit();
+            var allocating_writer = std.Io.Writer.Allocating.init(std.testing.allocator);
+            defer allocating_writer.deinit();
 
-            const writer = result_list.writer();
+            try RunLengthSIMDEncoder(u16, .{ .vector_length = vector_length }).encode(uncompressed_data_param[0..], &allocating_writer.writer);
 
-            try RunLengthSIMDEncoder(u16, .{ .vector_length = vector_length }).encode(uncompressed_data_param[0..], writer);
-
-            try std.testing.expectEqualSlices(u8, compressed_data_param[0..], result_list.items);
+            try std.testing.expectEqualSlices(u8, compressed_data_param[0..], allocating_writer.written());
         }
     };
 
@@ -538,14 +561,12 @@ test "TGA RLE SIMD u32 encoder" {
 
     const Test = struct {
         pub fn do(comptime vector_length: comptime_int, compressed_data_param: []const u8, uncompressed_data_param: []const u8) !void {
-            var result_list = std.ArrayList(u8).init(std.testing.allocator);
-            defer result_list.deinit();
+            var allocating_writer = std.Io.Writer.Allocating.init(std.testing.allocator);
+            defer allocating_writer.deinit();
 
-            const writer = result_list.writer();
+            try RunLengthSIMDEncoder(u32, .{ .vector_length = vector_length }).encode(uncompressed_data_param[0..], &allocating_writer.writer);
 
-            try RunLengthSIMDEncoder(u32, .{ .vector_length = vector_length }).encode(uncompressed_data_param[0..], writer);
-
-            try std.testing.expectEqualSlices(u8, compressed_data_param[0..], result_list.items);
+            try std.testing.expectEqualSlices(u8, compressed_data_param[0..], allocating_writer.written());
         }
     };
 
@@ -578,14 +599,12 @@ test "TGA RLE simple u24 encoder" {
         0x00, 0x07, 0x08, 0x09,
     };
 
-    var result_list = std.ArrayList(u8).init(std.testing.allocator);
-    defer result_list.deinit();
+    var allocating_writer = std.Io.Writer.Allocating.init(std.testing.allocator);
+    defer allocating_writer.deinit();
 
-    const writer = result_list.writer();
+    try RunLengthSimpleEncoder(u24).encode(uncompressed_data[0..], &allocating_writer.writer);
 
-    try RunLengthSimpleEncoder(u24).encode(uncompressed_data[0..], writer);
-
-    try std.testing.expectEqualSlices(u8, compressed_data[0..], result_list.items);
+    try std.testing.expectEqualSlices(u8, compressed_data[0..], allocating_writer.written());
 }
 
 pub const TGA = struct {
@@ -615,17 +634,19 @@ pub const TGA = struct {
         };
     }
 
-    pub fn formatDetect(stream: *ImageUnmanaged.Stream) ImageUnmanaged.ReadError!bool {
-        var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
+    pub fn formatDetect(read_stream: *io.ReadStream) Image.ReadError!bool {
+        defer read_stream.seekTo(0) catch {};
 
-        const end_pos = try buffered_stream.getEndPos();
+        const reader = read_stream.reader();
+
+        const end_pos = try read_stream.getEndPos();
 
         const is_valid_tga_v2: bool = blk: {
             if (@sizeOf(TGAFooter) < end_pos) {
                 const footer_position = end_pos - @sizeOf(TGAFooter);
 
-                try buffered_stream.seekTo(footer_position);
-                const footer = try utils.readStruct(buffered_stream.reader(), TGAFooter, .little);
+                try read_stream.seekTo(footer_position);
+                const footer = try reader.peekStruct(TGAFooter, .little);
 
                 if (footer.dot != '.') {
                     break :blk false;
@@ -646,9 +667,9 @@ pub const TGA = struct {
         // Not a TGA 2.0 file, try to detect an TGA 1.0 image
         const is_valid_tga_v1: bool = blk: {
             if (!is_valid_tga_v2 and @sizeOf(TGAHeader) < end_pos) {
-                try buffered_stream.seekTo(0);
+                try read_stream.seekTo(0);
 
-                const header = try utils.readStruct(buffered_stream.reader(), TGAHeader, .little);
+                const header = try reader.peekStruct(TGAHeader, .little);
                 break :blk header.isValid();
             }
 
@@ -658,13 +679,13 @@ pub const TGA = struct {
         return is_valid_tga_v2 or is_valid_tga_v1;
     }
 
-    pub fn readImage(allocator: std.mem.Allocator, stream: *ImageUnmanaged.Stream) ImageUnmanaged.ReadError!ImageUnmanaged {
-        var result = ImageUnmanaged{};
+    pub fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) Image.ReadError!Image {
+        var result = Image{};
         errdefer result.deinit(allocator);
 
         var tga = TGA{};
 
-        const pixels = try tga.read(allocator, stream);
+        const pixels = try tga.read(allocator, read_stream);
 
         result.width = tga.width();
         result.height = tga.height();
@@ -673,7 +694,7 @@ pub const TGA = struct {
         return result;
     }
 
-    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *ImageUnmanaged.Stream, image: ImageUnmanaged, encoder_options: ImageUnmanaged.EncoderOptions) ImageUnmanaged.WriteError!void {
+    pub fn writeImage(allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: Image, encoder_options: Image.EncoderOptions) Image.WriteError!void {
         _ = allocator;
 
         const tga_encoder_options = encoder_options.tga;
@@ -682,15 +703,15 @@ pub const TGA = struct {
         const image_height = image.height;
 
         if (image_width > std.math.maxInt(u16)) {
-            return ImageUnmanaged.WriteError.Unsupported;
+            return Image.WriteError.Unsupported;
         }
 
         if (image_height > std.math.maxInt(u16)) {
-            return ImageUnmanaged.WriteError.Unsupported;
+            return Image.WriteError.Unsupported;
         }
 
         if (!(tga_encoder_options.color_map_depth == 16 or tga_encoder_options.color_map_depth == 24)) {
-            return ImageUnmanaged.WriteError.Unsupported;
+            return Image.WriteError.Unsupported;
         }
 
         var tga = TGA{};
@@ -707,7 +728,7 @@ pub const TGA = struct {
 
         if (tga_encoder_options.image_id.len > 0) {
             if (tga_encoder_options.image_id.len > tga.id.storage.len) {
-                return ImageUnmanaged.WriteError.Unsupported;
+                return Image.WriteError.Unsupported;
             }
 
             tga.header.id_length = @truncate(tga_encoder_options.image_id.len);
@@ -718,13 +739,13 @@ pub const TGA = struct {
 
         if (tga.extension) |*extension| {
             if (tga_encoder_options.author_name.len >= extension.author_name.len) {
-                return ImageUnmanaged.WriteError.Unsupported;
+                return Image.WriteError.Unsupported;
             }
             if (tga_encoder_options.job_id.len >= extension.job_id.len) {
-                return ImageUnmanaged.WriteError.Unsupported;
+                return Image.WriteError.Unsupported;
             }
             if (tga_encoder_options.software_id.len >= extension.software_id.len) {
-                return ImageUnmanaged.WriteError.Unsupported;
+                return Image.WriteError.Unsupported;
             }
 
             std.mem.copyForwards(u8, extension.author_name[0..], tga_encoder_options.author_name[0..]);
@@ -779,7 +800,7 @@ pub const TGA = struct {
                 tga.extension.?.attributes = .useful_alpha_channel;
             },
             else => {
-                return ImageUnmanaged.WriteError.Unsupported;
+                return Image.WriteError.Unsupported;
             },
         }
 
@@ -794,7 +815,7 @@ pub const TGA = struct {
         return self.header.image_spec.height;
     }
 
-    pub fn pixelFormat(self: TGA) ImageUnmanaged.ReadError!PixelFormat {
+    pub fn pixelFormat(self: TGA) Image.Error!PixelFormat {
         if (self.header.image_type.indexed) {
             if (self.header.image_type.truecolor) {
                 return PixelFormat.grayscale8;
@@ -810,22 +831,21 @@ pub const TGA = struct {
             }
         }
 
-        return ImageUnmanaged.Error.Unsupported;
+        return Image.Error.Unsupported;
     }
 
-    pub fn read(self: *TGA, allocator: std.mem.Allocator, stream: *ImageUnmanaged.Stream) !color.PixelStorage {
-        var buffered_stream = buffered_stream_source.bufferedStreamSourceReader(stream);
-
+    pub fn read(self: *TGA, allocator: std.mem.Allocator, read_stream: *io.ReadStream) !color.PixelStorage {
         // Read footage
-        const end_pos = try buffered_stream.getEndPos();
+        const end_pos = try read_stream.getEndPos();
 
         if (@sizeOf(TGAFooter) > end_pos) {
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
 
-        const reader = buffered_stream.reader();
-        try buffered_stream.seekTo(end_pos - @sizeOf(TGAFooter));
-        const footer = try utils.readStruct(reader, TGAFooter, .little);
+        const reader = read_stream.reader();
+
+        try read_stream.seekTo(end_pos - @sizeOf(TGAFooter));
+        const footer = try reader.takeStruct(TGAFooter, .little);
 
         var is_tga_version2 = true;
 
@@ -836,26 +856,26 @@ pub const TGA = struct {
         // Read extension
         if (is_tga_version2 and footer.extension_offset > 0) {
             const extension_pos: u64 = @intCast(footer.extension_offset);
-            try buffered_stream.seekTo(extension_pos);
-            self.extension = try utils.readStruct(reader, TGAExtension, .little);
+            try read_stream.seekTo(extension_pos);
+            self.extension = try reader.takeStruct(TGAExtension, .little);
         }
 
         // Read header
-        try buffered_stream.seekTo(0);
-        self.header = try utils.readStruct(reader, TGAHeader, .little);
+        try read_stream.seekTo(0);
+        self.header = try reader.takeStruct(TGAHeader, .little);
 
         if (!self.header.isValid()) {
-            return ImageUnmanaged.ReadError.InvalidData;
+            return Image.ReadError.InvalidData;
         }
 
         // Read ID
         if (self.header.id_length > 0) {
             self.id.resize(self.header.id_length);
 
-            const read_id_size = try reader.readAll(self.id.data[0..]);
+            const read_id_size = try reader.readSliceShort(self.id.data[0..]);
 
             if (read_id_size != self.header.id_length) {
-                return ImageUnmanaged.ReadError.InvalidData;
+                return Image.ReadError.InvalidData;
             }
         }
 
@@ -866,8 +886,9 @@ pub const TGA = struct {
 
         const is_compressed = self.header.image_type.run_length;
 
-        var targa_stream: TargaStream = TargaStream{ .image = reader };
+        var targa_reader: *std.Io.Reader = reader;
         var rle_decoder: ?TargaRLEDecoder = null;
+        var rle_decompression_buffer: [512]u8 = undefined;
 
         defer {
             if (rle_decoder) |rle| {
@@ -878,9 +899,9 @@ pub const TGA = struct {
         if (is_compressed) {
             const bytes_per_pixel = (self.header.image_spec.bit_per_pixel + 7) / 8;
 
-            rle_decoder = try TargaRLEDecoder.init(allocator, reader, bytes_per_pixel);
-            if (rle_decoder) |rle| {
-                targa_stream = TargaStream{ .rle = rle };
+            rle_decoder = try TargaRLEDecoder.init(allocator, reader, bytes_per_pixel, rle_decompression_buffer[0..]);
+            if (rle_decoder) |*rle| {
+                targa_reader = &rle.reader;
             }
         }
 
@@ -889,9 +910,9 @@ pub const TGA = struct {
         switch (pixel_format) {
             .grayscale8 => {
                 if (top_to_bottom_image) {
-                    try self.readGrayscale8TopToBottom(pixels.grayscale8, targa_stream.reader());
+                    try self.readGrayscale8TopToBottom(pixels.grayscale8, targa_reader);
                 } else {
-                    try self.readGrayscale8BottomToTop(pixels.grayscale8, targa_stream.reader());
+                    try self.readGrayscale8BottomToTop(pixels.grayscale8, targa_reader);
                 }
             },
             .indexed8 => {
@@ -906,56 +927,56 @@ pub const TGA = struct {
                         try self.readColorMap24(pixels.indexed8, reader);
                     },
                     else => {
-                        return ImageUnmanaged.Error.Unsupported;
+                        return Image.Error.Unsupported;
                     },
                 }
 
                 // Read indices
                 if (top_to_bottom_image) {
-                    try self.readIndexed8TopToBottom(pixels.indexed8, targa_stream.reader());
+                    try self.readIndexed8TopToBottom(pixels.indexed8, targa_reader);
                 } else {
-                    try self.readIndexed8BottomToTop(pixels.indexed8, targa_stream.reader());
+                    try self.readIndexed8BottomToTop(pixels.indexed8, targa_reader);
                 }
             },
             .rgb555 => {
                 if (top_to_bottom_image) {
-                    try self.readTruecolor16TopToBottom(pixels.rgb555, targa_stream.reader());
+                    try self.readTruecolor16TopToBottom(pixels.rgb555, targa_reader);
                 } else {
-                    try self.readTruecolor16BottomToTop(pixels.rgb555, targa_stream.reader());
+                    try self.readTruecolor16BottomToTop(pixels.rgb555, targa_reader);
                 }
             },
             .bgr24 => {
                 if (top_to_bottom_image) {
-                    try self.readTruecolor24TopToBottom(pixels.bgr24, targa_stream.reader());
+                    try self.readTruecolor24TopToBottom(pixels.bgr24, targa_reader);
                 } else {
-                    try self.readTruecolor24BottomTopTop(pixels.bgr24, targa_stream.reader());
+                    try self.readTruecolor24BottomTopTop(pixels.bgr24, targa_reader);
                 }
             },
             .bgra32 => {
                 if (top_to_bottom_image) {
-                    try self.readTruecolor32TopToBottom(pixels.bgra32, targa_stream.reader());
+                    try self.readTruecolor32TopToBottom(pixels.bgra32, targa_reader);
                 } else {
-                    try self.readTruecolor32BottomToTop(pixels.bgra32, targa_stream.reader());
+                    try self.readTruecolor32BottomToTop(pixels.bgra32, targa_reader);
                 }
             },
             else => {
-                return ImageUnmanaged.Error.Unsupported;
+                return Image.Error.Unsupported;
             },
         }
 
         return pixels;
     }
 
-    fn readGrayscale8TopToBottom(self: *TGA, data: []color.Grayscale8, stream: TargaStream.Reader) ImageUnmanaged.ReadError!void {
+    fn readGrayscale8TopToBottom(self: *TGA, data: []color.Grayscale8, reader: *std.Io.Reader) Image.ReadError!void {
         var data_index: usize = 0;
         const data_end: usize = self.width() * self.height();
 
         while (data_index < data_end) : (data_index += 1) {
-            data[data_index] = color.Grayscale8{ .value = try stream.readByte() };
+            data[data_index] = color.Grayscale8{ .value = try reader.takeByte() };
         }
     }
 
-    fn readGrayscale8BottomToTop(self: *TGA, data: []color.Grayscale8, stream: TargaStream.Reader) ImageUnmanaged.ReadError!void {
+    fn readGrayscale8BottomToTop(self: *TGA, data: []color.Grayscale8, reader: *std.Io.Reader) Image.ReadError!void {
         for (0..self.height()) |y| {
             const inverted_y = self.height() - y - 1;
 
@@ -963,21 +984,21 @@ pub const TGA = struct {
 
             for (0..self.width()) |x| {
                 const data_index = stride + x;
-                data[data_index] = color.Grayscale8{ .value = try stream.readByte() };
+                data[data_index] = color.Grayscale8{ .value = try reader.takeByte() };
             }
         }
     }
 
-    fn readIndexed8TopToBottom(self: *TGA, data: color.IndexedStorage8, stream: TargaStream.Reader) ImageUnmanaged.ReadError!void {
+    fn readIndexed8TopToBottom(self: *TGA, data: color.IndexedStorage8, reader: *std.Io.Reader) Image.ReadError!void {
         var data_index: usize = 0;
         const data_end: usize = self.width() * self.height();
 
         while (data_index < data_end) : (data_index += 1) {
-            data.indices[data_index] = try stream.readByte();
+            data.indices[data_index] = try reader.takeByte();
         }
     }
 
-    fn readIndexed8BottomToTop(self: *TGA, data: color.IndexedStorage8, stream: TargaStream.Reader) ImageUnmanaged.ReadError!void {
+    fn readIndexed8BottomToTop(self: *TGA, data: color.IndexedStorage8, reader: *std.Io.Reader) Image.ReadError!void {
         for (0..self.height()) |y| {
             const inverted_y = self.height() - y - 1;
 
@@ -985,17 +1006,18 @@ pub const TGA = struct {
 
             for (0..self.width()) |x| {
                 const data_index = stride + x;
-                data.indices[data_index] = try stream.readByte();
+                data.indices[data_index] = try reader.takeByte();
             }
         }
     }
 
-    fn readColorMap16(self: *TGA, data: color.IndexedStorage8, reader: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageUnmanaged.ReadError!void {
+    fn readColorMap16(self: *TGA, data: color.IndexedStorage8, reader: *std.Io.Reader) Image.ReadError!void {
         var data_index: usize = self.header.color_map_spec.first_entry_index;
         const data_end: usize = self.header.color_map_spec.first_entry_index + self.header.color_map_spec.length;
 
         while (data_index < data_end) : (data_index += 1) {
-            const read_color = try utils.readStruct(reader, color.Rgb555, .little);
+            const raw_color: u15 = @truncate(try reader.takeInt(u16, .little));
+            const read_color: color.Rgb555 = @bitCast(raw_color);
 
             data.palette[data_index].r = toU8(read_color.r);
             data.palette[data_index].g = toU8(read_color.g);
@@ -1004,24 +1026,24 @@ pub const TGA = struct {
         }
     }
 
-    fn readColorMap24(self: *TGA, data: color.IndexedStorage8, stream: buffered_stream_source.DefaultBufferedStreamSourceReader.Reader) ImageUnmanaged.ReadError!void {
+    fn readColorMap24(self: *TGA, data: color.IndexedStorage8, reader: *std.Io.Reader) Image.ReadError!void {
         var data_index: usize = self.header.color_map_spec.first_entry_index;
         const data_end: usize = self.header.color_map_spec.first_entry_index + self.header.color_map_spec.length;
 
         while (data_index < data_end) : (data_index += 1) {
-            data.palette[data_index].b = try stream.readByte();
-            data.palette[data_index].g = try stream.readByte();
-            data.palette[data_index].r = try stream.readByte();
+            data.palette[data_index].b = try reader.takeByte();
+            data.palette[data_index].g = try reader.takeByte();
+            data.palette[data_index].r = try reader.takeByte();
             data.palette[data_index].a = 255;
         }
     }
 
-    fn readTruecolor16TopToBottom(self: *TGA, data: []color.Rgb555, stream: TargaStream.Reader) ImageUnmanaged.ReadError!void {
+    fn readTruecolor16TopToBottom(self: *TGA, data: []color.Rgb555, reader: *std.Io.Reader) Image.ReadError!void {
         var data_index: usize = 0;
         const data_end: usize = self.width() * self.height();
 
         while (data_index < data_end) : (data_index += 1) {
-            const raw_color = try stream.readInt(u16, .little);
+            const raw_color = try reader.takeInt(u16, .little);
 
             data[data_index].r = @truncate(raw_color >> 10);
             data[data_index].g = @truncate(raw_color >> 5);
@@ -1029,7 +1051,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readTruecolor16BottomToTop(self: *TGA, data: []color.Rgb555, stream: TargaStream.Reader) ImageUnmanaged.ReadError!void {
+    fn readTruecolor16BottomToTop(self: *TGA, data: []color.Rgb555, reader: *std.Io.Reader) Image.ReadError!void {
         for (0..self.height()) |y| {
             const inverted_y = self.height() - y - 1;
 
@@ -1038,7 +1060,7 @@ pub const TGA = struct {
             for (0..self.width()) |x| {
                 const data_index = stride + x;
 
-                const raw_color = try stream.readInt(u16, .little);
+                const raw_color = try reader.takeInt(u16, .little);
 
                 data[data_index].r = @truncate(raw_color >> (5 * 2));
                 data[data_index].g = @truncate(raw_color >> 5);
@@ -1047,18 +1069,18 @@ pub const TGA = struct {
         }
     }
 
-    fn readTruecolor24TopToBottom(self: *TGA, data: []color.Bgr24, stream: TargaStream.Reader) ImageUnmanaged.ReadError!void {
+    fn readTruecolor24TopToBottom(self: *TGA, data: []color.Bgr24, reader: *std.Io.Reader) Image.ReadError!void {
         var data_index: usize = 0;
         const data_end: usize = self.width() * self.height();
 
         while (data_index < data_end) : (data_index += 1) {
-            data[data_index].b = try stream.readByte();
-            data[data_index].g = try stream.readByte();
-            data[data_index].r = try stream.readByte();
+            data[data_index].b = try reader.takeByte();
+            data[data_index].g = try reader.takeByte();
+            data[data_index].r = try reader.takeByte();
         }
     }
 
-    fn readTruecolor24BottomTopTop(self: *TGA, data: []color.Bgr24, stream: TargaStream.Reader) ImageUnmanaged.ReadError!void {
+    fn readTruecolor24BottomTopTop(self: *TGA, data: []color.Bgr24, reader: *std.Io.Reader) Image.ReadError!void {
         for (0..self.height()) |y| {
             const inverted_y = self.height() - y - 1;
 
@@ -1066,22 +1088,22 @@ pub const TGA = struct {
 
             for (0..self.width()) |x| {
                 const data_index = stride + x;
-                data[data_index].b = try stream.readByte();
-                data[data_index].g = try stream.readByte();
-                data[data_index].r = try stream.readByte();
+                data[data_index].b = try reader.takeByte();
+                data[data_index].g = try reader.takeByte();
+                data[data_index].r = try reader.takeByte();
             }
         }
     }
 
-    fn readTruecolor32TopToBottom(self: *TGA, data: []color.Bgra32, stream: TargaStream.Reader) ImageUnmanaged.ReadError!void {
+    fn readTruecolor32TopToBottom(self: *TGA, data: []color.Bgra32, reader: *std.Io.Reader) Image.ReadError!void {
         var data_index: usize = 0;
         const data_end: usize = self.width() * self.height();
 
         while (data_index < data_end) : (data_index += 1) {
-            data[data_index].b = try stream.readByte();
-            data[data_index].g = try stream.readByte();
-            data[data_index].r = try stream.readByte();
-            data[data_index].a = try stream.readByte();
+            data[data_index].b = try reader.takeByte();
+            data[data_index].g = try reader.takeByte();
+            data[data_index].r = try reader.takeByte();
+            data[data_index].a = try reader.takeByte();
 
             if (self.extension) |extended_info| {
                 if (extended_info.attributes != TGAAttributeType.useful_alpha_channel) {
@@ -1091,7 +1113,7 @@ pub const TGA = struct {
         }
     }
 
-    fn readTruecolor32BottomToTop(self: *TGA, data: []color.Bgra32, stream: TargaStream.Reader) ImageUnmanaged.ReadError!void {
+    fn readTruecolor32BottomToTop(self: *TGA, data: []color.Bgra32, reader: *std.Io.Reader) Image.ReadError!void {
         for (0..self.height()) |y| {
             const inverted_y = self.height() - y - 1;
 
@@ -1100,10 +1122,10 @@ pub const TGA = struct {
             for (0..self.width()) |x| {
                 const data_index = stride + x;
 
-                data[data_index].b = try stream.readByte();
-                data[data_index].g = try stream.readByte();
-                data[data_index].r = try stream.readByte();
-                data[data_index].a = try stream.readByte();
+                data[data_index].b = try reader.takeByte();
+                data[data_index].g = try reader.takeByte();
+                data[data_index].r = try reader.takeByte();
+                data[data_index].a = try reader.takeByte();
 
                 if (self.extension) |extended_info| {
                     if (extended_info.attributes != TGAAttributeType.useful_alpha_channel) {
@@ -1114,18 +1136,17 @@ pub const TGA = struct {
         }
     }
 
-    pub fn write(self: TGA, stream: *ImageUnmanaged.Stream, pixels: color.PixelStorage) ImageUnmanaged.WriteError!void {
-        var buffered_stream = buffered_stream_source.bufferedStreamSourceWriter(stream);
-        const writer = buffered_stream.writer();
+    pub fn write(self: TGA, write_stream: *io.WriteStream, pixels: color.PixelStorage) Image.WriteError!void {
+        const writer = write_stream.writer();
 
-        try utils.writeStruct(writer, self.header, .little);
+        try writer.writeStruct(self.header, .little);
 
         if (self.header.id_length > 0) {
             if (self.id.data.len != self.header.id_length) {
-                return ImageUnmanaged.WriteError.Unsupported;
+                return Image.WriteError.Unsupported;
             }
 
-            _ = try writer.write(self.id.data);
+            try writer.writeAll(self.id.data);
         }
 
         switch (pixels) {
@@ -1146,26 +1167,26 @@ pub const TGA = struct {
                 try self.writeRgba32(writer, pixels);
             },
             else => {
-                return ImageUnmanaged.WriteError.Unsupported;
+                return Image.WriteError.Unsupported;
             },
         }
 
         var extension_offset: u32 = 0;
         if (self.extension) |extension| {
-            extension_offset = @truncate(try buffered_stream.getPos());
+            extension_offset = @truncate(write_stream.getPos());
 
-            try utils.writeStruct(writer, extension, .little);
+            try writer.writeStruct(extension, .little);
         }
 
         var footer = TGAFooter{};
         footer.extension_offset = extension_offset;
         std.mem.copyForwards(u8, footer.signature[0..], TGASignature[0..]);
-        try utils.writeStruct(writer, footer, .little);
+        try writer.writeStruct(footer, .little);
 
-        try buffered_stream.flush();
+        try write_stream.flush();
     }
 
-    fn writePixels(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, pixels: color.PixelStorage) ImageUnmanaged.WriteError!void {
+    fn writePixels(self: TGA, writer: *std.Io.Writer, pixels: color.PixelStorage) Image.WriteError!void {
         const bytes = pixels.asConstBytes();
 
         const effective_height = self.height();
@@ -1214,19 +1235,19 @@ pub const TGA = struct {
             }
         } else {
             if (self.header.image_spec.descriptor.top_to_bottom) {
-                _ = try writer.write(bytes);
+                try writer.writeAll(bytes);
             } else {
                 for (0..effective_height) |y| {
                     const flipped_y = effective_height - y - 1;
                     const current_scanline = flipped_y * pixel_stride;
 
-                    _ = try writer.write(bytes[current_scanline..(current_scanline + pixel_stride)]);
+                    try writer.writeAll(bytes[current_scanline..(current_scanline + pixel_stride)]);
                 }
             }
         }
     }
 
-    fn writeRgb24(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, pixels: color.PixelStorage) ImageUnmanaged.WriteError!void {
+    fn writeRgb24(self: TGA, writer: *std.Io.Writer, pixels: color.PixelStorage) Image.WriteError!void {
         const image_width = self.width();
         const image_height = self.height();
 
@@ -1289,7 +1310,7 @@ pub const TGA = struct {
         }
     }
 
-    fn writeRgba32(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, pixels: color.PixelStorage) ImageUnmanaged.WriteError!void {
+    fn writeRgba32(self: TGA, writer: *std.Io.Writer, pixels: color.PixelStorage) Image.WriteError!void {
         const image_width = self.width();
         const image_height = self.height();
 
@@ -1354,7 +1375,7 @@ pub const TGA = struct {
         }
     }
 
-    fn writeIndexed8(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, pixels: color.PixelStorage) ImageUnmanaged.WriteError!void {
+    fn writeIndexed8(self: TGA, writer: *std.Io.Writer, pixels: color.PixelStorage) Image.WriteError!void {
         // First write color map, the color map needs to be written uncompressed
         switch (self.header.color_map_spec.bit_depth) {
             15, 16 => {
@@ -1364,7 +1385,7 @@ pub const TGA = struct {
                 try self.writeColorMap24(writer, pixels.indexed8);
             },
             else => {
-                return ImageUnmanaged.Error.Unsupported;
+                return Image.Error.Unsupported;
             },
         }
 
@@ -1372,7 +1393,7 @@ pub const TGA = struct {
         try self.writePixels(writer, pixels);
     }
 
-    fn writeColorMap16(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: color.IndexedStorage8) ImageUnmanaged.WriteError!void {
+    fn writeColorMap16(self: TGA, writer: *std.Io.Writer, indexed: color.IndexedStorage8) Image.WriteError!void {
         var data_index: usize = self.header.color_map_spec.first_entry_index;
         const data_end: usize = self.header.color_map_spec.first_entry_index + self.header.color_map_spec.length;
 
@@ -1387,7 +1408,7 @@ pub const TGA = struct {
         }
     }
 
-    fn writeColorMap24(self: TGA, writer: buffered_stream_source.DefaultBufferedStreamSourceWriter.Writer, indexed: color.IndexedStorage8) ImageUnmanaged.WriteError!void {
+    fn writeColorMap24(self: TGA, writer: *std.Io.Writer, indexed: color.IndexedStorage8) Image.WriteError!void {
         var data_index: usize = self.header.color_map_spec.first_entry_index;
         const data_end: usize = self.header.color_map_spec.first_entry_index + self.header.color_map_spec.length;
 
@@ -1398,7 +1419,7 @@ pub const TGA = struct {
                 .b = indexed.palette[data_index].b,
             };
 
-            try utils.writeStruct(writer, converted_color, .little);
+            try writer.writeStruct(converted_color, .little);
         }
     }
 };

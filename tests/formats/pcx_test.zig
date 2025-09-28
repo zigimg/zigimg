@@ -1,30 +1,27 @@
-const PixelFormat = @import("../../src/pixel_format.zig").PixelFormat;
-const assert = std.debug.assert;
-const color = @import("../../src/color.zig");
-const pcx = @import("../../src/formats/pcx.zig");
-const std = @import("std");
-const testing = std.testing;
-const Image = @import("../../src/Image.zig");
 const helpers = @import("../helpers.zig");
+const pcx = zigimg.formats.pcx;
+const std = @import("std");
+const zigimg = @import("zigimg");
 
-const toU8 = color.ScaleValue(u8);
+const toU8 = zigimg.color.ScaleValue(u8);
 
 test "PCX indexed1 (linear)" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pcx/test-bpp1.pcx");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
-    var pcxFile = pcx.PCX{};
+    var pcx_file = pcx.PCX{};
 
-    const pixels = try pcxFile.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try pcx_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(pcxFile.width(), 27);
-    try helpers.expectEq(pcxFile.height(), 27);
-    try helpers.expectEq(try pcxFile.pixelFormat(), PixelFormat.indexed1);
+    try helpers.expectEq(pcx_file.width(), 27);
+    try helpers.expectEq(pcx_file.height(), 27);
+    try helpers.expectEq(try pcx_file.pixelFormat(), .indexed1);
 
-    try testing.expect(pixels == .indexed1);
+    try std.testing.expect(pixels == .indexed1);
 
     try helpers.expectEq(pixels.indexed1.indices[0], 0);
     try helpers.expectEq(pixels.indexed1.indices[15], 1);
@@ -50,18 +47,19 @@ test "PCX indexed4 (linear)" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pcx/test-bpp4.pcx");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
-    var pcxFile = pcx.PCX{};
+    var pcx_file = pcx.PCX{};
 
-    const pixels = try pcxFile.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try pcx_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(pcxFile.width(), 27);
-    try helpers.expectEq(pcxFile.height(), 27);
-    try helpers.expectEq(try pcxFile.pixelFormat(), PixelFormat.indexed4);
+    try helpers.expectEq(pcx_file.width(), 27);
+    try helpers.expectEq(pcx_file.height(), 27);
+    try helpers.expectEq(try pcx_file.pixelFormat(), .indexed4);
 
-    try testing.expect(pixels == .indexed4);
+    try std.testing.expect(pixels == .indexed4);
 
     try helpers.expectEq(pixels.indexed4.indices[0], 1);
     try helpers.expectEq(pixels.indexed4.indices[1], 9);
@@ -88,18 +86,19 @@ test "PCX indexed8 (linear)" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pcx/test-bpp8.pcx");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
-    var pcxFile = pcx.PCX{};
+    var pcx_file = pcx.PCX{};
 
-    const pixels = try pcxFile.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try pcx_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(pcxFile.width(), 27);
-    try helpers.expectEq(pcxFile.height(), 27);
-    try helpers.expectEq(try pcxFile.pixelFormat(), PixelFormat.indexed8);
+    try helpers.expectEq(pcx_file.width(), 27);
+    try helpers.expectEq(pcx_file.height(), 27);
+    try helpers.expectEq(try pcx_file.pixelFormat(), .indexed8);
 
-    try testing.expect(pixels == .indexed8);
+    try std.testing.expect(pixels == .indexed8);
 
     try helpers.expectEq(pixels.indexed8.indices[0], 37);
     try helpers.expectEq(pixels.indexed8.indices[3 * 27 + 15], 60);
@@ -128,21 +127,22 @@ test "PCX indexed24 (planar)" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pcx/test-bpp24.pcx");
     defer file.close();
 
-    var stream_source = std.io.StreamSource{ .file = file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
 
-    var pcxFile = pcx.PCX{};
+    var pcx_file = pcx.PCX{};
 
-    const pixels = try pcxFile.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try pcx_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(pcxFile.header.planes, 3);
-    try helpers.expectEq(pcxFile.header.bpp, 8);
+    try helpers.expectEq(pcx_file.header.planes, 3);
+    try helpers.expectEq(pcx_file.header.bpp, 8);
 
-    try helpers.expectEq(pcxFile.width(), 27);
-    try helpers.expectEq(pcxFile.height(), 27);
-    try helpers.expectEq(try pcxFile.pixelFormat(), PixelFormat.rgb24);
+    try helpers.expectEq(pcx_file.width(), 27);
+    try helpers.expectEq(pcx_file.height(), 27);
+    try helpers.expectEq(try pcx_file.pixelFormat(), .rgb24);
 
-    try testing.expect(pixels == .rgb24);
+    try std.testing.expect(pixels == .rgb24);
 
     try helpers.expectEq(pixels.rgb24[0].r, 0x34);
     try helpers.expectEq(pixels.rgb24[0].g, 0x53);
@@ -171,10 +171,12 @@ test "Write PCX indexed1 (odd width)" {
     var source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "pcx/test-bpp1.pcx");
     defer source_file.close();
 
-    var source_image = try Image.fromFile(helpers.zigimg_test_allocator, &source_file);
-    defer source_image.deinit();
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
-    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+    var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
         .pcx = .{},
     });
 
@@ -185,18 +187,18 @@ test "Write PCX indexed1 (odd width)" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
 
-    var pcxFile = pcx.PCX{};
+    var pcx_file = pcx.PCX{};
 
-    const pixels = try pcxFile.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try pcx_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(pcxFile.width(), 27);
-    try helpers.expectEq(pcxFile.height(), 27);
-    try helpers.expectEq(try pcxFile.pixelFormat(), PixelFormat.indexed1);
+    try helpers.expectEq(pcx_file.width(), 27);
+    try helpers.expectEq(pcx_file.height(), 27);
+    try helpers.expectEq(try pcx_file.pixelFormat(), .indexed1);
 
-    try testing.expect(pixels == .indexed1);
+    try std.testing.expect(pixels == .indexed1);
 
     const image_size = source_image.width * source_image.height;
 
@@ -217,12 +219,12 @@ test "Write PCX indexed 1 (even width)" {
     const image_height = 256;
     const checker_size = 32;
 
-    var image_pattern = try Image.create(helpers.zigimg_test_allocator, image_width, image_height, .indexed1);
-    defer image_pattern.deinit();
+    var image_pattern = try zigimg.Image.create(helpers.zigimg_test_allocator, image_width, image_height, .indexed1);
+    defer image_pattern.deinit(helpers.zigimg_test_allocator);
 
     // Generate palette
-    image_pattern.pixels.indexed1.palette[0] = color.Rgba32.from.rgb(0, 0, 0);
-    image_pattern.pixels.indexed1.palette[1] = color.Rgba32.from.rgb(255, 255, 255);
+    image_pattern.pixels.indexed1.palette[0] = zigimg.color.Rgba32.from.rgb(0, 0, 0);
+    image_pattern.pixels.indexed1.palette[1] = zigimg.color.Rgba32.from.rgb(255, 255, 255);
 
     // Generate pattern
     for (0..image_height) |y| {
@@ -239,7 +241,8 @@ test "Write PCX indexed 1 (even width)" {
 
     const image_file_name = "zigimg_pcx_indexed1_even.pcx";
 
-    try image_pattern.writeToFilePath(image_file_name, Image.EncoderOptions{
+    var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    try image_pattern.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
         .pcx = .{},
     });
     defer {
@@ -249,18 +252,19 @@ test "Write PCX indexed 1 (even width)" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
 
-    var pcxFile = pcx.PCX{};
+    var pcx_file = pcx.PCX{};
 
-    const pixels = try pcxFile.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try pcx_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(pcxFile.width(), image_width);
-    try helpers.expectEq(pcxFile.height(), image_height);
-    try helpers.expectEq(try pcxFile.pixelFormat(), PixelFormat.indexed1);
+    try helpers.expectEq(pcx_file.width(), image_width);
+    try helpers.expectEq(pcx_file.height(), image_height);
+    try helpers.expectEq(try pcx_file.pixelFormat(), .indexed1);
 
-    try testing.expect(pixels == .indexed1);
+    try std.testing.expect(pixels == .indexed1);
 
     // Check indices
     const image_size = image_pattern.width * image_pattern.height;
@@ -283,10 +287,12 @@ test "Write PCX indexed4 (odd width)" {
     var source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "pcx/test-bpp4.pcx");
     defer source_file.close();
 
-    var source_image = try Image.fromFile(helpers.zigimg_test_allocator, &source_file);
-    defer source_image.deinit();
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
-    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+    var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
         .pcx = .{},
     });
 
@@ -297,18 +303,18 @@ test "Write PCX indexed4 (odd width)" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
 
-    var pcxFile = pcx.PCX{};
+    var pcx_file = pcx.PCX{};
 
-    const pixels = try pcxFile.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try pcx_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(pcxFile.width(), 27);
-    try helpers.expectEq(pcxFile.height(), 27);
-    try helpers.expectEq(try pcxFile.pixelFormat(), PixelFormat.indexed4);
+    try helpers.expectEq(pcx_file.width(), 27);
+    try helpers.expectEq(pcx_file.height(), 27);
+    try helpers.expectEq(try pcx_file.pixelFormat(), .indexed4);
 
-    try testing.expect(pixels == .indexed4);
+    try std.testing.expect(pixels == .indexed4);
 
     const image_size = source_image.width * source_image.height;
     for (0..image_size) |index| {
@@ -324,8 +330,8 @@ test "Write PCX indexed4 (odd width)" {
 }
 
 test "Write PCX indexed 4 (even width)" {
-    var rainbow_test = try Image.create(helpers.zigimg_test_allocator, 16, 16, .indexed4);
-    defer rainbow_test.deinit();
+    var rainbow_test = try zigimg.Image.create(helpers.zigimg_test_allocator, 16, 16, .indexed4);
+    defer rainbow_test.deinit(helpers.zigimg_test_allocator);
 
     // Generate palette
     const colors_per_channel = 16 / 3;
@@ -352,7 +358,8 @@ test "Write PCX indexed 4 (even width)" {
 
     const image_file_name = "zigimg_pcx_indexed4_even.pcx";
 
-    try rainbow_test.writeToFilePath(image_file_name, Image.EncoderOptions{
+    var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    try rainbow_test.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
         .pcx = .{},
     });
     defer {
@@ -362,18 +369,19 @@ test "Write PCX indexed 4 (even width)" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
 
-    var pcxFile = pcx.PCX{};
+    var pcx_file = pcx.PCX{};
 
-    const pixels = try pcxFile.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try pcx_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(pcxFile.width(), 16);
-    try helpers.expectEq(pcxFile.height(), 16);
-    try helpers.expectEq(try pcxFile.pixelFormat(), PixelFormat.indexed4);
+    try helpers.expectEq(pcx_file.width(), 16);
+    try helpers.expectEq(pcx_file.height(), 16);
+    try helpers.expectEq(try pcx_file.pixelFormat(), .indexed4);
 
-    try testing.expect(pixels == .indexed4);
+    try std.testing.expect(pixels == .indexed4);
 
     const image_size = rainbow_test.width * rainbow_test.height;
     for (0..image_size) |index| {
@@ -394,10 +402,12 @@ test "Write PCX indexed8 (odd width)" {
     var source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "pcx/test-bpp8.pcx");
     defer source_file.close();
 
-    var source_image = try Image.fromFile(helpers.zigimg_test_allocator, &source_file);
-    defer source_image.deinit();
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
-    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+    var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
         .pcx = .{},
     });
 
@@ -408,11 +418,11 @@ test "Write PCX indexed8 (odd width)" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
 
-    var pcxFile = pcx.PCX{};
+    var pcx_file = pcx.PCX{};
 
-    const pixels = try pcxFile.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try pcx_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
     const image_size = source_image.width * source_image.height;
@@ -429,8 +439,8 @@ test "Write PCX indexed8 (odd width)" {
 }
 
 test "Write PCX indexed 8 (even width)" {
-    var rainbow_test = try Image.create(helpers.zigimg_test_allocator, 256, 256, .indexed8);
-    defer rainbow_test.deinit();
+    var rainbow_test = try zigimg.Image.create(helpers.zigimg_test_allocator, 256, 256, .indexed8);
+    defer rainbow_test.deinit(helpers.zigimg_test_allocator);
 
     // Generate palette
     const colors_per_channel = 256 / 3;
@@ -461,7 +471,8 @@ test "Write PCX indexed 8 (even width)" {
 
     const image_file_name = "zigimg_pcx_indexed8_even.pcx";
 
-    try rainbow_test.writeToFilePath(image_file_name, Image.EncoderOptions{
+    var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    try rainbow_test.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
         .pcx = .{},
     });
     defer {
@@ -471,18 +482,19 @@ test "Write PCX indexed 8 (even width)" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
 
-    var pcxFile = pcx.PCX{};
+    var pcx_file = pcx.PCX{};
 
-    const pixels = try pcxFile.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try pcx_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(pcxFile.width(), 256);
-    try helpers.expectEq(pcxFile.height(), 256);
-    try helpers.expectEq(try pcxFile.pixelFormat(), PixelFormat.indexed8);
+    try helpers.expectEq(pcx_file.width(), 256);
+    try helpers.expectEq(pcx_file.height(), 256);
+    try helpers.expectEq(try pcx_file.pixelFormat(), .indexed8);
 
-    try testing.expect(pixels == .indexed8);
+    try std.testing.expect(pixels == .indexed8);
 
     const image_size = rainbow_test.width * rainbow_test.height;
     for (0..image_size) |index| {
@@ -503,10 +515,12 @@ test "Write PCX rgb24 (odd width)" {
     var source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "pcx/test-bpp24.pcx");
     defer source_file.close();
 
-    var source_image = try Image.fromFile(helpers.zigimg_test_allocator, &source_file);
-    defer source_image.deinit();
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
+    defer source_image.deinit(helpers.zigimg_test_allocator);
 
-    try source_image.writeToFilePath(image_file_name, Image.EncoderOptions{
+    var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
         .pcx = .{},
     });
 
@@ -517,21 +531,21 @@ test "Write PCX rgb24 (odd width)" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
 
-    var pcxFile = pcx.PCX{};
+    var pcx_file = pcx.PCX{};
 
-    const pixels = try pcxFile.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try pcx_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(pcxFile.header.planes, 3);
-    try helpers.expectEq(pcxFile.header.bpp, 8);
+    try helpers.expectEq(pcx_file.header.planes, 3);
+    try helpers.expectEq(pcx_file.header.bpp, 8);
 
-    try helpers.expectEq(pcxFile.width(), 27);
-    try helpers.expectEq(pcxFile.height(), 27);
-    try helpers.expectEq(try pcxFile.pixelFormat(), PixelFormat.rgb24);
+    try helpers.expectEq(pcx_file.width(), 27);
+    try helpers.expectEq(pcx_file.height(), 27);
+    try helpers.expectEq(try pcx_file.pixelFormat(), .rgb24);
 
-    try testing.expect(pixels == .rgb24);
+    try std.testing.expect(pixels == .rgb24);
 
     try helpers.expectEq(pixels.rgb24[0].r, 0x34);
     try helpers.expectEq(pixels.rgb24[0].g, 0x53);
@@ -555,8 +569,8 @@ test "Write PCX rgb24 (odd width)" {
 }
 
 test "Write PCX rgb24 (even width)" {
-    var rainbow_test = try Image.create(helpers.zigimg_test_allocator, 256, 256, .rgb24);
-    defer rainbow_test.deinit();
+    var rainbow_test = try zigimg.Image.create(helpers.zigimg_test_allocator, 256, 256, .rgb24);
+    defer rainbow_test.deinit(helpers.zigimg_test_allocator);
 
     // Generate pattern
     const image_size = rainbow_test.width * rainbow_test.height;
@@ -579,7 +593,8 @@ test "Write PCX rgb24 (even width)" {
 
     const image_file_name = "zigimg_pcx_rgb24_even.pcx";
 
-    try rainbow_test.writeToFilePath(image_file_name, Image.EncoderOptions{
+    var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    try rainbow_test.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
         .pcx = .{},
     });
     defer {
@@ -589,18 +604,19 @@ test "Write PCX rgb24 (even width)" {
     const read_file = try helpers.testOpenFile(image_file_name);
     defer read_file.close();
 
-    var stream_source = std.io.StreamSource{ .file = read_file };
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
 
-    var pcxFile = pcx.PCX{};
+    var pcx_file = pcx.PCX{};
 
-    const pixels = try pcxFile.read(helpers.zigimg_test_allocator, &stream_source);
+    const pixels = try pcx_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
 
-    try helpers.expectEq(pcxFile.width(), 256);
-    try helpers.expectEq(pcxFile.height(), 256);
-    try helpers.expectEq(try pcxFile.pixelFormat(), PixelFormat.rgb24);
+    try helpers.expectEq(pcx_file.width(), 256);
+    try helpers.expectEq(pcx_file.height(), 256);
+    try helpers.expectEq(try pcx_file.pixelFormat(), .rgb24);
 
-    try testing.expect(pixels == .rgb24);
+    try std.testing.expect(pixels == .rgb24);
 
     // Check pattern
     for (0..image_size) |index| {

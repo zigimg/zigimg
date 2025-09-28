@@ -1,6 +1,6 @@
-const std = @import("std");
 const Image = @import("../Image.zig");
-const ImageUnmanaged = @import("../ImageUnmanaged.zig");
+const io = @import("../io.zig");
+const std = @import("std");
 
 const Code = struct {
     run_length: u16,
@@ -234,9 +234,15 @@ pub const Decoder = struct {
         return .{ .width = width, .num_rows = num_rows, .white_value = white_value };
     }
 
-    pub fn decode(self: *Decoder, reader: Image.Stream.Reader, writer: anytype) !void {
-        var bit_reader = std.io.bitReader(std.builtin.Endian.big, reader);
-        var bit_writer = std.io.bitWriter(std.builtin.Endian.big, writer);
+    pub fn decode(self: *Decoder, reader: *std.Io.Reader, writer: *std.Io.Writer) !void {
+        var bit_reader: io.BitReader(.big) = .{
+            .reader = reader,
+        };
+
+        var bit_writer: io.BitWriter(.big) = .{
+            .writer = writer,
+        };
+
         const max_row = self.num_rows;
         var current_row: usize = 0;
         var code_length: u8 = 0;
@@ -277,7 +283,7 @@ pub const Decoder = struct {
 
             // malfornmed file
             if (pixels_to_decode != 0) {
-                return ImageUnmanaged.ReadError.InvalidData;
+                return Image.ReadError.InvalidData;
             }
         }
     }

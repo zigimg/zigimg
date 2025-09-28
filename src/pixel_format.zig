@@ -81,6 +81,7 @@ pub const PixelFormat = enum(u32) {
         }
 
         return switch (self) {
+            .rgb332 => 1,
             inline else => |value| (info(value).channel_count * info(value).bits_per_channel + 7) / 8,
         };
     }
