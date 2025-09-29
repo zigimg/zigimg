@@ -465,7 +465,9 @@ pub fn example() !void {
     // [...]
     // Assuming you already have an image loaded and the buffer already allocated
 
-    try image.writeToMemory(buffer[0..], .{ .tga = .{} });
+    // `allocator` is used for incidental allocations in the writing process.
+    // `buffer` is where the image will be written to. It must be large enough to fit the output.
+    try image.writeToMemory(allocator, buffer[0..], .{ .tga = .{} });
 }
 ```
 
