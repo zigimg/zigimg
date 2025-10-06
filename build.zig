@@ -33,16 +33,4 @@ pub fn build(b: *Build) void {
     const build_only_test_step = b.step("test_build_only", "Build the tests but does not run it");
     build_only_test_step.dependOn(&zigimg_build_test.step);
     build_only_test_step.dependOn(b.getInstallStep());
-
-    // Add JPEG client example
-    const jpeg_client = b.addExecutable(.{
-        .name = "jpeg_client",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("examples/jpeg_client.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
-    });
-    jpeg_client.root_module.addImport("zigimg", zigimg_module);
-    b.installArtifact(jpeg_client);
 }
