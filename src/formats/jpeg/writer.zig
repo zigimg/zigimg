@@ -38,7 +38,7 @@ const HuffmanSpec = struct {
     value: []const u8,
 };
 
-// Huffman table specifications (from Go's theHuffmanSpec)
+// Huffman table specifications
 const theHuffmanSpec = [nHuffIndex]HuffmanSpec{
     // Luminance DC
     .{
@@ -169,7 +169,7 @@ fn initHuffmanLUT(spec: HuffmanSpec) [256]u32 {
     var code: u32 = 0;
     var k: usize = 0;
 
-    // Generate Huffman codes from specification (same as Go implementation)
+    // Generate Huffman codes from specification
     for (0..16) |i| {
         const n_bits = @as(u32, @intCast(i + 1)) << 24;
         const count = spec.count[i];
@@ -213,7 +213,7 @@ pub const JPEGWriter = struct {
         return jpeg_writer;
     }
 
-    /// Encode an image to JPEG format (based on Go's Encode function)
+    /// Encode an image to JPEG format
     pub fn encode(self: *JPEGWriter, image: Image, quality: u8) Image.WriteError!void {
 
         // Validate image dimensions
@@ -283,7 +283,7 @@ pub const JPEGWriter = struct {
                 x = @divTrunc((x * scale_factor + 50), 100);
                 if (x < 1) x = 1;
                 if (x > 255) x = 255;
-                self.quant[i][ZigzagOffsets[j]] = @as(u8, @intCast(x)); // Use zigzag ordering like existing code
+                self.quant[i][j] = @as(u8, @intCast(x));
             }
 
             // Debug: Print first few quantization values
@@ -386,6 +386,7 @@ pub const JPEGWriter = struct {
                 self.err = Image.WriteError.InvalidData;
                 return Image.WriteError.InvalidData;
             };
+
             // Write quantization table data
             _ = self.writer.write(&self.quant[i]) catch {
                 self.err = Image.WriteError.InvalidData;
@@ -477,7 +478,6 @@ pub const JPEGWriter = struct {
 
     /// Emit bits to the output stream
     pub fn emit(self: *JPEGWriter, bits: u32, n_bits: u32) Image.WriteError!void {
-
         // Preconditions: bits < 1<<n_bits && n_bits <= 16
         std.debug.assert(bits < (@as(u32, 1) << @as(u5, @intCast(@min(n_bits, 31)))));
         std.debug.assert(n_bits <= 16);
@@ -513,6 +513,11 @@ pub const JPEGWriter = struct {
     pub fn emitHuff(self: *JPEGWriter, huff_index: usize, value: i32) Image.WriteError!void {
         if (self.err != null) return;
 
+        // Validate value is within Huffman LUT bounds
+        if (value < 0 or value >= 256) {
+            return Image.WriteError.InvalidData;
+        }
+
         // Get Huffman code from LUT (don't clamp - Huffman tables handle the full range)
         const x = self.huffman_lut[huff_index][@as(usize, @intCast(value))];
 
@@ -528,39 +533,11 @@ pub const JPEGWriter = struct {
     pub fn writeBlock(self: *JPEGWriter, block: *[64]i32, quant_idx: usize, prev_dc: i32) Image.WriteError!i32 {
         if (self.err != null) return 0;
 
-        // Debug: Print first block's input values
-        if (comptime @hasDecl(@This(), "DEBUG") and @This().DEBUG and prev_dc == 0 and quant_idx == 0) {
-            std.debug.print("Input block (first 8 values): ", .{});
-            for (0..8) |i| {
-                std.debug.print("{} ", .{block[i]});
-            }
-            std.debug.print("\n", .{});
-        }
-
         // Apply forward DCT
         fdct(block);
 
-        // Debug: Print first block's DCT values
-        if (comptime @hasDecl(@This(), "DEBUG") and @This().DEBUG and prev_dc == 0 and quant_idx == 0) {
-            std.debug.print("DCT block (first 8 values): ", .{});
-            for (0..8) |i| {
-                std.debug.print("{} ", .{block[i]});
-            }
-            std.debug.print("\n", .{});
-            std.debug.print("Quantization table (first 8 values): ", .{});
-            for (0..8) |i| {
-                std.debug.print("{} ", .{self.quant[quant_idx][i]});
-            }
-            std.debug.print("\n", .{});
-        }
-
         // Quantize the DCT coefficients and handle DC prediction
         const dc = div(block[0], 8 * @as(i32, self.quant[quant_idx][0]));
-
-        // Debug: Print quantized DC value
-        if (comptime @hasDecl(@This(), "DEBUG") and @This().DEBUG and prev_dc == 0 and quant_idx == 0) {
-            std.debug.print("DC: raw={}, quant_factor={}, quantized={}\n", .{ block[0], 8 * @as(i32, self.quant[quant_idx][0]), dc });
-        }
 
         try self.emitHuffRLE(@as(usize, 2 * quant_idx + 0), 0, dc - prev_dc);
 
@@ -569,13 +546,12 @@ pub const JPEGWriter = struct {
         var run_length: i32 = 0;
 
         // Process AC coefficients (skip DC coefficient at index 0)
-        var non_zero_ac_count: u32 = 0;
         for (1..block_size) |zig| {
             const ac = div(block[unzig[zig]], 8 * @as(i32, self.quant[quant_idx][zig]));
+
             if (ac == 0) {
                 run_length += 1;
             } else {
-                non_zero_ac_count += 1;
                 // Handle runs longer than 15 (ZRL - Zero Run Length)
                 while (run_length > 15) {
                     try self.emitHuff(huff_index, 0xf0); // ZRL symbol
@@ -586,11 +562,6 @@ pub const JPEGWriter = struct {
                 try self.emitHuffRLE(huff_index, run_length, ac);
                 run_length = 0;
             }
-        }
-
-        // Debug: Print AC coefficient count for first block
-        if (comptime @hasDecl(@This(), "DEBUG") and @This().DEBUG and prev_dc == 0 and quant_idx == 0) {
-            std.debug.print("Non-zero AC coefficients: {}\n", .{non_zero_ac_count});
         }
 
         // End of block - emit EOB if there are trailing zeros
@@ -610,7 +581,7 @@ pub const JPEGWriter = struct {
                 var sx = px + @as(i32, @intCast(i));
                 var sy = py + @as(i32, @intCast(j));
 
-                // Clamp coordinates to image bounds (same as Go implementation)
+                // Clamp coordinates to image bounds
                 if (sx < 0) {
                     sx = 0;
                 }
@@ -636,7 +607,7 @@ pub const JPEGWriter = struct {
                     std.debug.print("Pixel[{},{}]: R={}, G={}, B={}\n", .{ i, j, pixel.r, pixel.g, pixel.b });
                 }
 
-                // Convert RGB to YCbCr matching Go's color.RGBToYCbCr (Cb/Cr offset by 128)
+                // Convert RGB to YCbCr (Cb/Cr offset by 128)
                 const r_i = @as(i32, pixel.r);
                 const g_i = @as(i32, pixel.g);
                 const b_i = @as(i32, pixel.b);
@@ -653,11 +624,6 @@ pub const JPEGWriter = struct {
                 y_block[block_index] = y8;
                 cb_block[block_index] = cb8;
                 cr_block[block_index] = cr8;
-
-                // Debug: Print first few YCbCr values
-                if (comptime @hasDecl(@This(), "DEBUG") and @This().DEBUG and px == 0 and py == 0 and i < 3 and j < 3) {
-                    std.debug.print("YCbCr[{},{}]: Y={}, Cb={}, Cr={}\n", .{ i, j, yy, cb, cr });
-                }
             }
         }
     }
@@ -671,7 +637,7 @@ pub const JPEGWriter = struct {
                 var sx = px + @as(i32, @intCast(i));
                 var sy = py + @as(i32, @intCast(j));
 
-                // Clamp coordinates to image bounds (same as Go implementation)
+                // Clamp coordinates to image bounds
                 if (sx < 0) {
                     sx = 0;
                 }
@@ -705,7 +671,6 @@ pub const JPEGWriter = struct {
             dst[i] = 0;
         }
 
-        // Use the same logic as Go implementation: dstOff := (i&2)<<4 | (i&1)<<2
         for (0..4) |i| {
             const dst_off = (@as(u8, @intCast(i & 2)) << 4) | (@as(u8, @intCast(i & 1)) << 2);
 
@@ -719,7 +684,7 @@ pub const JPEGWriter = struct {
         }
     }
 
-    /// Perform forward discrete cosine transform (exact port of Go's fdct).
+    /// Perform forward discrete cosine transform
     pub fn fdct(block: *[64]i32) void {
         const fix_0_298631336 = 2446;
         const fix_0_390180644 = 3196;
@@ -910,7 +875,7 @@ pub const JPEGWriter = struct {
                     var y_blocks: [4][64]i32 = undefined;
                     for (0..4) |i| {
                         const x_off = @as(i32, @intCast(i & 1)) * 8;
-                        const y_off = @as(i32, @intCast(i & 2)) * 4; // Go uses * 4, not * 8
+                        const y_off = @as(i32, @intCast(i & 2)) * 4;
                         try self.rgbToYCbCr(image, x + x_off, y + y_off, &y_blocks[i], &cb_blocks[i], &cr_blocks[i]);
                         prev_dc_y = try self.writeBlock(&y_blocks[i], quantIndexLuminance, prev_dc_y);
                     }
@@ -933,7 +898,7 @@ pub const JPEGWriter = struct {
     pub fn emitHuffRLE(self: *JPEGWriter, huff_index: usize, run_length: i32, value: i32) Image.WriteError!void {
         if (self.err != null) return;
 
-        // Handle value encoding (same as Go implementation)
+        // Handle value encoding
         var a = value;
         var b = value;
         if (a < 0) {
@@ -942,34 +907,34 @@ pub const JPEGWriter = struct {
         }
 
         // Calculate number of bits needed to represent the value
+        const bit_count_lut = [_]u8{
+            0, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4,
+            5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+            6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+            6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+            7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+            7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+            7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+            7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+            8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+            8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+            8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+            8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+            8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+            8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+            8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+            8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+        };
         var n_bits: u32 = 0;
         if (a < 0x100) {
-            // Use lookup table for small values (same as Go's bitCount)
-            const bit_count_lut = [_]u8{
-                0, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4,
-                5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
-                6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
-                6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
-                7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-                7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-                7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-                7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-                8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-                8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-                8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-                8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-                8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-                8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-                8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-                8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-            };
             n_bits = @as(u32, bit_count_lut[@as(usize, @intCast(a))]);
         } else {
-            n_bits = 8 + @as(u32, std.math.log2_int(u32, @as(u32, @intCast(a >> 8))));
+            // For values >= 256, use the lookup table on the high byte
+            n_bits = 8 + @as(u32, bit_count_lut[@as(usize, @intCast(a >> 8))]);
         }
 
         // Pack run length and size into Huffman symbol
-        // runLength is 0-15, nBits is 1-10, so we pack as (runLength << 4) | nBits
+        // runLength is 0-15, nBits is 0-15, so we pack as (runLength << 4) | nBits
         const huff_symbol = (run_length << 4) | @as(i32, @intCast(n_bits));
 
         // Emit Huffman code for the packed symbol
@@ -977,9 +942,11 @@ pub const JPEGWriter = struct {
 
         // Emit the actual value bits (if any)
         if (n_bits > 0) {
-            // Cast to u32 and mask the bits (same as Go implementation)
+            // Cast to u32 and mask the bits
             const b_unsigned = @as(u32, @bitCast(b));
-            try self.emit(b_unsigned & ((@as(u32, 1) << @as(u5, @intCast(n_bits))) - 1), n_bits);
+            const mask = ((@as(u32, 1) << @as(u5, @intCast(n_bits))) - 1);
+            const bits_to_emit = b_unsigned & mask;
+            try self.emit(bits_to_emit, n_bits);
         }
     }
 
