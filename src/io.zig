@@ -23,7 +23,7 @@ pub const ReadStream = union(enum) {
         };
     }
 
-    pub fn reader(self: *ReadStream) *std.io.Reader {
+    pub fn reader(self: *ReadStream) *std.Io.Reader {
         return switch (self.*) {
             .memory => |*memory_reader| memory_reader,
             .file => |*file_reader| &file_reader.interface,
@@ -122,7 +122,7 @@ pub const WriteStream = union(enum) {
         };
     }
 
-    pub fn writer(self: *WriteStream) *std.io.Writer {
+    pub fn writer(self: *WriteStream) *std.Io.Writer {
         return switch (self.*) {
             .memory => |*memory_writer| memory_writer,
             .file => |*file_writer| &file_writer.interface,
