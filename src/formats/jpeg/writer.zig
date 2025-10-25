@@ -106,9 +106,6 @@ const theHuffmanSpec = [nHuffIndex]HuffmanSpec{
     },
 };
 
-// DefaultQuality is the default quality encoding parameter.
-const DefaultQuality = 75;
-
 // Unscaled quantization tables in zig-zag order. Each encoder copies and scales
 // the tables according to its quality parameter.
 // The values are derived from section K.1 of the spec, after converting from
@@ -139,7 +136,13 @@ const unscaledQuant = [quant_index][block_size]u8{
 };
 
 // Huffman LUT entry: 8-bit size in MSB, 24-bit code in LSB
-const huffmanLUT = [256]u32;
+const default_huffman_lut = blk: {
+    var tables: [nHuffIndex][256]u32 = undefined;
+    for (theHuffmanSpec, 0..) |spec, idx| {
+        tables[idx] = initHuffmanLUT(spec);
+    }
+    break :blk tables;
+};
 
 // Zigzag ordering for DCT coefficients (same as JPEG spec)
 const unzig = [block_size]u8{
@@ -164,24 +167,19 @@ fn div(a: i32, b: i32) i32 {
 
 // Initialize Huffman LUT from Huffman specification
 fn initHuffmanLUT(spec: HuffmanSpec) [256]u32 {
-    var lut = [_]u32{0} ** 256;
+    var lut: [256]u32 = [_]u32{0} ** 256;
 
     var code: u32 = 0;
-    var k: usize = 0;
+    var value_index: usize = 0;
 
-    // Generate Huffman codes from specification
-    for (0..16) |i| {
-        const n_bits = @as(u32, @intCast(i + 1)) << 24;
-        const count = spec.count[i];
-
-        var j: u8 = 0;
-        while (j < count) : (j += 1) {
-            if (k < spec.value.len) {
-                const value = spec.value[k];
-                lut[value] = n_bits | code;
-                code += 1;
-                k += 1;
-            }
+    for (spec.count, 0..) |count, depth| {
+        const bit_count = @as(u32, @intCast(depth + 1));
+        for (0..count) |_| {
+            std.debug.assert(value_index < spec.value.len);
+            const symbol = spec.value[value_index];
+            lut[symbol] = (bit_count << 24) | code;
+            code += 1;
+            value_index += 1;
         }
         code <<= 1;
     }
@@ -195,337 +193,258 @@ pub const JPEGWriter = struct {
     err: ?Image.WriteError = null,
     buf: [16]u8 = undefined,
     bits: u32 = 0,
-    n_bits: u32 = 0,
+    n_bits: u6 = 0,
     quant: [quant_index][block_size]u8 = undefined, // Scaled quantization tables (using zigzag ordering)
     huffman_lut: [nHuffIndex][256]u32 = undefined, // Huffman look-up tables
 
     /// Initialize a new JPEG writer
     pub fn init(writer: *std.Io.Writer) JPEGWriter {
-        var jpeg_writer = JPEGWriter{
+        return .{
             .writer = writer,
+            .huffman_lut = default_huffman_lut,
         };
-
-        // Initialize Huffman LUTs for each table using the specifications
-        for (0..nHuffIndex) |i| {
-            jpeg_writer.huffman_lut[i] = initHuffmanLUT(theHuffmanSpec[i]);
-        }
-
-        return jpeg_writer;
     }
 
     /// Encode an image to JPEG format
     pub fn encode(self: *JPEGWriter, image: Image, quality: u8) Image.WriteError!void {
+        try JPEGWriter.validateImage(image);
 
-        // Validate image dimensions
-        if (image.width >= 1 << 16 or image.height >= 1 << 16) {
-            return Image.WriteError.InvalidData;
-        }
+        const clamped_quality = math.clamp(quality, @as(u8, 1), @as(u8, 100));
+        self.initializeQuantizationTables(clamped_quality);
 
-        // Clip quality to [1, 100]
-        var clamped_quality = quality;
-        if (clamped_quality < 1) {
-            clamped_quality = 1;
-        } else if (clamped_quality > 100) {
-            clamped_quality = 100;
-        }
+        const width: u16 = @intCast(image.width);
+        const height: u16 = @intCast(image.height);
+        const component_count = componentCount(image);
 
-        // Initialize quantization tables based on quality
-        try self.initializeQuantizationTables(clamped_quality);
-
-        // Determine number of components based on image type
-        const nComponent = self.getComponentCount(image);
-
-        // Write Start Of Image marker
         try self.writeSOI();
-
-        // Write quantization tables
         try self.writeDQT();
+        try self.writeSOF0(width, height, component_count);
+        try self.writeDHT(component_count);
+        try self.writeSOS(image, component_count);
 
-        // Write Start of Frame
-        try self.writeSOF0(@as(u16, @intCast(image.width)), @as(u16, @intCast(image.height)), nComponent);
+        if (self.err) |err| {
+            return err;
+        }
 
-        // Write Huffman tables
-        try self.writeDHT(nComponent);
-
-        // Write image data (Start of Scan)
-        try self.writeSOS(image);
-
-        // Write End Of Image marker
         try self.writeEOI();
-
-        // Flush any remaining data
         try self.flush();
 
-        // Return any error that occurred during writing
         if (self.err) |err| {
             return err;
         }
     }
 
     /// Initialize quantization tables based on quality parameter
-    fn initializeQuantizationTables(self: *JPEGWriter, quality: u8) Image.WriteError!void {
-        // Convert from a quality rating to a scaling factor
-        var scale_factor: i32 = undefined;
-        if (quality < 50) {
-            scale_factor = @divTrunc(5000, @as(i32, quality));
-        } else {
-            scale_factor = 200 - @as(i32, quality) * 2;
-        }
+    fn initializeQuantizationTables(self: *JPEGWriter, quality: u8) void {
+        const scale_factor: i32 = if (quality < 50)
+            @divTrunc(5000, @as(i32, quality))
+        else
+            200 - @as(i32, quality) * 2;
 
-        if (comptime @hasDecl(@This(), "DEBUG") and @This().DEBUG) {
-            std.debug.print("Quality: {}, Scale factor: {}\n", .{ quality, scale_factor });
-        }
-
-        // Scale the quantization tables using zigzag ordering (like existing reader)
-        for (0..quant_index) |i| {
-            for (0..block_size) |j| {
-                var x = @as(i32, unscaledQuant[i][j]);
-                x = @divTrunc((x * scale_factor + 50), 100);
-                if (x < 1) x = 1;
-                if (x > 255) x = 255;
-                self.quant[i][j] = @as(u8, @intCast(x));
-            }
-
-            // Debug: Print first few quantization values
-            if (comptime @hasDecl(@This(), "DEBUG") and @This().DEBUG and i == 0) {
-                std.debug.print("Luminance quant table (first 8): ", .{});
-                for (0..8) |j| {
-                    std.debug.print("{} ", .{self.quant[i][j]});
-                }
-                std.debug.print("\n", .{});
+        for (0..quant_index) |table_index| {
+            for (0..block_size) |coeff_index| {
+                const base = @as(i32, unscaledQuant[table_index][coeff_index]);
+                var scaled = @divTrunc(base * scale_factor + 50, 100);
+                scaled = math.clamp(scaled, @as(i32, 1), @as(i32, 255));
+                self.quant[table_index][coeff_index] = @intCast(scaled);
             }
         }
     }
 
     /// Get the number of components based on image pixel format
-    fn getComponentCount(self: *JPEGWriter, image: Image) u8 {
-        _ = self;
-        // For now, assume RGB images have 3 components, grayscale have 1
-        switch (image.pixels) {
-            .grayscale8 => return 1,
-            .rgb24 => return 3,
-            else => return 3, // Default to 3 components
-        }
+    fn componentCount(image: Image) u8 {
+        return switch (image.pixels) {
+            .grayscale8 => 1,
+            .rgb24 => 3,
+            else => unreachable,
+        };
     }
 
     /// Write Start of Image marker
     pub fn writeSOI(self: *JPEGWriter) Image.WriteError!void {
-        self.buf[0] = 0xff;
-        self.buf[1] = 0xd8; // SOI marker
-        _ = self.writer.write(self.buf[0..2]) catch {
-            self.err = Image.WriteError.InvalidData;
-            return Image.WriteError.InvalidData;
-        };
+        try self.writeMarker(Markers.start_of_image);
     }
 
     /// Write End of Image marker
     pub fn writeEOI(self: *JPEGWriter) Image.WriteError!void {
-        self.buf[0] = 0xff;
-        self.buf[1] = 0xd9; // EOI marker
-        _ = self.writer.write(self.buf[0..2]) catch {
-            self.err = Image.WriteError.InvalidData;
-            return Image.WriteError.InvalidData;
-        };
+        try self.writeMarker(Markers.end_of_image);
     }
 
     /// Write Start of Frame (Baseline DCT) marker
     pub fn writeSOF0(self: *JPEGWriter, width: u16, height: u16, components: u8) Image.WriteError!void {
-        const markerlen = 8 + 3 * @as(usize, components);
-        self.writeMarkerHeader(@as(u8, @intCast(@intFromEnum(utils.Markers.sof0) & 0xFF)), markerlen); // SOF0 marker
+        const component_count = @as(usize, components);
+        const marker_len = 8 + 3 * component_count;
 
-        // 8-bit precision
-        self.buf[0] = 8;
-        // Image dimensions
-        self.buf[1] = @as(u8, @intCast(height >> 8));
-        self.buf[2] = @as(u8, @intCast(height & 0xff));
-        self.buf[3] = @as(u8, @intCast(width >> 8));
-        self.buf[4] = @as(u8, @intCast(width & 0xff));
-        // Number of components
-        self.buf[5] = components;
+        try self.writeMarkerHeader(Markers.sof0, marker_len);
 
-        _ = self.writer.write(self.buf[0..6]) catch {
-            self.err = Image.WriteError.InvalidData;
-            return Image.WriteError.InvalidData;
+        var header: [6]u8 = .{
+            8,
+            @as(u8, @intCast(height >> 8)),
+            @as(u8, @intCast(height & 0xff)),
+            @as(u8, @intCast(width >> 8)),
+            @as(u8, @intCast(width & 0xff)),
+            components,
         };
+        try self.writer.writeAll(header[0..]);
 
-        // Component specifications
-        if (components == 1) {
-            // Grayscale
-            self.buf[0] = 1; // Component ID
-            self.buf[1] = 0x11; // 4:4:4 subsampling
-            self.buf[2] = 0; // Quantization table
-            _ = self.writer.write(self.buf[0..3]) catch {
-                self.err = Image.WriteError.InvalidData;
-                return Image.WriteError.InvalidData;
-            };
-        } else {
-            // Color components
-            const subsampling = [_]u8{ 0x22, 0x11, 0x11 }; // 4:2:0 subsampling
-            const quant_tables = [_]u8{ 0, 1, 1 }; // Y uses table 0, Cb and Cr use table 1
-            for (0..components) |i| {
-                self.buf[3 * i] = @as(u8, @intCast(i + 1)); // Component ID
-                self.buf[3 * i + 1] = subsampling[i]; // Subsampling
-                self.buf[3 * i + 2] = quant_tables[i]; // Quantization table
-            }
-            _ = self.writer.write(self.buf[0 .. 3 * @as(usize, components)]) catch {
-                self.err = Image.WriteError.InvalidData;
-                return Image.WriteError.InvalidData;
-            };
+        var component_bytes: [MAX_COMPONENTS * 3]u8 = undefined;
+        var idx: usize = 0;
+
+        switch (components) {
+            1 => {
+                component_bytes[idx + 0] = 1; // Component ID
+                component_bytes[idx + 1] = 0x11; // 4:4:4 sampling
+                component_bytes[idx + 2] = 0; // Quant table selector
+                idx += 3;
+            },
+            3 => {
+                component_bytes[idx + 0] = 1;
+                component_bytes[idx + 1] = 0x22; // 4:2:0 sampling for Y
+                component_bytes[idx + 2] = 0;
+                component_bytes[idx + 3] = 2;
+                component_bytes[idx + 4] = 0x11;
+                component_bytes[idx + 5] = 1;
+                component_bytes[idx + 6] = 3;
+                component_bytes[idx + 7] = 0x11;
+                component_bytes[idx + 8] = 1;
+                idx += 9;
+            },
+            else => unreachable,
         }
+
+        try self.writer.writeAll(component_bytes[0..idx]);
     }
 
     /// Write Define Quantization Tables marker
     pub fn writeDQT(self: *JPEGWriter) Image.WriteError!void {
-        const markerlen = 2 + quant_index * (1 + block_size);
-        self.writeMarkerHeader(@as(u8, @intCast(@intFromEnum(utils.Markers.define_quantization_tables) & 0xFF)), markerlen); // DQT marker
+        const marker_len = 2 + quant_index * (1 + block_size);
+        try self.writeMarkerHeader(Markers.define_quantization_tables, marker_len);
 
-        for (0..quant_index) |i| {
-            // Write table index (8-bit precision, destination i)
-            self.buf[0] = @as(u8, @intCast(i)); // table index
-            _ = self.writer.write(self.buf[0..1]) catch {
-                self.err = Image.WriteError.InvalidData;
-                return Image.WriteError.InvalidData;
-            };
-
-            // Write quantization table data
-            _ = self.writer.write(&self.quant[i]) catch {
-                self.err = Image.WriteError.InvalidData;
-                return Image.WriteError.InvalidData;
-            };
+        for (self.quant, 0..) |table, idx| {
+            try self.writer.writeByte(@as(u8, @intCast(idx)));
+            try self.writer.writeAll(table[0..]);
         }
     }
 
     /// Write Define Huffman Tables marker
-    pub fn writeDHT(self: *JPEGWriter, nComponent: u8) Image.WriteError!void {
+    pub fn writeDHT(self: *JPEGWriter, component_count: u8) Image.WriteError!void {
+        var marker_len: usize = 2;
+        const specs_len: usize = if (component_count == 1) 2 else nHuffIndex;
 
-        // Calculate marker length
-        var markerlen: usize = 2;
-        const specs_len: usize = if (nComponent == 1) 2 else nHuffIndex;
-        for (0..specs_len) |i| {
-            const s = theHuffmanSpec[i];
-            markerlen += 1 + 16 + s.value.len;
+        for (theHuffmanSpec[0..specs_len]) |spec| {
+            marker_len += 1 + spec.count.len + spec.value.len;
         }
 
-        // Write DHT marker header
-        self.writeMarkerHeader(@as(u8, @intCast(@intFromEnum(utils.Markers.define_huffman_tables) & 0xFF)), markerlen); // DHT marker
+        try self.writeMarkerHeader(Markers.define_huffman_tables, marker_len);
 
-        // Write Huffman table data
-        const table_classes = [_]u8{ 0x00, 0x10, 0x01, 0x11 }; // DC luminance, AC luminance, DC chrominance, AC chrominance
-        for (0..specs_len) |i| {
-            const s = theHuffmanSpec[i];
-            // Write table class and destination
-            self.buf[0] = table_classes[i];
-            _ = self.writer.write(self.buf[0..1]) catch {
-                self.err = Image.WriteError.InvalidData;
-                return Image.WriteError.InvalidData;
-            };
-
-            // Write bit counts (16 bytes)
-            _ = self.writer.write(&s.count) catch {
-                self.err = Image.WriteError.InvalidData;
-                return Image.WriteError.InvalidData;
-            };
-
-            // Write Huffman values
-            _ = self.writer.write(s.value) catch {
-                self.err = Image.WriteError.InvalidData;
-                return Image.WriteError.InvalidData;
-            };
+        const table_classes = [_]u8{ 0x00, 0x10, 0x01, 0x11 };
+        for (theHuffmanSpec[0..specs_len], 0..) |spec, idx| {
+            try self.writer.writeByte(table_classes[idx]);
+            try self.writer.writeAll(spec.count[0..]);
+            try self.writer.writeAll(spec.value);
         }
     }
 
-    /// Write Start of Scan marker
-    pub fn writeSOS(self: *JPEGWriter, image: Image) Image.WriteError!void {
-        const nComponent = self.getComponentCount(image);
+    /// Write Start of Scan marker and entropy-coded data
+    pub fn writeSOS(self: *JPEGWriter, image: Image, component_count: u8) Image.WriteError!void {
+        const comp_usize = @as(usize, component_count);
+        const marker_len = 6 + 2 * comp_usize;
+        try self.writeMarkerHeader(Markers.start_of_scan, marker_len);
 
-        // Write SOS header based on component count
-        if (nComponent == 1) {
-            // Grayscale SOS header
-            const sosHeaderY = [_]u8{ 0xff, 0xda, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3f, 0x00 };
-            _ = self.writer.write(&sosHeaderY) catch {
-                self.err = Image.WriteError.InvalidData;
-                return Image.WriteError.InvalidData;
-            };
-        } else {
-            // Color SOS header
-            const sosHeaderYCbCr = [_]u8{
-                0xff, 0xda, 0x00, 0x0c, 0x03, // SOS marker + length + component count
-                0x01, 0x00, // Y: DC table 0, AC table 1
-                0x02, 0x11, // Cb: DC table 2, AC table 3
-                0x03, 0x11, // Cr: DC table 2, AC table 3
-                0x00, 0x3f, 0x00, // Start/end spectral selection, successive approximation
-            };
-            _ = self.writer.write(&sosHeaderYCbCr) catch {
-                self.err = Image.WriteError.InvalidData;
-                return Image.WriteError.InvalidData;
-            };
+        var payload: [1 + MAX_COMPONENTS * 2 + 3]u8 = undefined;
+        payload[0] = component_count;
+        var offset: usize = 1;
+
+        switch (component_count) {
+            1 => {
+                payload[offset + 0] = 1;
+                payload[offset + 1] = 0x00;
+                offset += 2;
+            },
+            3 => {
+                payload[offset + 0] = 1;
+                payload[offset + 1] = 0x00;
+                payload[offset + 2] = 2;
+                payload[offset + 3] = 0x11;
+                payload[offset + 4] = 3;
+                payload[offset + 5] = 0x11;
+                offset += 6;
+            },
+            else => unreachable,
         }
 
-        // Write actual encoded image data
-        try self.writeImageData(image, nComponent);
+        payload[offset + 0] = 0x00;
+        payload[offset + 1] = 0x3f;
+        payload[offset + 2] = 0x00;
+        offset += 3;
+
+        try self.writer.writeAll(payload[0..offset]);
+        try self.writeImageData(image, component_count);
+        try self.finishEntropy();
     }
 
     /// Write a generic marker header with length
-    pub fn writeMarkerHeader(self: *JPEGWriter, marker: u8, markerlen: usize) void {
-        self.buf[0] = 0xff;
-        self.buf[1] = marker;
-        self.buf[2] = @as(u8, @intCast(markerlen >> 8));
-        self.buf[3] = @as(u8, @intCast(markerlen & 0xff));
-        _ = self.writer.write(self.buf[0..4]) catch {
-            self.err = Image.WriteError.InvalidData;
-        };
+    fn writeMarkerHeader(self: *JPEGWriter, marker: Markers, marker_len: usize) Image.WriteError!void {
+        std.debug.assert(marker_len <= math.maxInt(u16));
+
+        const value = @intFromEnum(marker);
+        self.buf[0] = @as(u8, @intCast(value >> 8));
+        self.buf[1] = @as(u8, @intCast(value & 0xff));
+        self.buf[2] = @as(u8, @intCast(marker_len >> 8));
+        self.buf[3] = @as(u8, @intCast(marker_len & 0xff));
+        try self.writer.writeAll(self.buf[0..4]);
+    }
+
+    fn writeMarker(self: *JPEGWriter, marker: Markers) Image.WriteError!void {
+        const value = @intFromEnum(marker);
+        self.buf[0] = @as(u8, @intCast(value >> 8));
+        self.buf[1] = @as(u8, @intCast(value & 0xff));
+        try self.writer.writeAll(self.buf[0..2]);
     }
 
     /// Emit bits to the output stream
-    pub fn emit(self: *JPEGWriter, bits: u32, n_bits: u32) Image.WriteError!void {
-        // Preconditions: bits < 1<<n_bits && n_bits <= 16
-        std.debug.assert(bits < (@as(u32, 1) << @as(u5, @intCast(@min(n_bits, 31)))));
-        std.debug.assert(n_bits <= 16);
+    pub fn emit(self: *JPEGWriter, bits: u32, n_bits: u5) Image.WriteError!void {
+        if (self.err != null) return;
 
-        var n_bits_mut = n_bits + self.n_bits;
+        std.debug.assert(n_bits > 0 and n_bits <= 16);
+        std.debug.assert(bits < (@as(u32, 1) << n_bits));
+
+        var n_bits_mut = @as(u32, n_bits) + @as(u32, self.n_bits);
         const shift_amount = @as(u5, @intCast(@min(32 - n_bits_mut, 31)));
-        var bits_mut = bits << shift_amount | self.bits;
+        var bits_mut = (bits << shift_amount) | self.bits;
 
         while (n_bits_mut >= 8) {
-            const b = @as(u8, @intCast(bits_mut >> 24));
-            self.writeByte(b);
-            if (b == 0xff) {
-                self.writeByte(0x00); // Byte stuffing
+            const byte = @as(u8, @intCast(bits_mut >> 24));
+            self.writeByte(byte);
+            if (byte == 0xff) {
+                self.writeByte(0x00);
             }
             bits_mut <<= @as(u5, 8);
             n_bits_mut -= 8;
         }
 
         self.bits = bits_mut;
-        self.n_bits = n_bits_mut;
+        self.n_bits = @as(u6, @intCast(n_bits_mut));
     }
 
     /// Write a single byte, handling errors
     fn writeByte(self: *JPEGWriter, b: u8) void {
         if (self.err != null) return;
-        self.writer.writeByte(b) catch {
-            self.err = Image.WriteError.InvalidData;
-            return;
+        self.writer.writeByte(b) catch |err| {
+            self.err = err;
         };
     }
 
     /// Emit Huffman-encoded value
-    pub fn emitHuff(self: *JPEGWriter, huff_index: usize, value: i32) Image.WriteError!void {
+    pub fn emitHuff(self: *JPEGWriter, huff_index: usize, value: u8) Image.WriteError!void {
         if (self.err != null) return;
 
-        // Validate value is within Huffman LUT bounds
-        if (value < 0 or value >= 256) {
-            return Image.WriteError.InvalidData;
-        }
+        const entry = self.huffman_lut[huff_index][value];
+        const n_bits_u32 = entry >> 24;
+        if (n_bits_u32 == 0) return Image.WriteError.InvalidData;
 
-        // Get Huffman code from LUT (don't clamp - Huffman tables handle the full range)
-        const x = self.huffman_lut[huff_index][@as(usize, @intCast(value))];
-
-        // Extract size (high 8 bits) and code (low 24 bits)
-        const n_bits = x >> 24;
-        const code = x & 0x00FFFFFF;
-
-        // Emit the Huffman code
+        const n_bits: u5 = @intCast(n_bits_u32);
+        const code = entry & 0x00FF_FFFF;
         try self.emit(code, n_bits);
     }
 
@@ -533,144 +452,108 @@ pub const JPEGWriter = struct {
     pub fn writeBlock(self: *JPEGWriter, block: *[64]i32, quant_idx: usize, prev_dc: i32) Image.WriteError!i32 {
         if (self.err != null) return 0;
 
-        // Apply forward DCT
         fdct(block);
 
-        // Quantize the DCT coefficients and handle DC prediction
-        const dc = div(block[0], 8 * @as(i32, self.quant[quant_idx][0]));
+        const dc_table = quant_idx * 2;
+        const ac_table = dc_table + 1;
 
-        try self.emitHuffRLE(@as(usize, 2 * quant_idx + 0), 0, dc - prev_dc);
+        const dc_quant = 8 * @as(i32, self.quant[quant_idx][0]);
+        const dc = div(block[0], dc_quant);
+        try self.emitHuffRLE(dc_table, 0, dc - prev_dc);
 
-        // Handle AC coefficients
-        const huff_index = @as(usize, 2 * quant_idx + 1);
         var run_length: i32 = 0;
 
-        // Process AC coefficients (skip DC coefficient at index 0)
         for (1..block_size) |zig| {
-            const ac = div(block[unzig[zig]], 8 * @as(i32, self.quant[quant_idx][zig]));
+            const quant = 8 * @as(i32, self.quant[quant_idx][zig]);
+            const ac = div(block[unzig[zig]], quant);
 
             if (ac == 0) {
                 run_length += 1;
-            } else {
-                // Handle runs longer than 15 (ZRL - Zero Run Length)
-                while (run_length > 15) {
-                    try self.emitHuff(huff_index, 0xf0); // ZRL symbol
-                    run_length -= 16;
-                }
-
-                // Emit the run-length encoded AC coefficient
-                try self.emitHuffRLE(huff_index, run_length, ac);
-                run_length = 0;
+                continue;
             }
+
+            while (run_length > 15) {
+                try self.emitHuff(ac_table, 0xf0);
+                run_length -= 16;
+            }
+
+            try self.emitHuffRLE(ac_table, run_length, ac);
+            run_length = 0;
         }
 
-        // End of block - emit EOB if there are trailing zeros
         if (run_length > 0) {
-            try self.emitHuff(huff_index, 0x00); // EOB symbol
+            try self.emitHuff(ac_table, 0x00);
         }
 
+        if (self.err) |err| return err;
         return dc;
     }
 
     /// Convert RGB image data to YCbCr color space for a single 8x8 block
-    pub fn rgbToYCbCr(self: *JPEGWriter, image: Image, px: i32, py: i32, y_block: *[64]i32, cb_block: *[64]i32, cr_block: *[64]i32) Image.WriteError!void {
+    pub fn rgbToYCbCr(
+        self: *JPEGWriter,
+        image: Image,
+        px: i32,
+        py: i32,
+        y_block: *[64]i32,
+        cb_block: *[64]i32,
+        cr_block: *[64]i32,
+    ) void {
         _ = self;
+
+        const max_x: i32 = @intCast(image.width - 1);
+        const max_y: i32 = @intCast(image.height - 1);
 
         for (0..8) |j| {
             for (0..8) |i| {
-                var sx = px + @as(i32, @intCast(i));
-                var sy = py + @as(i32, @intCast(j));
-
-                // Clamp coordinates to image bounds
-                if (sx < 0) {
-                    sx = 0;
-                }
-                if (sx > @as(i32, @intCast(image.width - 1))) {
-                    sx = @as(i32, @intCast(image.width - 1));
-                }
-                if (sy < 0) {
-                    sy = 0;
-                }
-                if (sy > @as(i32, @intCast(image.height - 1))) {
-                    sy = @as(i32, @intCast(image.height - 1));
-                }
+                const sx = math.clamp(px + @as(i32, @intCast(i)), @as(i32, 0), max_x);
+                const sy = math.clamp(py + @as(i32, @intCast(j)), @as(i32, 0), max_y);
 
                 const x = @as(usize, @intCast(sx));
                 const y = @as(usize, @intCast(sy));
-
-                // Get pixel from RGB24 data
                 const pixel_index = y * image.width + x;
                 const pixel = image.pixels.rgb24[pixel_index];
 
-                // Debug: Print first few pixels to see what we're getting
-                if (comptime @hasDecl(@This(), "DEBUG") and @This().DEBUG and px == 0 and py == 0 and i < 3 and j < 3) {
-                    std.debug.print("Pixel[{},{}]: R={}, G={}, B={}\n", .{ i, j, pixel.r, pixel.g, pixel.b });
-                }
-
-                // Convert RGB to YCbCr (Cb/Cr offset by 128)
                 const r_i = @as(i32, pixel.r);
                 const g_i = @as(i32, pixel.g);
                 const b_i = @as(i32, pixel.b);
+
                 const yy = (19595 * r_i + 38470 * g_i + 7471 * b_i + 32768) >> 16;
                 const cb = (-11059 * r_i - 21709 * g_i + 32768 * b_i + ((128 << 16) + 32768)) >> 16;
                 const cr = (32768 * r_i - 27439 * g_i - 5329 * b_i + ((128 << 16) + 32768)) >> 16;
 
                 const block_index = j * 8 + i;
-                // Clamp to 0..255 range
-                const y8: i32 = @intCast(@as(i16, @intCast(@max(0, @min(255, yy)))));
-                const cb8: i32 = @intCast(@as(i16, @intCast(@max(0, @min(255, cb)))));
-                const cr8: i32 = @intCast(@as(i16, @intCast(@max(0, @min(255, cr)))));
-
-                y_block[block_index] = y8;
-                cb_block[block_index] = cb8;
-                cr_block[block_index] = cr8;
+                y_block[block_index] = math.clamp(yy, @as(i32, 0), @as(i32, 255));
+                cb_block[block_index] = math.clamp(cb, @as(i32, 0), @as(i32, 255));
+                cr_block[block_index] = math.clamp(cr, @as(i32, 0), @as(i32, 255));
             }
         }
     }
 
     /// Convert grayscale image data to Y block
-    pub fn grayToY(self: *JPEGWriter, image: Image, px: i32, py: i32, y_block: *[64]i32) Image.WriteError!void {
+    pub fn grayToY(self: *JPEGWriter, image: Image, px: i32, py: i32, y_block: *[64]i32) void {
         _ = self;
+
+        const max_x: i32 = @intCast(image.width - 1);
+        const max_y: i32 = @intCast(image.height - 1);
 
         for (0..8) |j| {
             for (0..8) |i| {
-                var sx = px + @as(i32, @intCast(i));
-                var sy = py + @as(i32, @intCast(j));
-
-                // Clamp coordinates to image bounds
-                if (sx < 0) {
-                    sx = 0;
-                }
-                if (sx > @as(i32, @intCast(image.width - 1))) {
-                    sx = @as(i32, @intCast(image.width - 1));
-                }
-                if (sy < 0) {
-                    sy = 0;
-                }
-                if (sy > @as(i32, @intCast(image.height - 1))) {
-                    sy = @as(i32, @intCast(image.height - 1));
-                }
+                const sx = math.clamp(px + @as(i32, @intCast(i)), @as(i32, 0), max_x);
+                const sy = math.clamp(py + @as(i32, @intCast(j)), @as(i32, 0), max_y);
 
                 const x = @as(usize, @intCast(sx));
                 const y = @as(usize, @intCast(sy));
-
-                // Get pixel from grayscale data
                 const pixel_index = y * image.width + x;
                 const gray = image.pixels.grayscale8[pixel_index];
 
-                const block_index = j * 8 + i;
-                y_block[block_index] = @as(i32, gray.value);
+                y_block[j * 8 + i] = @as(i32, gray.value);
             }
         }
     }
 
     /// Scale 4 chroma blocks (16x16) down to 1 chroma block (8x8) for 4:2:0 subsampling
-    pub fn scale(dst: *[64]i32, src: *[4][64]i32) void {
-        // Initialize destination block to zero
-        for (0..64) |i| {
-            dst[i] = 0;
-        }
-
+    pub fn scale(dst: *[64]i32, src: *const [4][64]i32) void {
         for (0..4) |i| {
             const dst_off = (@as(u8, @intCast(i & 2)) << 4) | (@as(u8, @intCast(i & 1)) << 2);
 
@@ -813,11 +696,10 @@ pub const JPEGWriter = struct {
 
     /// Flush any remaining buffered data
     pub fn flush(self: *JPEGWriter) Image.WriteError!void {
-        if (self.err != null) return;
-
-        // Flush any remaining bits
-        if (self.n_bits > 0) {
-            try self.emit(0x7f, 7); // Pad with 1's
+        if (self.err) |err| return err;
+        if (self.n_bits != 0) {
+            self.err = Image.WriteError.UnfinishedBits;
+            return Image.WriteError.UnfinishedBits;
         }
 
         // Flush the writer
@@ -825,88 +707,89 @@ pub const JPEGWriter = struct {
     }
 
     /// Write the actual image data (scan/entropy coded data)
-    pub fn writeImageData(self: *JPEGWriter, image: Image, nComponent: u8) Image.WriteError!void {
+    pub fn writeImageData(self: *JPEGWriter, image: Image, component_count: u8) Image.WriteError!void {
         if (self.err != null) return;
 
-        // Scratch blocks for YCbCr conversion
+        std.debug.assert(component_count == 1 or component_count == 3);
+
         var y_block: [64]i32 = undefined;
         var cb_blocks: [4][64]i32 = undefined;
         var cr_blocks: [4][64]i32 = undefined;
+        var cb_macro: [64]i32 = undefined;
+        var cr_macro: [64]i32 = undefined;
 
-        // Initialize all blocks to zero
-        for (0..64) |i| {
-            y_block[i] = 0;
-            for (0..4) |j| {
-                cb_blocks[j][i] = 0;
-                cr_blocks[j][i] = 0;
-            }
-        }
-
-        // DC component predictors (for delta encoding)
         var prev_dc_y: i32 = 0;
         var prev_dc_cb: i32 = 0;
         var prev_dc_cr: i32 = 0;
 
-        if (nComponent == 1) {
-            // Grayscale image - process 8x8 blocks
+        const width_i32: i32 = @intCast(image.width);
+        const height_i32: i32 = @intCast(image.height);
+
+        if (component_count == 1) {
             var y: i32 = 0;
-            while (y < @as(i32, @intCast(image.height))) : (y += 8) {
+            while (y < height_i32) : (y += 8) {
                 var x: i32 = 0;
-                while (x < @as(i32, @intCast(image.width))) : (x += 8) {
-                    try self.grayToY(image, x, y, &y_block);
+                while (x < width_i32) : (x += 8) {
+                    self.grayToY(image, x, y, &y_block);
                     prev_dc_y = try self.writeBlock(&y_block, quantIndexLuminance, prev_dc_y);
+                    if (self.err) |err| return err;
                 }
             }
-        } else {
-            // Color image - process 16x16 macroblocks with 4:2:0 chroma subsampling
-            var y: i32 = 0;
-            while (y < @as(i32, @intCast(image.height))) : (y += 16) {
-                var x: i32 = 0;
-                while (x < @as(i32, @intCast(image.width))) : (x += 16) {
-                    // Initialize chroma blocks for this macroblock to prevent stale data
-                    for (0..4) |i| {
-                        for (0..64) |j| {
-                            cb_blocks[i][j] = 0;
-                            cr_blocks[i][j] = 0;
-                        }
-                    }
-
-                    // Process 4 luminance blocks (8x8 each) per macroblock
-                    var y_blocks: [4][64]i32 = undefined;
-                    for (0..4) |i| {
-                        const x_off = @as(i32, @intCast(i & 1)) * 8;
-                        const y_off = @as(i32, @intCast(i & 2)) * 4;
-                        try self.rgbToYCbCr(image, x + x_off, y + y_off, &y_blocks[i], &cb_blocks[i], &cr_blocks[i]);
-                        prev_dc_y = try self.writeBlock(&y_blocks[i], quantIndexLuminance, prev_dc_y);
-                    }
-
-                    // Scale and process chrominance blocks (4:2:0 subsampling)
-                    scale(&y_blocks[0], &cb_blocks);
-                    prev_dc_cb = try self.writeBlock(&y_blocks[0], quantIndexChrominance, prev_dc_cb);
-
-                    scale(&y_blocks[0], &cr_blocks);
-                    prev_dc_cr = try self.writeBlock(&y_blocks[0], quantIndexChrominance, prev_dc_cr);
-                }
-            }
+            return;
         }
 
-        // Pad the last byte with 1's (JPEG requirement)
-        try self.emit(0x7f, 7);
+        var y_blocks: [4][64]i32 = undefined;
+        var macro_y: i32 = 0;
+        while (macro_y < height_i32) : (macro_y += 16) {
+            var macro_x: i32 = 0;
+            while (macro_x < width_i32) : (macro_x += 16) {
+                for (0..4) |i| {
+                    const x_off = @as(i32, @intCast(i & 1)) * 8;
+                    const y_off = @as(i32, @intCast((i >> 1) & 1)) * 8;
+                    self.rgbToYCbCr(image, macro_x + x_off, macro_y + y_off, &y_blocks[i], &cb_blocks[i], &cr_blocks[i]);
+                    prev_dc_y = try self.writeBlock(&y_blocks[i], quantIndexLuminance, prev_dc_y);
+                    if (self.err) |err| return err;
+                }
+
+                scale(&cb_macro, &cb_blocks);
+                prev_dc_cb = try self.writeBlock(&cb_macro, quantIndexChrominance, prev_dc_cb);
+                if (self.err) |err| return err;
+
+                scale(&cr_macro, &cr_blocks);
+                prev_dc_cr = try self.writeBlock(&cr_macro, quantIndexChrominance, prev_dc_cr);
+                if (self.err) |err| return err;
+            }
+        }
+    }
+
+    fn finishEntropy(self: *JPEGWriter) Image.WriteError!void {
+        if (self.err != null) return;
+
+        const pending: u6 = self.n_bits;
+        if (pending == 0) return;
+
+        const pad_count: u5 = @intCast(8 - @as(u32, pending));
+        if (pad_count == 0) return;
+
+        const pad_bits: u32 = (@as(u32, 1) << pad_count) - 1;
+        try self.emit(pad_bits, pad_count);
+        self.bits = 0;
+        self.n_bits = 0;
     }
 
     /// Emit Huffman-encoded value with run-length encoding
     pub fn emitHuffRLE(self: *JPEGWriter, huff_index: usize, run_length: i32, value: i32) Image.WriteError!void {
         if (self.err != null) return;
 
-        // Handle value encoding
-        var a = value;
-        var b = value;
-        if (a < 0) {
-            a = -value;
-            b = value - 1;
+        std.debug.assert(run_length >= 0 and run_length <= 15);
+
+        var magnitude = value;
+        var payload = value;
+        if (magnitude < 0) {
+            magnitude = -value;
+            payload = value - 1;
         }
 
-        // Calculate number of bits needed to represent the value
         const bit_count_lut = [_]u8{
             0, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4,
             5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
@@ -925,28 +808,21 @@ pub const JPEGWriter = struct {
             8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
             8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
         };
-        var n_bits: u32 = 0;
-        if (a < 0x100) {
-            n_bits = @as(u32, bit_count_lut[@as(usize, @intCast(a))]);
-        } else {
-            // For values >= 256, use the lookup table on the high byte
-            n_bits = 8 + @as(u32, bit_count_lut[@as(usize, @intCast(a >> 8))]);
-        }
 
-        // Pack run length and size into Huffman symbol
-        // runLength is 0-15, nBits is 0-15, so we pack as (runLength << 4) | nBits
-        const huff_symbol = (run_length << 4) | @as(i32, @intCast(n_bits));
+        const mag_u32: u32 = @intCast(magnitude);
+        const bit_size: u5 = if (mag_u32 < 0x100)
+            @intCast(bit_count_lut[@as(usize, mag_u32)])
+        else
+            @intCast(8 + bit_count_lut[@as(usize, mag_u32 >> 8)]);
 
-        // Emit Huffman code for the packed symbol
-        try self.emitHuff(huff_index, huff_symbol);
+        const symbol: u8 = @intCast((run_length << 4) | @as(i32, bit_size));
+        try self.emitHuff(huff_index, symbol);
 
-        // Emit the actual value bits (if any)
-        if (n_bits > 0) {
-            // Cast to u32 and mask the bits
-            const b_unsigned = @as(u32, @bitCast(b));
-            const mask = ((@as(u32, 1) << @as(u5, @intCast(n_bits))) - 1);
-            const bits_to_emit = b_unsigned & mask;
-            try self.emit(bits_to_emit, n_bits);
+        if (bit_size > 0) {
+            const payload_bits = @as(u32, @bitCast(payload));
+            const mask = (@as(u32, 1) << bit_size) - 1;
+            const bits_to_emit = payload_bits & mask;
+            try self.emit(bits_to_emit, bit_size);
         }
     }
 
