@@ -4,6 +4,7 @@ const Image = @import("../Image.zig");
 const FormatInterface = @import("../FormatInterface.zig");
 const color = @import("../color.zig");
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
+const PixelFormatConverter = @import("../PixelFormatConverter.zig");
 const io = @import("../io.zig");
 
 const FrameHeader = @import("./jpeg/FrameHeader.zig");
@@ -223,7 +224,7 @@ pub const JPEG = struct {
     }
 
     fn writeImage(
-        _: std.mem.Allocator,
+        allocator: std.mem.Allocator,
         write_stream: *io.WriteStream,
         image: Image,
         encoder_options: Image.EncoderOptions,
@@ -236,8 +237,33 @@ pub const JPEG = struct {
             return Image.WriteError.InvalidData;
         }
 
-        // Validate that the image can be encoded as JPEG
-        try JPEGWriter.validateImage(image);
+        // Determine if format conversion is needed
+        var converted_image = image;
+        var needs_cleanup = false;
+        defer if (needs_cleanup) converted_image.pixels.deinit(allocator);
+
+        const current_format = std.meta.activeTag(image.pixels);
+        const target_format: PixelFormat = switch (current_format) {
+            .grayscale8, .rgb24 => current_format,
+            // Grayscale variants convert to grayscale8
+            .grayscale1, .grayscale2, .grayscale4, .grayscale16, .grayscale8Alpha, .grayscale16Alpha => .grayscale8,
+            // Everything else converts to rgb24
+            else => .rgb24,
+        };
+
+        // Convert format if needed
+        if (target_format != current_format) {
+            converted_image.pixels = PixelFormatConverter.convert(allocator, &image.pixels, target_format) catch |err| {
+                return switch (err) {
+                    error.NoConversionNeeded => Image.WriteError.InvalidData,
+                    error.NoConversionAvailable => Image.WriteError.InvalidData,
+                    error.QuantizeError => Image.WriteError.InvalidData,
+                    error.Unsupported => Image.WriteError.InvalidData,
+                    error.OutOfMemory => error.OutOfMemory,
+                };
+            };
+            needs_cleanup = true;
+        }
 
         // Get the writer from the write stream
         const writer = write_stream.writer();
@@ -245,8 +271,8 @@ pub const JPEG = struct {
         // Create JPEG writer
         var jpeg_writer = JPEGWriter.init(writer);
 
-        // Encode the image
-        try jpeg_writer.encode(image, jpeg_options.quality);
+        // Encode the converted image
+        try jpeg_writer.encode(converted_image, jpeg_options.quality);
 
         // Flush the write stream to ensure all data is written
         try write_stream.flush();

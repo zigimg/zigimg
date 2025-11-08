@@ -207,8 +207,6 @@ pub const JPEGWriter = struct {
 
     /// Encode an image to JPEG format
     pub fn encode(self: *JPEGWriter, image: Image, quality: u8) Image.WriteError!void {
-        try JPEGWriter.validateImage(image);
-
         const clamped_quality = math.clamp(quality, @as(u8, 1), @as(u8, 100));
         self.initializeQuantizationTables(clamped_quality);
 
