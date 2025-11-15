@@ -178,7 +178,6 @@ fn initHuffmanLUT(spec: HuffmanSpec) [256]u32 {
 /// JPEGWriter handles encoding images to JPEG format
 pub const JPEGWriter = struct {
     writer: *std.Io.Writer,
-    err: ?Image.WriteError = null,
     buf: [16]u8 = undefined,
     bits: u32 = 0,
     n_bits: u6 = 0,
@@ -208,16 +207,8 @@ pub const JPEGWriter = struct {
         try self.writeDHT(component_count);
         try self.writeSOS(image, component_count);
 
-        if (self.err) |err| {
-            return err;
-        }
-
         try self.writeEOI();
         try self.flush();
-
-        if (self.err) |err| {
-            return err;
-        }
     }
 
     /// Initialize quantization tables based on quality parameter
@@ -390,8 +381,6 @@ pub const JPEGWriter = struct {
 
     /// Emit bits to the output stream
     pub fn emit(self: *JPEGWriter, bits: u32, n_bits: u5) Image.WriteError!void {
-        if (self.err != null) return;
-
         std.debug.assert(n_bits > 0 and n_bits <= 16);
         std.debug.assert(bits < (@as(u32, 1) << n_bits));
 
@@ -401,9 +390,9 @@ pub const JPEGWriter = struct {
 
         while (n_bits_mut >= 8) {
             const byte = @as(u8, @intCast(bits_mut >> 24));
-            self.writeByte(byte);
+            try self.writeByte(byte);
             if (byte == 0xff) {
-                self.writeByte(0x00);
+                try self.writeByte(0x00);
             }
             bits_mut <<= @as(u5, 8);
             n_bits_mut -= 8;
@@ -414,17 +403,12 @@ pub const JPEGWriter = struct {
     }
 
     /// Write a single byte, handling errors
-    fn writeByte(self: *JPEGWriter, b: u8) void {
-        if (self.err != null) return;
-        self.writer.writeByte(b) catch |err| {
-            self.err = err;
-        };
+    fn writeByte(self: *JPEGWriter, b: u8) !void {
+        try self.writer.writeByte(b);
     }
 
     /// Emit Huffman-encoded value
     pub fn emitHuff(self: *JPEGWriter, huff_index: usize, value: u8) Image.WriteError!void {
-        if (self.err != null) return;
-
         const entry = self.huffman_lut[huff_index][value];
         const n_bits_u32 = entry >> 24;
         if (n_bits_u32 == 0) return Image.WriteError.InvalidData;
@@ -436,8 +420,6 @@ pub const JPEGWriter = struct {
 
     /// Process and write an 8x8 DCT block
     pub fn writeBlock(self: *JPEGWriter, block: *[64]i32, quant_idx: QuantIndex, prev_dc: i32) Image.WriteError!i32 {
-        if (self.err != null) return 0;
-
         fdct(block);
 
         const dc_table = @intFromEnum(quant_idx) * 2;
@@ -471,7 +453,6 @@ pub const JPEGWriter = struct {
             try self.emitHuff(ac_table, 0x00);
         }
 
-        if (self.err) |err| return err;
         return dc;
     }
 
@@ -682,9 +663,7 @@ pub const JPEGWriter = struct {
 
     /// Flush any remaining buffered data
     pub fn flush(self: *JPEGWriter) Image.WriteError!void {
-        if (self.err) |err| return err;
         if (self.n_bits != 0) {
-            self.err = Image.WriteError.UnfinishedBits;
             return Image.WriteError.UnfinishedBits;
         }
 
@@ -694,8 +673,6 @@ pub const JPEGWriter = struct {
 
     /// Write the actual image data (scan/entropy coded data)
     pub fn writeImageData(self: *JPEGWriter, image: Image, component_count: u8) Image.WriteError!void {
-        if (self.err != null) return;
-
         std.debug.assert(component_count == 1 or component_count == 3);
 
         var y_block: [64]i32 = undefined;
@@ -718,7 +695,6 @@ pub const JPEGWriter = struct {
                 while (x < width_i32) : (x += 8) {
                     self.grayToY(image, x, y, &y_block);
                     prev_dc_y = try self.writeBlock(&y_block, .luminance, prev_dc_y);
-                    if (self.err) |err| return err;
                 }
             }
             return;
@@ -734,23 +710,18 @@ pub const JPEGWriter = struct {
                     const y_off = @as(i32, @intCast((i >> 1) & 1)) * 8;
                     self.rgbToYCbCr(image, macro_x + x_off, macro_y + y_off, &y_blocks[i], &cb_blocks[i], &cr_blocks[i]);
                     prev_dc_y = try self.writeBlock(&y_blocks[i], .luminance, prev_dc_y);
-                    if (self.err) |err| return err;
                 }
 
                 scale(&cb_macro, &cb_blocks);
                 prev_dc_cb = try self.writeBlock(&cb_macro, .chrominance, prev_dc_cb);
-                if (self.err) |err| return err;
 
                 scale(&cr_macro, &cr_blocks);
                 prev_dc_cr = try self.writeBlock(&cr_macro, .chrominance, prev_dc_cr);
-                if (self.err) |err| return err;
             }
         }
     }
 
     fn finishEntropy(self: *JPEGWriter) Image.WriteError!void {
-        if (self.err != null) return;
-
         const pending: u6 = self.n_bits;
         if (pending == 0) return;
 
@@ -765,8 +736,6 @@ pub const JPEGWriter = struct {
 
     /// Emit Huffman-encoded value with run-length encoding
     pub fn emitHuffRLE(self: *JPEGWriter, huff_index: usize, run_length: i32, value: i32) Image.WriteError!void {
-        if (self.err != null) return;
-
         std.debug.assert(run_length >= 0 and run_length <= 15);
 
         var magnitude = value;
