@@ -153,15 +153,6 @@ const unzig = [block_size]u8{
     53, 60, 61, 54, 47, 55, 62, 63,
 };
 
-// div returns a/b rounded to the nearest integer, instead of rounded to zero
-fn div(a: i32, b: i32) i32 {
-    if (a >= 0) {
-        return @divTrunc((a + (b >> 1)), b);
-    } else {
-        return -@divTrunc((-a + (b >> 1)), b);
-    }
-}
-
 // Initialize Huffman LUT from Huffman specification
 fn initHuffmanLUT(spec: HuffmanSpec) [256]u32 {
     var lut: [256]u32 = [_]u32{0} ** 256;
@@ -453,14 +444,14 @@ pub const JPEGWriter = struct {
         const ac_table = dc_table + 1;
 
         const dc_quant = 8 * @as(i32, self.quant[@intFromEnum(quant_idx)][0]);
-        const dc = div(block[0], dc_quant);
+        const dc = @divTrunc(block[0], dc_quant);
         try self.emitHuffRLE(dc_table, 0, dc - prev_dc);
 
         var run_length: i32 = 0;
 
         for (1..block_size) |zig| {
             const quant = 8 * @as(i32, self.quant[@intFromEnum(quant_idx)][zig]);
-            const ac = div(block[unzig[zig]], quant);
+            const ac = @divTrunc(block[unzig[zig]], quant);
 
             if (ac == 0) {
                 run_length += 1;
