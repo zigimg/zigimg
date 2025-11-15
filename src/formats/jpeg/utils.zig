@@ -88,3 +88,23 @@ pub const Markers = enum(u16) {
 
     // reserved markers from 0xFF01-0xFFBF, add as needed
 };
+
+test "JPEG writer zigzag ordering" {
+    // Test zigzag ordering
+    const zigzag = [_]usize{
+        0,  1,  5,  6,  14, 15, 27, 28,
+        2,  4,  7,  13, 16, 26, 29, 42,
+        3,  8,  12, 17, 25, 30, 41, 43,
+        9,  11, 18, 24, 31, 40, 44, 53,
+        10, 19, 23, 32, 39, 45, 52, 54,
+        20, 22, 33, 38, 46, 51, 55, 60,
+        21, 34, 37, 47, 50, 56, 59, 61,
+        35, 36, 48, 49, 57, 58, 62, 63,
+    };
+
+    // Test that zigzag and unzig are inverses
+    for (0..64) |i| {
+        try std.testing.expectEqual(i, ZigzagOffsets[zigzag[i]]);
+        try std.testing.expectEqual(i, zigzag[ZigzagOffsets[i]]);
+    }
+}

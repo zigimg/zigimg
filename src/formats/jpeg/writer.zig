@@ -15,21 +15,18 @@ const ZigzagOffsets = utils.ZigzagOffsets;
 const Markers = utils.Markers;
 
 const block_size = 64;
-const quant_index = 2;
-const quantIndexLuminance = 0;
-const quantIndexChrominance = 1;
-const nHuffIndex = 4;
-const huffIndexLuminanceDC = 0;
-const huffIndexLuminanceAC = 1;
-const huffIndexChrominanceDC = 2;
-const huffIndexChrominanceAC = 3;
+const QuantIndex = enum(u8) {
+    luminance,
+    chrominance,
+};
+const quant_index_size = @typeInfo(QuantIndex).@"enum".fields.len;
 
-// Huffman index aliases for convenience
-const huffIndex = struct {
-    pub const luminanceDC = huffIndexLuminanceDC;
-    pub const luminanceAC = huffIndexLuminanceAC;
-    pub const chrominanceDC = huffIndexChrominanceDC;
-    pub const chrominanceAC = huffIndexChrominanceAC;
+const n_huff_index = 4;
+const HuffmanIndex = enum(usize) {
+    luminance_dc,
+    luminance_ac,
+    chrominance_dc,
+    chrominance_ac,
 };
 
 // Huffman table specification type (reusing existing huffman.Table structure)
@@ -39,7 +36,7 @@ const HuffmanSpec = struct {
 };
 
 // Huffman table specifications
-const theHuffmanSpec = [nHuffIndex]HuffmanSpec{
+const huffman_spec = [n_huff_index]HuffmanSpec{
     // Luminance DC
     .{
         .count = [_]u8{ 0, 1, 5, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0 },
@@ -110,7 +107,7 @@ const theHuffmanSpec = [nHuffIndex]HuffmanSpec{
 // the tables according to its quality parameter.
 // The values are derived from section K.1 of the spec, after converting from
 // natural to zig-zag order.
-const unscaledQuant = [quant_index][block_size]u8{
+const unscaled_quant = [quant_index_size][block_size]u8{
     // Luminance.
     [_]u8{
         16,  11,  12,  14,  12,  10,  16,  14,
@@ -137,8 +134,8 @@ const unscaledQuant = [quant_index][block_size]u8{
 
 // Huffman LUT entry: 8-bit size in MSB, 24-bit code in LSB
 const default_huffman_lut = blk: {
-    var tables: [nHuffIndex][256]u32 = undefined;
-    for (theHuffmanSpec, 0..) |spec, idx| {
+    var tables: [n_huff_index][256]u32 = undefined;
+    for (huffman_spec, 0..) |spec, idx| {
         tables[idx] = initHuffmanLUT(spec);
     }
     break :blk tables;
@@ -194,8 +191,8 @@ pub const JPEGWriter = struct {
     buf: [16]u8 = undefined,
     bits: u32 = 0,
     n_bits: u6 = 0,
-    quant: [quant_index][block_size]u8 = undefined, // Scaled quantization tables (using zigzag ordering)
-    huffman_lut: [nHuffIndex][256]u32 = undefined, // Huffman look-up tables
+    quant: [quant_index_size][block_size]u8 = undefined, // Scaled quantization tables (using zigzag ordering)
+    huffman_lut: [n_huff_index][256]u32 = undefined, // Huffman look-up tables
 
     /// Initialize a new JPEG writer
     pub fn init(writer: *std.Io.Writer) JPEGWriter {
@@ -239,9 +236,9 @@ pub const JPEGWriter = struct {
         else
             200 - @as(i32, quality) * 2;
 
-        for (0..quant_index) |table_index| {
+        for (0..quant_index_size) |table_index| {
             for (0..block_size) |coeff_index| {
-                const base = @as(i32, unscaledQuant[table_index][coeff_index]);
+                const base = @as(i32, unscaled_quant[table_index][coeff_index]);
                 var scaled = @divTrunc(base * scale_factor + 50, 100);
                 scaled = math.clamp(scaled, @as(i32, 1), @as(i32, 255));
                 self.quant[table_index][coeff_index] = @intCast(scaled);
@@ -315,7 +312,7 @@ pub const JPEGWriter = struct {
 
     /// Write Define Quantization Tables marker
     pub fn writeDQT(self: *JPEGWriter) Image.WriteError!void {
-        const marker_len = 2 + quant_index * (1 + block_size);
+        const marker_len = 2 + quant_index_size * (1 + block_size);
         try self.writeMarkerHeader(Markers.define_quantization_tables, marker_len);
 
         for (self.quant, 0..) |table, idx| {
@@ -327,16 +324,16 @@ pub const JPEGWriter = struct {
     /// Write Define Huffman Tables marker
     pub fn writeDHT(self: *JPEGWriter, component_count: u8) Image.WriteError!void {
         var marker_len: usize = 2;
-        const specs_len: usize = if (component_count == 1) 2 else nHuffIndex;
+        const specs_len: usize = if (component_count == 1) 2 else n_huff_index;
 
-        for (theHuffmanSpec[0..specs_len]) |spec| {
+        for (huffman_spec[0..specs_len]) |spec| {
             marker_len += 1 + spec.count.len + spec.value.len;
         }
 
         try self.writeMarkerHeader(Markers.define_huffman_tables, marker_len);
 
         const table_classes = [_]u8{ 0x00, 0x10, 0x01, 0x11 };
-        for (theHuffmanSpec[0..specs_len], 0..) |spec, idx| {
+        for (huffman_spec[0..specs_len], 0..) |spec, idx| {
             try self.writer.writeByte(table_classes[idx]);
             try self.writer.writeAll(spec.count[0..]);
             try self.writer.writeAll(spec.value);
@@ -447,22 +444,22 @@ pub const JPEGWriter = struct {
     }
 
     /// Process and write an 8x8 DCT block
-    pub fn writeBlock(self: *JPEGWriter, block: *[64]i32, quant_idx: usize, prev_dc: i32) Image.WriteError!i32 {
+    pub fn writeBlock(self: *JPEGWriter, block: *[64]i32, quant_idx: QuantIndex, prev_dc: i32) Image.WriteError!i32 {
         if (self.err != null) return 0;
 
         fdct(block);
 
-        const dc_table = quant_idx * 2;
+        const dc_table = @intFromEnum(quant_idx) * 2;
         const ac_table = dc_table + 1;
 
-        const dc_quant = 8 * @as(i32, self.quant[quant_idx][0]);
+        const dc_quant = 8 * @as(i32, self.quant[@intFromEnum(quant_idx)][0]);
         const dc = div(block[0], dc_quant);
         try self.emitHuffRLE(dc_table, 0, dc - prev_dc);
 
         var run_length: i32 = 0;
 
         for (1..block_size) |zig| {
-            const quant = 8 * @as(i32, self.quant[quant_idx][zig]);
+            const quant = 8 * @as(i32, self.quant[@intFromEnum(quant_idx)][zig]);
             const ac = div(block[unzig[zig]], quant);
 
             if (ac == 0) {
@@ -729,7 +726,7 @@ pub const JPEGWriter = struct {
                 var x: i32 = 0;
                 while (x < width_i32) : (x += 8) {
                     self.grayToY(image, x, y, &y_block);
-                    prev_dc_y = try self.writeBlock(&y_block, quantIndexLuminance, prev_dc_y);
+                    prev_dc_y = try self.writeBlock(&y_block, .luminance, prev_dc_y);
                     if (self.err) |err| return err;
                 }
             }
@@ -745,16 +742,16 @@ pub const JPEGWriter = struct {
                     const x_off = @as(i32, @intCast(i & 1)) * 8;
                     const y_off = @as(i32, @intCast((i >> 1) & 1)) * 8;
                     self.rgbToYCbCr(image, macro_x + x_off, macro_y + y_off, &y_blocks[i], &cb_blocks[i], &cr_blocks[i]);
-                    prev_dc_y = try self.writeBlock(&y_blocks[i], quantIndexLuminance, prev_dc_y);
+                    prev_dc_y = try self.writeBlock(&y_blocks[i], .luminance, prev_dc_y);
                     if (self.err) |err| return err;
                 }
 
                 scale(&cb_macro, &cb_blocks);
-                prev_dc_cb = try self.writeBlock(&cb_macro, quantIndexChrominance, prev_dc_cb);
+                prev_dc_cb = try self.writeBlock(&cb_macro, .chrominance, prev_dc_cb);
                 if (self.err) |err| return err;
 
                 scale(&cr_macro, &cr_blocks);
-                prev_dc_cr = try self.writeBlock(&cr_macro, quantIndexChrominance, prev_dc_cr);
+                prev_dc_cr = try self.writeBlock(&cr_macro, .chrominance, prev_dc_cr);
                 if (self.err) |err| return err;
             }
         }
