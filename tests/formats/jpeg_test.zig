@@ -260,7 +260,7 @@ fn encodeDecode(img: *const Image, quality: u8) !Image {
     const buffer = try alloc.alloc(u8, 1 << 20);
     defer alloc.free(buffer);
 
-    const encoded = try img.writeToMemory(helpers.zigimg_test_allocator, buffer, .{ .jpeg = .{ .quality = quality } });
+    const encoded = try img.writeToMemory(helpers.zigimg_test_allocator, buffer, .{ .jpeg = .{ .quality = quality, .auto_convert = true } });
     return try Image.fromMemory(helpers.zigimg_test_allocator, encoded);
 }
 
@@ -382,7 +382,7 @@ test "JPEG writer basic encoding" {
 fn encodeToMemory(img: *const Image, quality: u8) ![]u8 {
     // Use a fixed buffer instead of arena to avoid memory issues
     var buffer: [1 << 16]u8 = undefined;
-    return try img.writeToMemory(helpers.zigimg_test_allocator, &buffer, .{ .jpeg = .{ .quality = quality } });
+    return try img.writeToMemory(helpers.zigimg_test_allocator, &buffer, .{ .jpeg = .{ .quality = quality, .auto_convert = true } });
 }
 
 test "JPEG writer round-trip with all test fixtures" {

@@ -36,6 +36,8 @@ pub const JPEG = struct {
     pub const EncoderOptions = struct {
         /// JPEG quality (1-100, where 100 is highest quality)
         quality: u8 = 75,
+        /// Whether to auto-convert unsupported pixel formats
+        auto_convert: bool = false,
     };
 
     pub fn init(allocator: std.mem.Allocator) JPEG {
@@ -252,7 +254,7 @@ pub const JPEG = struct {
         };
 
         // Convert format if needed
-        if (target_format != current_format) {
+        if (jpeg_options.auto_convert and target_format != current_format) {
             converted_image.pixels = PixelFormatConverter.convert(allocator, &image.pixels, target_format) catch |err| {
                 return switch (err) {
                     error.NoConversionNeeded => Image.WriteError.InvalidData,
