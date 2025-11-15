@@ -2,6 +2,7 @@ const std = @import("std");
 const Image = @import("../../Image.zig");
 const color = @import("../../color.zig");
 const PixelFormat = @import("../../pixel_format.zig").PixelFormat;
+const PixelStorage = color.PixelStorage;
 const math = std.math;
 const utils = @import("./utils.zig");
 const huffman = @import("./huffman.zig");
@@ -192,20 +193,18 @@ pub const JPEGWriter = struct {
         };
     }
 
-    /// Encode an image to JPEG format
-    pub fn encode(self: *JPEGWriter, image: Image, quality: u8) Image.WriteError!void {
+    /// Encode pixel data to JPEG format
+    pub fn encode(self: *JPEGWriter, pixels: PixelStorage, width: usize, height: usize, quality: u8) Image.WriteError!void {
         const clamped_quality = math.clamp(quality, @as(u8, 1), @as(u8, 100));
         self.initializeQuantizationTables(clamped_quality);
 
-        const width: u16 = @intCast(image.width);
-        const height: u16 = @intCast(image.height);
-        const component_count = componentCount(image);
+        const component_count = componentCount(pixels);
 
         try self.writeSOI();
         try self.writeDQT();
-        try self.writeSOF0(width, height, component_count);
+        try self.writeSOF0(@intCast(width), @intCast(height), component_count);
         try self.writeDHT(component_count);
-        try self.writeSOS(image, component_count);
+        try self.writeSOS(pixels, width, height, component_count);
 
         try self.writeEOI();
         try self.flush();
@@ -228,9 +227,9 @@ pub const JPEGWriter = struct {
         }
     }
 
-    /// Get the number of components based on image pixel format
-    fn componentCount(image: Image) u8 {
-        return switch (image.pixels) {
+    /// Get the number of components based on pixel format
+    fn componentCount(pixels: PixelStorage) u8 {
+        return switch (pixels) {
             .grayscale8 => 1,
             .rgb24 => 3,
             else => unreachable,
@@ -323,7 +322,7 @@ pub const JPEGWriter = struct {
     }
 
     /// Write Start of Scan marker and entropy-coded data
-    pub fn writeSOS(self: *JPEGWriter, image: Image, component_count: u8) Image.WriteError!void {
+    pub fn writeSOS(self: *JPEGWriter, pixels: PixelStorage, width: usize, height: usize, component_count: u8) Image.WriteError!void {
         const comp_usize = @as(usize, component_count);
         const marker_len = 6 + 2 * comp_usize;
         try self.writeMarkerHeader(Markers.start_of_scan, marker_len);
@@ -356,7 +355,7 @@ pub const JPEGWriter = struct {
         offset += 3;
 
         try self.writer.writeAll(payload[0..offset]);
-        try self.writeImageData(image, component_count);
+        try self.writeImageData(pixels, width, height, component_count);
         try self.finishEntropy();
     }
 
@@ -459,7 +458,8 @@ pub const JPEGWriter = struct {
     /// Convert RGB image data to YCbCr color space for a single 8x8 block
     pub fn rgbToYCbCr(
         self: *JPEGWriter,
-        image: Image,
+        pixels: PixelStorage,
+        width: usize,
         px: i32,
         py: i32,
         y_block: *[64]i32,
@@ -468,8 +468,8 @@ pub const JPEGWriter = struct {
     ) void {
         _ = self;
 
-        const max_x: i32 = @intCast(image.width - 1);
-        const max_y: i32 = @intCast(image.height - 1);
+        const max_x: i32 = @intCast(width - 1);
+        const max_y: i32 = @intCast(pixels.len() / width - 1);
 
         for (0..8) |j| {
             for (0..8) |i| {
@@ -478,8 +478,8 @@ pub const JPEGWriter = struct {
 
                 const x = @as(usize, @intCast(sx));
                 const y = @as(usize, @intCast(sy));
-                const pixel_index = y * image.width + x;
-                const pixel = image.pixels.rgb24[pixel_index];
+                const pixel_index = y * width + x;
+                const pixel = pixels.rgb24[pixel_index];
 
                 const r_i = @as(i32, pixel.r);
                 const g_i = @as(i32, pixel.g);
@@ -497,12 +497,12 @@ pub const JPEGWriter = struct {
         }
     }
 
-    /// Convert grayscale image data to Y block
-    pub fn grayToY(self: *JPEGWriter, image: Image, px: i32, py: i32, y_block: *[64]i32) void {
+    /// Convert grayscale pixel data to Y block
+    pub fn grayToY(self: *JPEGWriter, pixels: PixelStorage, width: usize, px: i32, py: i32, y_block: *[64]i32) void {
         _ = self;
 
-        const max_x: i32 = @intCast(image.width - 1);
-        const max_y: i32 = @intCast(image.height - 1);
+        const max_x: i32 = @intCast(width - 1);
+        const max_y: i32 = @intCast(pixels.len() / width - 1);
 
         for (0..8) |j| {
             for (0..8) |i| {
@@ -511,8 +511,8 @@ pub const JPEGWriter = struct {
 
                 const x = @as(usize, @intCast(sx));
                 const y = @as(usize, @intCast(sy));
-                const pixel_index = y * image.width + x;
-                const gray = image.pixels.grayscale8[pixel_index];
+                const pixel_index = y * width + x;
+                const gray = pixels.grayscale8[pixel_index];
 
                 y_block[j * 8 + i] = @as(i32, gray.value);
             }
@@ -672,7 +672,7 @@ pub const JPEGWriter = struct {
     }
 
     /// Write the actual image data (scan/entropy coded data)
-    pub fn writeImageData(self: *JPEGWriter, image: Image, component_count: u8) Image.WriteError!void {
+    pub fn writeImageData(self: *JPEGWriter, pixels: PixelStorage, width: usize, height: usize, component_count: u8) Image.WriteError!void {
         std.debug.assert(component_count == 1 or component_count == 3);
 
         var y_block: [64]i32 = undefined;
@@ -685,15 +685,15 @@ pub const JPEGWriter = struct {
         var prev_dc_cb: i32 = 0;
         var prev_dc_cr: i32 = 0;
 
-        const width_i32: i32 = @intCast(image.width);
-        const height_i32: i32 = @intCast(image.height);
+        const width_i32: i32 = @intCast(width);
+        const height_i32: i32 = @intCast(height);
 
         if (component_count == 1) {
             var y: i32 = 0;
             while (y < height_i32) : (y += 8) {
                 var x: i32 = 0;
                 while (x < width_i32) : (x += 8) {
-                    self.grayToY(image, x, y, &y_block);
+                    self.grayToY(pixels, width, x, y, &y_block);
                     prev_dc_y = try self.writeBlock(&y_block, .luminance, prev_dc_y);
                 }
             }
@@ -708,7 +708,7 @@ pub const JPEGWriter = struct {
                 for (0..4) |i| {
                     const x_off = @as(i32, @intCast(i & 1)) * 8;
                     const y_off = @as(i32, @intCast((i >> 1) & 1)) * 8;
-                    self.rgbToYCbCr(image, macro_x + x_off, macro_y + y_off, &y_blocks[i], &cb_blocks[i], &cr_blocks[i]);
+                    self.rgbToYCbCr(pixels, width, macro_x + x_off, macro_y + y_off, &y_blocks[i], &cb_blocks[i], &cr_blocks[i]);
                     prev_dc_y = try self.writeBlock(&y_blocks[i], .luminance, prev_dc_y);
                 }
 

@@ -274,7 +274,7 @@ pub const JPEG = struct {
         var jpeg_writer = JPEGWriter.init(writer);
 
         // Encode the converted image
-        try jpeg_writer.encode(converted_image, jpeg_options.quality);
+        try jpeg_writer.encode(converted_image.pixels, converted_image.width, converted_image.height, jpeg_options.quality);
 
         // Flush the write stream to ensure all data is written
         try write_stream.flush();
