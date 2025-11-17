@@ -43,7 +43,7 @@ pub const EncoderOptions = union(Format) {
     farbfeld: void,
     gif: void,
     iff: void,
-    jpeg: void,
+    jpeg: SupportedFormats.jpeg.EncoderOptions,
     pam: SupportedFormats.pam.EncoderOptions,
     pbm: SupportedFormats.pbm.EncoderOptions,
     pcx: SupportedFormats.pcx.EncoderOptions,

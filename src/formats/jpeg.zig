@@ -4,6 +4,7 @@ const Image = @import("../Image.zig");
 const FormatInterface = @import("../FormatInterface.zig");
 const color = @import("../color.zig");
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
+const PixelFormatConverter = @import("../PixelFormatConverter.zig");
 const io = @import("../io.zig");
 
 const FrameHeader = @import("./jpeg/FrameHeader.zig");
@@ -16,6 +17,7 @@ const HuffmanReader = @import("./jpeg/huffman.zig").Reader;
 const HuffmanTable = @import("./jpeg/huffman.zig").Table;
 const Frame = @import("./jpeg/Frame.zig");
 const Scan = @import("./jpeg/Scan.zig");
+const JPEGWriter = @import("./jpeg/writer.zig").JPEGWriter;
 
 // TODO: Precisions other than 8-bit
 
@@ -30,6 +32,13 @@ pub const JPEG = struct {
     dc_huffman_tables: [4]?HuffmanTable = @splat(null),
     ac_huffman_tables: [4]?HuffmanTable = @splat(null),
     restart_interval: u16 = 0,
+
+    pub const EncoderOptions = struct {
+        /// JPEG quality (1-100, where 100 is highest quality)
+        quality: u8 = 75,
+        /// Whether to auto-convert unsupported pixel formats
+        auto_convert: bool = false,
+    };
 
     pub fn init(allocator: std.mem.Allocator) JPEG {
         return .{
@@ -216,11 +225,59 @@ pub const JPEG = struct {
         return result;
     }
 
-    fn writeImage(allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: Image, encoder_options: Image.EncoderOptions) Image.WriteError!void {
-        _ = allocator;
-        _ = write_stream;
-        _ = image;
-        _ = encoder_options;
+    fn writeImage(
+        allocator: std.mem.Allocator,
+        write_stream: *io.WriteStream,
+        image: Image,
+        encoder_options: Image.EncoderOptions,
+    ) Image.WriteError!void {
+        // Extract JPEG-specific encoder options
+        const jpeg_options = encoder_options.jpeg;
+
+        // Validate quality parameter
+        if (jpeg_options.quality == 0 or jpeg_options.quality > 100) {
+            return Image.WriteError.InvalidData;
+        }
+
+        // Determine if format conversion is needed
+        var converted_image = image;
+        var needs_cleanup = false;
+        defer if (needs_cleanup) converted_image.pixels.deinit(allocator);
+
+        const current_format = std.meta.activeTag(image.pixels);
+        const target_format: PixelFormat = switch (current_format) {
+            .grayscale8, .rgb24 => current_format,
+            // Grayscale variants convert to grayscale8
+            .grayscale1, .grayscale2, .grayscale4, .grayscale16, .grayscale8Alpha, .grayscale16Alpha => .grayscale8,
+            // Everything else converts to rgb24
+            else => .rgb24,
+        };
+
+        // Convert format if needed
+        if (jpeg_options.auto_convert and target_format != current_format) {
+            converted_image.pixels = PixelFormatConverter.convert(allocator, &image.pixels, target_format) catch |err| {
+                return switch (err) {
+                    error.NoConversionNeeded => Image.WriteError.InvalidData,
+                    error.NoConversionAvailable => Image.WriteError.InvalidData,
+                    error.QuantizeError => Image.WriteError.InvalidData,
+                    error.Unsupported => Image.WriteError.InvalidData,
+                    error.OutOfMemory => error.OutOfMemory,
+                };
+            };
+            needs_cleanup = true;
+        }
+
+        // Get the writer from the write stream
+        const writer = write_stream.writer();
+
+        // Create JPEG writer
+        var jpeg_writer = JPEGWriter.init(writer);
+
+        // Encode the converted image
+        try jpeg_writer.encode(converted_image.pixels, converted_image.width, converted_image.height, jpeg_options.quality);
+
+        // Flush the write stream to ensure all data is written
+        try write_stream.flush();
     }
 
     fn parseDefineHuffmanTables(self: *JPEG, reader: *std.Io.Reader) Image.ReadError!void {
