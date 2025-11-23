@@ -64,26 +64,17 @@ pub const ReadStream = union(enum) {
                 memory.seek = @intCast(new_pos);
             },
             .file => |*file_reader| {
-                // Workaround seekBy not working properly (https://github.com/ziglang/zig/issues/25020)
-                var new_pos: i64 = @intCast(@as(i64, @intCast(file_reader.interface.seek)) + offset);
-                if (new_pos >= 0 and new_pos < file_reader.interface.end) {
-                    file_reader.interface.seek = @intCast(new_pos);
-                } else {
-                    file_reader.interface.seek = 0;
-                    file_reader.interface.end = 0;
+                const file_size = file_reader.getSize() catch {
+                    return SeekError.Unseekable;
+                };
 
-                    new_pos = @as(i64, @intCast(file_reader.pos)) + offset;
+                const new_pos = @as(i64, @intCast(file_reader.logicalPos())) + offset;
 
-                    const file_size = file_reader.getSize() catch {
-                        return std.fs.File.SeekError.Unseekable;
-                    };
-
-                    if (new_pos < 0 or new_pos >= file_size) {
-                        return std.fs.File.SeekError.Unseekable;
-                    }
-
-                    file_reader.pos = @intCast(new_pos);
+                if (new_pos < 0 or new_pos > file_size) {
+                    return SeekError.Unseekable;
                 }
+
+                try file_reader.seekBy(offset);
             },
         }
     }
