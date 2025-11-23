@@ -979,6 +979,7 @@ pub fn testWithDir(directory: []const u8, test_md5_signature: bool) !void {
 
                 const str_format = try test_reader.takeDelimiterExclusive('\n');
                 const expected_pixel_format = std.meta.stringToEnum(zigimg.PixelFormat, str_format).?;
+                _ = try test_reader.discardAll(1); // we can safely discard the '\n'
                 const str_md5 = try test_reader.takeDelimiterExclusive('\n');
                 _ = try std.fmt.hexToBytes(expected_md5[0..], str_md5);
                 try std.testing.expectEqual(expected_pixel_format, std.meta.activeTag(result));
