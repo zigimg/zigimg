@@ -280,7 +280,7 @@ const PngWriter = struct {
     }
 
     // IEND chunk
-    fn writeTrailer(self: *PngWriter) Image.WriteError!void {
+    pub fn writeTrailer(self: *PngWriter) Image.WriteError!void {
         var chunk_writer = ChunkWriter.init(self.writer, self.chunk_buffer, Chunks.IEND);
         var writer = &chunk_writer.writer;
         try writer.flush();
