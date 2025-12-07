@@ -41,7 +41,7 @@ pub const Format = std.meta.DeclEnum(SupportedFormats);
 pub const EncoderOptions = union(Format) {
     bmp: SupportedFormats.bmp.EncoderOptions,
     farbfeld: void,
-    gif: void,
+    gif: SupportedFormats.gif.EncoderOptions,
     iff: void,
     jpeg: SupportedFormats.jpeg.EncoderOptions,
     pam: SupportedFormats.pam.EncoderOptions,
@@ -83,6 +83,17 @@ pub const AnimationLoopInfinite = -1;
 pub const AnimationFrame = struct {
     pixels: color.PixelStorage,
     duration: f32,
+    /// Frame disposal method (format-specific, 0 = none/unspecified)
+    /// For GIF: 0=none, 1=do_not_dispose, 2=restore_background, 3=restore_previous
+    disposal: u8 = 0,
+    /// Frame position and size within the canvas (for formats like GIF with sub-frames)
+    /// When all zeros, frame covers the entire canvas
+    left: u16 = 0,
+    top: u16 = 0,
+    frame_width: u16 = 0,
+    frame_height: u16 = 0,
+    /// Transparent color index (null = no transparency, 0-255 = palette index)
+    transparent_index: ?u8 = null,
 
     pub fn deinit(self: AnimationFrame, allocator: std.mem.Allocator) void {
         self.pixels.deinit(allocator);
@@ -261,6 +272,7 @@ pub fn writeToFile(self: Image, allocator: std.mem.Allocator, file: std.fs.File,
     var write_stream = io.WriteStream.initFile(file, write_buffer);
 
     try self.internalWrite(allocator, &write_stream, encoder_options);
+    try write_stream.flush();
 }
 
 /// Write the image to an image format in a memory buffer. The memory buffer is not grown

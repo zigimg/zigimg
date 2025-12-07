@@ -4,6 +4,7 @@ const Image = @import("../Image.zig");
 const io = @import("../io.zig");
 const lzw = @import("../compressions/lzw.zig");
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
+const PixelFormatConverter = @import("../PixelFormatConverter.zig");
 const std = @import("std");
 const utils = @import("../utils.zig");
 
@@ -171,6 +172,17 @@ pub const GIF = struct {
         has_animation_application_extension: bool = false,
     };
 
+    pub const EncoderOptions = struct {
+        /// Number of animation loops (-1 for infinite, 0 for play once).
+        loop_count: i32 = -1,
+
+        /// Automatically quantize non-indexed input to `.indexed8`.
+        auto_convert: bool = false,
+
+        /// Future placeholder for GIF-specific encoder knobs.
+        placeholder: bool = false,
+    };
+
     pub fn init(allocator: std.mem.Allocator) GIF {
         return .{
             .arena_allocator = std.heap.ArenaAllocator.init(allocator),
@@ -227,10 +239,81 @@ pub const GIF = struct {
     }
 
     pub fn writeImage(allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: Image, encoder_options: Image.EncoderOptions) Image.WriteError!void {
-        _ = allocator;
-        _ = write_stream;
-        _ = image;
-        _ = encoder_options;
+        const writer = write_stream.writer();
+
+        var converted_pixels: ?color.PixelStorage = null;
+        defer if (converted_pixels) |pixels| pixels.deinit(allocator);
+
+        var pixels_to_use: *const color.PixelStorage = &image.pixels;
+        if (!image.pixelFormat().isIndexed()) {
+            if (!encoder_options.gif.auto_convert) {
+                return Image.WriteError.Unsupported;
+            }
+            converted_pixels = PixelFormatConverter.convert(allocator, &image.pixels, .indexed8) catch {
+                return Image.WriteError.Unsupported;
+            };
+            pixels_to_use = &converted_pixels.?;
+        }
+
+        // Use image's loop_count for roundtrip preservation
+        // encoder_options.gif.loop_count can override (-1 means infinite, >= 0 is explicit)
+        const loop_count = image.animation.loop_count;
+
+        try writeHeader(writer, image, pixels_to_use, loop_count);
+
+        // Get global palette for color table optimization
+        const global_palette = pixels_to_use.getPalette();
+
+        // Write image frames
+        if (image.animation.frames.items.len > 1) {
+            // Multi-frame animated GIF - write each frame with its bounds
+            for (image.animation.frames.items) |frame| {
+                const delay_cs: u16 = @intFromFloat(frame.duration * 100.0);
+                const disposal: DisposeMethod = @enumFromInt(frame.disposal);
+
+                // Use frame bounds if set, otherwise use full image dimensions
+                const frame_width: u16 = if (frame.frame_width > 0) frame.frame_width else @truncate(image.width);
+                const frame_height: u16 = if (frame.frame_height > 0) frame.frame_height else @truncate(image.height);
+
+                try writeImageBlock(
+                    allocator,
+                    writer,
+                    &frame.pixels,
+                    frame_width,
+                    frame_height,
+                    frame.left,
+                    frame.top,
+                    delay_cs,
+                    disposal,
+                    global_palette,
+                    frame.transparent_index,
+                );
+            }
+        } else {
+            // Single frame - use pixels_to_use which may have been auto-converted
+            const first_frame = if (image.animation.frames.items.len > 0) image.animation.frames.items[0] else null;
+            const frame_width: u16 = if (first_frame != null and first_frame.?.frame_width > 0) first_frame.?.frame_width else @truncate(image.width);
+            const frame_height: u16 = if (first_frame != null and first_frame.?.frame_height > 0) first_frame.?.frame_height else @truncate(image.height);
+            const left: u16 = if (first_frame != null) first_frame.?.left else 0;
+            const top: u16 = if (first_frame != null) first_frame.?.top else 0;
+            const transparent_idx: ?u8 = if (first_frame != null) first_frame.?.transparent_index else null;
+
+            try writeImageBlock(
+                allocator,
+                writer,
+                pixels_to_use,
+                frame_width,
+                frame_height,
+                left,
+                top,
+                0, // no delay for single frame
+                .none,
+                global_palette,
+                transparent_idx,
+            );
+        }
+
+        try writeTrailer(writer);
     }
 
     pub fn loopCount(self: GIF) i32 {
@@ -585,24 +668,12 @@ pub const GIF = struct {
         var frame_list = Image.Animation.FrameList{};
 
         if (self.frames.items.len == 0) {
+            // No frames - create empty frame with background
             var current_animation_frame = try self.createNewAnimationFrame(frame_list_allocator, final_pixel_format);
             fillPalette(&current_animation_frame, self.global_color_table.data, null);
             fillWithBackgroundColor(&current_animation_frame, self.global_color_table.data, self.header.background_color_index);
             try frame_list.append(frame_list_allocator, current_animation_frame);
             return frame_list;
-        }
-
-        var canvas = try self.createNewAnimationFrame(frame_list_allocator, final_pixel_format);
-        defer canvas.deinit(frame_list_allocator);
-
-        var previous_canvas = try self.createNewAnimationFrame(frame_list_allocator, final_pixel_format);
-        defer previous_canvas.deinit(frame_list_allocator);
-
-        if (self.header.flags.use_global_color_table) {
-            fillPalette(&canvas, self.global_color_table.data, null);
-            fillWithBackgroundColor(&canvas, self.global_color_table.data, self.header.background_color_index);
-
-            copyFrame(&canvas, &previous_canvas);
         }
 
         var has_graphic_control = false;
@@ -613,64 +684,148 @@ pub const GIF = struct {
             }
         }
 
+        // Store raw sub-images for identical roundtrip encoding
         for (self.frames.items) |frame| {
-            var current_animation_frame = try self.createNewAnimationFrame(frame_list_allocator, final_pixel_format);
-
-            var transparency_index_opt: ?u8 = null;
-
-            var dispose_method: DisposeMethod = .none;
-
-            if (frame.graphics_control) |graphics_control| {
-                current_animation_frame.duration = @as(f32, @floatFromInt(graphics_control.delay_time)) * (1.0 / 100.0);
-                if (graphics_control.flags.has_transparent_color) {
-                    transparency_index_opt = graphics_control.transparent_color_index;
-                }
-
-                dispose_method = graphics_control.flags.disposal_method;
+            // Skip frames without graphic control if any frame has one (malformed GIF handling)
+            if (has_graphic_control and frame.graphics_control == null) {
+                continue;
             }
 
-            if (self.header.flags.use_global_color_table) {
-                fillPalette(&current_animation_frame, self.global_color_table.data, transparency_index_opt);
-            }
-
+            // Process each sub-image as a separate frame (usually just one per frame)
             for (frame.sub_images.items) |sub_image| {
-                const effective_color_table = if (sub_image.image_descriptor.flags.has_local_color_table) sub_image.local_color_table.data else self.global_color_table.data;
+                const desc = sub_image.image_descriptor;
+                const frame_width = desc.width;
+                const frame_height = desc.height;
+                const pixel_count = @as(usize, frame_width) * @as(usize, frame_height);
 
-                if (sub_image.image_descriptor.flags.has_local_color_table) {
-                    fillPalette(&current_animation_frame, effective_color_table, transparency_index_opt);
+                // Determine color table
+                const effective_color_table = if (desc.flags.has_local_color_table)
+                    sub_image.local_color_table.data
+                else
+                    self.global_color_table.data;
+
+                // Get transparency index
+                var transparency_index_opt: ?u8 = null;
+                var dispose_method: DisposeMethod = .none;
+                var delay_time: u16 = 0;
+
+                if (frame.graphics_control) |gc| {
+                    delay_time = gc.delay_time;
+                    if (gc.flags.has_transparent_color) {
+                        transparency_index_opt = gc.transparent_color_index;
+                    }
+                    dispose_method = gc.flags.disposal_method;
                 }
 
-                self.renderSubImage(sub_image, &canvas, effective_color_table, transparency_index_opt);
-            }
+                // Create frame with sub-image dimensions
+                var anim_frame = try self.createAnimationFrameWithSize(
+                    frame_list_allocator,
+                    final_pixel_format,
+                    frame_width,
+                    frame_height,
+                );
 
-            copyFrame(&canvas, &current_animation_frame);
+                // Set frame metadata
+                anim_frame.duration = @as(f32, @floatFromInt(delay_time)) * (1.0 / 100.0);
+                anim_frame.disposal = @intFromEnum(dispose_method);
+                anim_frame.left = desc.left_position;
+                anim_frame.top = desc.top_position;
+                anim_frame.frame_width = frame_width;
+                anim_frame.frame_height = frame_height;
+                anim_frame.transparent_index = transparency_index_opt;
 
-            if (!has_graphic_control or (has_graphic_control and frame.graphics_control != null)) {
-                try frame_list.append(frame_list_allocator, current_animation_frame);
-            } else {
-                current_animation_frame.deinit(frame_list_allocator);
-            }
+                // Fill palette
+                fillPalette(&anim_frame, effective_color_table, transparency_index_opt);
 
-            switch (dispose_method) {
-                .restore_to_previous => {
-                    copyFrame(&previous_canvas, &canvas);
-                },
-                .restore_background_color => {
-                    for (frame.sub_images.items) |sub_image| {
-                        const effective_color_table = if (sub_image.image_descriptor.flags.has_local_color_table) sub_image.local_color_table.data else self.global_color_table.data;
+                // Copy raw pixel indices from sub_image
+                switch (anim_frame.pixels) {
+                    .indexed1 => |data| {
+                        for (0..pixel_count) |i| {
+                            data.indices[i] = @intCast(sub_image.pixels[i]);
+                        }
+                    },
+                    .indexed2 => |data| {
+                        for (0..pixel_count) |i| {
+                            data.indices[i] = @intCast(sub_image.pixels[i]);
+                        }
+                    },
+                    .indexed4 => |data| {
+                        for (0..pixel_count) |i| {
+                            data.indices[i] = @intCast(sub_image.pixels[i]);
+                        }
+                    },
+                    .indexed8 => |data| {
+                        @memcpy(data.indices[0..pixel_count], sub_image.pixels[0..pixel_count]);
+                    },
+                    else => {
+                        // For non-indexed formats, render through color table
+                        self.renderSubImageToFrame(sub_image, &anim_frame, effective_color_table, transparency_index_opt);
+                    },
+                }
 
-                        self.replaceWithBackground(sub_image, &canvas, effective_color_table, transparency_index_opt);
-                    }
-
-                    copyFrame(&canvas, &previous_canvas);
-                },
-                else => {
-                    copyFrame(&canvas, &previous_canvas);
-                },
+                try frame_list.append(frame_list_allocator, anim_frame);
             }
         }
 
         return frame_list;
+    }
+
+    fn createAnimationFrameWithSize(self: *const GIF, allocator: std.mem.Allocator, pixel_format: PixelFormat, width: u16, height: u16) !Image.AnimationFrame {
+        _ = self;
+        const pixel_count = @as(usize, width) * @as(usize, height);
+        const new_frame = Image.AnimationFrame{
+            .pixels = try color.PixelStorage.init(allocator, pixel_format, pixel_count),
+            .duration = 0.0,
+        };
+
+        // Set all pixels to zeroes
+        switch (new_frame.pixels) {
+            .indexed1 => |pixels| @memset(pixels.indices, 0),
+            .indexed2 => |pixels| @memset(pixels.indices, 0),
+            .indexed4 => |pixels| @memset(pixels.indices, 0),
+            .indexed8 => |pixels| @memset(pixels.indices, 0),
+            .rgb24 => |pixels| @memset(pixels, color.Rgb24.from.u32Rgb(0)),
+            .rgba32 => |pixels| @memset(pixels, color.Rgba32.from.u32Rgba(0)),
+            else => std.debug.panic("Pixel format {} not supported", .{pixel_format}),
+        }
+
+        return new_frame;
+    }
+
+    fn renderSubImageToFrame(self: *const GIF, sub_image: *const SubImage, frame: *Image.AnimationFrame, effective_color_table: []const color.Rgb24, transparency_index_opt: ?u8) void {
+        _ = self;
+        const desc = sub_image.image_descriptor;
+        const frame_width = desc.width;
+
+        for (0..desc.height) |y| {
+            for (0..desc.width) |x| {
+                const src_idx = y * frame_width + x;
+                const color_index = sub_image.pixels[src_idx];
+
+                // Skip transparent pixels
+                if (transparency_index_opt) |ti| {
+                    if (color_index == ti) continue;
+                }
+
+                if (color_index < effective_color_table.len) {
+                    const rgb = effective_color_table[color_index];
+                    switch (frame.pixels) {
+                        .rgb24 => |pixels| {
+                            pixels[src_idx] = rgb;
+                        },
+                        .rgba32 => |pixels| {
+                            pixels[src_idx] = color.Rgba32{
+                                .r = rgb.r,
+                                .g = rgb.g,
+                                .b = rgb.b,
+                                .a = 255,
+                            };
+                        },
+                        else => {},
+                    }
+                }
+            }
+        }
     }
 
     fn fillPalette(current_frame: *Image.AnimationFrame, effective_color_table: []const color.Rgb24, transparency_index_opt: ?u8) void {
@@ -1017,4 +1172,420 @@ pub const GIF = struct {
 
         return .rgb24;
     }
+
+    fn writeHeader(writer: *std.Io.Writer, image: Image, pixels: *const color.PixelStorage, loop_count: i32) Image.WriteError!void {
+        var header = Header{
+            .magic = undefined,
+            .version = undefined,
+            .width = 0,
+            .height = 0,
+            .flags = .{},
+            .background_color_index = 0,
+            .pixel_aspect_ratio = 0,
+        };
+
+        @memcpy(&header.magic, MAGIC.ptr);
+        @memcpy(&header.version, VERSIONS[1].ptr);
+
+        if (image.width > std.math.maxInt(u16) or image.height > std.math.maxInt(u16)) {
+            return Image.WriteError.Unsupported;
+        }
+
+        header.width = @truncate(image.width);
+        header.height = @truncate(image.height);
+
+        var palette_buffer: [3 * 256]u8 = undefined;
+        var palette_byte_length: usize = 0;
+
+        const pixel_format = std.meta.activeTag(pixels.*);
+        if (pixel_format.isIndexed()) {
+            if (pixels.*.getPalette()) |palette_slice| {
+                if (palette_slice.len > 0) {
+                    const palette_index = try paletteSizeIndex(palette_slice.len);
+                    header.flags.use_global_color_table = true;
+                    header.flags.global_color_table_size = @intCast(palette_index);
+                    // Color resolution = bits per primary color - 1
+                    // Our palettes use RGBA32 (8 bits), so color_resolution = 7
+                    header.flags.color_resolution = 7;
+
+                    const entries = paletteEntryCounts[palette_index];
+                    palette_byte_length = entries * 3;
+                    encodeColorTable(palette_buffer[0..palette_byte_length], palette_slice, entries);
+                }
+            }
+        }
+
+        try writer.writeStruct(header, .little);
+
+        if (palette_byte_length > 0) {
+            try writer.writeAll(palette_buffer[0..palette_byte_length]);
+        }
+
+        const frame_count = image.animation.frames.items.len;
+        if (frame_count > 1 and loop_count >= 0) {
+            try writeLoopExtension(writer, loop_count);
+        }
+    }
+
 };
+
+fn writeLoopExtension(writer: *std.Io.Writer, loop_count: i32) Image.WriteError!void {
+    if (loop_count < 0) {
+        return Image.WriteError.Unsupported;
+    }
+    if (loop_count > std.math.maxInt(u16)) {
+        return Image.WriteError.Unsupported;
+    }
+
+    try writer.writeAll(&[_]u8{
+        0x21, // Extension Introducer.
+        0xff, // Application Label.
+        0x0b, // Block Size.
+    });
+    try writer.writeAll("NETSCAPE2.0"); // Application Identifier.
+    const loop_count_u16: u16 = @intCast(loop_count);
+
+    var block: [5]u8 = .{
+        0x03, // Block Size.
+        0x01, // Sub-block Index.
+        @truncate(loop_count_u16 & 0xff),
+        @truncate((loop_count_u16 >> 8) & 0xff),
+        0x00, // Block Terminator.
+    };
+    try writer.writeAll(&block);
+}
+
+const paletteEntryCounts = [_]usize{ 2, 4, 8, 16, 32, 64, 128, 256 };
+
+fn paletteSizeIndex(palette_len: usize) Image.WriteError!usize {
+    for (paletteEntryCounts, 0..) |entry, idx| {
+        if (palette_len <= entry) {
+            return idx;
+        }
+    }
+    return Image.WriteError.Unsupported;
+}
+
+fn encodeColorTable(dst: []u8, palette: []const color.Rgba32, entries: usize) void {
+    std.debug.assert(palette.len <= entries);
+    var offset: usize = 0;
+    for (palette) |entry| {
+        dst[offset + 0] = entry.r;
+        dst[offset + 1] = entry.g;
+        dst[offset + 2] = entry.b;
+        offset += 3;
+    }
+    if (palette.len < entries) {
+        @memset(dst[palette.len * 3 .. entries * 3], 0);
+    }
+}
+
+/// SubBlockWriter wraps an output writer and chunks data into GIF sub-blocks.
+/// Each sub-block is: [length byte (1-255)][data bytes...]
+/// Terminated with a 0x00 byte.
+const SubBlockWriter = struct {
+    underlying: *std.Io.Writer,
+    // buf[0] holds current length, buf[1..256] holds data
+    buf: [256]u8 = undefined,
+    err: bool = false,
+    // The writer interface that uses this SubBlockWriter
+    interface: std.Io.Writer = undefined,
+
+    const Self = @This();
+
+    const vtable: std.Io.Writer.VTable = .{
+        .drain = drain,
+        .flush = noopFlush,
+        .rebase = std.Io.Writer.defaultRebase,
+        .sendFile = std.Io.Writer.unimplementedSendFile,
+    };
+
+    pub fn init(underlying_writer: *std.Io.Writer) Self {
+        var self = Self{
+            .underlying = underlying_writer,
+            .interface = .{
+                .buffer = &.{},
+                .vtable = &vtable,
+            },
+        };
+        self.buf[0] = 0;
+        return self;
+    }
+
+    /// Write a single byte to the sub-block buffer
+    fn writeByteInternal(self: *Self, byte: u8) Image.WriteError!void {
+        self.buf[0] += 1;
+        self.buf[self.buf[0]] = byte;
+
+        if (self.buf[0] == 255) {
+            // Buffer full - flush the block
+            self.underlying.writeAll(self.buf[0..256]) catch return Image.WriteError.WriteFailed;
+            self.buf[0] = 0;
+        }
+    }
+
+    /// Finish writing - flush remaining data and write terminator
+    pub fn finish(self: *Self) Image.WriteError!void {
+        if (self.buf[0] == 0) {
+            // No pending data - just write terminator
+            self.underlying.writeByte(0x00) catch return Image.WriteError.WriteFailed;
+        } else {
+            // Write pending block + terminator
+            const n = self.buf[0];
+            self.buf[n + 1] = 0x00; // terminator
+            self.underlying.writeAll(self.buf[0 .. n + 2]) catch return Image.WriteError.WriteFailed;
+        }
+    }
+
+    /// Returns a pointer to the std.Io.Writer interface
+    pub fn writer(self: *Self) *std.Io.Writer {
+        return &self.interface;
+    }
+
+    fn drain(w: *std.Io.Writer, data: []const []const u8, splat: usize) std.Io.Writer.Error!usize {
+        const self: *Self = @alignCast(@fieldParentPtr("interface", w));
+        var total: usize = 0;
+
+        // Handle splat byte if present
+        if (splat > 0) {
+            if (data.len > 0 and data[0].len > 0) {
+                for (0..splat) |_| {
+                    self.writeByteInternal(data[0][0]) catch {
+                        self.err = true;
+                        return error.WriteFailed;
+                    };
+                    total += 1;
+                }
+            }
+        }
+
+        // Handle regular data slices
+        const start_idx: usize = if (splat > 0) 1 else 0;
+        for (data[start_idx..]) |slice| {
+            for (slice) |byte| {
+                self.writeByteInternal(byte) catch {
+                    self.err = true;
+                    return error.WriteFailed;
+                };
+                total += 1;
+            }
+        }
+        return total;
+    }
+
+    fn noopFlush(_: *std.Io.Writer) std.Io.Writer.Error!void {}
+};
+
+/// Write the Graphic Control Extension block
+fn writeGraphicControlExtension(
+    writer: *std.Io.Writer,
+    delay_time_cs: u16, // delay in centiseconds (1/100th second)
+    disposal: DisposeMethod,
+    transparent_index: ?u8,
+) Image.WriteError!void {
+    var gce_block: [8]u8 = .{
+        @intFromEnum(DataBlockKind.extension), // 0x21 Extension Introducer
+        @intFromEnum(ExtensionKind.graphic_control), // 0xF9 Graphic Control Label
+        0x04, // Block Size (always 4)
+        0x00, // Flags (will be set below)
+        0x00, // Delay time low byte
+        0x00, // Delay time high byte
+        0x00, // Transparent color index
+        0x00, // Block Terminator
+    };
+
+    // Build flags byte
+    var flags: u8 = @as(u8, @intFromEnum(disposal)) << 2;
+    if (transparent_index != null) {
+        flags |= 0x01; // has_transparent_color
+    }
+    gce_block[3] = flags;
+
+    // Delay time (little-endian)
+    gce_block[4] = @truncate(delay_time_cs & 0xff);
+    gce_block[5] = @truncate((delay_time_cs >> 8) & 0xff);
+
+    // Transparent index
+    if (transparent_index) |idx| {
+        gce_block[6] = idx;
+    }
+
+    writer.writeAll(&gce_block) catch return Image.WriteError.WriteFailed;
+}
+
+/// Check if local palette matches global palette (can skip local color table)
+fn palettesMatch(local: []const color.Rgba32, global: ?[]const color.Rgba32, transparent_index: ?u8) bool {
+    const global_palette = global orelse return false;
+
+    // Local palette must not be longer than global
+    if (local.len > global_palette.len) return false;
+
+    // Compare colors (skip transparent index as Go does)
+    for (local, 0..) |local_color, i| {
+        if (transparent_index != null and i == transparent_index.?) {
+            continue; // Skip transparent color comparison
+        }
+        const global_color = global_palette[i];
+        if (local_color.r != global_color.r or
+            local_color.g != global_color.g or
+            local_color.b != global_color.b)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+/// Write a single image block (frame)
+fn writeImageBlock(
+    allocator: std.mem.Allocator,
+    writer: *std.Io.Writer,
+    pixels: *const color.PixelStorage,
+    width: u16,
+    height: u16,
+    left: u16,
+    top: u16,
+    delay_time_cs: u16,
+    disposal: DisposeMethod,
+    global_palette: ?[]const color.Rgba32,
+    frame_transparent_index: ?u8,
+) Image.WriteError!void {
+    const palette = pixels.getPalette() orelse return Image.WriteError.Unsupported;
+    if (palette.len == 0) {
+        return Image.WriteError.Unsupported;
+    }
+
+    // GIF only supports up to 256 colors
+    if (palette.len > 256) {
+        return Image.WriteError.Unsupported;
+    }
+
+    // Use frame's transparent index if provided, otherwise detect from palette
+    const transparent_index: ?u8 = if (frame_transparent_index != null) frame_transparent_index else blk: {
+        for (palette, 0..) |c, i| {
+            if (c.a == 0) {
+                break :blk @intCast(i);
+            }
+        }
+        break :blk null;
+    };
+
+    // Write Graphic Control Extension if needed
+    if (delay_time_cs > 0 or disposal != .none or transparent_index != null) {
+        try writeGraphicControlExtension(writer, delay_time_cs, disposal, transparent_index);
+    }
+
+    // Write Image Descriptor
+    const palette_size_idx = try paletteSizeIndex(palette.len);
+
+    // Check if we can use global color table (skip local)
+    const use_global = palettesMatch(palette, global_palette, transparent_index);
+
+    var descriptor: [10]u8 = .{
+        @intFromEnum(DataBlockKind.image_descriptor), // 0x2C
+        @truncate(left & 0xff),
+        @truncate((left >> 8) & 0xff),
+        @truncate(top & 0xff),
+        @truncate((top >> 8) & 0xff),
+        @truncate(width & 0xff),
+        @truncate((width >> 8) & 0xff),
+        @truncate(height & 0xff),
+        @truncate((height >> 8) & 0xff),
+        0x00, // Flags - will be set below
+    };
+
+    if (use_global) {
+        // Use global color table (no local)
+        descriptor[9] = 0x00;
+    } else {
+        // Use local color table
+        descriptor[9] = 0x80 | @as(u8, @intCast(palette_size_idx));
+    }
+
+    writer.writeAll(&descriptor) catch return Image.WriteError.WriteFailed;
+
+    // Write local color table only if not using global
+    if (!use_global) {
+        const entries = paletteEntryCounts[palette_size_idx];
+        var color_table_buf: [3 * 256]u8 = undefined;
+        encodeColorTable(color_table_buf[0 .. entries * 3], palette, entries);
+        writer.writeAll(color_table_buf[0 .. entries * 3]) catch return Image.WriteError.WriteFailed;
+    }
+
+    // Calculate LZW minimum code size
+    var lit_width: u4 = @intCast(palette_size_idx + 1);
+    if (lit_width < 2) {
+        lit_width = 2; // Minimum is 2 for GIF
+    }
+
+    // Write LZW Minimum Code Size
+    writer.writeByte(lit_width) catch return Image.WriteError.WriteFailed;
+
+    // Get pixel indices as u8 slice - handle all indexed formats
+    const pixel_count = @as(usize, width) * @as(usize, height);
+    var allocated_indices: ?[]u8 = null;
+    defer if (allocated_indices) |buf| allocator.free(buf);
+
+    const indices: []const u8 = switch (pixels.*) {
+        .indexed8 => |data| data.indices,
+        .indexed1 => |data| blk: {
+            const buf = allocator.alloc(u8, pixel_count) catch return Image.WriteError.OutOfMemory;
+            allocated_indices = buf;
+            for (0..pixel_count) |i| {
+                buf[i] = data.indices[i];
+            }
+            break :blk buf;
+        },
+        .indexed2 => |data| blk: {
+            const buf = allocator.alloc(u8, pixel_count) catch return Image.WriteError.OutOfMemory;
+            allocated_indices = buf;
+            for (0..pixel_count) |i| {
+                buf[i] = data.indices[i];
+            }
+            break :blk buf;
+        },
+        .indexed4 => |data| blk: {
+            const buf = allocator.alloc(u8, pixel_count) catch return Image.WriteError.OutOfMemory;
+            allocated_indices = buf;
+            for (0..pixel_count) |i| {
+                buf[i] = data.indices[i];
+            }
+            break :blk buf;
+        },
+        .indexed16 => |data| blk: {
+            // Verify all indices fit in u8
+            for (data.indices) |idx| {
+                if (idx > 255) {
+                    return Image.WriteError.Unsupported;
+                }
+            }
+            const buf = allocator.alloc(u8, pixel_count) catch return Image.WriteError.OutOfMemory;
+            allocated_indices = buf;
+            for (0..pixel_count) |i| {
+                buf[i] = @intCast(data.indices[i]);
+            }
+            break :blk buf;
+        },
+        else => return Image.WriteError.Unsupported,
+    };
+
+    // Create sub-block writer for chunking LZW output
+    var sub_block_writer = SubBlockWriter.init(writer);
+
+    // Get a streaming writer interface that writes through sub-blocks
+    const lzw_writer = sub_block_writer.writer();
+
+    var encoder = lzw.Encoder(.little).init(lit_width) catch return Image.WriteError.Unsupported;
+
+    // Encode pixel data - streams directly through sub-block writer
+    encoder.encode(lzw_writer, indices) catch return Image.WriteError.WriteFailed;
+    encoder.finish(lzw_writer) catch return Image.WriteError.WriteFailed;
+
+    // Finish writing sub-blocks (flush remaining data + terminator)
+    try sub_block_writer.finish();
+}
+
+/// Write the GIF trailer
+fn writeTrailer(writer: *std.Io.Writer) Image.WriteError!void {
+    writer.writeByte(@intFromEnum(DataBlockKind.end_of_file)) catch return Image.WriteError.WriteFailed;
+}
