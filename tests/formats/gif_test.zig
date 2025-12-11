@@ -393,6 +393,100 @@ test "GIF writer roundtrip - read existing GIF, write, read again" {
     }
 }
 
+test "GIF writer preserves animation metadata" {
+    const allocator = helpers.zigimg_test_allocator;
+
+    var image = try loadRotatingEarthImage(allocator);
+    defer image.deinit(allocator);
+
+    const original_loop_count = image.animation.loop_count;
+    const frame_count = image.animation.frames.items.len;
+
+    var write_buffer: [4 * 1024 * 1024]u8 = undefined;
+    var write_stream = zigimg.io.WriteStream.initMemory(&write_buffer);
+
+    try gif.GIF.writeImage(allocator, &write_stream, image, .{ .gif = .{} });
+
+    const written_len = write_stream.writer().end;
+    try std.testing.expect(written_len > 0);
+
+    var read_stream = zigimg.io.ReadStream.initMemory(write_buffer[0..written_len]);
+
+    var decoded_gif = gif.GIF.init(allocator);
+    defer decoded_gif.deinit();
+
+    var decoded_frames = try decoded_gif.read(&read_stream);
+    defer {
+        for (decoded_frames.items) |entry| {
+            entry.pixels.deinit(allocator);
+        }
+        decoded_frames.deinit(allocator);
+    }
+
+    try helpers.expectEq(decoded_gif.loopCount(), original_loop_count);
+    try helpers.expectEq(decoded_frames.items.len, frame_count);
+    try helpers.expectApproxEqAbs(decoded_frames.items[0].duration, image.animation.frames.items[0].duration, 0.0001);
+}
+
+test "GIF writer honors loop override option" {
+    const allocator = helpers.zigimg_test_allocator;
+
+    var image = try loadRotatingEarthImage(allocator);
+    defer image.deinit(allocator);
+
+    image.animation.loop_count = 0;
+
+    var write_buffer: [4 * 1024 * 1024]u8 = undefined;
+    var write_stream = zigimg.io.WriteStream.initMemory(&write_buffer);
+
+    const encoder_options = zigimg.Image.EncoderOptions{
+        .gif = .{
+            .loop_count = 3,
+        },
+    };
+
+    try gif.GIF.writeImage(allocator, &write_stream, image, encoder_options);
+
+    const written_len = write_stream.writer().end;
+    try std.testing.expect(written_len > 0);
+
+    var read_stream = zigimg.io.ReadStream.initMemory(write_buffer[0..written_len]);
+
+    var decoded_gif = gif.GIF.init(allocator);
+    defer decoded_gif.deinit();
+
+    var decoded_frames = try decoded_gif.read(&read_stream);
+    defer {
+        for (decoded_frames.items) |entry| {
+            entry.pixels.deinit(allocator);
+        }
+        decoded_frames.deinit(allocator);
+    }
+
+    try helpers.expectEq(decoded_frames.items.len, image.animation.frames.items.len);
+    try helpers.expectEq(decoded_gif.loopCount(), 3);
+}
+
+test "GIF writer rejects non-indexed data without auto convert" {
+    const allocator = helpers.zigimg_test_allocator;
+
+    var image = zigimg.Image{
+        .width = 2,
+        .height = 2,
+        .pixels = try zigimg.color.PixelStorage.init(allocator, .rgb24, 2 * 2),
+    };
+    defer image.deinit(allocator);
+
+    var write_buffer: [2 * 1024]u8 = undefined;
+    var write_stream = zigimg.io.WriteStream.initMemory(&write_buffer);
+
+    gif.GIF.writeImage(allocator, &write_stream, image, .{ .gif = .{} }) catch |err| {
+        try std.testing.expectEqual(zigimg.Image.WriteError.Unsupported, err);
+        return;
+    };
+    try std.testing.expect(false);
+}
+
 test "Should error on non GIF images" {
     const file = try helpers.testOpenFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
     defer file.close();
@@ -407,7 +501,70 @@ test "Should error on non GIF images" {
     try helpers.expectError(invalid_file, zigimg.Image.ReadError.InvalidData);
 }
 
+fn makeAnimatedTestImage(allocator: std.mem.Allocator) !zigimg.Image {
+    const width: usize = 4;
+    const height: usize = 4;
+
+    var frames: zigimg.Image.Animation.FrameList = .{
+        .items = &[_]zigimg.Image.AnimationFrame{},
+        .capacity = 0,
+        .allocator = allocator,
+    };
+
+    const palette = [_]zigimg.color.Rgba32{
+        .{ .r = 0, .g = 0, .b = 0, .a = 255 },
+        .{ .r = 255, .g = 0, .b = 0, .a = 255 },
+    };
+
+    var frame0_pixels = try zigimg.color.PixelStorage.init(allocator, .indexed8, width * height);
+    frame0_pixels.resizePalette(palette.len);
+    std.mem.copy(zigimg.color.Rgba32, frame0_pixels.indexed8.palette, palette[0..]);
+    for (0..width * height) |i| frame0_pixels.indexed8.indices[i] = @intCast(i % 2);
+
+    const frame0 = zigimg.Image.AnimationFrame{
+        .pixels = frame0_pixels,
+        .duration = 0.15,
+        .disposal = @intCast(zigimg.formats.gif.DisposeMethod.none),
+    };
+    try frames.append(allocator, frame0);
+
+    var frame1_pixels = try zigimg.color.PixelStorage.init(allocator, .indexed8, width * height);
+    frame1_pixels.resizePalette(palette.len);
+    std.mem.copy(zigimg.color.Rgba32, frame1_pixels.indexed8.palette, palette[0..]);
+    for (0..height) |row| {
+        for (0..width) |col| {
+            const idx = row * width + col;
+            frame1_pixels.indexed8.indices[idx] = @intCast(row % 2);
+        }
+    }
+
+    const frame1 = zigimg.Image.AnimationFrame{
+        .pixels = frame1_pixels,
+        .duration = 0.25,
+        .disposal = @intCast(zigimg.formats.gif.DisposeMethod.restore_background_color),
+    };
+    try frames.append(allocator, frame1);
+
+    const first_frame_pixels = frames.items[0].pixels;
+
+    return zigimg.Image{
+        .width = width,
+        .height = height,
+        .pixels = first_frame_pixels,
+        .animation = .{
+            .frames = frames,
+            .loop_count = zigimg.Image.AnimationLoopInfinite,
+        },
+    };
+}
+
 const SINGLE_GIF_FILE_TEST = false;
+
+fn loadRotatingEarthImage(allocator: std.mem.Allocator) !zigimg.Image {
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    const image_path = "rotating_earth.gif";
+    return zigimg.Image.fromFilePath(allocator, image_path, read_buffer[0..]);
+}
 
 test "GIF test suite" {
     if (SINGLE_GIF_FILE_TEST) {

@@ -172,9 +172,10 @@ pub const GIF = struct {
         has_animation_application_extension: bool = false,
     };
 
-    pub const EncoderOptions = struct {
+pub const EncoderOptions = struct {
         /// Number of animation loops (-1 for infinite, 0 for play once).
-        loop_count: i32 = -1,
+        /// When `null`, the writer preserves `Image.animation.loop_count`.
+        loop_count: ?i32 = null,
 
         /// Automatically quantize non-indexed input to `.indexed8`.
         auto_convert: bool = false,
@@ -255,9 +256,9 @@ pub const GIF = struct {
             pixels_to_use = &converted_pixels.?;
         }
 
-        // Use image's loop_count for roundtrip preservation
-        // encoder_options.gif.loop_count can override (-1 means infinite, >= 0 is explicit)
-        const loop_count = image.animation.loop_count;
+        // Use image's loop_count for roundtrip preservation.
+        // encoder_options.gif.loop_count can override (-1 means infinite, >= 0 is explicit).
+        const loop_count = selectedLoopCount(encoder_options.gif.loop_count, image.animation.loop_count);
 
         try writeHeader(writer, image, pixels_to_use, loop_count);
 
@@ -314,6 +315,10 @@ pub const GIF = struct {
         }
 
         try writeTrailer(writer);
+    }
+
+    fn selectedLoopCount(override_loop_count: ?i32, animation_loop_count: i32) i32 {
+        return override_loop_count orelse animation_loop_count;
     }
 
     pub fn loopCount(self: GIF) i32 {
@@ -1222,28 +1227,44 @@ pub const GIF = struct {
         }
 
         const frame_count = image.animation.frames.items.len;
-        if (frame_count > 1 and loop_count >= 0) {
-            try writeLoopExtension(writer, loop_count);
+        if (frame_count > 1) {
+            if (try loopCountToExtension(loop_count)) |loop_count_value| {
+                try writeLoopExtension(writer, loop_count_value);
+            }
         }
     }
 
 };
 
-fn writeLoopExtension(writer: *std.Io.Writer, loop_count: i32) Image.WriteError!void {
+const paletteEntryCounts = [_]usize{ 2, 4, 8, 16, 32, 64, 128, 256 };
+
+fn loopCountToExtension(loop_count: i32) Image.WriteError! ?u16 {
+    if (loop_count == 0) {
+        // Value 0 means no extension should be written.
+        return null;
+    }
+    if (loop_count == Image.AnimationLoopInfinite) {
+        // GIF uses 0 to represent infinite looping.
+        return 0;
+    }
     if (loop_count < 0) {
         return Image.WriteError.Unsupported;
     }
-    if (loop_count > std.math.maxInt(u16)) {
+    if (loop_count > @as(i32, std.math.maxInt(u16))) {
         return Image.WriteError.Unsupported;
     }
+    const converted: u16 = @intCast(loop_count);
+    return converted;
+}
 
+fn writeLoopExtension(writer: *std.Io.Writer, loop_count: u16) Image.WriteError!void {
     try writer.writeAll(&[_]u8{
         0x21, // Extension Introducer.
         0xff, // Application Label.
         0x0b, // Block Size.
     });
     try writer.writeAll("NETSCAPE2.0"); // Application Identifier.
-    const loop_count_u16: u16 = @intCast(loop_count);
+    const loop_count_u16: u16 = loop_count;
 
     var block: [5]u8 = .{
         0x03, // Block Size.
@@ -1254,8 +1275,6 @@ fn writeLoopExtension(writer: *std.Io.Writer, loop_count: i32) Image.WriteError!
     };
     try writer.writeAll(&block);
 }
-
-const paletteEntryCounts = [_]usize{ 2, 4, 8, 16, 32, 64, 128, 256 };
 
 fn paletteSizeIndex(palette_len: usize) Image.WriteError!usize {
     for (paletteEntryCounts, 0..) |entry, idx| {
