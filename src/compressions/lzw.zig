@@ -160,11 +160,10 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
     };
 }
 
-/// LZW Encoder - compresses data using LZW algorithm
-/// GIF uses LSB (Least Significant Bit first) ordering
+/// LZW Encoder, uses LSB (Least Significant Bit first) ordering
 pub fn Encoder(comptime endian: std.builtin.Endian) type {
     return struct {
-        // Constants matching Go implementation
+        // Constants
         const max_code: u32 = (1 << 12) - 1; // 4095 - maximum 12-bit code
         const invalid_code: u32 = std.math.maxInt(u32);
         const table_size: u32 = 4 * (1 << 12); // 16384
@@ -175,12 +174,12 @@ pub fn Encoder(comptime endian: std.builtin.Endian) type {
 
         // Bit buffer for accumulating bits before writing bytes
         bits: u32 = 0,
-        n_bits: u5 = 0,
+        num_bits: u5 = 0,
 
         // Code width management
-        lit_width: u4, // literal width (typically 8 for GIF)
+        literal_width: u4, // (typically 8 for GIF)
         width: u5, // current code width in bits
-        hi: u32, // next code to be assigned
+        next_code: u32, // next code to be assigned
         overflow: u32, // code at which width increases
 
         // State
@@ -198,17 +197,17 @@ pub fn Encoder(comptime endian: std.builtin.Endian) type {
             InputTooLarge,
         };
 
-        pub fn init(lit_width: u4) Error!Self {
-            if (lit_width < 2 or lit_width > 8) {
+        pub fn init(literal_width: u4) Error!Self {
+            if (literal_width < 2 or literal_width > 8) {
                 return Error.InvalidLitWidth;
             }
 
-            const clear_code = @as(u32, 1) << lit_width;
+            const clear_code = @as(u32, 1) << literal_width;
 
             return Self{
-                .lit_width = lit_width,
-                .width = lit_width + 1,
-                .hi = clear_code + 1,
+                .literal_width = literal_width,
+                .width = literal_width + 1,
+                .next_code = clear_code + 1,
                 .overflow = clear_code << 1,
             };
         }
@@ -221,58 +220,59 @@ pub fn Encoder(comptime endian: std.builtin.Endian) type {
         /// Write a single code to the output
         fn writeCode(self: *Self, writer: *std.Io.Writer, code: u32) Error!void {
             switch (endian) {
-                .little => try self.writeCodeLSB(writer, code),
-                .big => try self.writeCodeMSB(writer, code),
+                .little => try self.writeCodeLsb(writer, code),
+                .big => try self.writeCodeMsb(writer, code),
             }
         }
 
         /// Write code using LSB-first ordering (used by GIF)
-        fn writeCodeLSB(self: *Self, writer: *std.Io.Writer, code: u32) Error!void {
-            self.bits |= code << self.n_bits;
-            self.n_bits += @intCast(self.width);
+        fn writeCodeLsb(self: *Self, writer: *std.Io.Writer, code: u32) Error!void {
+            self.bits |= code << self.num_bits;
+            self.num_bits += @intCast(self.width);
 
-            while (self.n_bits >= 8) {
+            while (self.num_bits >= 8) {
                 writer.writeByte(@truncate(self.bits)) catch return Error.WriteFailed;
                 self.bits >>= 8;
-                self.n_bits -= 8;
+                self.num_bits -= 8;
             }
         }
 
         /// Write code using MSB-first ordering (used by TIFF)
-        fn writeCodeMSB(self: *Self, writer: *std.Io.Writer, code: u32) Error!void {
-            self.bits |= code << (@as(u5, 32) - self.width - self.n_bits);
-            self.n_bits += @intCast(self.width);
+        fn writeCodeMsb(self: *Self, writer: *std.Io.Writer, code: u32) Error!void {
+            self.bits |= code << (@as(u5, 32) - self.width - self.num_bits);
+            self.num_bits += @intCast(self.width);
 
-            while (self.n_bits >= 8) {
+            while (self.num_bits >= 8) {
                 writer.writeByte(@truncate(self.bits >> 24)) catch return Error.WriteFailed;
                 self.bits <<= 8;
-                self.n_bits -= 8;
+                self.num_bits -= 8;
             }
         }
 
-        /// Increment hi (next code) and handle overflow/reset
+        /// Increment next code and handle overflow/reset
         /// Returns true if table was reset (out of codes)
-        fn incHi(self: *Self, writer: *std.Io.Writer) Error!bool {
-            self.hi += 1;
+        fn incNextCode(self: *Self, writer: *std.Io.Writer) Error!bool {
+            self.next_code += 1;
 
-            if (self.hi == self.overflow) {
+            if (self.next_code == self.overflow) {
                 self.width += 1;
                 self.overflow <<= 1;
             }
 
-            if (self.hi == max_code) {
-                // Out of codes - emit clear code and reset
-                const clear_code = @as(u32, 1) << self.lit_width;
+            if (self.next_code == max_code) {
+                // Out of codes, so emit clear code and reset
+                const clear_code = @as(u32, 1) << self.literal_width;
                 try self.writeCode(writer, clear_code);
 
-                self.width = self.lit_width + 1;
-                self.hi = clear_code + 1;
+                self.width = self.literal_width + 1;
+                self.next_code = clear_code + 1;
                 self.overflow = clear_code << 1;
 
                 // Clear the hash table
                 @memset(&self.table, invalid_entry);
 
-                return true; // Signal that we reset
+                // Signal that we reset
+                return true;
             }
 
             return false;
@@ -289,10 +289,10 @@ pub fn Encoder(comptime endian: std.builtin.Endian) type {
             }
 
             // Validate input bytes are within literal range
-            const max_lit: u8 = @as(u8, @truncate((@as(u16, 1) << self.lit_width) - 1));
-            if (max_lit != 0xff) {
+            const max_literal: u8 = @as(u8, @truncate((@as(u16, 1) << self.literal_width) - 1));
+            if (max_literal != 0xff) {
                 for (data) |byte| {
-                    if (byte > max_lit) {
+                    if (byte > max_literal) {
                         return Error.InputTooLarge;
                     }
                 }
@@ -303,7 +303,7 @@ pub fn Encoder(comptime endian: std.builtin.Endian) type {
 
             if (code == invalid_code) {
                 // First write - emit clear code
-                const clear_code = @as(u32, 1) << self.lit_width;
+                const clear_code = @as(u32, 1) << self.literal_width;
                 try self.writeCode(writer, clear_code);
 
                 // First byte becomes the initial code
@@ -322,7 +322,7 @@ pub fn Encoder(comptime endian: std.builtin.Endian) type {
                 while (self.table[hash] != invalid_entry) {
                     const entry = self.table[hash];
                     if ((entry >> 12) == key) {
-                        // Found in table - extend the sequence
+                        // Found in table, extend the sequence
                         code = entry & max_code;
                         found = true;
                         break;
@@ -331,19 +331,19 @@ pub fn Encoder(comptime endian: std.builtin.Endian) type {
                 }
 
                 if (!found) {
-                    // Not in table - emit current code
+                    // Not in table, emit current code
                     try self.writeCode(writer, code);
                     code = literal;
 
                     // Try to add new entry to table
-                    const reset = try self.incHi(writer);
+                    const reset = try self.incNextCode(writer);
                     if (!reset) {
                         // Find empty slot and insert
                         var insert_hash = ((key >> 12) ^ key) & table_mask;
                         while (self.table[insert_hash] != invalid_entry) {
                             insert_hash = (insert_hash + 1) & table_mask;
                         }
-                        self.table[insert_hash] = (key << 12) | self.hi;
+                        self.table[insert_hash] = (key << 12) | self.next_code;
                     }
                 }
             }
@@ -351,22 +351,22 @@ pub fn Encoder(comptime endian: std.builtin.Endian) type {
             self.saved_code = code;
         }
 
-        /// Finish encoding - emit final code and EOF
+        /// Finish encoding: emit final code and EOF
         pub fn finish(self: *Self, writer: *std.Io.Writer) Error!void {
             if (self.closed) {
                 return;
             }
             self.closed = true;
 
-            const clear_code = @as(u32, 1) << self.lit_width;
+            const clear_code = @as(u32, 1) << self.literal_width;
             const eof_code = clear_code + 1;
 
             if (self.saved_code != invalid_code) {
                 // Write the final pending code
                 try self.writeCode(writer, self.saved_code);
-                _ = try self.incHi(writer);
+                _ = try self.incNextCode(writer);
             } else {
-                // No data was written - just emit clear code
+                // No data was written, so just emit clear code
                 try self.writeCode(writer, clear_code);
             }
 
@@ -374,7 +374,7 @@ pub fn Encoder(comptime endian: std.builtin.Endian) type {
             try self.writeCode(writer, eof_code);
 
             // Flush remaining bits
-            if (self.n_bits > 0) {
+            if (self.num_bits > 0) {
                 if (endian == .big) {
                     self.bits >>= 24;
                 }
@@ -411,27 +411,27 @@ test "Should decode a simple LZW little-endian stream" {
 // Encoder Tests
 // ============================================================================
 
-test "Encoder init with valid lit_width" {
+test "Encoder init with valid literal_width" {
     var encoder = try Encoder(.little).init(8);
     defer encoder.deinit();
 
-    try std.testing.expectEqual(@as(u4, 8), encoder.lit_width);
+    try std.testing.expectEqual(@as(u4, 8), encoder.literal_width);
     try std.testing.expectEqual(@as(u5, 9), encoder.width);
-    try std.testing.expectEqual(@as(u32, 257), encoder.hi); // clear(256) + 1
+    try std.testing.expectEqual(@as(u32, 257), encoder.next_code); // clear(256) + 1
     try std.testing.expectEqual(@as(u32, 512), encoder.overflow);
 }
 
-test "Encoder init with minimum lit_width" {
+test "Encoder init with minimum literal_width" {
     var encoder = try Encoder(.little).init(2);
     defer encoder.deinit();
 
-    try std.testing.expectEqual(@as(u4, 2), encoder.lit_width);
+    try std.testing.expectEqual(@as(u4, 2), encoder.literal_width);
     try std.testing.expectEqual(@as(u5, 3), encoder.width);
-    try std.testing.expectEqual(@as(u32, 5), encoder.hi); // clear(4) + 1
+    try std.testing.expectEqual(@as(u32, 5), encoder.next_code); // clear(4) + 1
     try std.testing.expectEqual(@as(u32, 8), encoder.overflow);
 }
 
-test "Encoder init rejects invalid lit_width" {
+test "Encoder init rejects invalid literal_width" {
     const result1 = Encoder(.little).init(1);
     try std.testing.expectError(Encoder(.little).Error.InvalidLitWidth, result1);
 
@@ -483,7 +483,7 @@ test "Encoder rejects data after close" {
     try std.testing.expectError(Encoder(.little).Error.EncoderClosed, result);
 }
 
-test "Encoder validates input range for small lit_width" {
+test "Encoder validates input range for small literal_width" {
     var encoder = try Encoder(.little).init(2); // max value is 3
     defer encoder.deinit();
 
@@ -491,12 +491,12 @@ test "Encoder validates input range for small lit_width" {
     var write_stream = io.WriteStream.initMemory(&out_buffer);
     const writer = write_stream.writer();
 
-    // Value 4 is too large for lit_width=2
+    // Value 4 is too large for literal_width=2
     const result = encoder.encode(writer, &[_]u8{4});
     try std.testing.expectError(Encoder(.little).Error.InputTooLarge, result);
 }
 
-test "Encoder roundtrip - encode then decode simple data" {
+test "Encoder roundtrip: encode then decode simple data" {
     const original = "AAAAAAA";
 
     // Encode
@@ -526,7 +526,7 @@ test "Encoder roundtrip - encode then decode simple data" {
     try std.testing.expectEqualSlices(u8, original, decoded_buffer[0..decode_writer.end]);
 }
 
-test "Encoder roundtrip - encode then decode varied data" {
+test "Encoder roundtrip: encode then decode varied data" {
     const original = [_]u8{ 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 6, 7 };
 
     // Encode
@@ -554,11 +554,11 @@ test "Encoder roundtrip - encode then decode varied data" {
     try std.testing.expectEqualSlices(u8, &original, decoded_buffer[0..decode_writer.end]);
 }
 
-test "Encoder roundtrip - encode then decode with small lit_width" {
-    // For GIF with small palettes, lit_width can be 2-7
+test "Encoder roundtrip: encode then decode with small literal_width" {
+    // For GIF with small palettes, literal_width can be 2-7
     const original = [_]u8{ 0, 1, 2, 3, 0, 1, 0, 2, 1, 3 }; // values 0-3
 
-    // Encode with lit_width=2
+    // Encode with literal_width=2
     var encoded_buffer: [256]u8 = undefined;
     var encode_stream = io.WriteStream.initMemory(&encoded_buffer);
     const encode_writer = encode_stream.writer();

@@ -3,7 +3,7 @@ const helpers = @import("../helpers.zig");
 const std = @import("std");
 const zigimg = @import("zigimg");
 
-test "GIF writer roundtrip - simple indexed8 image" {
+test "GIF writer roundtrip simple indexed8 image" {
     const allocator = helpers.zigimg_test_allocator;
 
     // Create a simple 4x4 indexed8 image
@@ -110,7 +110,7 @@ test "GIF writer roundtrip - simple indexed8 image" {
     }
 }
 
-test "GIF writer roundtrip - indexed1 format" {
+test "GIF writer roundtrip indexed1 format" {
     const allocator = helpers.zigimg_test_allocator;
 
     // Create a simple 4x4 indexed1 image (2 colors max)
@@ -180,7 +180,7 @@ test "GIF writer roundtrip - indexed1 format" {
     }
 }
 
-test "GIF writer roundtrip - indexed2 format" {
+test "GIF writer roundtrip indexed2 format" {
     const allocator = helpers.zigimg_test_allocator;
 
     // Create a simple 4x4 indexed2 image (4 colors max)
@@ -250,7 +250,7 @@ test "GIF writer roundtrip - indexed2 format" {
     }
 }
 
-test "GIF writer roundtrip - indexed4 format" {
+test "GIF writer roundtrip indexed4 format" {
     const allocator = helpers.zigimg_test_allocator;
 
     // Create a simple 4x4 indexed4 image (16 colors max)
@@ -320,7 +320,7 @@ test "GIF writer roundtrip - indexed4 format" {
     }
 }
 
-test "GIF writer roundtrip - read existing GIF, write, read again" {
+test "GIF writer roundtrip read existing GIF, write, read again" {
     const allocator = helpers.zigimg_test_allocator;
 
     // Read an existing GIF file using low-level reader
@@ -760,8 +760,6 @@ const IniFile = struct {
 };
 
 fn doGifTest(entry_name: []const u8) !void {
-    std.debug.print("GIF test {s}... ", .{entry_name});
-
     var area_alloc = std.heap.ArenaAllocator.init(helpers.zigimg_test_allocator);
     const area_allocator = area_alloc.allocator();
     defer area_alloc.deinit();
@@ -922,9 +920,7 @@ fn doGifTest(entry_name: []const u8) !void {
 
 const RoundtripResult = enum { passed, failed };
 
-fn doGifRoundtripTest(entry_name: []const u8) RoundtripResult {
-    std.debug.print("GIF roundtrip {s}... ", .{entry_name});
-
+fn doGifRoundtripTest(entry_name: []const u8) !RoundtripResult {
     var area_alloc = std.heap.ArenaAllocator.init(helpers.zigimg_test_allocator);
     const area_allocator = area_alloc.allocator();
     defer area_alloc.deinit();
@@ -940,12 +936,7 @@ fn doGifRoundtripTest(entry_name: []const u8) RoundtripResult {
     };
 
     // Read original GIF
-    const gif_input_file = std.fs.cwd().openFile(gif_filepath, .{}) catch {
-        // File not found - this is a test infrastructure issue, not a GIF writer issue
-        // Reader correctly handles missing files
-        std.debug.print("OK (file not found - test infrastructure)\n", .{});
-        return .passed;
-    };
+    const gif_input_file = try std.fs.cwd().openFile(gif_filepath, .{});
     defer gif_input_file.close();
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
@@ -955,7 +946,7 @@ fn doGifRoundtripTest(entry_name: []const u8) RoundtripResult {
     defer original_gif.deinit();
 
     var original_frames = original_gif.read(&read_stream) catch {
-        // Reader correctly rejected bad data - this is expected and OK
+        // Reader correctly rejected bad data
         std.debug.print("OK (reader correctly rejected bad data)\n", .{});
         return .passed;
     };
@@ -967,7 +958,7 @@ fn doGifRoundtripTest(entry_name: []const u8) RoundtripResult {
     }
 
     if (original_frames.items.len == 0) {
-        // No frames means nothing to write - this is valid behavior
+        // No frames means nothing to write
         std.debug.print("OK (no frames to write)\n", .{});
         return .passed;
     }
@@ -979,13 +970,13 @@ fn doGifRoundtripTest(entry_name: []const u8) RoundtripResult {
         .pixels = original_frames.items[0].pixels,
     };
 
-    // Non-indexed formats can't be written without auto_convert - that's correct behavior
+    // Non-indexed formats can't be written without auto_convert
     if (!image.pixelFormat().isIndexed()) {
         std.debug.print("OK (non-indexed format correctly not written: {s})\n", .{@tagName(image.pixels)});
         return .passed;
     }
 
-    // Zero dimensions can't be written - that's correct behavior
+    // Zero dimensions can't be written
     if (image.width == 0 or image.height == 0) {
         std.debug.print("OK (zero dimensions correctly not written)\n", .{});
         return .passed;
@@ -1070,7 +1061,6 @@ fn doGifRoundtripTest(entry_name: []const u8) RoundtripResult {
         pixel_index += 1;
     }
 
-    std.debug.print("OK ({} bytes, {} pixels)\n", .{ written_len, pixel_index });
     return .passed;
 }
 
@@ -1097,19 +1087,10 @@ test "GIF writer roundtrip test suite" {
         read_line = reader.takeDelimiterExclusive('\n') catch &.{};
     }
 
-    var pass_count: usize = 0;
-    var fail_count: usize = 0;
-
     for (test_list.items) |entry| {
-        switch (doGifRoundtripTest(entry)) {
-            .passed => pass_count += 1,
-            .failed => fail_count += 1,
+        switch (try doGifRoundtripTest(entry)) {
+            .passed => {},
+            .failed => return error.TestUnexpectedResult,
         }
-    }
-
-    std.debug.print("\nGIF roundtrip summary: {} passed, {} failed\n", .{ pass_count, fail_count });
-
-    if (fail_count > 0) {
-        return error.TestUnexpectedResult;
     }
 }

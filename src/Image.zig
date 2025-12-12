@@ -272,7 +272,6 @@ pub fn writeToFile(self: Image, allocator: std.mem.Allocator, file: std.fs.File,
     var write_stream = io.WriteStream.initFile(file, write_buffer);
 
     try self.internalWrite(allocator, &write_stream, encoder_options);
-    try write_stream.flush();
 }
 
 /// Write the image to an image format in a memory buffer. The memory buffer is not grown
