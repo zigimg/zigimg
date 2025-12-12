@@ -760,6 +760,8 @@ const IniFile = struct {
 };
 
 fn doGifTest(entry_name: []const u8) !void {
+    std.debug.print("GIF test {s}... ", .{entry_name});
+
     var area_alloc = std.heap.ArenaAllocator.init(helpers.zigimg_test_allocator);
     const area_allocator = area_alloc.allocator();
     defer area_alloc.deinit();
