@@ -562,7 +562,7 @@ const SINGLE_GIF_FILE_TEST = false;
 
 fn loadRotatingEarthImage(allocator: std.mem.Allocator) !zigimg.Image {
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    const image_path = "rotating_earth.gif";
+    const image_path = helpers.fixtures_path ++ "gif/rotating_earth.gif";
     return zigimg.Image.fromFilePath(allocator, image_path, read_buffer[0..]);
 }
 
