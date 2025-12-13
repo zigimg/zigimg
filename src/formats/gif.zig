@@ -1151,10 +1151,14 @@ pub const GIF = struct {
             try writer.writeAll(palette_buffer[0..palette_byte_length]);
         }
 
-        const frame_count = image.animation.frames.items.len;
-        if (frame_count > 1) {
-            if (try loopCountToExtension(loop_count)) |loop_count_value| {
-                try writeLoopExtension(writer, loop_count_value);
+        // Write loop extension if loop_count is set (for animated GIFs or explicit requests)
+        // Always write if loop_count is AnimationLoopInfinite (-1) or > 0
+        // Note: loop_count == 0 means no extension (single play, no loop)
+        if (loop_count == Image.AnimationLoopInfinite) {
+            try writeLoopExtension(writer, 0); // GIF uses 0 to represent infinite looping
+        } else if (loop_count > 0) {
+            if (loop_count <= @as(i32, std.math.maxInt(u16))) {
+                try writeLoopExtension(writer, @intCast(loop_count));
             }
         }
     }
