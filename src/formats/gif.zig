@@ -257,7 +257,7 @@ pub const GIF = struct {
         // encoder_options.gif.loop_count can override (-1 means infinite, >= 0 is explicit).
         const loop_count = selectedLoopCount(encoder_options.gif.loop_count, image.animation.loop_count);
 
-        try writeHeader(writer, image, pixels_to_use, loop_count);
+        try writeHeader(writer, image.width, image.height, pixels_to_use, loop_count);
 
         // Get global palette for color table optimization
         const global_palette = pixels_to_use.getPalette();
@@ -1117,12 +1117,12 @@ pub const GIF = struct {
         @memcpy(&header.magic, MAGIC.ptr);
         @memcpy(&header.version, VERSIONS[1].ptr);
 
-        if (image.width > std.math.maxInt(u16) or image.height > std.math.maxInt(u16)) {
+        if (width > std.math.maxInt(u16) or height > std.math.maxInt(u16)) {
             return Image.WriteError.Unsupported;
         }
 
-        header.width = @truncate(image.width);
-        header.height = @truncate(image.height);
+        header.width = @intCast(width);
+        header.height = @intCast(height);
 
         var palette_buffer: [3 * 256]u8 = undefined;
         var palette_byte_length: usize = 0;
@@ -1138,7 +1138,7 @@ pub const GIF = struct {
                     // Our palettes use RGBA32 (8 bits), so color_resolution = 7
                     header.flags.color_resolution = 7;
 
-                    const entries = paletteEntryCounts[palette_index];
+                    const entries = palette_entry_counts[palette_index];
                     palette_byte_length = entries * 3;
                     encodeColorTable(palette_buffer[0..palette_byte_length], palette_slice, entries);
                 }
@@ -1164,7 +1164,7 @@ pub const GIF = struct {
     }
 };
 
-const paletteEntryCounts = [_]usize{ 2, 4, 8, 16, 32, 64, 128, 256 };
+const palette_entry_counts = [_]usize{ 2, 4, 8, 16, 32, 64, 128, 256 };
 
 fn loopCountToExtension(loop_count: i32) Image.WriteError!?u16 {
     if (loop_count == 0) {
@@ -1205,7 +1205,7 @@ fn writeLoopExtension(writer: *std.Io.Writer, loop_count: u16) Image.WriteError!
 }
 
 fn paletteSizeIndex(palette_len: usize) Image.WriteError!usize {
-    for (paletteEntryCounts, 0..) |entry, idx| {
+    for (palette_entry_counts, 0..) |entry, idx| {
         if (palette_len <= entry) {
             return idx;
         }
@@ -1450,7 +1450,7 @@ fn writeImageBlock(
 
     // Write local color table only if not using global
     if (!use_global) {
-        const entries = paletteEntryCounts[palette_size_idx];
+        const entries = palette_entry_counts[palette_size_idx];
         var color_table_buf: [3 * 256]u8 = undefined;
         encodeColorTable(color_table_buf[0 .. entries * 3], palette, entries);
         writer.writeAll(color_table_buf[0 .. entries * 3]) catch return Image.WriteError.WriteFailed;

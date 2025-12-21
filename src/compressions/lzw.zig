@@ -188,7 +188,7 @@ pub fn Encoder(comptime endian: std.builtin.Endian) type {
 
         // Hash table: maps (prefix_code << 8 | byte) -> code
         // Entry format: (key << 12) | code, where key = (prefix << 8 | byte)
-        table: [table_size]u32 = [_]u32{invalid_entry} ** table_size,
+        table: [table_size]u32 = @splat(invalid_entry),
 
         pub const Error = error{
             WriteFailed,
@@ -251,7 +251,7 @@ pub fn Encoder(comptime endian: std.builtin.Endian) type {
 
         /// Increment next code and handle overflow/reset
         /// Returns true if table was reset (out of codes)
-        fn incNextCode(self: *Self, writer: *std.Io.Writer) Error!bool {
+        fn incrementNextCode(self: *Self, writer: *std.Io.Writer) Error!bool {
             self.next_code += 1;
 
             if (self.next_code == self.overflow) {
@@ -336,7 +336,7 @@ pub fn Encoder(comptime endian: std.builtin.Endian) type {
                     code = literal;
 
                     // Try to add new entry to table
-                    const reset = try self.incNextCode(writer);
+                    const reset = try self.incrementNextCode(writer);
                     if (!reset) {
                         // Find empty slot and insert
                         var insert_hash = ((key >> 12) ^ key) & table_mask;
@@ -364,7 +364,7 @@ pub fn Encoder(comptime endian: std.builtin.Endian) type {
             if (self.saved_code != invalid_code) {
                 // Write the final pending code
                 try self.writeCode(writer, self.saved_code);
-                _ = try self.incNextCode(writer);
+                _ = try self.incrementNextCode(writer);
             } else {
                 // No data was written, so just emit clear code
                 try self.writeCode(writer, clear_code);
