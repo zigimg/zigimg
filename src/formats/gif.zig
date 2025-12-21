@@ -1119,7 +1119,49 @@ pub const GIF = struct {
         return .rgb24;
     }
 
-    fn writeHeader(writer: *std.Io.Writer, image: Image, pixels: *const color.PixelStorage, loop_count: i32) Image.WriteError!void {
+    /// Write this GIF to the given writer using the struct's fields:
+    pub fn write(self: *const GIF, allocator: std.mem.Allocator, write_stream: *io.WriteStream) Image.WriteError!void {
+        const writer = write_stream.writer();
+
+        // Write header
+        try writer.writeStruct(self.header, .little);
+
+        // Write global color table if present
+        if (self.header.flags.use_global_color_table) {
+            const gct_size = @as(usize, 1) << (@as(COLOR_TABLE_SHIFT_TYPE, @intCast(self.header.flags.global_color_table_size)) + 1);
+            var color_table_buf: [3 * 256]u8 = undefined;
+            const byte_len = gct_size * 3;
+            for (0..@min(gct_size, self.global_color_table.data.len)) |i| {
+                color_table_buf[i * 3 + 0] = self.global_color_table.data[i].r;
+                color_table_buf[i * 3 + 1] = self.global_color_table.data[i].g;
+                color_table_buf[i * 3 + 2] = self.global_color_table.data[i].b;
+            }
+            // Zero-fill remainder if global_color_table.data is smaller
+            if (self.global_color_table.data.len < gct_size) {
+                @memset(color_table_buf[self.global_color_table.data.len * 3 .. byte_len], 0);
+            }
+            writer.writeAll(color_table_buf[0..byte_len]) catch return Image.WriteError.WriteFailed;
+        }
+
+        // Write application extensions (including NETSCAPE for looping)
+        for (self.application_infos.items) |app_info| {
+            try writeApplicationExtension(writer, &app_info);
+        }
+
+        // Write comment extensions
+        for (self.comments.items) |comment_ext| {
+            try writeCommentExtension(writer, comment_ext.comment);
+        }
+
+        // Write frames
+        for (self.frames.items) |frame| {
+            try writeFrameData(allocator, writer, &frame, self.global_color_table.data);
+        }
+
+        try writeTrailer(writer);
+    }
+
+    fn writeHeader(writer: *std.Io.Writer, width: usize, height: usize, pixels: *const color.PixelStorage, loop_count: i32) Image.WriteError!void {
         var header = Header{
             .magic = undefined,
             .version = undefined,
@@ -1202,22 +1244,20 @@ fn loopCountToExtension(loop_count: i32) Image.WriteError!?u16 {
 }
 
 fn writeLoopExtension(writer: *std.Io.Writer, loop_count: u16) Image.WriteError!void {
-    try writer.writeAll(&[_]u8{
-        0x21, // Extension Introducer.
-        0xff, // Application Label.
-        0x0b, // Block Size.
-    });
-    try writer.writeAll("NETSCAPE2.0"); // Application Identifier.
-    const loop_count_u16: u16 = loop_count;
+    writer.writeAll(&[_]u8{
+        @intFromEnum(DataBlockKind.extension),
+        @intFromEnum(ExtensionKind.application_extension),
+        0x0b, // Block size (always 11 for application extension)
+    }) catch return Image.WriteError.WriteFailed;
+    writer.writeAll("NETSCAPE2.0") catch return Image.WriteError.WriteFailed;
 
-    var block: [5]u8 = .{
-        0x03, // Block Size.
-        0x01, // Sub-block Index.
-        @truncate(loop_count_u16 & 0xff),
-        @truncate((loop_count_u16 >> 8) & 0xff),
-        0x00, // Block Terminator.
-    };
-    try writer.writeAll(&block);
+    writer.writeAll(&[_]u8{
+        0x03, // Sub-block size
+        0x01, // Sub-block index
+        @truncate(loop_count & 0xff),
+        @truncate((loop_count >> 8) & 0xff),
+        EXTENSION_BLOCK_TERMINATOR,
+    }) catch return Image.WriteError.WriteFailed;
 }
 
 fn paletteSizeIndex(palette_len: usize) Image.WriteError!usize {
@@ -1548,4 +1588,131 @@ fn writeImageBlock(
 /// Write the GIF trailer
 fn writeTrailer(writer: *std.Io.Writer) Image.WriteError!void {
     writer.writeByte(@intFromEnum(DataBlockKind.end_of_file)) catch return Image.WriteError.WriteFailed;
+}
+
+/// Write an application extension block
+fn writeApplicationExtension(writer: *std.Io.Writer, app_info: *const ApplicationExtension) Image.WriteError!void {
+    writer.writeAll(&[_]u8{
+        @intFromEnum(DataBlockKind.extension), // 0x21
+        @intFromEnum(ExtensionKind.application_extension), // 0xFF
+        0x0b, // Block size (always 11)
+    }) catch return Image.WriteError.WriteFailed;
+
+    writer.writeAll(&app_info.application_identifier) catch return Image.WriteError.WriteFailed;
+    writer.writeAll(&app_info.authentification_code) catch return Image.WriteError.WriteFailed;
+
+    // Write data in sub-blocks (max 255 bytes each)
+    var offset: usize = 0;
+    while (offset < app_info.data.len) {
+        const chunk_size = @min(app_info.data.len - offset, 255);
+        writer.writeByte(@intCast(chunk_size)) catch return Image.WriteError.WriteFailed;
+        writer.writeAll(app_info.data[offset .. offset + chunk_size]) catch return Image.WriteError.WriteFailed;
+        offset += chunk_size;
+    }
+
+    // Block terminator
+    writer.writeByte(0x00) catch return Image.WriteError.WriteFailed;
+}
+
+/// Write a comment extension block
+fn writeCommentExtension(writer: *std.Io.Writer, comment: []const u8) Image.WriteError!void {
+    writer.writeAll(&[_]u8{
+        @intFromEnum(DataBlockKind.extension), // 0x21
+        @intFromEnum(ExtensionKind.comment), // 0xFE
+    }) catch return Image.WriteError.WriteFailed;
+
+    // Write comment data in sub-blocks (max 255 bytes each)
+    var offset: usize = 0;
+    while (offset < comment.len) {
+        const chunk_size = @min(comment.len - offset, 255);
+        writer.writeByte(@intCast(chunk_size)) catch return Image.WriteError.WriteFailed;
+        writer.writeAll(comment[offset .. offset + chunk_size]) catch return Image.WriteError.WriteFailed;
+        offset += chunk_size;
+    }
+
+    // Block terminator
+    writer.writeByte(0x00) catch return Image.WriteError.WriteFailed;
+}
+
+/// Write a frame (FrameData) with its graphics control and sub-images
+fn writeFrameData(
+    allocator: std.mem.Allocator,
+    writer: *std.Io.Writer,
+    frame: *const GIF.FrameData,
+    global_color_table: []const color.Rgb24,
+) Image.WriteError!void {
+    // Write graphics control extension if present
+    if (frame.graphics_control) |gce| {
+        try writeGraphicControlExtension(
+            writer,
+            gce.delay_time,
+            gce.flags.disposal_method,
+            if (gce.flags.has_transparent_color) gce.transparent_color_index else null,
+        );
+    }
+
+    // Write each sub-image
+    for (frame.sub_images.items) |sub_image| {
+        try writeSubImage(allocator, writer, sub_image, global_color_table);
+    }
+}
+
+/// Write a sub-image with its image descriptor, optional local color table, and LZW data
+fn writeSubImage(
+    _: std.mem.Allocator,
+    writer: *std.Io.Writer,
+    sub_image: *const GIF.SubImage,
+    global_color_table: []const color.Rgb24,
+) Image.WriteError!void {
+    const desc = sub_image.image_descriptor;
+
+    // Write image descriptor
+    writer.writeByte(@intFromEnum(DataBlockKind.image_descriptor)) catch return Image.WriteError.WriteFailed;
+    writer.writeStruct(desc, .little) catch return Image.WriteError.WriteFailed;
+
+    // Write local color table if present
+    if (desc.flags.has_local_color_table) {
+        const lct_size = @as(usize, 1) << (@as(COLOR_TABLE_SHIFT_TYPE, @intCast(desc.flags.local_color_table_size)) + 1);
+        var color_table_buf: [3 * 256]u8 = undefined;
+        const byte_len = lct_size * 3;
+        for (0..@min(lct_size, sub_image.local_color_table.data.len)) |i| {
+            color_table_buf[i * 3 + 0] = sub_image.local_color_table.data[i].r;
+            color_table_buf[i * 3 + 1] = sub_image.local_color_table.data[i].g;
+            color_table_buf[i * 3 + 2] = sub_image.local_color_table.data[i].b;
+        }
+        if (sub_image.local_color_table.data.len < lct_size) {
+            @memset(color_table_buf[sub_image.local_color_table.data.len * 3 .. byte_len], 0);
+        }
+        writer.writeAll(color_table_buf[0..byte_len]) catch return Image.WriteError.WriteFailed;
+    }
+
+    // Calculate LZW minimum code size from color table size
+    const color_table_size = if (desc.flags.has_local_color_table)
+        @as(usize, 1) << (@as(COLOR_TABLE_SHIFT_TYPE, @intCast(desc.flags.local_color_table_size)) + 1)
+    else
+        global_color_table.len;
+
+    var lit_width: u4 = 2; // Minimum is 2 for GIF
+    for (palette_entry_counts, 0..) |entry_count, idx| {
+        if (color_table_size <= entry_count) {
+            lit_width = @intCast(@max(idx + 1, 2));
+            break;
+        }
+    }
+
+    // Write LZW minimum code size
+    writer.writeByte(lit_width) catch return Image.WriteError.WriteFailed;
+
+    // Create sub-block writer for chunking LZW output
+    var sub_block_writer = SubBlockWriter.init(writer);
+    const lzw_writer = sub_block_writer.writer();
+
+    var encoder = lzw.Encoder(.little).init(lit_width) catch return Image.WriteError.Unsupported;
+
+    // Encode pixel data
+    encoder.encode(lzw_writer, sub_image.pixels) catch return Image.WriteError.WriteFailed;
+    encoder.finish(lzw_writer) catch return Image.WriteError.WriteFailed;
+
+    // Finish writing sub-blocks
+    try sub_block_writer.finish();
 }
