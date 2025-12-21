@@ -273,10 +273,26 @@ pub const GIF = struct {
                 const frame_width: u16 = if (frame.frame_width > 0) frame.frame_width else @truncate(image.width);
                 const frame_height: u16 = if (frame.frame_height > 0) frame.frame_height else @truncate(image.height);
 
+                // Auto-convert frame pixels if needed
+                var frame_converted_pixels: ?color.PixelStorage = null;
+                defer if (frame_converted_pixels) |p| p.deinit(allocator);
+
+                var frame_pixels_to_use = &frame.pixels;
+                const frame_pixel_format = std.meta.activeTag(frame.pixels);
+                if (!frame_pixel_format.isIndexed()) {
+                    if (!encoder_options.gif.auto_convert) {
+                        return Image.WriteError.Unsupported;
+                    }
+                    frame_converted_pixels = PixelFormatConverter.convert(allocator, &frame.pixels, .indexed8) catch {
+                        return Image.WriteError.Unsupported;
+                    };
+                    frame_pixels_to_use = &frame_converted_pixels.?;
+                }
+
                 try writeImageBlock(
                     allocator,
                     writer,
-                    &frame.pixels,
+                    frame_pixels_to_use,
                     frame_width,
                     frame_height,
                     frame.left,
