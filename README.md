@@ -228,7 +228,7 @@ pub fn main() !void {
     const allocator = std.heap.smp_allocator;
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var image = try zigimg.Image.fromFilePath(allocator, read_buffer[0..], "my_image.png");
+    var image = try zigimg.Image.fromFilePath(allocator,  "my_image.png", read_buffer[0..]);
     defer image.deinit(allocator);
 
     // Do something with your image
@@ -248,7 +248,7 @@ pub fn main() !void {
     defer file.close();
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var image = try zigimg.Image.fromFile(allocator, read_buffer[0..], &file);
+    var image = try zigimg.Image.fromFile(allocator, &file, read_buffer[0..]);
     defer image.deinit(allocator);
 
     // Do something with your image
