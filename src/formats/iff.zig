@@ -404,7 +404,7 @@ pub const IFF = struct {
         // 3 (r, g, b components) for 24bit mode
         const pixel_size: u8 = @max(1, planes / 8);
 
-        // we already have a chunky buffer: no need to convert to planar
+        // we already have a chunky buffer: no need to convert planar data
         if (self.format_id == .pbm) {
             @memcpy(chunky_buffer[0..dest_len], bitplanes[0..dest_len]);
             return;
