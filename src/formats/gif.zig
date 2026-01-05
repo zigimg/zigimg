@@ -4,6 +4,7 @@ const Image = @import("../Image.zig");
 const io = @import("../io.zig");
 const lzw = @import("../compressions/lzw.zig");
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
+const PixelFormatConverter = @import("../PixelFormatConverter.zig");
 const std = @import("std");
 const utils = @import("../utils.zig");
 
@@ -171,6 +172,15 @@ pub const GIF = struct {
         has_animation_application_extension: bool = false,
     };
 
+    pub const EncoderOptions = struct {
+        /// Number of animation loops (-1 for infinite, 0 for play once).
+        /// When `null`, the writer preserves `Image.animation.loop_count`.
+        loop_count: ?i32 = null,
+
+        /// Automatically quantize non-indexed input to `.indexed8`.
+        auto_convert: bool = false,
+    };
+
     pub fn init(allocator: std.mem.Allocator) GIF {
         return .{
             .arena_allocator = std.heap.ArenaAllocator.init(allocator),
@@ -227,10 +237,101 @@ pub const GIF = struct {
     }
 
     pub fn writeImage(allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: Image, encoder_options: Image.EncoderOptions) Image.WriteError!void {
-        _ = allocator;
-        _ = write_stream;
-        _ = image;
-        _ = encoder_options;
+        const writer = write_stream.writer();
+
+        var converted_pixels: ?color.PixelStorage = null;
+        defer if (converted_pixels) |pixels| pixels.deinit(allocator);
+
+        var pixels_to_use = &image.pixels;
+        if (!image.pixelFormat().isIndexed()) {
+            if (!encoder_options.gif.auto_convert) {
+                return Image.WriteError.Unsupported;
+            }
+            converted_pixels = PixelFormatConverter.convert(allocator, &image.pixels, .indexed8) catch {
+                return Image.WriteError.Unsupported;
+            };
+            pixels_to_use = &converted_pixels.?;
+        }
+
+        // Use image's loop_count for roundtrip preservation.
+        // encoder_options.gif.loop_count can override (-1 means infinite, >= 0 is explicit).
+        const loop_count = selectedLoopCount(encoder_options.gif.loop_count, image.animation.loop_count);
+
+        try writeHeader(writer, image.width, image.height, pixels_to_use, loop_count);
+
+        // Get global palette for color table optimization
+        const global_palette = pixels_to_use.getPalette();
+
+        // Write image frames
+        if (image.animation.frames.items.len > 1) {
+            // Multi-frame animated GIF - write each frame with its bounds
+            for (image.animation.frames.items) |frame| {
+                const delay_cs: u16 = @intFromFloat(frame.duration * 100.0);
+                const disposal: DisposeMethod = @enumFromInt(frame.disposal);
+
+                // Use frame bounds if set, otherwise use full image dimensions
+                const frame_width: u16 = if (frame.frame_width > 0) frame.frame_width else @truncate(image.width);
+                const frame_height: u16 = if (frame.frame_height > 0) frame.frame_height else @truncate(image.height);
+
+                // Auto-convert frame pixels if needed
+                var frame_converted_pixels: ?color.PixelStorage = null;
+                defer if (frame_converted_pixels) |p| p.deinit(allocator);
+
+                var frame_pixels_to_use = &frame.pixels;
+                const frame_pixel_format = std.meta.activeTag(frame.pixels);
+                if (!frame_pixel_format.isIndexed()) {
+                    if (!encoder_options.gif.auto_convert) {
+                        return Image.WriteError.Unsupported;
+                    }
+                    frame_converted_pixels = PixelFormatConverter.convert(allocator, &frame.pixels, .indexed8) catch {
+                        return Image.WriteError.Unsupported;
+                    };
+                    frame_pixels_to_use = &frame_converted_pixels.?;
+                }
+
+                try writeImageBlock(
+                    allocator,
+                    writer,
+                    frame_pixels_to_use,
+                    frame_width,
+                    frame_height,
+                    frame.left,
+                    frame.top,
+                    delay_cs,
+                    disposal,
+                    global_palette,
+                    frame.transparent_index,
+                );
+            }
+        } else {
+            // Single frame. Use pixels_to_use which may have been auto-converted
+            const first_frame = if (image.animation.frames.items.len > 0) image.animation.frames.items[0] else null;
+            const frame_width: u16 = if (first_frame != null and first_frame.?.frame_width > 0) first_frame.?.frame_width else @truncate(image.width);
+            const frame_height: u16 = if (first_frame != null and first_frame.?.frame_height > 0) first_frame.?.frame_height else @truncate(image.height);
+            const left: u16 = if (first_frame != null) first_frame.?.left else 0;
+            const top: u16 = if (first_frame != null) first_frame.?.top else 0;
+            const transparent_idx: ?u8 = if (first_frame != null) first_frame.?.transparent_index else null;
+
+            try writeImageBlock(
+                allocator,
+                writer,
+                pixels_to_use,
+                frame_width,
+                frame_height,
+                left,
+                top,
+                0, // no delay for single frame
+                .none,
+                global_palette,
+                transparent_idx,
+            );
+        }
+
+        try writeTrailer(writer);
+    }
+
+    fn selectedLoopCount(override_loop_count: ?i32, animation_loop_count: i32) i32 {
+        return override_loop_count orelse animation_loop_count;
     }
 
     pub fn loopCount(self: GIF) i32 {
@@ -1017,4 +1118,601 @@ pub const GIF = struct {
 
         return .rgb24;
     }
+
+    /// Write this GIF to the given writer using the struct's fields:
+    pub fn write(self: *const GIF, allocator: std.mem.Allocator, write_stream: *io.WriteStream) Image.WriteError!void {
+        const writer = write_stream.writer();
+
+        // Write header
+        try writer.writeStruct(self.header, .little);
+
+        // Write global color table if present
+        if (self.header.flags.use_global_color_table) {
+            const gct_size = @as(usize, 1) << (@as(COLOR_TABLE_SHIFT_TYPE, @intCast(self.header.flags.global_color_table_size)) + 1);
+            var color_table_buf: [3 * 256]u8 = undefined;
+            const byte_len = gct_size * 3;
+            for (0..@min(gct_size, self.global_color_table.data.len)) |i| {
+                color_table_buf[i * 3 + 0] = self.global_color_table.data[i].r;
+                color_table_buf[i * 3 + 1] = self.global_color_table.data[i].g;
+                color_table_buf[i * 3 + 2] = self.global_color_table.data[i].b;
+            }
+            // Zero-fill remainder if global_color_table.data is smaller
+            if (self.global_color_table.data.len < gct_size) {
+                @memset(color_table_buf[self.global_color_table.data.len * 3 .. byte_len], 0);
+            }
+            writer.writeAll(color_table_buf[0..byte_len]) catch return Image.WriteError.WriteFailed;
+        }
+
+        // Write application extensions (including NETSCAPE for looping)
+        for (self.application_infos.items) |app_info| {
+            try writeApplicationExtension(writer, &app_info);
+        }
+
+        // Write comment extensions
+        for (self.comments.items) |comment_ext| {
+            try writeCommentExtension(writer, comment_ext.comment);
+        }
+
+        // Write frames
+        for (self.frames.items) |frame| {
+            try writeFrameData(allocator, writer, &frame, self.global_color_table.data);
+        }
+
+        try writeTrailer(writer);
+    }
+
+    fn writeHeader(writer: *std.Io.Writer, width: usize, height: usize, pixels: *const color.PixelStorage, loop_count: i32) Image.WriteError!void {
+        var header = Header{
+            .magic = undefined,
+            .version = undefined,
+            .width = 0,
+            .height = 0,
+            .flags = .{},
+            .background_color_index = 0,
+            .pixel_aspect_ratio = 0,
+        };
+
+        @memcpy(&header.magic, MAGIC.ptr);
+        @memcpy(&header.version, VERSIONS[1].ptr);
+
+        if (width > std.math.maxInt(u16) or height > std.math.maxInt(u16)) {
+            return Image.WriteError.Unsupported;
+        }
+
+        header.width = @intCast(width);
+        header.height = @intCast(height);
+
+        var palette_buffer: [3 * 256]u8 = undefined;
+        var palette_byte_length: usize = 0;
+
+        const pixel_format = std.meta.activeTag(pixels.*);
+        if (pixel_format.isIndexed()) {
+            if (pixels.*.getPalette()) |palette_slice| {
+                if (palette_slice.len > 0) {
+                    const palette_index = try paletteSizeIndex(palette_slice.len);
+                    header.flags.use_global_color_table = true;
+                    header.flags.global_color_table_size = @intCast(palette_index);
+                    // Color resolution = bits per primary color - 1
+                    // Our palettes use RGBA32 (8 bits), so color_resolution = 7
+                    header.flags.color_resolution = 7;
+
+                    const entries = palette_entry_counts[palette_index];
+                    palette_byte_length = entries * 3;
+                    encodeColorTable(palette_buffer[0..palette_byte_length], palette_slice, entries);
+                }
+            }
+        }
+
+        try writer.writeStruct(header, .little);
+
+        if (palette_byte_length > 0) {
+            try writer.writeAll(palette_buffer[0..palette_byte_length]);
+        }
+
+        // Write loop extension if loop_count is set (for animated GIFs or explicit requests)
+        // Always write if loop_count is AnimationLoopInfinite (-1) or > 0
+        // Note: loop_count == 0 means no extension (single play, no loop)
+        if (loop_count == Image.AnimationLoopInfinite) {
+            try writeLoopExtension(writer, 0); // GIF uses 0 to represent infinite looping
+        } else if (loop_count > 0) {
+            if (loop_count <= @as(i32, std.math.maxInt(u16))) {
+                try writeLoopExtension(writer, @intCast(loop_count));
+            }
+        }
+    }
 };
+
+const palette_entry_counts = [_]usize{ 2, 4, 8, 16, 32, 64, 128, 256 };
+
+fn loopCountToExtension(loop_count: i32) Image.WriteError!?u16 {
+    if (loop_count == 0) {
+        // Value 0 means no extension should be written.
+        return null;
+    }
+    if (loop_count == Image.AnimationLoopInfinite) {
+        // GIF uses 0 to represent infinite looping.
+        return 0;
+    }
+    if (loop_count < 0) {
+        return Image.WriteError.Unsupported;
+    }
+    if (loop_count > @as(i32, std.math.maxInt(u16))) {
+        return Image.WriteError.Unsupported;
+    }
+    const converted: u16 = @intCast(loop_count);
+    return converted;
+}
+
+fn writeLoopExtension(writer: *std.Io.Writer, loop_count: u16) Image.WriteError!void {
+    writer.writeAll(&[_]u8{
+        @intFromEnum(DataBlockKind.extension),
+        @intFromEnum(ExtensionKind.application_extension),
+        0x0b, // Block size (always 11 for application extension)
+    }) catch return Image.WriteError.WriteFailed;
+    writer.writeAll("NETSCAPE2.0") catch return Image.WriteError.WriteFailed;
+
+    writer.writeAll(&[_]u8{
+        0x03, // Sub-block size
+        0x01, // Sub-block index
+        @truncate(loop_count & 0xff),
+        @truncate((loop_count >> 8) & 0xff),
+        EXTENSION_BLOCK_TERMINATOR,
+    }) catch return Image.WriteError.WriteFailed;
+}
+
+fn paletteSizeIndex(palette_len: usize) Image.WriteError!usize {
+    for (palette_entry_counts, 0..) |entry, idx| {
+        if (palette_len <= entry) {
+            return idx;
+        }
+    }
+    return Image.WriteError.Unsupported;
+}
+
+fn encodeColorTable(dst: []u8, palette: []const color.Rgba32, entries: usize) void {
+    std.debug.assert(palette.len <= entries);
+    var offset: usize = 0;
+    for (palette) |entry| {
+        dst[offset + 0] = entry.r;
+        dst[offset + 1] = entry.g;
+        dst[offset + 2] = entry.b;
+        offset += 3;
+    }
+    if (palette.len < entries) {
+        @memset(dst[palette.len * 3 .. entries * 3], 0);
+    }
+}
+
+/// SubBlockWriter wraps an output writer and chunks data into GIF sub-blocks.
+/// Each sub-block is: [length byte (1-255)][data bytes...]
+/// Terminated with a 0x00 byte.
+const SubBlockWriter = struct {
+    underlying: *std.Io.Writer,
+    // buf[0] holds current length, buf[1..256] holds data
+    buffer: [256]u8 = undefined,
+    // The writer interface that uses this SubBlockWriter
+    interface: std.Io.Writer = undefined,
+
+    const Self = @This();
+
+    const vtable: std.Io.Writer.VTable = .{
+        .drain = drain,
+        .flush = noopFlush,
+        .rebase = std.Io.Writer.defaultRebase,
+        .sendFile = std.Io.Writer.unimplementedSendFile,
+    };
+
+    pub fn init(underlying_writer: *std.Io.Writer) Self {
+        var self = Self{
+            .underlying = underlying_writer,
+            .interface = .{
+                .buffer = &.{},
+                .vtable = &vtable,
+            },
+        };
+        self.buffer[0] = 0;
+        return self;
+    }
+
+    /// Write a single byte to the sub-block buffer
+    fn writeByteInternal(self: *Self, byte: u8) Image.WriteError!void {
+        self.buffer[0] += 1;
+        self.buffer[self.buffer[0]] = byte;
+
+        if (self.buffer[0] == 255) {
+            // Buffer full - flush the block
+            self.underlying.writeAll(self.buffer[0..256]) catch return Image.WriteError.WriteFailed;
+            self.buffer[0] = 0;
+        }
+    }
+
+    /// Finish writing - flush remaining data and write terminator
+    pub fn finish(self: *Self) Image.WriteError!void {
+        if (self.buffer[0] == 0) {
+            // No pending data - just write terminator
+            self.underlying.writeByte(0x00) catch return Image.WriteError.WriteFailed;
+        } else {
+            // Write pending block + terminator
+            const n = self.buffer[0];
+            self.buffer[n + 1] = 0x00; // terminator
+            self.underlying.writeAll(self.buffer[0 .. n + 2]) catch return Image.WriteError.WriteFailed;
+        }
+    }
+
+    /// Returns a pointer to the std.Io.Writer interface
+    pub fn writer(self: *Self) *std.Io.Writer {
+        return &self.interface;
+    }
+
+    fn drain(w: *std.Io.Writer, data: []const []const u8, splat: usize) std.Io.Writer.Error!usize {
+        const self: *Self = @alignCast(@fieldParentPtr("interface", w));
+        var total: usize = 0;
+
+        // Handle splat byte if present
+        if (splat > 0) {
+            if (data.len > 0 and data[0].len > 0) {
+                for (0..splat) |_| {
+                    self.writeByteInternal(data[0][0]) catch {
+                        return error.WriteFailed;
+                    };
+                    total += 1;
+                }
+            }
+        }
+
+        // Handle regular data slices
+        const start_idx: usize = if (splat > 0) 1 else 0;
+        for (data[start_idx..]) |slice| {
+            for (slice) |byte| {
+                self.writeByteInternal(byte) catch {
+                    return error.WriteFailed;
+                };
+                total += 1;
+            }
+        }
+        return total;
+    }
+
+    fn noopFlush(_: *std.Io.Writer) std.Io.Writer.Error!void {}
+};
+
+/// Write the Graphic Control Extension block
+fn writeGraphicControlExtension(
+    writer: *std.Io.Writer,
+    delay_time_cs: u16, // delay in centiseconds (1/100th second)
+    disposal: DisposeMethod,
+    transparent_index: ?u8,
+) Image.WriteError!void {
+    var gce_block: [8]u8 = .{
+        @intFromEnum(DataBlockKind.extension), // 0x21 Extension Introducer
+        @intFromEnum(ExtensionKind.graphic_control), // 0xF9 Graphic Control Label
+        0x04, // Block Size (always 4)
+        0x00, // Flags (will be set below)
+        0x00, // Delay time low byte
+        0x00, // Delay time high byte
+        0x00, // Transparent color index
+        0x00, // Block Terminator
+    };
+
+    // Build flags byte
+    var flags: u8 = @as(u8, @intFromEnum(disposal)) << 2;
+    if (transparent_index != null) {
+        flags |= 0x01; // has_transparent_color
+    }
+    gce_block[3] = flags;
+
+    // Delay time (little-endian)
+    gce_block[4] = @truncate(delay_time_cs & 0xff);
+    gce_block[5] = @truncate((delay_time_cs >> 8) & 0xff);
+
+    // Transparent index
+    if (transparent_index) |idx| {
+        gce_block[6] = idx;
+    }
+
+    writer.writeAll(&gce_block) catch return Image.WriteError.WriteFailed;
+}
+
+/// Check if local palette matches global palette (can skip local color table)
+fn palettesMatch(local: []const color.Rgba32, global: ?[]const color.Rgba32, transparent_index: ?u8) bool {
+    const global_palette = global orelse return false;
+
+    // Local palette must not be longer than global
+    if (local.len > global_palette.len) return false;
+
+    // Compare colors
+    for (local, 0..) |local_color, i| {
+        if (transparent_index != null and i == transparent_index.?) {
+            continue; // Skip transparent color comparison
+        }
+        const global_color = global_palette[i];
+        if (local_color.r != global_color.r or
+            local_color.g != global_color.g or
+            local_color.b != global_color.b)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+/// Write a single image block (frame)
+fn writeImageBlock(
+    allocator: std.mem.Allocator,
+    writer: *std.Io.Writer,
+    pixels: *const color.PixelStorage,
+    width: u16,
+    height: u16,
+    left: u16,
+    top: u16,
+    delay_time_cs: u16,
+    disposal: DisposeMethod,
+    global_palette: ?[]const color.Rgba32,
+    frame_transparent_index: ?u8,
+) Image.WriteError!void {
+    const palette = pixels.getPalette() orelse return Image.WriteError.Unsupported;
+    if (palette.len == 0) {
+        return Image.WriteError.Unsupported;
+    }
+
+    // GIF only supports up to 256 colors
+    if (palette.len > 256) {
+        return Image.WriteError.Unsupported;
+    }
+
+    // Use frame's transparent index if provided, otherwise detect from palette
+    const transparent_index: ?u8 = if (frame_transparent_index != null) frame_transparent_index else blk: {
+        for (palette, 0..) |c, i| {
+            if (c.a == 0) {
+                break :blk @intCast(i);
+            }
+        }
+        break :blk null;
+    };
+
+    // Write Graphic Control Extension if needed
+    if (delay_time_cs > 0 or disposal != .none or transparent_index != null) {
+        try writeGraphicControlExtension(writer, delay_time_cs, disposal, transparent_index);
+    }
+
+    // Write Image Descriptor
+    const palette_size_idx = try paletteSizeIndex(palette.len);
+
+    // Check if we can use global color table (skip local)
+    const use_global = palettesMatch(palette, global_palette, transparent_index);
+
+    var descriptor: [10]u8 = .{
+        @intFromEnum(DataBlockKind.image_descriptor), // 0x2C
+        @truncate(left & 0xff),
+        @truncate((left >> 8) & 0xff),
+        @truncate(top & 0xff),
+        @truncate((top >> 8) & 0xff),
+        @truncate(width & 0xff),
+        @truncate((width >> 8) & 0xff),
+        @truncate(height & 0xff),
+        @truncate((height >> 8) & 0xff),
+        0x00, // Flags - will be set below
+    };
+
+    if (use_global) {
+        // Use global color table (no local)
+        descriptor[9] = 0x00;
+    } else {
+        // Use local color table
+        descriptor[9] = 0x80 | @as(u8, @intCast(palette_size_idx));
+    }
+
+    writer.writeAll(&descriptor) catch return Image.WriteError.WriteFailed;
+
+    // Write local color table only if not using global
+    if (!use_global) {
+        const entries = palette_entry_counts[palette_size_idx];
+        var color_table_buf: [3 * 256]u8 = undefined;
+        encodeColorTable(color_table_buf[0 .. entries * 3], palette, entries);
+        writer.writeAll(color_table_buf[0 .. entries * 3]) catch return Image.WriteError.WriteFailed;
+    }
+
+    // Calculate LZW minimum code size
+    var lit_width: u4 = @intCast(palette_size_idx + 1);
+    if (lit_width < 2) {
+        lit_width = 2; // Minimum is 2 for GIF
+    }
+
+    // Write LZW Minimum Code Size
+    writer.writeByte(lit_width) catch return Image.WriteError.WriteFailed;
+
+    // Get pixel indices as u8 slice - handle all indexed formats
+    const pixel_count = @as(usize, width) * @as(usize, height);
+    var allocated_indices: ?[]u8 = null;
+    defer if (allocated_indices) |buffer| allocator.free(buffer);
+
+    const indices: []const u8 = switch (pixels.*) {
+        .indexed1 => |data| blk: {
+            const buffer = allocator.alloc(u8, pixel_count) catch return Image.WriteError.OutOfMemory;
+            allocated_indices = buffer;
+            for (0..pixel_count) |i| {
+                buffer[i] = data.indices[i];
+            }
+            break :blk buffer;
+        },
+        .indexed2 => |data| blk: {
+            const buf = allocator.alloc(u8, pixel_count) catch return Image.WriteError.OutOfMemory;
+            allocated_indices = buf;
+            for (0..pixel_count) |i| {
+                buf[i] = data.indices[i];
+            }
+            break :blk buf;
+        },
+        .indexed4 => |data| blk: {
+            const buffer = allocator.alloc(u8, pixel_count) catch return Image.WriteError.OutOfMemory;
+            allocated_indices = buffer;
+            for (0..pixel_count) |i| {
+                buffer[i] = data.indices[i];
+            }
+            break :blk buffer;
+        },
+        .indexed8 => |data| data.indices,
+        .indexed16 => |data| blk: {
+            // Verify all indices fit in u8
+            for (data.indices) |idx| {
+                if (idx > 255) {
+                    return Image.WriteError.Unsupported;
+                }
+            }
+            const buffer = allocator.alloc(u8, pixel_count) catch return Image.WriteError.OutOfMemory;
+            allocated_indices = buffer;
+            for (0..pixel_count) |i| {
+                buffer[i] = @intCast(data.indices[i]);
+            }
+            break :blk buffer;
+        },
+        else => return Image.WriteError.Unsupported,
+    };
+
+    // Create sub-block writer for chunking LZW output
+    var sub_block_writer = SubBlockWriter.init(writer);
+
+    // Get a streaming writer interface that writes through sub-blocks
+    const lzw_writer = sub_block_writer.writer();
+
+    var encoder = lzw.Encoder(.little).init(lit_width) catch return Image.WriteError.Unsupported;
+
+    // Encode pixel data - streams directly through sub-block writer
+    encoder.encode(lzw_writer, indices) catch return Image.WriteError.WriteFailed;
+    encoder.finish(lzw_writer) catch return Image.WriteError.WriteFailed;
+
+    // Finish writing sub-blocks (flush remaining data + terminator)
+    try sub_block_writer.finish();
+}
+
+/// Write the GIF trailer
+fn writeTrailer(writer: *std.Io.Writer) Image.WriteError!void {
+    writer.writeByte(@intFromEnum(DataBlockKind.end_of_file)) catch return Image.WriteError.WriteFailed;
+}
+
+/// Write an application extension block
+fn writeApplicationExtension(writer: *std.Io.Writer, app_info: *const ApplicationExtension) Image.WriteError!void {
+    writer.writeAll(&[_]u8{
+        @intFromEnum(DataBlockKind.extension), // 0x21
+        @intFromEnum(ExtensionKind.application_extension), // 0xFF
+        0x0b, // Block size (always 11)
+    }) catch return Image.WriteError.WriteFailed;
+
+    writer.writeAll(&app_info.application_identifier) catch return Image.WriteError.WriteFailed;
+    writer.writeAll(&app_info.authentification_code) catch return Image.WriteError.WriteFailed;
+
+    // Write data in sub-blocks (max 255 bytes each)
+    var offset: usize = 0;
+    while (offset < app_info.data.len) {
+        const chunk_size = @min(app_info.data.len - offset, 255);
+        writer.writeByte(@intCast(chunk_size)) catch return Image.WriteError.WriteFailed;
+        writer.writeAll(app_info.data[offset .. offset + chunk_size]) catch return Image.WriteError.WriteFailed;
+        offset += chunk_size;
+    }
+
+    // Block terminator
+    writer.writeByte(0x00) catch return Image.WriteError.WriteFailed;
+}
+
+/// Write a comment extension block
+fn writeCommentExtension(writer: *std.Io.Writer, comment: []const u8) Image.WriteError!void {
+    writer.writeAll(&[_]u8{
+        @intFromEnum(DataBlockKind.extension), // 0x21
+        @intFromEnum(ExtensionKind.comment), // 0xFE
+    }) catch return Image.WriteError.WriteFailed;
+
+    // Write comment data in sub-blocks (max 255 bytes each)
+    var offset: usize = 0;
+    while (offset < comment.len) {
+        const chunk_size = @min(comment.len - offset, 255);
+        writer.writeByte(@intCast(chunk_size)) catch return Image.WriteError.WriteFailed;
+        writer.writeAll(comment[offset .. offset + chunk_size]) catch return Image.WriteError.WriteFailed;
+        offset += chunk_size;
+    }
+
+    // Block terminator
+    writer.writeByte(0x00) catch return Image.WriteError.WriteFailed;
+}
+
+/// Write a frame (FrameData) with its graphics control and sub-images
+fn writeFrameData(
+    allocator: std.mem.Allocator,
+    writer: *std.Io.Writer,
+    frame: *const GIF.FrameData,
+    global_color_table: []const color.Rgb24,
+) Image.WriteError!void {
+    // Write graphics control extension if present
+    if (frame.graphics_control) |gce| {
+        try writeGraphicControlExtension(
+            writer,
+            gce.delay_time,
+            gce.flags.disposal_method,
+            if (gce.flags.has_transparent_color) gce.transparent_color_index else null,
+        );
+    }
+
+    // Write each sub-image
+    for (frame.sub_images.items) |sub_image| {
+        try writeSubImage(allocator, writer, sub_image, global_color_table);
+    }
+}
+
+/// Write a sub-image with its image descriptor, optional local color table, and LZW data
+fn writeSubImage(
+    _: std.mem.Allocator,
+    writer: *std.Io.Writer,
+    sub_image: *const GIF.SubImage,
+    global_color_table: []const color.Rgb24,
+) Image.WriteError!void {
+    const desc = sub_image.image_descriptor;
+
+    // Write image descriptor
+    writer.writeByte(@intFromEnum(DataBlockKind.image_descriptor)) catch return Image.WriteError.WriteFailed;
+    writer.writeStruct(desc, .little) catch return Image.WriteError.WriteFailed;
+
+    // Write local color table if present
+    if (desc.flags.has_local_color_table) {
+        const lct_size = @as(usize, 1) << (@as(COLOR_TABLE_SHIFT_TYPE, @intCast(desc.flags.local_color_table_size)) + 1);
+        var color_table_buf: [3 * 256]u8 = undefined;
+        const byte_len = lct_size * 3;
+        for (0..@min(lct_size, sub_image.local_color_table.data.len)) |i| {
+            color_table_buf[i * 3 + 0] = sub_image.local_color_table.data[i].r;
+            color_table_buf[i * 3 + 1] = sub_image.local_color_table.data[i].g;
+            color_table_buf[i * 3 + 2] = sub_image.local_color_table.data[i].b;
+        }
+        if (sub_image.local_color_table.data.len < lct_size) {
+            @memset(color_table_buf[sub_image.local_color_table.data.len * 3 .. byte_len], 0);
+        }
+        writer.writeAll(color_table_buf[0..byte_len]) catch return Image.WriteError.WriteFailed;
+    }
+
+    // Calculate LZW minimum code size from color table size
+    const color_table_size = if (desc.flags.has_local_color_table)
+        @as(usize, 1) << (@as(COLOR_TABLE_SHIFT_TYPE, @intCast(desc.flags.local_color_table_size)) + 1)
+    else
+        global_color_table.len;
+
+    var lit_width: u4 = 2; // Minimum is 2 for GIF
+    for (palette_entry_counts, 0..) |entry_count, idx| {
+        if (color_table_size <= entry_count) {
+            lit_width = @intCast(@max(idx + 1, 2));
+            break;
+        }
+    }
+
+    // Write LZW minimum code size
+    writer.writeByte(lit_width) catch return Image.WriteError.WriteFailed;
+
+    // Create sub-block writer for chunking LZW output
+    var sub_block_writer = SubBlockWriter.init(writer);
+    const lzw_writer = sub_block_writer.writer();
+
+    var encoder = lzw.Encoder(.little).init(lit_width) catch return Image.WriteError.Unsupported;
+
+    // Encode pixel data
+    encoder.encode(lzw_writer, sub_image.pixels) catch return Image.WriteError.WriteFailed;
+    encoder.finish(lzw_writer) catch return Image.WriteError.WriteFailed;
+
+    // Finish writing sub-blocks
+    try sub_block_writer.finish();
+}
