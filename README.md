@@ -63,10 +63,10 @@ zig build test
 | ANIM          | ❌            | ❌            |
 | BMP           | ✔️ (Partial)  | ✔️ (Partial)  |
 | Farbfeld      | ✔️            | ✔️            |
-| GIF           | ✔️            | ❌            |
+| GIF           | ✔️            | ✔️            |
 | ICO           | ❌            | ❌            |
 | IFF           | ✔️            | ❌            |
-| JPEG          | ✔️ (Partial)  | ❌            |
+| JPEG          | ✔️ (Partial)  | ✔️            |
 | PAM           | ✔️            | ✔️            |
 | PBM           | ✔️            | ✔️            |
 | PCX           | ✔️            | ✔️            |
