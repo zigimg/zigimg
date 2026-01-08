@@ -579,6 +579,37 @@ pub const Rgb565 = packed struct {
     r: u5 = 0,
 };
 
+// Sega Grb333 (as used for color in palettes on the Sega Genesis/Megadrive)
+// Read as little endian
+pub const SegaGrb333 = packed struct {
+    pub const from = FromMethods(@This());
+
+    to: ToMethods(@This(), u3, u3, u3, void) = .{},
+
+    pad0: u1 = 0,
+    b: u3 = 0,
+    pad1: u5 = 0,
+    r: u3 = 0,
+    pad2: u1 = 0,
+    g: u3 = 0,
+};
+
+// Sega Bgr333 (as used for color in palettes on the Sega Genesis/Megadrive)
+// Read as big endian
+pub const SegaBgr333 = packed struct {
+    pub const from = FromMethods(@This());
+
+    to: ToMethods(@This(), u3, u3, u3, void) = .{},
+
+    pad0: u1 = 0,
+    r: u3 = 0,
+    pad1: u1 = 0,
+    g: u3 = 0,
+    pad2: u1 = 0,
+    b: u3 = 0,
+    pad3: u4 = 0,
+};
+
 fn RgbaColor(comptime T: type) type {
     return extern struct {
         pub const from = FromMethods(@This());
@@ -784,6 +815,8 @@ pub const PixelStorage = union(PixelFormat) {
     grayscale8Alpha: []Grayscale8Alpha,
     grayscale16Alpha: []Grayscale16Alpha,
     rgb332: []Rgb332,
+    sega_grb333: []SegaGrb333,
+    sega_bgr333: []SegaBgr333,
     rgb555: []Rgb555,
     rgb565: []Rgb565,
     rgb24: []Rgb24,
@@ -877,6 +910,16 @@ pub const PixelStorage = union(PixelFormat) {
                     .rgb332 = try allocator.alloc(Rgb332, pixel_count),
                 };
             },
+            .sega_grb333 => {
+                return .{
+                    .sega_grb333 = try allocator.alloc(SegaGrb333, pixel_count),
+                };
+            },
+            .sega_bgr333 => {
+                return .{
+                    .sega_bgr333 = try allocator.alloc(SegaBgr333, pixel_count),
+                };
+            },
             .rgb565 => {
                 return .{
                     .rgb565 = try allocator.alloc(Rgb565, pixel_count),
@@ -957,6 +1000,16 @@ pub const PixelStorage = union(PixelFormat) {
                     .rgb332 = @constCast(std.mem.bytesAsSlice(Rgb332, pixels)),
                 };
             },
+            .sega_grb333 => {
+                return .{
+                    .sega_grb333 = @alignCast(@constCast(std.mem.bytesAsSlice(SegaGrb333, pixels))),
+                };
+            },
+            .sega_bgr333 => {
+                return .{
+                    .sega_bgr333 = @alignCast(@constCast(std.mem.bytesAsSlice(SegaBgr333, pixels))),
+                };
+            },
             .rgb555 => {
                 return .{
                     .rgb555 = @alignCast(@constCast(std.mem.bytesAsSlice(Rgb555, pixels))),
@@ -1029,6 +1082,8 @@ pub const PixelStorage = union(PixelFormat) {
             .rgb24 => |data| allocator.free(data),
             .rgba32 => |data| allocator.free(data),
             .rgb332 => |data| allocator.free(data),
+            .sega_grb333 => |data| allocator.free(data),
+            .sega_bgr333 => |data| allocator.free(data),
             .rgb565 => |data| allocator.free(data),
             .rgb555 => |data| allocator.free(data),
             .bgr555 => |data| allocator.free(data),
@@ -1058,6 +1113,8 @@ pub const PixelStorage = union(PixelFormat) {
             .rgb24 => |data| data.len,
             .rgba32 => |data| data.len,
             .rgb332 => |data| data.len,
+            .sega_grb333 => |data| data.len,
+            .sega_bgr333 => |data| data.len,
             .rgb565 => |data| data.len,
             .rgb555 => |data| data.len,
             .bgr555 => |data| data.len,
@@ -1121,6 +1178,8 @@ pub const PixelStorage = union(PixelFormat) {
             .rgb24 => |data| std.mem.sliceAsBytes(data),
             .rgba32 => |data| std.mem.sliceAsBytes(data),
             .rgb332 => |data| std.mem.sliceAsBytes(data),
+            .sega_grb333 => |data| std.mem.sliceAsBytes(data),
+            .sega_bgr333 => |data| std.mem.sliceAsBytes(data),
             .rgb565 => |data| std.mem.sliceAsBytes(data),
             .rgb555 => |data| std.mem.sliceAsBytes(data),
             .bgr555 => |data| std.mem.sliceAsBytes(data),
@@ -1150,6 +1209,8 @@ pub const PixelStorage = union(PixelFormat) {
             .rgb24 => |data| std.mem.sliceAsBytes(data),
             .rgba32 => |data| std.mem.sliceAsBytes(data),
             .rgb332 => |data| std.mem.sliceAsBytes(data),
+            .sega_grb333 => |data| std.mem.sliceAsBytes(data),
+            .sega_bgr333 => |data| std.mem.sliceAsBytes(data),
             .rgb565 => |data| std.mem.sliceAsBytes(data),
             .rgb555 => |data| std.mem.sliceAsBytes(data),
             .bgr555 => |data| std.mem.sliceAsBytes(data),
@@ -1180,6 +1241,8 @@ pub const PixelStorage = union(PixelFormat) {
             .rgb24 => |data| .{ .rgb24 = data[begin..end] },
             .rgba32 => |data| .{ .rgba32 = data[begin..end] },
             .rgb332 => |data| .{ .rgb332 = data[begin..end] },
+            .sega_grb333 => |data| .{ .sega_grb333 = data[begin..end] },
+            .sega_bgr333 => |data| .{ .sega_bgr333 = data[begin..end] },
             .rgb565 => |data| .{ .rgb565 = data[begin..end] },
             .rgb555 => |data| .{ .rgb555 = data[begin..end] },
             .bgr555 => |data| .{ .bgr555 = data[begin..end] },
@@ -1228,6 +1291,8 @@ pub const PixelStorageIterator = struct {
             .rgb24 => |data| data[self.current_index].to.color(Colorf32),
             .rgba32 => |data| data[self.current_index].to.color(Colorf32),
             .rgb332 => |data| data[self.current_index].to.color(Colorf32),
+            .sega_grb333 => |data| data[self.current_index].to.color(Colorf32),
+            .sega_bgr333 => |data| data[self.current_index].to.color(Colorf32),
             .rgb565 => |data| data[self.current_index].to.color(Colorf32),
             .rgb555 => |data| data[self.current_index].to.color(Colorf32),
             .bgr555 => |data| data[self.current_index].to.color(Colorf32),
