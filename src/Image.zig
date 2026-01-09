@@ -20,6 +20,7 @@ const SupportedFormats = struct {
     pub const gif = formats.gif.GIF;
     pub const iff = formats.iff.IFF;
     pub const jpeg = formats.jpeg.JPEG;
+    pub const jpg = formats.jpeg.JPEG;
     pub const pam = formats.pam.PAM;
     pub const pbm = formats.netpbm.PBM;
     pub const pcx = formats.pcx.PCX;
@@ -44,6 +45,7 @@ pub const EncoderOptions = union(Format) {
     gif: SupportedFormats.gif.EncoderOptions,
     iff: void,
     jpeg: SupportedFormats.jpeg.EncoderOptions,
+    jpg: SupportedFormats.jpeg.EncoderOptions,
     pam: SupportedFormats.pam.EncoderOptions,
     pbm: SupportedFormats.pbm.EncoderOptions,
     pcx: SupportedFormats.pcx.EncoderOptions,
