@@ -1148,6 +1148,28 @@ pub const PixelStorage = union(PixelFormat) {
         };
     }
 
+    pub fn getIndexedPixel(self: PixelStorage, index: usize) u16 {
+        return switch (self) {
+            .indexed1 => |data| data.indices[index],
+            .indexed2 => |data| data.indices[index],
+            .indexed4 => |data| data.indices[index],
+            .indexed8 => |data| data.indices[index],
+            .indexed16 => |data| data.indices[index],
+            else => 0,
+        };
+    }
+
+    pub fn setIndexedPixel(self: *PixelStorage, index: usize, value: u16) void {
+        switch (self.*) {
+            .indexed1 => |*data| data.indices[index] = @truncate(value),
+            .indexed2 => |*data| data.indices[index] = @truncate(value),
+            .indexed4 => |*data| data.indices[index] = @truncate(value),
+            .indexed8 => |*data| data.indices[index] = @truncate(value),
+            .indexed16 => |*data| data.indices[index] = value,
+            else => {},
+        }
+    }
+
     pub fn resizePalette(self: *PixelStorage, new_palette_size: usize) void {
         switch (self.*) {
             .indexed1 => |*data| data.resizePalette(new_palette_size),
@@ -1159,7 +1181,7 @@ pub const PixelStorage = union(PixelFormat) {
         }
     }
 
-    /// Return the pixel data as a const byte slice
+    /// Return the pixel data as a byte slice
     pub fn asBytes(self: PixelStorage) []u8 {
         return switch (self) {
             .invalid => &[_]u8{},
@@ -1191,6 +1213,7 @@ pub const PixelStorage = union(PixelFormat) {
         };
     }
 
+    /// Return the pixel data as a const byte slice
     pub fn asConstBytes(self: PixelStorage) []const u8 {
         return switch (self) {
             .invalid => &[_]u8{},
