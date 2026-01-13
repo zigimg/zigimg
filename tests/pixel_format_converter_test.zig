@@ -95,6 +95,52 @@ test "PixelFormatConverter: convert from indexed2 to indexed1" {
     try helpers.expectEq(indexed1_pixels.indexed1.indices[3], 0);
 }
 
+test "PixelFormatConverter: convert from indexed2 to sega_grb333" {
+    const indexed2_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .indexed2, 4);
+    defer indexed2_pixels.deinit(helpers.zigimg_test_allocator);
+
+    indexed2_pixels.indexed2.palette[0] = Colors(color.Rgba32).Red;
+    indexed2_pixels.indexed2.palette[1] = Colors(color.Rgba32).Green;
+    indexed2_pixels.indexed2.palette[2] = Colors(color.Rgba32).Blue;
+    indexed2_pixels.indexed2.palette[3] = Colors(color.Rgba32).White;
+
+    indexed2_pixels.indexed2.indices[0] = 0;
+    indexed2_pixels.indexed2.indices[1] = 1;
+    indexed2_pixels.indexed2.indices[2] = 2;
+    indexed2_pixels.indexed2.indices[3] = 3;
+
+    const sega_grb333_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &indexed2_pixels, .sega_grb333);
+    defer sega_grb333_pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[0], Colors(color.SegaGrb333).Red);
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[1], Colors(color.SegaGrb333).Green);
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[2], Colors(color.SegaGrb333).Blue);
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[3], Colors(color.SegaGrb333).White);
+}
+
+test "PixelFormatConverter: convert from indexed2 to sega_bgr333" {
+    const indexed2_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .indexed2, 4);
+    defer indexed2_pixels.deinit(helpers.zigimg_test_allocator);
+
+    indexed2_pixels.indexed2.palette[0] = Colors(color.Rgba32).Red;
+    indexed2_pixels.indexed2.palette[1] = Colors(color.Rgba32).Green;
+    indexed2_pixels.indexed2.palette[2] = Colors(color.Rgba32).Blue;
+    indexed2_pixels.indexed2.palette[3] = Colors(color.Rgba32).White;
+
+    indexed2_pixels.indexed2.indices[0] = 0;
+    indexed2_pixels.indexed2.indices[1] = 1;
+    indexed2_pixels.indexed2.indices[2] = 2;
+    indexed2_pixels.indexed2.indices[3] = 3;
+
+    const sega_bgr333_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &indexed2_pixels, .sega_bgr333);
+    defer sega_bgr333_pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(sega_bgr333_pixels.sega_bgr333[0], Colors(color.SegaBgr333).Red);
+    try helpers.expectEq(sega_bgr333_pixels.sega_bgr333[1], Colors(color.SegaBgr333).Green);
+    try helpers.expectEq(sega_bgr333_pixels.sega_bgr333[2], Colors(color.SegaBgr333).Blue);
+    try helpers.expectEq(sega_bgr333_pixels.sega_bgr333[3], Colors(color.SegaBgr333).White);
+}
+
 test "PixelFormatConverter: convert from indexed2 to rgb555" {
     const indexed2_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .indexed2, 4);
     defer indexed2_pixels.deinit(helpers.zigimg_test_allocator);
@@ -603,6 +649,64 @@ test "PixelFormatConverter: convert from grayscale16Alpha to rgb332" {
     try helpers.expectEq(rgb332_pixels.rgb332[3].b, 0);
 }
 
+test "PixelFormatConverter: convert from grayscale2 to sega_grb333" {
+    const grayscale2_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .grayscale2, 4);
+    defer grayscale2_pixels.deinit(helpers.zigimg_test_allocator);
+
+    grayscale2_pixels.grayscale2[0].value = 0;
+    grayscale2_pixels.grayscale2[1].value = 1;
+    grayscale2_pixels.grayscale2[2].value = 2;
+    grayscale2_pixels.grayscale2[3].value = 3;
+
+    const sega_grb333_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &grayscale2_pixels, .sega_grb333);
+    defer sega_grb333_pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[0].r, 0);
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[0].g, 0);
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[0].b, 0);
+
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[1].r, 2);
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[1].g, 2);
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[1].b, 2);
+
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[2].r, 5);
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[2].g, 5);
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[2].b, 5);
+
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[3].r, 7);
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[3].g, 7);
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[3].b, 7);
+}
+
+test "PixelFormatConverter: convert from grayscale2 to sega_bgr333" {
+    const grayscale2_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .grayscale2, 4);
+    defer grayscale2_pixels.deinit(helpers.zigimg_test_allocator);
+
+    grayscale2_pixels.grayscale2[0].value = 0;
+    grayscale2_pixels.grayscale2[1].value = 1;
+    grayscale2_pixels.grayscale2[2].value = 2;
+    grayscale2_pixels.grayscale2[3].value = 3;
+
+    const sega_bgr333_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &grayscale2_pixels, .sega_bgr333);
+    defer sega_bgr333_pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(sega_bgr333_pixels.sega_bgr333[0].r, 0);
+    try helpers.expectEq(sega_bgr333_pixels.sega_bgr333[0].g, 0);
+    try helpers.expectEq(sega_bgr333_pixels.sega_bgr333[0].b, 0);
+
+    try helpers.expectEq(sega_bgr333_pixels.sega_bgr333[1].r, 2);
+    try helpers.expectEq(sega_bgr333_pixels.sega_bgr333[1].g, 2);
+    try helpers.expectEq(sega_bgr333_pixels.sega_bgr333[1].b, 2);
+
+    try helpers.expectEq(sega_bgr333_pixels.sega_bgr333[2].r, 5);
+    try helpers.expectEq(sega_bgr333_pixels.sega_bgr333[2].g, 5);
+    try helpers.expectEq(sega_bgr333_pixels.sega_bgr333[2].b, 5);
+
+    try helpers.expectEq(sega_bgr333_pixels.sega_bgr333[3].r, 7);
+    try helpers.expectEq(sega_bgr333_pixels.sega_bgr333[3].g, 7);
+    try helpers.expectEq(sega_bgr333_pixels.sega_bgr333[3].b, 7);
+}
+
 test "PixelFormatConverter: convert from grayscale2 to rgb565" {
     const grayscale2_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .grayscale2, 4);
     defer grayscale2_pixels.deinit(helpers.zigimg_test_allocator);
@@ -1044,6 +1148,40 @@ test "PixelFormatConverter: convvert from rgb555 to rgb332" {
     try helpers.expectEq(rgb332_pixels.rgb332[4].r, 0);
     try helpers.expectEq(rgb332_pixels.rgb332[4].g, 0);
     try helpers.expectEq(rgb332_pixels.rgb332[4].b, 0);
+}
+
+test "PixelFormatConverter: convvert from rgb555 to sega_grb333" {
+    const rgb555_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .rgb555, 5);
+    defer rgb555_pixels.deinit(helpers.zigimg_test_allocator);
+
+    rgb555_pixels.rgb555[0] = color.Rgb555.from.rgb(31, 0, 0);
+    rgb555_pixels.rgb555[1] = color.Rgb555.from.rgb(0, 31, 0);
+    rgb555_pixels.rgb555[2] = color.Rgb555.from.rgb(0, 0, 31);
+    rgb555_pixels.rgb555[3] = color.Rgb555.from.rgb(31, 31, 31);
+    rgb555_pixels.rgb555[4] = color.Rgb555.from.rgb(0, 0, 0);
+
+    const sega_grb333_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &rgb555_pixels, .sega_grb333);
+    defer sega_grb333_pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[0].r, 7);
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[0].g, 0);
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[0].b, 0);
+
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[1].r, 0);
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[1].g, 7);
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[1].b, 0);
+
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[2].r, 0);
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[2].g, 0);
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[2].b, 7);
+
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[3].r, 7);
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[3].g, 7);
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[3].b, 7);
+
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[4].r, 0);
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[4].g, 0);
+    try helpers.expectEq(sega_grb333_pixels.sega_grb333[4].b, 0);
 }
 
 test "PixelFormatConverter: convvert from rgb555 to rgb565" {

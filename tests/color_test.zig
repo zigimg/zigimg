@@ -547,6 +547,61 @@ const RgbHslTestData = [_]RgbHslTestDataEntry{
     .{ .rgb = .{ .r = 0.495, .g = 0.493, .b = 0.721 }, .hsl = .{ .hue = 240.5, .saturation = 0.290, .luminance = 0.607 } },
 };
 
+test "PixelStorage: set/get indexed pixels with indexed1" {
+    var pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .indexed1, 8 * 8);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    for (0..2) |index| {
+        pixels.setIndexedPixel(index, @truncate(index));
+
+        try helpers.expectEq(pixels.getIndexedPixel(index), @as(u16, @truncate(index)));
+    }
+}
+
+test "PixelStorage: set/get indexed pixels with indexed2" {
+    var pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .indexed2, 8 * 8);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    for (0..4) |index| {
+        pixels.setIndexedPixel(index, @truncate(index));
+
+        try helpers.expectEq(pixels.getIndexedPixel(index), @as(u16, @truncate(index)));
+    }
+}
+
+test "PixelStorage: set/get indexed pixels with indexed4" {
+    var pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .indexed4, 8 * 8);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    for (0..16) |index| {
+        pixels.setIndexedPixel(index, @truncate(index));
+
+        try helpers.expectEq(pixels.getIndexedPixel(index), @as(u16, @truncate(index)));
+    }
+}
+
+test "PixelStorage: set/get indexed pixels with indexed8" {
+    var pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .indexed8, 32 * 32);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    for (0..256) |index| {
+        pixels.setIndexedPixel(index, @truncate(index));
+
+        try helpers.expectEq(pixels.getIndexedPixel(index), @as(u16, @truncate(index)));
+    }
+}
+
+test "PixelStorage: set/get indexed pixels with indexed16" {
+    var pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .indexed16, 257 * 257);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    for (0..65536) |index| {
+        pixels.setIndexedPixel(index, @truncate(index));
+
+        try helpers.expectEq(pixels.getIndexedPixel(index), @as(u16, @truncate(index)));
+    }
+}
+
 test "RGB to HSL conversion" {
     for (RgbHslTestData) |entry| {
         const converted_hsl = color.Hsl.fromRgb(entry.rgb);

@@ -13,6 +13,7 @@ const GrayscaleFactors: math.float4 = .{ 0.2125, 0.7154, 0.0721, 1.0 };
 /// Convert a pixel storage into another format.
 /// For the conversion to the indexed formats, no dithering is done.
 pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, destination_format: PixelFormat) Image.ConvertError!color.PixelStorage {
+    @setEvalBranchQuota(2000);
     if (std.meta.activeTag(source.*) == destination_format) {
         return Image.ConvertError.NoConversionNeeded;
     }
@@ -61,6 +62,20 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.indexed4, .rgb332) => IndexedToRgbColor(.indexed4, .rgb332).convert(source, &destination),
         conversionId(.indexed8, .rgb332) => IndexedToRgbColor(.indexed8, .rgb332).convert(source, &destination),
         conversionId(.indexed16, .rgb332) => IndexedToRgbColor(.indexed16, .rgb332).convert(source, &destination),
+
+        // Indexed -> Sega GRB333
+        conversionId(.indexed1, .sega_grb333) => IndexedToRgbColor(.indexed1, .sega_grb333).convert(source, &destination),
+        conversionId(.indexed2, .sega_grb333) => IndexedToRgbColor(.indexed2, .sega_grb333).convert(source, &destination),
+        conversionId(.indexed4, .sega_grb333) => IndexedToRgbColor(.indexed4, .sega_grb333).convert(source, &destination),
+        conversionId(.indexed8, .sega_grb333) => IndexedToRgbColor(.indexed8, .sega_grb333).convert(source, &destination),
+        conversionId(.indexed16, .sega_grb333) => IndexedToRgbColor(.indexed16, .sega_grb333).convert(source, &destination),
+
+        // Indexed -> Sega BGR333
+        conversionId(.indexed1, .sega_bgr333) => IndexedToRgbColor(.indexed1, .sega_bgr333).convert(source, &destination),
+        conversionId(.indexed2, .sega_bgr333) => IndexedToRgbColor(.indexed2, .sega_bgr333).convert(source, &destination),
+        conversionId(.indexed4, .sega_bgr333) => IndexedToRgbColor(.indexed4, .sega_bgr333).convert(source, &destination),
+        conversionId(.indexed8, .sega_bgr333) => IndexedToRgbColor(.indexed8, .sega_bgr333).convert(source, &destination),
+        conversionId(.indexed16, .sega_bgr333) => IndexedToRgbColor(.indexed16, .sega_bgr333).convert(source, &destination),
 
         // Indexed -> RGB555
         conversionId(.indexed1, .rgb555) => IndexedToRgbColor(.indexed1, .rgb555).convert(source, &destination),
@@ -240,6 +255,24 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.grayscale8Alpha, .rgb332) => GrayscaleAlphaToRgbColor(.grayscale8Alpha, .rgb332).convert(source, &destination),
         conversionId(.grayscale16Alpha, .rgb332) => GrayscaleAlphaToRgbColor(.grayscale16Alpha, .rgb332).convert(source, &destination),
 
+        // Grayscale -> Sega GRB333
+        conversionId(.grayscale1, .sega_grb333) => GrayscaleToRgbColor(.grayscale1, .sega_grb333).convert(source, &destination),
+        conversionId(.grayscale2, .sega_grb333) => GrayscaleToRgbColor(.grayscale2, .sega_grb333).convert(source, &destination),
+        conversionId(.grayscale4, .sega_grb333) => GrayscaleToRgbColor(.grayscale4, .sega_grb333).convert(source, &destination),
+        conversionId(.grayscale8, .sega_grb333) => GrayscaleToRgbColor(.grayscale8, .sega_grb333).convert(source, &destination),
+        conversionId(.grayscale16, .sega_grb333) => GrayscaleToRgbColor(.grayscale16, .sega_grb333).convert(source, &destination),
+        conversionId(.grayscale8Alpha, .sega_grb333) => GrayscaleAlphaToRgbColor(.grayscale8Alpha, .sega_grb333).convert(source, &destination),
+        conversionId(.grayscale16Alpha, .sega_grb333) => GrayscaleAlphaToRgbColor(.grayscale16Alpha, .sega_grb333).convert(source, &destination),
+
+        // Grayscale -> Sega BGR333
+        conversionId(.grayscale1, .sega_bgr333) => GrayscaleToRgbColor(.grayscale1, .sega_bgr333).convert(source, &destination),
+        conversionId(.grayscale2, .sega_bgr333) => GrayscaleToRgbColor(.grayscale2, .sega_bgr333).convert(source, &destination),
+        conversionId(.grayscale4, .sega_bgr333) => GrayscaleToRgbColor(.grayscale4, .sega_bgr333).convert(source, &destination),
+        conversionId(.grayscale8, .sega_bgr333) => GrayscaleToRgbColor(.grayscale8, .sega_bgr333).convert(source, &destination),
+        conversionId(.grayscale16, .sega_bgr333) => GrayscaleToRgbColor(.grayscale16, .sega_bgr333).convert(source, &destination),
+        conversionId(.grayscale8Alpha, .sega_bgr333) => GrayscaleAlphaToRgbColor(.grayscale8Alpha, .sega_bgr333).convert(source, &destination),
+        conversionId(.grayscale16Alpha, .sega_bgr333) => GrayscaleAlphaToRgbColor(.grayscale16Alpha, .sega_bgr333).convert(source, &destination),
+
         // Grayscale -> RGB555
         conversionId(.grayscale1, .rgb555) => GrayscaleToRgbColor(.grayscale1, .rgb555).convert(source, &destination),
         conversionId(.grayscale2, .rgb555) => GrayscaleToRgbColor(.grayscale2, .rgb555).convert(source, &destination),
@@ -346,6 +379,8 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.rgb332, .grayscale16Alpha) => RgbColorToGrayscaleAlpha(.rgb332, .grayscale16Alpha).convert(source, &destination),
 
         // rgb332 -> RGB + Colorf32
+        conversionId(.rgb332, .sega_grb333) => RgbColorToRgbColor(.rgb332, .sega_grb333).convert(source, &destination),
+        conversionId(.rgb332, .sega_bgr333) => RgbColorToRgbColor(.rgb332, .sega_bgr333).convert(source, &destination),
         conversionId(.rgb332, .rgb555) => RgbColorToRgbColor(.rgb332, .rgb555).convert(source, &destination),
         conversionId(.rgb332, .rgb565) => RgbColorToRgbColor(.rgb332, .rgb565).convert(source, &destination),
         conversionId(.rgb332, .rgb24) => RgbColorToRgbColor(.rgb332, .rgb24).convert(source, &destination),
@@ -356,6 +391,64 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         conversionId(.rgb332, .rgb48) => RgbColorToRgbColor(.rgb332, .rgb48).convert(source, &destination),
         conversionId(.rgb332, .rgba64) => RgbColorToRgbaColor(.rgb332, .rgba64).convert(source, &destination),
         conversionId(.rgb332, .float32) => rgbColorToColorf32(.rgb332, source, &destination),
+
+        // sega_grb333 -> Indexed
+        conversionId(.sega_grb333, .indexed1) => try RgbColorToIndexed(.sega_grb333, .indexed1).convert(allocator, source, &destination),
+        conversionId(.sega_grb333, .indexed2) => try RgbColorToIndexed(.sega_grb333, .indexed2).convert(allocator, source, &destination),
+        conversionId(.sega_grb333, .indexed4) => try RgbColorToIndexed(.sega_grb333, .indexed4).convert(allocator, source, &destination),
+        conversionId(.sega_grb333, .indexed8) => try RgbColorToIndexed(.sega_grb333, .indexed8).convert(allocator, source, &destination),
+        conversionId(.sega_grb333, .indexed16) => try RgbColorToIndexed(.sega_grb333, .indexed16).convert(allocator, source, &destination),
+
+        // sega_grb333 -> Grayscale
+        conversionId(.sega_grb333, .grayscale1) => RgbColorToGrayscale(.sega_grb333, .grayscale1).convert(source, &destination),
+        conversionId(.sega_grb333, .grayscale2) => RgbColorToGrayscale(.sega_grb333, .grayscale2).convert(source, &destination),
+        conversionId(.sega_grb333, .grayscale4) => RgbColorToGrayscale(.sega_grb333, .grayscale4).convert(source, &destination),
+        conversionId(.sega_grb333, .grayscale8) => RgbColorToGrayscale(.sega_grb333, .grayscale8).convert(source, &destination),
+        conversionId(.sega_grb333, .grayscale8Alpha) => RgbColorToGrayscaleAlpha(.sega_grb333, .grayscale8Alpha).convert(source, &destination),
+        conversionId(.sega_grb333, .grayscale16Alpha) => RgbColorToGrayscaleAlpha(.sega_grb333, .grayscale16Alpha).convert(source, &destination),
+
+        // sega_grb333 -> RGB + Colorf32
+        conversionId(.sega_grb333, .rgb332) => RgbColorToRgbColor(.sega_grb333, .rgb332).convert(source, &destination),
+        conversionId(.sega_grb333, .sega_bgr333) => RgbColorToRgbColor(.sega_grb333, .sega_bgr333).convert(source, &destination),
+        conversionId(.sega_grb333, .rgb555) => RgbColorToRgbColor(.sega_grb333, .rgb555).convert(source, &destination),
+        conversionId(.sega_grb333, .rgb565) => RgbColorToRgbColor(.sega_grb333, .rgb565).convert(source, &destination),
+        conversionId(.sega_grb333, .rgb24) => RgbColorToRgbColor(.sega_grb333, .rgb24).convert(source, &destination),
+        conversionId(.sega_grb333, .rgba32) => RgbColorToRgbaColor(.sega_grb333, .rgba32).convert(source, &destination),
+        conversionId(.sega_grb333, .bgr555) => RgbColorToRgbColor(.sega_grb333, .bgr555).convert(source, &destination),
+        conversionId(.sega_grb333, .bgr24) => RgbColorToRgbColor(.sega_grb333, .bgr24).convert(source, &destination),
+        conversionId(.sega_grb333, .bgra32) => RgbColorToRgbaColor(.sega_grb333, .bgra32).convert(source, &destination),
+        conversionId(.sega_grb333, .rgb48) => RgbColorToRgbColor(.sega_grb333, .rgb48).convert(source, &destination),
+        conversionId(.sega_grb333, .rgba64) => RgbColorToRgbaColor(.sega_grb333, .rgba64).convert(source, &destination),
+        conversionId(.sega_grb333, .float32) => rgbColorToColorf32(.sega_grb333, source, &destination),
+
+        // sega_bgr333 -> Indexed
+        conversionId(.sega_bgr333, .indexed1) => try RgbColorToIndexed(.sega_bgr333, .indexed1).convert(allocator, source, &destination),
+        conversionId(.sega_bgr333, .indexed2) => try RgbColorToIndexed(.sega_bgr333, .indexed2).convert(allocator, source, &destination),
+        conversionId(.sega_bgr333, .indexed4) => try RgbColorToIndexed(.sega_bgr333, .indexed4).convert(allocator, source, &destination),
+        conversionId(.sega_bgr333, .indexed8) => try RgbColorToIndexed(.sega_bgr333, .indexed8).convert(allocator, source, &destination),
+        conversionId(.sega_bgr333, .indexed16) => try RgbColorToIndexed(.sega_bgr333, .indexed16).convert(allocator, source, &destination),
+
+        // sega_bgr333 -> Grayscale
+        conversionId(.sega_bgr333, .grayscale1) => RgbColorToGrayscale(.sega_bgr333, .grayscale1).convert(source, &destination),
+        conversionId(.sega_bgr333, .grayscale2) => RgbColorToGrayscale(.sega_bgr333, .grayscale2).convert(source, &destination),
+        conversionId(.sega_bgr333, .grayscale4) => RgbColorToGrayscale(.sega_bgr333, .grayscale4).convert(source, &destination),
+        conversionId(.sega_bgr333, .grayscale8) => RgbColorToGrayscale(.sega_bgr333, .grayscale8).convert(source, &destination),
+        conversionId(.sega_bgr333, .grayscale8Alpha) => RgbColorToGrayscaleAlpha(.sega_bgr333, .grayscale8Alpha).convert(source, &destination),
+        conversionId(.sega_bgr333, .grayscale16Alpha) => RgbColorToGrayscaleAlpha(.sega_bgr333, .grayscale16Alpha).convert(source, &destination),
+
+        // sega_bgr333 -> RGB + Colorf32
+        conversionId(.sega_bgr333, .rgb332) => RgbColorToRgbColor(.sega_bgr333, .rgb332).convert(source, &destination),
+        conversionId(.sega_bgr333, .sega_grb333) => RgbColorToRgbColor(.sega_bgr333, .sega_grb333).convert(source, &destination),
+        conversionId(.sega_bgr333, .rgb555) => RgbColorToRgbColor(.sega_bgr333, .rgb555).convert(source, &destination),
+        conversionId(.sega_bgr333, .rgb565) => RgbColorToRgbColor(.sega_bgr333, .rgb565).convert(source, &destination),
+        conversionId(.sega_bgr333, .rgb24) => RgbColorToRgbColor(.sega_bgr333, .rgb24).convert(source, &destination),
+        conversionId(.sega_bgr333, .rgba32) => RgbColorToRgbaColor(.sega_bgr333, .rgba32).convert(source, &destination),
+        conversionId(.sega_bgr333, .bgr555) => RgbColorToRgbColor(.sega_bgr333, .bgr555).convert(source, &destination),
+        conversionId(.sega_bgr333, .bgr24) => RgbColorToRgbColor(.sega_bgr333, .bgr24).convert(source, &destination),
+        conversionId(.sega_bgr333, .bgra32) => RgbColorToRgbaColor(.sega_bgr333, .bgra32).convert(source, &destination),
+        conversionId(.sega_bgr333, .rgb48) => RgbColorToRgbColor(.sega_bgr333, .rgb48).convert(source, &destination),
+        conversionId(.sega_bgr333, .rgba64) => RgbColorToRgbaColor(.sega_bgr333, .rgba64).convert(source, &destination),
+        conversionId(.sega_bgr333, .float32) => rgbColorToColorf32(.sega_bgr333, source, &destination),
 
         // rgb555 -> Indexed
         conversionId(.rgb555, .indexed1) => try RgbColorToIndexed(.rgb555, .indexed1).convert(allocator, source, &destination),
@@ -374,6 +467,8 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
 
         // rgb555 -> RGB + Colorf32
         conversionId(.rgb555, .rgb332) => RgbColorToRgbColor(.rgb555, .rgb332).convert(source, &destination),
+        conversionId(.rgb555, .sega_grb333) => RgbColorToRgbColor(.rgb555, .sega_grb333).convert(source, &destination),
+        conversionId(.rgb555, .sega_bgr333) => RgbColorToRgbColor(.rgb555, .sega_bgr333).convert(source, &destination),
         conversionId(.rgb555, .rgb565) => RgbColorToRgbColor(.rgb555, .rgb565).convert(source, &destination),
         conversionId(.rgb555, .rgb24) => RgbColorToRgbColor(.rgb555, .rgb24).convert(source, &destination),
         conversionId(.rgb555, .rgba32) => RgbColorToRgbaColor(.rgb555, .rgba32).convert(source, &destination),
@@ -401,6 +496,8 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
 
         // rgb565 -> RGB + Colorf32
         conversionId(.rgb565, .rgb332) => RgbColorToRgbColor(.rgb565, .rgb332).convert(source, &destination),
+        conversionId(.rgb565, .sega_grb333) => RgbColorToRgbColor(.rgb565, .sega_grb333).convert(source, &destination),
+        conversionId(.rgb565, .sega_bgr333) => RgbColorToRgbColor(.rgb565, .sega_bgr333).convert(source, &destination),
         conversionId(.rgb565, .rgb555) => RgbColorToRgbColor(.rgb565, .rgb555).convert(source, &destination),
         conversionId(.rgb565, .rgb24) => RgbColorToRgbColor(.rgb565, .rgb24).convert(source, &destination),
         conversionId(.rgb565, .rgba32) => RgbColorToRgbaColor(.rgb565, .rgba32).convert(source, &destination),
@@ -428,6 +525,8 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
 
         // rgb24 -> RGB + Colorf32
         conversionId(.rgb24, .rgb332) => RgbColorToRgbColor(.rgb24, .rgb332).convert(source, &destination),
+        conversionId(.rgb24, .sega_grb333) => RgbColorToRgbColor(.rgb24, .sega_grb333).convert(source, &destination),
+        conversionId(.rgb24, .sega_bgr333) => RgbColorToRgbColor(.rgb24, .sega_bgr333).convert(source, &destination),
         conversionId(.rgb24, .rgb555) => RgbColorToRgbColor(.rgb24, .rgb555).convert(source, &destination),
         conversionId(.rgb24, .rgb565) => RgbColorToRgbColor(.rgb24, .rgb565).convert(source, &destination),
         conversionId(.rgb24, .rgba32) => RgbColorToRgbaColor(.rgb24, .rgba32).convert(source, &destination),
@@ -455,6 +554,8 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
 
         // rgba32 -> RGB + Colorf32
         conversionId(.rgba32, .rgb332) => RgbColorToRgbColor(.rgba32, .rgb332).convert(source, &destination),
+        conversionId(.rgba32, .sega_grb333) => RgbaColorToRgbColor(.rgba32, .sega_grb333).convert(source, &destination),
+        conversionId(.rgba32, .sega_bgr333) => RgbaColorToRgbColor(.rgba32, .sega_bgr333).convert(source, &destination),
         conversionId(.rgba32, .rgb555) => RgbaColorToRgbColor(.rgba32, .rgb555).convert(source, &destination),
         conversionId(.rgba32, .rgb565) => RgbaColorToRgbColor(.rgba32, .rgb565).convert(source, &destination),
         conversionId(.rgba32, .rgb24) => RgbaColorToRgbColor(.rgba32, .rgb24).convert(source, &destination),
@@ -483,6 +584,8 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
         // bgr555 -> RGB + Colorf32
         // TODO(ntr0): check if the conversions are correct
         conversionId(.bgr555, .rgb332) => RgbColorToRgbColor(.bgr555, .rgb332).convert(source, &destination),
+        conversionId(.bgr555, .sega_grb333) => RgbColorToRgbColor(.rgb555, .sega_grb333).convert(source, &destination),
+        conversionId(.bgr555, .sega_bgr333) => RgbColorToRgbColor(.rgb555, .sega_bgr333).convert(source, &destination),
         conversionId(.bgr555, .rgb555) => RgbColorToRgbColor(.rgb555, .rgb555).convert(source, &destination),
         conversionId(.bgr555, .rgb565) => RgbColorToRgbColor(.rgb555, .rgb565).convert(source, &destination),
         conversionId(.bgr555, .rgb24) => RgbColorToRgbColor(.rgb555, .rgb24).convert(source, &destination),
@@ -510,6 +613,8 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
 
         // bgr24 -> RGB + Colorf32
         conversionId(.bgr24, .rgb332) => RgbColorToRgbColor(.bgr24, .rgb332).convert(source, &destination),
+        conversionId(.bgr24, .sega_grb333) => RgbColorToRgbColor(.bgr24, .sega_grb333).convert(source, &destination),
+        conversionId(.bgr24, .sega_bgr333) => RgbColorToRgbColor(.bgr24, .sega_bgr333).convert(source, &destination),
         conversionId(.bgr24, .rgb555) => RgbColorToRgbColor(.bgr24, .rgb555).convert(source, &destination),
         conversionId(.bgr24, .rgb565) => RgbColorToRgbColor(.bgr24, .rgb565).convert(source, &destination),
         conversionId(.bgr24, .rgb24) => RgbColorToRgbColor(.bgr24, .rgb24).convert(source, &destination),
@@ -537,6 +642,8 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
 
         // bgra32 -> RGB + Colorf32
         conversionId(.bgra32, .rgb332) => RgbColorToRgbColor(.bgra32, .rgb332).convert(source, &destination),
+        conversionId(.bgra32, .sega_grb333) => RgbaColorToRgbColor(.bgra32, .sega_grb333).convert(source, &destination),
+        conversionId(.bgra32, .sega_bgr333) => RgbaColorToRgbColor(.bgra32, .sega_bgr333).convert(source, &destination),
         conversionId(.bgra32, .rgb555) => RgbaColorToRgbColor(.bgra32, .rgb555).convert(source, &destination),
         conversionId(.bgra32, .rgb565) => RgbaColorToRgbColor(.bgra32, .rgb565).convert(source, &destination),
         conversionId(.bgra32, .rgb24) => RgbaColorToRgbColor(.bgra32, .rgb24).convert(source, &destination),
@@ -564,6 +671,8 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
 
         // rgb48 -> RGB + Colorf32
         conversionId(.rgb48, .rgb332) => RgbColorToRgbColor(.rgb48, .rgb332).convert(source, &destination),
+        conversionId(.rgb48, .sega_grb333) => RgbColorToRgbColor(.rgb48, .sega_grb333).convert(source, &destination),
+        conversionId(.rgb48, .sega_bgr333) => RgbColorToRgbColor(.rgb48, .sega_bgr333).convert(source, &destination),
         conversionId(.rgb48, .rgb555) => RgbColorToRgbColor(.rgb48, .rgb555).convert(source, &destination),
         conversionId(.rgb48, .rgb565) => RgbColorToRgbColor(.rgb48, .rgb565).convert(source, &destination),
         conversionId(.rgb48, .rgb24) => RgbColorToRgbColor(.rgb48, .rgb24).convert(source, &destination),
@@ -591,6 +700,8 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
 
         // rgba64 -> RGB + Colorf32
         conversionId(.rgba64, .rgb332) => RgbColorToRgbColor(.rgba64, .rgb332).convert(source, &destination),
+        conversionId(.rgba64, .sega_grb333) => RgbaColorToRgbColor(.rgba64, .sega_grb333).convert(source, &destination),
+        conversionId(.rgba64, .sega_bgr333) => RgbaColorToRgbColor(.rgba64, .sega_bgr333).convert(source, &destination),
         conversionId(.rgba64, .rgb555) => RgbaColorToRgbColor(.rgba64, .rgb555).convert(source, &destination),
         conversionId(.rgba64, .rgb565) => RgbaColorToRgbColor(.rgba64, .rgb565).convert(source, &destination),
         conversionId(.rgba64, .rgb24) => RgbaColorToRgbColor(.rgba64, .rgb24).convert(source, &destination),
@@ -618,6 +729,8 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
 
         // Colorf32(float32) -> RGB
         conversionId(.float32, .rgb332) => colorf32ToRgbColor(.rgb332, source, &destination),
+        conversionId(.float32, .sega_grb333) => colorf32ToRgbColor(.rgb555, source, &destination),
+        conversionId(.float32, .sega_bgr333) => colorf32ToRgbColor(.rgb555, source, &destination),
         conversionId(.float32, .rgb555) => colorf32ToRgbColor(.rgb555, source, &destination),
         conversionId(.float32, .rgb565) => colorf32ToRgbColor(.rgb565, source, &destination),
         conversionId(.float32, .rgb24) => colorf32ToRgbColor(.rgb24, source, &destination),
