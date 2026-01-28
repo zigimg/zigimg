@@ -1,5 +1,6 @@
 pub const color = @import("src/color.zig");
 pub const Colors = @import("src/predefined_colors.zig").Colors;
+pub const compressions = @import("src/compressions.zig");
 pub const FormatInterface = @import("src/FormatInterface.zig");
 pub const formats = @import("src/formats.zig");
 pub const Image = @import("src/Image.zig");
