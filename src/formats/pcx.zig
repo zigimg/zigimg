@@ -1,16 +1,16 @@
 // Adapted from https://github.com/MasterQ32/zig-gamedev-lib/blob/master/src/pcx.zig
 // with permission from Felix Queißner
 const color = @import("../color.zig");
+const compressions = @import("../compressions.zig");
 const FormatInterface = @import("../FormatInterface.zig");
 const Image = @import("../Image.zig");
 const io = @import("../io.zig");
 const PixelFormat = @import("../pixel_format.zig").PixelFormat;
-const simd = @import("../simd.zig");
 const std = @import("std");
 
-const MagicHeader: u8 = 0x0A;
-const Version: u8 = 5;
-const VGAPaletteIdentifier: u8 = 0x0C;
+const MAGIC_HEADER: u8 = 0x0A;
+const VERSION: u8 = 5;
+const VGA_PALETTE_IDENTIFIER: u8 = 0x0C;
 
 pub const Compression = enum(u8) {
     none,
@@ -24,8 +24,8 @@ pub const PaletteInfo = enum(u16) {
 };
 
 pub const PCXHeader = extern struct {
-    id: u8 = MagicHeader,
-    version: u8 = Version,
+    id: u8 = MAGIC_HEADER,
+    version: u8 = VERSION,
     compression: Compression = .rle,
     bpp: u8 = 0,
     xmin: u16 align(1) = 0,
@@ -48,8 +48,8 @@ pub const PCXHeader = extern struct {
     }
 };
 
-const RLEPairMask = 0xC0;
-const RLELengthMask = 0xFF - RLEPairMask;
+const RLE_PAIR_MASK = 0xC0;
+const RLE_LENGTH_MASK = 0xFF - RLE_PAIR_MASK;
 
 const RLEDecoder = struct {
     const Run = struct {
@@ -78,10 +78,12 @@ const RLEDecoder = struct {
         } else {
             while (true) {
                 const byte = try self.reader.takeByte();
-                if (byte == RLEPairMask) // skip over "zero length runs"
+                if (byte == RLE_PAIR_MASK) { // skip over "zero length runs"
+                    std.debug.print("Should not have a byte marked 0xC0\n", .{});
                     continue;
-                if ((byte & RLEPairMask) == RLEPairMask) {
-                    const len = byte & RLELengthMask;
+                }
+                if ((byte & RLE_PAIR_MASK) == RLE_PAIR_MASK) {
+                    const len = byte & RLE_LENGTH_MASK;
                     std.debug.assert(len > 0);
                     const result = try self.reader.takeByte();
                     if (len > 1) {
@@ -101,6 +103,8 @@ const RLEDecoder = struct {
 
     fn finish(decoder: RLEDecoder) Image.ReadError!void {
         if (decoder.current_run != null) {
+            std.debug.print("Current run: {}\n", .{decoder.current_run.?});
+
             return Image.ReadError.InvalidData;
         }
     }
@@ -111,108 +115,35 @@ const RLEPair = packed struct(u8) {
     identifier: u2 = (1 << 2) - 1,
 };
 
-const RLEMinLength = 2;
-const RLEMaxLength = (1 << 6) - 1;
+const RLE_MIN_LENGTH = 2;
+const RLE_MAX_LENGTH = (1 << 6) - 1;
 
-fn flushRLE(writer: *std.Io.Writer, value: u8, count: usize) !void {
-    var current_count = count;
-    while (current_count > 0) {
-        const length_to_write = @min(current_count, RLEMaxLength);
-
-        if (length_to_write >= RLEMinLength) {
-            try flushRlePair(writer, value, length_to_write);
-        } else {
-            try flushRawBytes(writer, value, length_to_write);
-        }
-
-        current_count -= length_to_write;
+const PcxRlePacketFormatter = struct {
+    pub fn flushRLE(comptime IntType: type, writer: *std.Io.Writer, value: IntType, count: usize) !void {
+        const rle_packet_header = RLEPair{
+            .length = @truncate(count),
+        };
+        try writer.writeByte(@bitCast(rle_packet_header));
+        try writer.writeInt(IntType, value, .little);
     }
-}
 
-inline fn flushRlePair(writer: *std.Io.Writer, value: u8, count: usize) !void {
-    const rle_pair = RLEPair{
-        .length = @truncate(count),
-    };
-    try writer.writeByte(@bitCast(rle_pair));
-    try writer.writeByte(value);
-}
-
-inline fn flushRawBytes(writer: *std.Io.Writer, value: u8, count: usize) !void {
-    // Must flush byte greater than 192 (0xC0) as a RLE pair
-    if ((value & RLEPairMask) == RLEPairMask) {
-        for (0..count) |_| {
-            try flushRlePair(writer, value, 1);
-        }
-    } else {
-        try writer.splatByteAll(value, count);
-    }
-}
-
-const RLEFastEncoder = struct {
-    const LengthToCheck = 16;
-    const VectorType = @Vector(LengthToCheck, u8);
-
-    pub fn encode(source_data: []const u8, writer: *std.Io.Writer) !void {
-        if (source_data.len == 0) {
-            return;
-        }
-
-        var index: usize = 0;
-
-        var total_similar_count: usize = 0;
-
-        var current_byte: u8 = 0;
-
-        while (index < source_data.len and (index + LengthToCheck) <= source_data.len) {
-            // Read current byte
-            current_byte = source_data[index];
-
-            const current_byte_splatted: VectorType = @splat(current_byte);
-            const compare_chunk = simd.load(u8, source_data[index..], VectorType, 0);
-
-            const compare_mask = (current_byte_splatted == compare_chunk);
-            const inverted_mask = ~@as(u16, @bitCast(compare_mask));
-            const current_similar_count = @ctz(inverted_mask);
-
-            if (current_similar_count == LengthToCheck) {
-                total_similar_count += current_similar_count;
-                index += current_similar_count;
+    pub fn flushRaw(comptime IntType: type, writer: *std.Io.Writer, slice: []const IntType) !void {
+        for (slice) |entry| {
+            // Byte greater than 192 needs to be encoded as a pair
+            if ((entry & RLE_PAIR_MASK) == RLE_PAIR_MASK) {
+                try flushRLE(IntType, writer, entry, 1);
             } else {
-                total_similar_count += current_similar_count;
-
-                try flushRLE(writer, current_byte, total_similar_count);
-
-                total_similar_count = 0;
-
-                index += current_similar_count;
+                try writer.writeInt(IntType, entry, .little);
             }
-        }
-
-        try flushRLE(writer, current_byte, total_similar_count);
-
-        // Process the rest sequentially
-        total_similar_count = 0;
-        if (index < source_data.len) {
-            current_byte = source_data[index];
-
-            while (index < source_data.len) {
-                const read_byte = source_data[index];
-                if (read_byte == current_byte) {
-                    total_similar_count += 1;
-                } else {
-                    try flushRLE(writer, current_byte, total_similar_count);
-
-                    current_byte = read_byte;
-                    total_similar_count = 1;
-                }
-
-                index += 1;
-            }
-
-            try flushRLE(writer, current_byte, total_similar_count);
         }
     }
 };
+
+const RleSimdEncoder = compressions.rle.Compressor(.{
+    .IntType = u8,
+    .PacketFormatterType = PcxRlePacketFormatter,
+    .maximum_length = RLE_MAX_LENGTH,
+}).Simd;
 
 test "PCX RLE Fast encoder" {
     const uncompressed_data = [_]u8{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 64, 64, 2, 2, 2, 2, 2, 215, 215, 215, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 200, 200, 200, 200, 210, 210 };
@@ -221,7 +152,7 @@ test "PCX RLE Fast encoder" {
     var writer_alloc = std.io.Writer.Allocating.init(std.testing.allocator);
     defer writer_alloc.deinit();
 
-    try RLEFastEncoder.encode(uncompressed_data[0..], &writer_alloc.writer);
+    try RleSimdEncoder.encode(uncompressed_data[0..], &writer_alloc.writer);
 
     try std.testing.expectEqualSlices(u8, compressed_data[0..], writer_alloc.written());
 }
@@ -231,55 +162,21 @@ test "PCX RLE Fast encoder should encore more than 63 bytes similar" {
     const second_uncompresse_part = [_]u8{ 0x1, 0x1, 0x1, 0x1 };
     const uncompressed_data = first_uncompressed_part ++ second_uncompresse_part;
 
-    const compressed_data = [_]u8{ 0xFF, 0x45, 0x45, 0x45, 0xC4, 0x1 };
+    const compressed_data = [_]u8{ 0xFF, 0x45, 0xC2, 0x45, 0xC4, 0x1 };
 
     var writer_alloc = std.io.Writer.Allocating.init(std.testing.allocator);
     defer writer_alloc.deinit();
 
-    try RLEFastEncoder.encode(uncompressed_data[0..], &writer_alloc.writer);
+    try RleSimdEncoder.encode(uncompressed_data[0..], &writer_alloc.writer);
 
     try std.testing.expectEqualSlices(u8, compressed_data[0..], writer_alloc.written());
 }
 
-const RLEStreamEncoder = struct {
-    rle_byte: ?u8 = null,
-    length: usize = 0,
-
-    pub fn encode(self: *RLEStreamEncoder, writer: *std.Io.Writer, bytes: []const u8) !void {
-        for (bytes) |byte| {
-            try self.encodeByte(writer, byte);
-        }
-    }
-
-    pub fn encodeByte(self: *RLEStreamEncoder, writer: *std.Io.Writer, byte: u8) !void {
-        if (self.rle_byte == null) {
-            self.rle_byte = byte;
-            self.length = 1;
-            return;
-        }
-
-        if (self.rle_byte) |rle_byte| {
-            if (rle_byte == byte) {
-                self.length += 1;
-            } else {
-                try flushRLE(writer, rle_byte, self.length);
-
-                self.length = 1;
-                self.rle_byte = byte;
-            }
-        }
-    }
-
-    pub fn flush(self: *RLEStreamEncoder, writer: *std.Io.Writer) !void {
-        if (self.length == 0) {
-            return;
-        }
-
-        if (self.rle_byte) |check_byte| {
-            try flushRLE(writer, check_byte, self.length);
-        }
-    }
-};
+const RleStreamEncoder = compressions.rle.Compressor(.{
+    .IntType = u8,
+    .PacketFormatterType = PcxRlePacketFormatter,
+    .maximum_length = RLE_MAX_LENGTH,
+}).StreamEncoder;
 
 pub const PCX = struct {
     header: PCXHeader = .{},
@@ -298,11 +195,11 @@ pub const PCX = struct {
         const reader = read_stream.reader();
         const magic_header = try reader.peek(2);
 
-        if (magic_header[0] != MagicHeader) {
+        if (magic_header[0] != MAGIC_HEADER) {
             return false;
         }
 
-        if (magic_header[1] > Version) {
+        if (magic_header[1] > VERSION) {
             return false;
         }
 
@@ -515,7 +412,7 @@ pub const PCX = struct {
                 const end_pos = try read_stream.getEndPos();
                 try read_stream.seekTo(end_pos - 769);
 
-                if ((try reader.takeByte()) != VGAPaletteIdentifier) {
+                if ((try reader.takeByte()) != VGA_PALETTE_IDENTIFIER) {
                     return Image.ReadError.InvalidData;
                 }
 
@@ -567,7 +464,7 @@ pub const PCX = struct {
                 }
 
                 // Write VGA palette
-                try writer.writeByte(VGAPaletteIdentifier);
+                try writer.writeByte(VGA_PALETTE_IDENTIFIER);
                 for (pixels.indexed8.palette) |current_entry| {
                     const rgb24_color = color.Rgb24.from.u32Rgba(current_entry.to.u32Rgba());
                     try writer.writeStruct(rgb24_color, .little);
@@ -594,7 +491,7 @@ pub const PCX = struct {
     }
 
     fn writeIndexed1(self: *const PCX, writer: *std.Io.Writer, indexed: color.IndexedStorage1) Image.WriteError!void {
-        var rle_encoder = RLEStreamEncoder{};
+        var rle_encoder = RleStreamEncoder{};
 
         const image_width = self.width();
         const image_height = self.height();
@@ -613,13 +510,13 @@ pub const PCX = struct {
 
                 current_byte |= @as(u8, pixel) << bit;
                 if (bit == 0) {
-                    try rle_encoder.encodeByte(writer, current_byte);
+                    try rle_encoder.encode(writer, current_byte);
                     current_byte = 0;
                 }
             }
 
             if (!is_even) {
-                try rle_encoder.encodeByte(writer, current_byte);
+                try rle_encoder.encode(writer, current_byte);
             }
         }
 
@@ -627,7 +524,7 @@ pub const PCX = struct {
     }
 
     fn writeIndexed4(self: *const PCX, writer: *std.Io.Writer, indexed: color.IndexedStorage4) Image.WriteError!void {
-        var rle_encoder = RLEStreamEncoder{};
+        var rle_encoder = RleStreamEncoder{};
 
         const image_width = self.width();
         const image_height = self.height();
@@ -644,14 +541,14 @@ pub const PCX = struct {
 
                 if ((x & 0x1) == 0x1) {
                     current_byte |= pixel;
-                    try rle_encoder.encodeByte(writer, current_byte);
+                    try rle_encoder.encode(writer, current_byte);
                 } else {
                     current_byte = @as(u8, pixel) << 4;
                 }
             }
 
             if (!is_even) {
-                try rle_encoder.encodeByte(writer, current_byte);
+                try rle_encoder.encode(writer, current_byte);
             }
         }
 
@@ -659,11 +556,11 @@ pub const PCX = struct {
     }
 
     fn writeIndexed8Even(writer: *std.Io.Writer, indexed: color.IndexedStorage8) Image.WriteError!void {
-        try RLEFastEncoder.encode(indexed.indices, writer);
+        try RleSimdEncoder.encode(indexed.indices, writer);
     }
 
     fn writeIndexed8Odd(self: *const PCX, writer: *std.Io.Writer, indexed: color.IndexedStorage8) Image.WriteError!void {
-        var rle_encoder = RLEStreamEncoder{};
+        var rle_encoder = RleStreamEncoder{};
 
         const image_width = self.width();
         const image_height = self.height();
@@ -672,15 +569,15 @@ pub const PCX = struct {
             const y_stride = y * image_width;
 
             const pixel_stride = indexed.indices[y_stride..(y_stride + image_width)];
-            try rle_encoder.encode(writer, pixel_stride);
-            try rle_encoder.encodeByte(writer, 0x00);
+            try rle_encoder.encodeSlice(writer, pixel_stride);
+            try rle_encoder.encode(writer, 0x00);
         }
 
         try rle_encoder.flush(writer);
     }
 
     fn writeRgb24(self: *const PCX, writer: *std.Io.Writer, pixels: []const color.Rgb24) Image.WriteError!void {
-        var rle_encoder = RLEStreamEncoder{};
+        var rle_encoder = RleStreamEncoder{};
 
         const image_width = self.width();
         const image_height = self.height();
@@ -694,15 +591,15 @@ pub const PCX = struct {
                 for (0..image_width) |x| {
                     const current_color = pixels[stride + x];
                     switch (plane) {
-                        0 => try rle_encoder.encodeByte(writer, current_color.r),
-                        1 => try rle_encoder.encodeByte(writer, current_color.g),
-                        2 => try rle_encoder.encodeByte(writer, current_color.b),
+                        0 => try rle_encoder.encode(writer, current_color.r),
+                        1 => try rle_encoder.encode(writer, current_color.g),
+                        2 => try rle_encoder.encode(writer, current_color.b),
                         else => {},
                     }
                 }
 
                 if (!is_even) {
-                    try rle_encoder.encodeByte(writer, 0x00);
+                    try rle_encoder.encode(writer, 0x00);
                 }
             }
         }
