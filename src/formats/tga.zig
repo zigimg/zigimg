@@ -1,10 +1,10 @@
-const FormatInterface = @import("../FormatInterface.zig");
-const PixelFormat = @import("../pixel_format.zig").PixelFormat;
-const io = @import("../io.zig");
 const color = @import("../color.zig");
+const compressions = @import("../compressions.zig");
+const FormatInterface = @import("../FormatInterface.zig");
 const Image = @import("../Image.zig");
+const io = @import("../io.zig");
+const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const std = @import("std");
-const simd = @import("../simd.zig");
 const utils = @import("../utils.zig");
 
 const toU5 = color.ScaleValue(u5);
@@ -290,11 +290,9 @@ const TargaRLEDecoder = struct {
     }
 };
 
-const RLE_PACKET_MASK = 1 << 7;
-const RLE_MINIMUM_LENGTH = 2;
-const RLE_MAXIMUM_LENGTH = RLE_PACKET_MASK;
+const RLE_MAXIMUM_LENGTH = 1 << 7;
 
-const RunLengthEncoderCommon = struct {
+const TargaRlePacketFormatter = struct {
     pub fn flushRLE(comptime IntType: type, writer: *std.Io.Writer, value: IntType, count: usize) !void {
         const rle_packet_header = RLEPacketHeader{
             .count = @truncate(count - 1),
@@ -317,99 +315,17 @@ const RunLengthEncoderCommon = struct {
     }
 };
 
-fn RLEStreamEncoder(comptime IntType: type) type {
-    return struct {
-        similar_count: usize = 0,
-        window: utils.FixedDynamicArray(IntType, RLE_MAXIMUM_LENGTH) = .{},
-        state: State = .unique,
-
-        const State = enum {
-            unique,
-            repeated,
-        };
-
-        const Self = @This();
-
-        pub fn clear(self: *Self) void {
-            self.window.clear();
-            self.similar_count = 0;
-        }
-
-        pub fn encode(self: *Self, writer: *std.Io.Writer, value: IntType) std.Io.Writer.Error!void {
-            switch (self.state) {
-                .unique => {
-                    if (self.window.len > 0) {
-                        if (self.window.len >= RLE_MAXIMUM_LENGTH) {
-                            try RunLengthEncoderCommon.flushRaw(IntType, writer, self.window.constSlice());
-                            self.window.clear();
-                            self.similar_count = 0;
-                        }
-
-                        if (self.window.last() == value) {
-                            self.similar_count = 2;
-
-                            self.state = .repeated;
-                            return;
-                        } else {
-                            self.similar_count = 0;
-                        }
-                    }
-
-                    self.window.append(value) catch {
-                        return std.Io.Writer.Error.WriteFailed;
-                    };
-                },
-                .repeated => {
-                    if (self.window.last() == value) {
-                        self.similar_count += 1;
-
-                        if (self.similar_count >= RLE_MAXIMUM_LENGTH or self.window.len >= RLE_MAXIMUM_LENGTH) {
-                            try self.flush(writer);
-
-                            self.window.append(value) catch {
-                                return std.Io.Writer.Error.WriteFailed;
-                            };
-
-                            self.state = .unique;
-                        }
-                    } else {
-                        try self.flush(writer);
-
-                        self.window.append(value) catch {
-                            return std.Io.Writer.Error.WriteFailed;
-                        };
-
-                        self.state = .unique;
-                    }
-                },
-            }
-        }
-
-        pub fn flush(self: *Self, writer: *std.Io.Writer) !void {
-            switch (self.state) {
-                .unique => {
-                    try RunLengthEncoderCommon.flushRaw(IntType, writer, self.window.constSlice());
-                },
-                .repeated => {
-                    if (self.window.len > 1) {
-                        const raw_slice = self.window.constSlice()[0..((self.window.len - 2) + 1)];
-                        try RunLengthEncoderCommon.flushRaw(IntType, writer, raw_slice);
-                    }
-
-                    if (self.similar_count > 0) {
-                        try RunLengthEncoderCommon.flushRLE(IntType, writer, self.window.last(), self.similar_count);
-                    }
-                },
-            }
-
-            self.clear();
-        }
-    };
+fn RleStreamEncoder(comptime IntType: type) type {
+    return compressions.rle.Compressor(.{
+        .IntType = IntType,
+        .PacketFormatterType = TargaRlePacketFormatter,
+        .maximum_length = RLE_MAXIMUM_LENGTH,
+    }).StreamEncoder;
 }
 
 fn RLEStreamColorEncoder(comptime ColorType: type) type {
     return struct {
-        encoder: RLEStreamEncoder(IntType) = .{},
+        encoder: RleStreamEncoder(IntType) = .{},
 
         const IntType = switch (ColorType) {
             color.Bgr24 => u24,
@@ -457,26 +373,11 @@ test "TGA RLE Stream Color Encoder: Produce optimal raw packets (Bgr24)" {
 }
 
 fn RunLengthSimpleEncoder(comptime IntType: type) type {
-    return struct {
-        pub fn encode(source_data: []const u8, writer: *std.Io.Writer) !void {
-            if (source_data.len == 0) {
-                return;
-            }
-
-            var fixed_stream = io.ReadStream.initMemory(source_data);
-            const reader = fixed_stream.reader();
-
-            var stream_encoder: RLEStreamEncoder(IntType) = .{};
-
-            while (fixed_stream.getPos() < (try fixed_stream.getEndPos())) {
-                const read_value = try reader.takeInt(IntType, .little);
-
-                try stream_encoder.encode(writer, read_value);
-            }
-
-            try stream_encoder.flush(writer);
-        }
-    };
+    return compressions.rle.Compressor(.{
+        .IntType = IntType,
+        .PacketFormatterType = TargaRlePacketFormatter,
+        .maximum_length = RLE_MAXIMUM_LENGTH,
+    }).Simple;
 }
 
 test "TGA RLE simple u24 encoder" {
@@ -513,129 +414,15 @@ test "TGA RLE simple u24 encoder" {
 fn RunLengthSIMDEncoder(
     comptime IntType: type,
     comptime optional_parameters: struct {
-        vector_length: comptime_int = std.simd.suggestVectorLength(IntType) orelse 4,
+        vector_length: ?comptime_int = null,
     },
 ) type {
-    return struct {
-        const MaskType = std.meta.Int(.unsigned, VECTOR_LENGTH);
-        const VectorType = @Vector(VECTOR_LENGTH, IntType);
-
-        const VECTOR_LENGTH = optional_parameters.vector_length;
-        const BYTES_PER_PIXELS = (@typeInfo(IntType).int.bits + 7) / 8;
-        const INDEX_STEP = VECTOR_LENGTH * BYTES_PER_PIXELS;
-
-        comptime {
-            if (!std.math.isPowerOfTwo(@typeInfo(IntType).int.bits)) {
-                @compileError("Only power of two integers are supported by the run-length SIMD encoder");
-            }
-        }
-
-        pub fn encode(source_data: []const u8, writer: *std.Io.Writer) !void {
-            if (source_data.len == 0) {
-                return;
-            }
-
-            var fixed_stream = io.ReadStream.initMemory(source_data);
-            const reader = fixed_stream.reader();
-
-            var stream_encoder: RLEStreamEncoder(IntType) = .{};
-            var index: usize = 0;
-            while (index < source_data.len and ((index + INDEX_STEP) <= source_data.len)) {
-                switch (stream_encoder.state) {
-                    .unique => {
-                        if (stream_encoder.window.len >= RLE_MAXIMUM_LENGTH) {
-                            try RunLengthEncoderCommon.flushRaw(IntType, writer, stream_encoder.window.constSlice());
-                            stream_encoder.clear();
-                        }
-
-                        const read_value = try reader.takeInt(IntType, .little);
-
-                        const current_value_splatted: VectorType = @splat(read_value);
-                        const compare_chunk = simd.loadBytes(source_data[index..], VectorType, 0);
-
-                        const compare_mask = (current_value_splatted == compare_chunk);
-                        const inverted_mask = ~@as(MaskType, @bitCast(compare_mask));
-                        const current_similar_count = @ctz(inverted_mask);
-
-                        if (current_similar_count == VECTOR_LENGTH) {
-                            stream_encoder.window.append(read_value) catch return std.Io.Writer.Error.WriteFailed;
-
-                            stream_encoder.similar_count += current_similar_count;
-                            stream_encoder.state = .repeated;
-
-                            try reader.discardAll((current_similar_count - 1) * BYTES_PER_PIXELS);
-                            index += current_similar_count * BYTES_PER_PIXELS;
-                        } else if ((current_similar_count > 0 and stream_encoder.window.len > 0 and stream_encoder.window.last() == read_value) or current_similar_count > 1) {
-                            if (stream_encoder.window.len == 0 or stream_encoder.window.last() != read_value) {
-                                stream_encoder.window.append(read_value) catch return std.Io.Writer.Error.WriteFailed;
-                            }
-                            stream_encoder.state = .repeated;
-                            stream_encoder.similar_count += current_similar_count;
-
-                            try stream_encoder.flush(writer);
-
-                            stream_encoder.state = .unique;
-
-                            try reader.discardAll((current_similar_count - 1) * BYTES_PER_PIXELS);
-                            index += current_similar_count * BYTES_PER_PIXELS;
-                        } else {
-                            stream_encoder.window.append(read_value) catch return std.Io.Writer.Error.WriteFailed;
-                            index += BYTES_PER_PIXELS;
-                        }
-                    },
-                    .repeated => {
-                        const read_value = try reader.takeInt(IntType, .little);
-
-                        const current_value_splatted: VectorType = @splat(read_value);
-                        const compare_chunk = simd.loadBytes(source_data[index..], VectorType, 0);
-
-                        const compare_mask = (current_value_splatted == compare_chunk);
-                        const inverted_mask = ~@as(MaskType, @bitCast(compare_mask));
-                        const current_similar_count = @ctz(inverted_mask);
-
-                        if (current_similar_count == VECTOR_LENGTH and read_value == stream_encoder.window.last()) {
-                            stream_encoder.similar_count += current_similar_count;
-
-                            try reader.discardAll((current_similar_count - 1) * BYTES_PER_PIXELS);
-                            index += current_similar_count * BYTES_PER_PIXELS;
-
-                            if (stream_encoder.similar_count >= RLE_MAXIMUM_LENGTH or stream_encoder.window.len >= RLE_MAXIMUM_LENGTH) {
-                                try stream_encoder.flush(writer);
-
-                                stream_encoder.state = .unique;
-                            }
-                        } else if (current_similar_count > 0 and read_value == stream_encoder.window.last()) {
-                            stream_encoder.similar_count += current_similar_count;
-
-                            try stream_encoder.flush(writer);
-
-                            stream_encoder.state = .unique;
-
-                            try reader.discardAll((current_similar_count - 1) * BYTES_PER_PIXELS);
-                            index += current_similar_count * BYTES_PER_PIXELS;
-                        } else {
-                            try stream_encoder.flush(writer);
-
-                            stream_encoder.window.append(read_value) catch return std.Io.Writer.Error.WriteFailed;
-                            stream_encoder.state = .unique;
-
-                            index += BYTES_PER_PIXELS;
-                        }
-                    },
-                }
-            }
-
-            // Process the rest sequentially
-            while (index < source_data.len) {
-                const read_value = try reader.takeInt(IntType, .little);
-                index += BYTES_PER_PIXELS;
-
-                try stream_encoder.encode(writer, read_value);
-            }
-
-            try stream_encoder.flush(writer);
-        }
-    };
+    return compressions.rle.Compressor(.{
+        .IntType = IntType,
+        .PacketFormatterType = TargaRlePacketFormatter,
+        .maximum_length = RLE_MAXIMUM_LENGTH,
+        .vector_length = optional_parameters.vector_length,
+    }).Simd;
 }
 
 test "TGA RLE SIMD u8 (bytes) encoder" {
