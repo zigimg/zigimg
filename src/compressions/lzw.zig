@@ -239,7 +239,8 @@ pub fn Encoder(comptime endian: std.builtin.Endian) type {
 
         /// Write code using MSB-first ordering (used by TIFF)
         fn writeCodeMsb(self: *Self, writer: *std.Io.Writer, code: u32) Error!void {
-            self.bits |= code << (@as(u5, 32) - self.width - self.num_bits);
+            const shift: u5 = @intCast(32 - @as(u6, self.width) - @as(u6, self.num_bits));
+            self.bits |= code << shift;
             self.num_bits += @intCast(self.width);
 
             while (self.num_bits >= 8) {

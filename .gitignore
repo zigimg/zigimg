@@ -2,3 +2,4 @@
 zig-cache
 /refs
 zig-out/
+.DS_Store

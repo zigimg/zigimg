@@ -15,7 +15,9 @@ pub fn decode(read_stream: *io.ReadStream, temp_buffer: []u8, length: u32) !void
                 if (input_offset >= length) {
                     return;
                 }
-                temp_buffer[output_offset] = try reader.takeByte();
+                const byte = try reader.takeByte();
+                if (output_offset >= temp_buffer.len) return error.InvalidData;
+                temp_buffer[output_offset] = byte;
                 output_offset += 1;
                 input_offset += 1;
             }
@@ -26,6 +28,7 @@ pub fn decode(read_stream: *io.ReadStream, temp_buffer: []u8, length: u32) !void
             const value = try reader.takeByte();
             input_offset += 1;
             for (0..257 - control) |_| {
+                if (output_offset >= temp_buffer.len) return error.InvalidData;
                 temp_buffer[output_offset] = value;
                 output_offset += 1;
             }
