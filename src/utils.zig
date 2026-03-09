@@ -19,6 +19,44 @@ pub fn FixedStorage(comptime T: type, comptime storage_size: usize) type {
     };
 }
 
+pub fn FixedDynamicArray(comptime T: type, comptime MaxSize: usize) type {
+    return struct {
+        data: [MaxSize]T = undefined,
+        len: usize = 0,
+
+        const Self = @This();
+
+        pub fn clear(self: *Self) void {
+            self.len = 0;
+        }
+
+        pub fn append(self: *Self, value: T) !void {
+            if (self.len >= MaxSize) {
+                return error.ArrayFull;
+            }
+
+            self.data[self.len] = value;
+            self.len += 1;
+        }
+
+        pub fn first(self: *const Self) T {
+            return self.data[0];
+        }
+
+        pub fn last(self: *const Self) T {
+            return self.data[self.len - 1];
+        }
+
+        pub fn slice(self: *Self) []T {
+            return self.data[0..self.len];
+        }
+
+        pub fn constSlice(self: *const Self) []const T {
+            return self.data[0..self.len];
+        }
+    };
+}
+
 pub fn toMagicNumberNative(magic: []const u8) u32 {
     var result: u32 = 0;
     for (magic, 0..) |character, index| {

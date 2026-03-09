@@ -1,10 +1,10 @@
-const FormatInterface = @import("../FormatInterface.zig");
-const PixelFormat = @import("../pixel_format.zig").PixelFormat;
-const io = @import("../io.zig");
 const color = @import("../color.zig");
+const compressions = @import("../compressions.zig");
+const FormatInterface = @import("../FormatInterface.zig");
 const Image = @import("../Image.zig");
+const io = @import("../io.zig");
+const PixelFormat = @import("../pixel_format.zig").PixelFormat;
 const std = @import("std");
-const simd = @import("../simd.zig");
 const utils = @import("../utils.zig");
 
 const toU5 = color.ScaleValue(u5);
@@ -290,27 +290,10 @@ const TargaRLEDecoder = struct {
     }
 };
 
-const RLEPacketMask = 1 << 7;
-const RLEMinLength = 2;
-const RLEMaxLength = RLEPacketMask;
+const RLE_MAXIMUM_LENGTH = 1 << 7;
 
-const RunLengthEncoderCommon = struct {
-    pub fn flush(comptime IntType: type, writer: *std.Io.Writer, value: IntType, count: usize) !void {
-        var current_count = count;
-        while (current_count > 0) {
-            const length_to_write = @min(current_count, RLEMaxLength);
-
-            if (length_to_write >= RLEMinLength) {
-                try flushRLE(IntType, writer, value, length_to_write);
-            } else {
-                try flushRaw(IntType, writer, value, length_to_write);
-            }
-
-            current_count -= length_to_write;
-        }
-    }
-
-    pub inline fn flushRLE(comptime IntType: type, writer: *std.Io.Writer, value: IntType, count: usize) !void {
+const TargaRlePacketFormatter = struct {
+    pub fn flushRLE(comptime IntType: type, writer: *std.Io.Writer, value: IntType, count: usize) !void {
         const rle_packet_header = RLEPacketHeader{
             .count = @truncate(count - 1),
             .packet_type = .repeated,
@@ -319,135 +302,30 @@ const RunLengthEncoderCommon = struct {
         try writer.writeInt(IntType, value, .little);
     }
 
-    pub inline fn flushRaw(comptime IntType: type, writer: *std.Io.Writer, value: IntType, count: usize) !void {
+    pub fn flushRaw(comptime IntType: type, writer: *std.Io.Writer, slice: []const IntType) !void {
         const rle_packet_header = RLEPacketHeader{
-            .count = @truncate(count - 1),
+            .count = @truncate(slice.len - 1),
             .packet_type = .raw,
         };
         try writer.writeByte(@bitCast(rle_packet_header));
 
-        for (0..count) |_| {
-            try writer.writeInt(IntType, value, .little);
+        for (slice) |entry| {
+            try writer.writeInt(IntType, entry, .little);
         }
     }
 };
 
-fn RunLengthSimpleEncoder(comptime IntType: type) type {
-    return struct {
-        pub fn encode(source_data: []const u8, writer: *std.Io.Writer) !void {
-            if (source_data.len == 0) {
-                return;
-            }
-
-            var fixed_stream = io.ReadStream.initMemory(source_data);
-            const reader = fixed_stream.reader();
-
-            var total_similar_count: usize = 0;
-            var compared_value = try reader.takeInt(IntType, .little);
-            total_similar_count = 1;
-
-            while (fixed_stream.getPos() < (try fixed_stream.getEndPos())) {
-                const read_value = try reader.takeInt(IntType, .little);
-                if (read_value == compared_value) {
-                    total_similar_count += 1;
-                } else {
-                    try RunLengthEncoderCommon.flush(IntType, writer, compared_value, total_similar_count);
-
-                    compared_value = read_value;
-                    total_similar_count = 1;
-                }
-            }
-
-            try RunLengthEncoderCommon.flush(IntType, writer, compared_value, total_similar_count);
-        }
-    };
+fn RleStreamEncoder(comptime IntType: type) type {
+    return compressions.rle.Compressor(.{
+        .IntType = IntType,
+        .PacketFormatterType = TargaRlePacketFormatter,
+        .maximum_length = RLE_MAXIMUM_LENGTH,
+    }).StreamEncoder;
 }
 
-fn RunLengthSIMDEncoder(
-    comptime IntType: type,
-    comptime optional_parameters: struct {
-        vector_length: comptime_int = std.simd.suggestVectorLength(IntType) orelse 4,
-    },
-) type {
+fn RLEStreamColorEncoder(comptime ColorType: type) type {
     return struct {
-        const VectorLength = optional_parameters.vector_length;
-        const VectorType = @Vector(VectorLength, IntType);
-        const BytesPerPixels = (@typeInfo(IntType).int.bits + 7) / 8;
-        const IndexStep = VectorLength * BytesPerPixels;
-        const MaskType = std.meta.Int(.unsigned, VectorLength);
-
-        comptime {
-            if (!std.math.isPowerOfTwo(@typeInfo(IntType).int.bits)) {
-                @compileError("Only power of two integers are supported by the run-length SIMD encoder");
-            }
-        }
-
-        pub fn encode(source_data: []const u8, writer: *std.Io.Writer) !void {
-            if (source_data.len == 0) {
-                return;
-            }
-
-            var index: usize = 0;
-
-            var total_similar_count: usize = 0;
-
-            var fixed_stream = io.ReadStream.initMemory(source_data);
-            const reader = fixed_stream.reader();
-
-            var compared_value = try reader.takeInt(IntType, .little);
-            try fixed_stream.seekTo(0);
-
-            while (index < source_data.len and ((index + IndexStep) <= source_data.len)) {
-                const read_value = try reader.takeInt(IntType, .little);
-
-                const current_byte_splatted: VectorType = @splat(read_value);
-                const compare_chunk = simd.loadBytes(source_data[index..], VectorType, 0);
-
-                const compare_mask = (current_byte_splatted == compare_chunk);
-                const inverted_mask = ~@as(MaskType, @bitCast(compare_mask));
-                const current_similar_count = @ctz(inverted_mask);
-
-                if (current_similar_count == VectorLength and compared_value == read_value) {
-                    total_similar_count += current_similar_count;
-                    index += current_similar_count * BytesPerPixels;
-
-                    try reader.discardAll((current_similar_count - 1) * BytesPerPixels);
-
-                    compared_value = read_value;
-                } else {
-                    if (compared_value == read_value) {
-                        total_similar_count += current_similar_count;
-                        try RunLengthEncoderCommon.flush(IntType, writer, compared_value, total_similar_count);
-
-                        compared_value = read_value;
-                        total_similar_count = 0;
-                    } else {
-                        try RunLengthEncoderCommon.flush(IntType, writer, compared_value, total_similar_count);
-
-                        compared_value = read_value;
-                        total_similar_count = current_similar_count;
-                    }
-
-                    index += current_similar_count * BytesPerPixels;
-
-                    try reader.discardAll((current_similar_count - 1) * BytesPerPixels);
-                }
-            }
-
-            try RunLengthEncoderCommon.flush(IntType, writer, compared_value, total_similar_count);
-
-            // Process the rest sequentially
-            if (index < source_data.len) {
-                try RunLengthSimpleEncoder(IntType).encode(source_data[index..], writer);
-            }
-        }
-    };
-}
-
-fn RLEStreamEncoder(comptime ColorType: type) type {
-    return struct {
-        rle_value: ?ColorType = null,
-        length: usize = 0,
+        encoder: RleStreamEncoder(IntType) = .{},
 
         const IntType = switch (ColorType) {
             color.Bgr24 => u24,
@@ -455,40 +333,121 @@ fn RLEStreamEncoder(comptime ColorType: type) type {
             else => @compileError("Not supported color format"),
         };
 
-        pub fn encode(self: *@This(), writer: *std.Io.Writer, value: ColorType) !void {
-            if (self.rle_value == null) {
-                self.rle_value = value;
-                self.length = 1;
-                return;
-            }
+        const Self = @This();
 
-            if (self.rle_value) |rle_value| {
-                if (std.mem.eql(u8, std.mem.asBytes(&rle_value), std.mem.asBytes(&value))) {
-                    self.length += 1;
-                } else {
-                    try RunLengthEncoderCommon.flush(IntType, writer, @as(IntType, @bitCast(rle_value)), self.length);
-
-                    self.length = 1;
-                    self.rle_value = value;
-                }
-            }
+        pub fn encode(self: *Self, writer: *std.Io.Writer, value: ColorType) std.Io.Writer.Error!void {
+            return self.encoder.encode(writer, @as(IntType, @bitCast(value)));
         }
 
-        pub fn flush(self: *@This(), writer: *std.Io.Writer) !void {
-            if (self.length == 0) {
-                return;
-            }
-
-            if (self.rle_value) |rle_value| {
-                try RunLengthEncoderCommon.flush(IntType, writer, @as(IntType, @bitCast(rle_value)), self.length);
-            }
+        pub fn flush(self: *Self, writer: *std.Io.Writer) !void {
+            return self.encoder.flush(writer);
         }
     };
+}
+
+test "TGA RLE Stream Color Encoder: Produce optimal raw packets (Bgr24)" {
+    const colors = @import("../predefined_colors.zig");
+    const WHITE = colors.Colors(color.Bgr24).White;
+    const BLACK = colors.Colors(color.Bgr24).Black;
+    const RED = colors.Colors(color.Bgr24).Red;
+    const GREEN = colors.Colors(color.Bgr24).Green;
+    const BLUE = colors.Colors(color.Bgr24).Blue;
+
+    const UNCOMPRESSED_DATA = [_]color.Bgr24{ RED, GREEN, BLUE, RED, GREEN, BLUE, WHITE, WHITE, WHITE, WHITE, RED, GREEN, BLUE, BLACK };
+    const COMPRESSED_DATA = [_]u8{ 0x05, 0x00, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0x00, 0x83, 0xFF, 0xFF, 0xFF, 0x03, 0x00, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00 };
+
+    var allocating_writer = std.Io.Writer.Allocating.init(std.testing.allocator);
+    defer allocating_writer.deinit();
+
+    const writer = &allocating_writer.writer;
+
+    var stream_encoder: RLEStreamColorEncoder(color.Bgr24) = .{};
+
+    for (UNCOMPRESSED_DATA) |entry| {
+        try stream_encoder.encode(writer, entry);
+    }
+
+    try stream_encoder.flush(writer);
+
+    try std.testing.expectEqualSlices(u8, &COMPRESSED_DATA, allocating_writer.written());
+}
+
+fn RunLengthSimpleEncoder(comptime IntType: type) type {
+    return compressions.rle.Compressor(.{
+        .IntType = IntType,
+        .PacketFormatterType = TargaRlePacketFormatter,
+        .maximum_length = RLE_MAXIMUM_LENGTH,
+    }).Simple;
+}
+
+test "TGA RLE simple u24 encoder" {
+    const uncompressed_source = [_]color.Rgb24{
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
+        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
+        .{ .r = 0x1, .g = 0x2, .b = 0x3 },
+        .{ .r = 0x4, .g = 0x5, .b = 0x6 },
+        .{ .r = 0x7, .g = 0x8, .b = 0x9 },
+    };
+    const uncompressed_data = std.mem.sliceAsBytes(uncompressed_source[0..]);
+
+    const compressed_data = [_]u8{
+        0x87, 0xEF, 0xCD, 0xAB,
+        0x02, 0x01, 0x02, 0x03,
+        0x04, 0x05, 0x06, 0x07,
+        0x08, 0x09,
+    };
+
+    var allocating_writer = std.Io.Writer.Allocating.init(std.testing.allocator);
+    defer allocating_writer.deinit();
+
+    try RunLengthSimpleEncoder(u24).encode(uncompressed_data[0..], &allocating_writer.writer);
+
+    try std.testing.expectEqualSlices(u8, compressed_data[0..], allocating_writer.written());
+}
+
+fn RunLengthSIMDEncoder(
+    comptime IntType: type,
+    comptime optional_parameters: struct {
+        vector_length: ?comptime_int = null,
+    },
+) type {
+    return compressions.rle.Compressor(.{
+        .IntType = IntType,
+        .PacketFormatterType = TargaRlePacketFormatter,
+        .maximum_length = RLE_MAXIMUM_LENGTH,
+        .vector_length = optional_parameters.vector_length,
+    }).Simd;
 }
 
 test "TGA RLE SIMD u8 (bytes) encoder" {
     const uncompressed_data = [_]u8{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 64, 64, 2, 2, 2, 2, 2, 215, 215, 215, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 200, 200, 200, 200, 210, 210 };
     const compressed_data = [_]u8{ 0x88, 0x01, 0x81, 0x40, 0x84, 0x02, 0x82, 0xD7, 0x89, 0x03, 0x83, 0xC8, 0x81, 0xD2 };
+
+    const Test = struct {
+        pub fn do(comptime vector_length: comptime_int) !void {
+            var allocating_writer = std.Io.Writer.Allocating.init(std.testing.allocator);
+            defer allocating_writer.deinit();
+
+            try RunLengthSIMDEncoder(u8, .{ .vector_length = vector_length }).encode(uncompressed_data[0..], &allocating_writer.writer);
+            try std.testing.expectEqualSlices(u8, compressed_data[0..], allocating_writer.written());
+        }
+    };
+
+    try Test.do(4);
+    try Test.do(8);
+    try Test.do(16);
+    try Test.do(32);
+}
+
+test "TGA RLE SIMD u8 (bytes) encoder should compress raw data more" {
+    const uncompressed_data = [_]u8{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 64, 64, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+    const compressed_data = [_]u8{ 0x88, 0x01, 0x81, 0x40, 0x0F, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 0x10 };
 
     const Test = struct {
         pub fn do(comptime vector_length: comptime_int) !void {
@@ -534,7 +493,7 @@ test "TGA RLE SIMD u16 encoder" {
     const uncompressed_source = [_]u16{ 0x301, 0x301, 0x301, 0x301, 0x301, 0x301, 0x301, 0x301, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8 };
     const uncompressed_data = std.mem.sliceAsBytes(uncompressed_source[0..]);
 
-    const compressed_data = [_]u8{ 0x87, 0x01, 0x03, 0x00, 0x01, 0x00, 0x00, 0x02, 0x00, 0x00, 0x03, 0x00, 0x00, 0x04, 0x00, 0x00, 0x05, 0x00, 0x00, 0x06, 0x00, 0x00, 0x07, 0x00, 0x00, 0x08, 0x00 };
+    const compressed_data = [_]u8{ 0x87, 0x01, 0x03, 0x07, 0x01, 0x00, 0x02, 0x00, 0x03, 0x00, 0x04, 0x00, 0x05, 0x00, 0x06, 0x00, 0x07, 0x00, 0x08, 0x00 };
 
     const Test = struct {
         pub fn do(comptime vector_length: comptime_int, compressed_data_param: []const u8, uncompressed_data_param: []const u8) !void {
@@ -557,7 +516,7 @@ test "TGA RLE SIMD u32 encoder" {
     const uncompressed_source = [_]u32{ 0xFFABCDEF, 0xFFABCDEF, 0xFFABCDEF, 0xFFABCDEF, 0xFFABCDEF, 0xFFABCDEF, 0xFFABCDEF, 0xFFABCDEF, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8 };
     const uncompressed_data = std.mem.sliceAsBytes(uncompressed_source[0..]);
 
-    const compressed_data = [_]u8{ 0x87, 0xEF, 0xCD, 0xAB, 0xFF, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00 };
+    const compressed_data = [_]u8{ 0x87, 0xEF, 0xCD, 0xAB, 0xFF, 0x07, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00 };
 
     const Test = struct {
         pub fn do(comptime vector_length: comptime_int, compressed_data_param: []const u8, uncompressed_data_param: []const u8) !void {
@@ -574,37 +533,6 @@ test "TGA RLE SIMD u32 encoder" {
     try Test.do(8, compressed_data[0..], uncompressed_data);
     try Test.do(16, compressed_data[0..], uncompressed_data);
     try Test.do(32, compressed_data[0..], uncompressed_data);
-}
-
-test "TGA RLE simple u24 encoder" {
-    const uncompressed_source = [_]color.Rgb24{
-        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
-        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
-        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
-        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
-        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
-        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
-        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
-        .{ .r = 0xEF, .g = 0xCD, .b = 0xAB },
-        .{ .r = 0x1, .g = 0x2, .b = 0x3 },
-        .{ .r = 0x4, .g = 0x5, .b = 0x6 },
-        .{ .r = 0x7, .g = 0x8, .b = 0x9 },
-    };
-    const uncompressed_data = std.mem.sliceAsBytes(uncompressed_source[0..]);
-
-    const compressed_data = [_]u8{
-        0x87, 0xEF, 0xCD, 0xAB,
-        0x00, 0x01, 0x02, 0x03,
-        0x00, 0x04, 0x05, 0x06,
-        0x00, 0x07, 0x08, 0x09,
-    };
-
-    var allocating_writer = std.Io.Writer.Allocating.init(std.testing.allocator);
-    defer allocating_writer.deinit();
-
-    try RunLengthSimpleEncoder(u24).encode(uncompressed_data[0..], &allocating_writer.writer);
-
-    try std.testing.expectEqualSlices(u8, compressed_data[0..], allocating_writer.written());
 }
 
 pub const TGA = struct {
@@ -1252,7 +1180,7 @@ pub const TGA = struct {
         const image_height = self.height();
 
         if (self.header.image_type.run_length) {
-            var rle_encoder = RLEStreamEncoder(color.Bgr24){};
+            var rle_encoder = RLEStreamColorEncoder(color.Bgr24){};
 
             if (self.header.image_spec.descriptor.top_to_bottom) {
                 for (0..image_height) |y| {
@@ -1315,7 +1243,7 @@ pub const TGA = struct {
         const image_height = self.height();
 
         if (self.header.image_type.run_length) {
-            var rle_encoder = RLEStreamEncoder(color.Bgra32){};
+            var rle_encoder = RLEStreamColorEncoder(color.Bgra32){};
 
             if (self.header.image_spec.descriptor.top_to_bottom) {
                 for (0..image_height) |y| {
