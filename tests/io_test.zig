@@ -51,16 +51,17 @@ test "io.ReadStream: should error on invalid seek within memory" {
 
 test "io.ReadStream: should read and seek properly within a unbuffered file" {
     const TEST_FILENAME = "io_read_stream_test.dat";
+    const io = std.testing.io;
 
     var temp_folder = std.testing.tmpDir(.{});
     defer temp_folder.cleanup();
 
-    try temp_folder.dir.writeFile(.{ .sub_path = TEST_FILENAME, .data = TEST_FILE_CONTENTS });
+    try temp_folder.dir.writeFile(io, .{ .sub_path = TEST_FILENAME, .data = TEST_FILE_CONTENTS });
 
-    const read_file = try temp_folder.dir.openFile(TEST_FILENAME, .{});
-    defer read_file.close();
+    const read_file = try temp_folder.dir.openFile(io, TEST_FILENAME, .{});
+    defer read_file.close(io);
 
-    var read_stream = zigimg.io.ReadStream.initFile(read_file, &.{});
+    var read_stream = zigimg.io.ReadStream.initFile(io, read_file, &.{});
 
     var reader = read_stream.reader();
 
@@ -95,16 +96,17 @@ test "io.ReadStream: should read and seek properly within a unbuffered file" {
 
 test "io.ReadStream: should error on invalid seek within unbuffered file" {
     const TEST_FILENAME = "io_read_stream_test.dat";
+    const io = std.testing.io;
 
     var temp_folder = std.testing.tmpDir(.{});
     defer temp_folder.cleanup();
 
-    try temp_folder.dir.writeFile(.{ .sub_path = TEST_FILENAME, .data = TEST_FILE_CONTENTS });
+    try temp_folder.dir.writeFile(io, .{ .sub_path = TEST_FILENAME, .data = TEST_FILE_CONTENTS });
 
-    const read_file = try temp_folder.dir.openFile(TEST_FILENAME, .{});
-    defer read_file.close();
+    const read_file = try temp_folder.dir.openFile(io, TEST_FILENAME, .{});
+    defer read_file.close(io);
 
-    var read_stream = zigimg.io.ReadStream.initFile(read_file, &.{});
+    var read_stream = zigimg.io.ReadStream.initFile(io, read_file, &.{});
 
     const seek_to_error = read_stream.seekTo(123456);
     try helpers.expectError(seek_to_error, zigimg.io.ReadStream.SeekError.Unseekable);
@@ -118,17 +120,18 @@ test "io.ReadStream: should error on invalid seek within unbuffered file" {
 
 test "io.ReadStream: should read and seek properly within a file with a small buffer" {
     const TEST_FILENAME = "io_read_stream_test.dat";
+    const io = std.testing.io;
 
     var temp_folder = std.testing.tmpDir(.{});
     defer temp_folder.cleanup();
 
-    try temp_folder.dir.writeFile(.{ .sub_path = TEST_FILENAME, .data = TEST_FILE_CONTENTS });
+    try temp_folder.dir.writeFile(io, .{ .sub_path = TEST_FILENAME, .data = TEST_FILE_CONTENTS });
 
-    const read_file = try temp_folder.dir.openFile(TEST_FILENAME, .{});
-    defer read_file.close();
+    const read_file = try temp_folder.dir.openFile(io, TEST_FILENAME, .{});
+    defer read_file.close(io);
 
     var small_buffer: [30]u8 = @splat(0);
-    var read_stream = zigimg.io.ReadStream.initFile(read_file, small_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(io, read_file, small_buffer[0..]);
 
     var reader = read_stream.reader();
 
@@ -160,17 +163,18 @@ test "io.ReadStream: should read and seek properly within a file with a small bu
 
 test "io.ReadStream: should read and seek properly within a file with a large buffer" {
     const TEST_FILENAME = "io_read_stream_test.dat";
+    const io = std.testing.io;
 
     var temp_folder = std.testing.tmpDir(.{});
     defer temp_folder.cleanup();
 
-    try temp_folder.dir.writeFile(.{ .sub_path = TEST_FILENAME, .data = TEST_FILE_CONTENTS });
+    try temp_folder.dir.writeFile(io, .{ .sub_path = TEST_FILENAME, .data = TEST_FILE_CONTENTS });
 
-    const read_file = try temp_folder.dir.openFile(TEST_FILENAME, .{});
-    defer read_file.close();
+    const read_file = try temp_folder.dir.openFile(io, TEST_FILENAME, .{});
+    defer read_file.close(io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(io, read_file, read_buffer[0..]);
 
     var reader = read_stream.reader();
 
@@ -201,18 +205,19 @@ test "io.ReadStream: should read and seek properly within a file with a large bu
 }
 
 test "io.ReadStream: should error on invalid seek within a file with a large buffer" {
+    const io = std.testing.io;
     const TEST_FILENAME = "io_read_stream_test.dat";
 
     var temp_folder = std.testing.tmpDir(.{});
     defer temp_folder.cleanup();
 
-    try temp_folder.dir.writeFile(.{ .sub_path = TEST_FILENAME, .data = TEST_FILE_CONTENTS });
+    try temp_folder.dir.writeFile(io, .{ .sub_path = TEST_FILENAME, .data = TEST_FILE_CONTENTS });
 
-    const read_file = try temp_folder.dir.openFile(TEST_FILENAME, .{});
-    defer read_file.close();
+    const read_file = try temp_folder.dir.openFile(io, TEST_FILENAME, .{});
+    defer read_file.close(io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(io, read_file, read_buffer[0..]);
 
     const seek_to_error = read_stream.seekTo(123456);
     try helpers.expectError(seek_to_error, zigimg.io.ReadStream.SeekError.Unseekable);
@@ -254,6 +259,7 @@ test "io.WriteStream: should write property within memory" {
 
 test "io.WriteStream: should write property within a file with a small buffer" {
     const TEST_FILENAME = "io_write_stream_test.dat";
+    const io = std.testing.io;
 
     var buffer: [8]u8 = @splat(0);
 
@@ -261,10 +267,10 @@ test "io.WriteStream: should write property within a file with a small buffer" {
     defer temp_folder.cleanup();
 
     {
-        const write_file = try temp_folder.dir.createFile(TEST_FILENAME, .{});
-        defer write_file.close();
+        const write_file = try temp_folder.dir.createFile(io, TEST_FILENAME, .{});
+        defer write_file.close(io);
 
-        var write_stream = zigimg.io.WriteStream.initFile(write_file, buffer[0..]);
+        var write_stream = zigimg.io.WriteStream.initFile(io, write_file, buffer[0..]);
 
         var writer = write_stream.writer();
         try writer.writeAll(TEST_FILE_CONTENTS[0..3]);
@@ -283,11 +289,11 @@ test "io.WriteStream: should write property within a file with a small buffer" {
         try writer.flush();
     }
 
-    var read_file = try temp_folder.dir.openFile(TEST_FILENAME, .{});
-    defer read_file.close();
+    var read_file = try temp_folder.dir.openFile(io, TEST_FILENAME, .{});
+    defer read_file.close(io);
 
     var read_buffer: [1024]u8 = @splat(0);
-    var file_reader = read_file.reader(read_buffer[0..]);
+    var file_reader = read_file.reader(io, read_buffer[0..]);
 
     var reader = &file_reader.interface;
 
@@ -304,12 +310,14 @@ test "io.WriteStream: should write property within a file with a large buffer" {
     var temp_folder = std.testing.tmpDir(.{});
     defer temp_folder.cleanup();
 
+    const io = std.testing.io;
+
     {
-        const write_file = try temp_folder.dir.createFile(TEST_FILENAME, .{});
-        defer write_file.close();
+        const write_file = try temp_folder.dir.createFile(io, TEST_FILENAME, .{});
+        defer write_file.close(io);
 
         var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        var write_stream = zigimg.io.WriteStream.initFile(write_file, write_buffer[0..]);
+        var write_stream = zigimg.io.WriteStream.initFile(io, write_file, write_buffer[0..]);
 
         var writer = write_stream.writer();
         try writer.writeAll(TEST_FILE_CONTENTS[0..3]);
@@ -328,11 +336,11 @@ test "io.WriteStream: should write property within a file with a large buffer" {
         try writer.flush();
     }
 
-    var read_file = try temp_folder.dir.openFile(TEST_FILENAME, .{});
-    defer read_file.close();
+    var read_file = try temp_folder.dir.openFile(io, TEST_FILENAME, .{});
+    defer read_file.close(io);
 
     var read_buffer: [1024]u8 = @splat(0);
-    var file_reader = read_file.reader(read_buffer[0..]);
+    var file_reader = read_file.reader(io, read_buffer[0..]);
 
     var reader = &file_reader.interface;
 

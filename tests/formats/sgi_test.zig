@@ -4,11 +4,12 @@ const std = @import("std");
 const zigimg = @import("zigimg");
 
 test "Should error on non SGI images" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
-    defer file.close();
+    const io = std.testing.io;
+    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "bmp/simple_v4.bmp");
+    defer file.close(io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
 
     var sgi_file = sgi.SGI{};
 
@@ -17,13 +18,14 @@ test "Should error on non SGI images" {
 }
 
 test "SGI 24-bit uncompressed" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "sgi/sample-rgb24.sgi");
-    defer file.close();
+    const io = std.testing.io;
+    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "sgi/sample-rgb24.sgi");
+    defer file.close(io);
 
     var sgi_file = sgi.SGI{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
 
     const pixels = try sgi_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -45,13 +47,14 @@ test "SGI 24-bit uncompressed" {
 }
 
 test "SGI grayscale uncompressed" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "sgi/sample-blackwhite.sgi");
-    defer file.close();
+    const io = std.testing.io;
+    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "sgi/sample-blackwhite.sgi");
+    defer file.close(io);
 
     var sgi_file = sgi.SGI{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
 
     const pixels = try sgi_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -65,13 +68,14 @@ test "SGI grayscale uncompressed" {
 }
 
 test "SGI 32-bit RGBA uncompressed" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "sgi/sample-rgba.sgi");
-    defer file.close();
+    const io = std.testing.io;
+    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "sgi/sample-rgba.sgi");
+    defer file.close(io);
 
     var sgi_file = sgi.SGI{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
 
     const pixels = try sgi_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -93,13 +97,14 @@ test "SGI 32-bit RGBA uncompressed" {
 }
 
 test "SGI RGB48be uncompressed" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "sgi/sample-rgb48be.sgi");
-    defer file.close();
+    const io = std.testing.io;
+    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "sgi/sample-rgb48be.sgi");
+    defer file.close(io);
 
     var sgi_file = sgi.SGI{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
 
     const pixels = try sgi_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -121,13 +126,14 @@ test "SGI RGB48be uncompressed" {
 }
 
 test "SGI grayscale rle compressed" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "sgi/sample-gray-rle.sgi");
-    defer file.close();
+    const io = std.testing.io;
+    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "sgi/sample-gray-rle.sgi");
+    defer file.close(io);
 
     var sgi_file = sgi.SGI{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
 
     const pixels = try sgi_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -141,13 +147,14 @@ test "SGI grayscale rle compressed" {
 }
 
 test "SGI 24-bit rle compressed" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "sgi/sample-24bit-rle.sgi");
-    defer file.close();
+    const io = std.testing.io;
+    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "sgi/sample-24bit-rle.sgi");
+    defer file.close(io);
 
     var sgi_file = sgi.SGI{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
 
     const pixels = try sgi_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -169,13 +176,14 @@ test "SGI 24-bit rle compressed" {
 }
 
 test "SGI RGB48be rle uncompressed" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "sgi/sample-rgb48be-rle.sgi");
-    defer file.close();
+    const io = std.testing.io;
+    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "sgi/sample-rgb48be-rle.sgi");
+    defer file.close(io);
 
     var sgi_file = sgi.SGI{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
 
     const pixels = try sgi_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -197,13 +205,14 @@ test "SGI RGB48be rle uncompressed" {
 }
 
 test "SGI 32-bit RGBA rle compressed" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "sgi/sample-rgba-rle.sgi");
-    defer file.close();
+    const io = std.testing.io;
+    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "sgi/sample-rgba-rle.sgi");
+    defer file.close(io);
 
     var sgi_file = sgi.SGI{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
 
     const pixels = try sgi_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);

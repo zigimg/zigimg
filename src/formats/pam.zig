@@ -77,7 +77,7 @@ const Header = struct {
         }
 
         {
-            var line_buffer_stream = try std.io.Writer.Allocating.initCapacity(allocator, 32);
+            var line_buffer_stream = try std.Io.Writer.Allocating.initCapacity(allocator, 32);
             defer line_buffer_stream.deinit();
 
             while (true) {

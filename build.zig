@@ -18,6 +18,7 @@ pub fn build(b: *Build) void {
         .name = "zigimgtest",
         .root_module = zigimg_module,
         .filters = test_filters,
+        .use_llvm = true,
     });
 
     b.installArtifact(zigimg_build_test);

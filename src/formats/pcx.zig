@@ -218,7 +218,7 @@ test "PCX RLE Fast encoder" {
     const uncompressed_data = [_]u8{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 64, 64, 2, 2, 2, 2, 2, 215, 215, 215, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 200, 200, 200, 200, 210, 210 };
     const compressed_data = [_]u8{ 0xC9, 0x01, 0xC2, 0x40, 0xC5, 0x02, 0xC3, 0xD7, 0xCA, 0x03, 0xC4, 0xC8, 0xC2, 0xD2 };
 
-    var writer_alloc = std.io.Writer.Allocating.init(std.testing.allocator);
+    var writer_alloc = std.Io.Writer.Allocating.init(std.testing.allocator);
     defer writer_alloc.deinit();
 
     try RLEFastEncoder.encode(uncompressed_data[0..], &writer_alloc.writer);
@@ -233,7 +233,7 @@ test "PCX RLE Fast encoder should encore more than 63 bytes similar" {
 
     const compressed_data = [_]u8{ 0xFF, 0x45, 0x45, 0x45, 0xC4, 0x1 };
 
-    var writer_alloc = std.io.Writer.Allocating.init(std.testing.allocator);
+    var writer_alloc = std.Io.Writer.Allocating.init(std.testing.allocator);
     defer writer_alloc.deinit();
 
     try RLEFastEncoder.encode(uncompressed_data[0..], &writer_alloc.writer);
