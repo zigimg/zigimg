@@ -101,7 +101,7 @@ pub const AnimationFrame = struct {
 };
 
 pub const Animation = struct {
-    frames: FrameList = .{},
+    frames: FrameList = .empty,
     loop_count: i32 = AnimationLoopInfinite,
 
     pub const FrameList = std.ArrayList(AnimationFrame);
