@@ -8,7 +8,7 @@ const PixelFormatConverter = @import("../PixelFormatConverter.zig");
 const std = @import("std");
 const utils = @import("../utils.zig");
 
-pub const HeaderFlags = packed struct {
+pub const HeaderFlags = packed struct(u8) {
     global_color_table_size: u3 = 0,
     sorted: bool = false,
     color_resolution: u3 = 0,
@@ -129,9 +129,9 @@ const COLOR_TABLE_SHIFT_TYPE = if (@sizeOf(usize) == 4) u5 else u6;
 pub const GIF = struct {
     header: Header = .{},
     global_color_table: utils.FixedStorage(color.Rgb24, 256) = .{},
-    frames: std.ArrayList(FrameData) = .{},
-    comments: std.ArrayList(CommentExtension) = .{},
-    application_infos: std.ArrayList(ApplicationExtension) = .{},
+    frames: std.ArrayList(FrameData) = .empty,
+    comments: std.ArrayList(CommentExtension) = .empty,
+    application_infos: std.ArrayList(ApplicationExtension) = .empty,
     arena_allocator: std.heap.ArenaAllocator = undefined,
 
     pub const SubImage = struct {
@@ -146,7 +146,7 @@ pub const GIF = struct {
 
     pub const FrameData = struct {
         graphics_control: ?GraphicControlExtension = null,
-        sub_images: std.ArrayList(*SubImage) = .{},
+        sub_images: std.ArrayList(*SubImage) = .empty,
 
         pub fn deinit(self: *FrameData, allocator: std.mem.Allocator) void {
             for (self.sub_images.items) |sub_image| {
@@ -683,7 +683,7 @@ pub const GIF = struct {
 
         const frame_list_allocator = self.arena_allocator.child_allocator;
 
-        var frame_list = Image.Animation.FrameList{};
+        var frame_list = Image.Animation.FrameList.empty;
 
         if (self.frames.items.len == 0) {
             var current_animation_frame = try self.createNewAnimationFrame(frame_list_allocator, final_pixel_format);

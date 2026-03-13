@@ -180,6 +180,7 @@ test "Create Image float32" {
 }
 
 test "Should detect BMP properly" {
+    const io = std.testing.io;
     const image_tests = &[_][]const u8{
         helpers.fixtures_path ++ "bmp/simple_v4.bmp",
         helpers.fixtures_path ++ "bmp/windows_rgba_v5.bmp",
@@ -187,17 +188,19 @@ test "Should detect BMP properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .bmp);
 
-        var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
+        var test_image = try helpers.testImageFromFile(io, image_path, read_buffer[0..]);
         defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
 test "Should detect Memory BMP properly" {
+    const io = std.testing.io;
+
     var MemoryRGBABitmap: [200 * 1024]u8 = undefined;
-    const buffer = try helpers.testReadFile(helpers.fixtures_path ++ "bmp/windows_rgba_v5.bmp", MemoryRGBABitmap[0..]);
+    const buffer = try helpers.testReadFile(io, helpers.fixtures_path ++ "bmp/windows_rgba_v5.bmp", MemoryRGBABitmap[0..]);
 
     const format = try Image.detectFormatFromMemory(buffer);
     try std.testing.expect(format == .bmp);
@@ -207,21 +210,23 @@ test "Should detect Memory BMP properly" {
 }
 
 test "Should detect GIF properly" {
+    const io = std.testing.io;
     const image_tests = &[_][]const u8{
         helpers.fixtures_path ++ "gif/depth1.gif",
     };
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .gif);
 
-        var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
+        var test_image = try helpers.testImageFromFile(io, image_path, read_buffer[0..]);
         defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
 test "Should detect PCX properly" {
+    const io = std.testing.io;
     const image_tests = &[_][]const u8{
         helpers.fixtures_path ++ "pcx/test-bpp1.pcx",
         helpers.fixtures_path ++ "pcx/test-bpp4.pcx",
@@ -231,15 +236,16 @@ test "Should detect PCX properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .pcx);
 
-        var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
+        var test_image = try helpers.testImageFromFile(io, image_path, read_buffer[0..]);
         defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
 test "Should detect PBM properly" {
+    const io = std.testing.io;
     const image_tests = &[_][]const u8{
         helpers.fixtures_path ++ "netpbm/pbm_ascii.pbm",
         helpers.fixtures_path ++ "netpbm/pbm_binary.pbm",
@@ -247,15 +253,16 @@ test "Should detect PBM properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .pbm);
 
-        var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
+        var test_image = try helpers.testImageFromFile(io, image_path, read_buffer[0..]);
         defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
 test "Should detect PGM properly" {
+    const io = std.testing.io;
     const image_tests = &[_][]const u8{
         helpers.fixtures_path ++ "netpbm/pgm_ascii_grayscale8.pgm",
         helpers.fixtures_path ++ "netpbm/pgm_binary_grayscale8.pgm",
@@ -265,15 +272,16 @@ test "Should detect PGM properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .pgm);
 
-        var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
+        var test_image = try helpers.testImageFromFile(io, image_path, read_buffer[0..]);
         defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
 test "Should detect PPM properly" {
+    const io = std.testing.io;
     const image_tests = &[_][]const u8{
         helpers.fixtures_path ++ "netpbm/ppm_ascii_rgb24.ppm",
         helpers.fixtures_path ++ "netpbm/ppm_binary_rgb24.ppm",
@@ -281,15 +289,16 @@ test "Should detect PPM properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .ppm);
 
-        var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
+        var test_image = try helpers.testImageFromFile(io, image_path, read_buffer[0..]);
         defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
 test "Should detect PNG properly" {
+    const io = std.testing.io;
     const image_tests = &[_][]const u8{
         helpers.fixtures_path ++ "png/basn0g01.png",
         helpers.fixtures_path ++ "png/basi0g01.png",
@@ -297,15 +306,16 @@ test "Should detect PNG properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .png);
 
-        var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
+        var test_image = try helpers.testImageFromFile(io, image_path, read_buffer[0..]);
         defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
 test "Should detect TGA properly" {
+    const io = std.testing.io;
     const image_tests = &[_][]const u8{
         helpers.fixtures_path ++ "tga/cbw8.tga",
         helpers.fixtures_path ++ "tga/ccm8.tga",
@@ -321,28 +331,30 @@ test "Should detect TGA properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .tga);
 
-        var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
+        var test_image = try helpers.testImageFromFile(io, image_path, read_buffer[0..]);
         defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
 test "Should detect QOI properly" {
+    const io = std.testing.io;
     const image_tests = &[_][]const u8{helpers.fixtures_path ++ "qoi/zero.qoi"};
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .qoi);
 
-        var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
+        var test_image = try helpers.testImageFromFile(io, image_path, read_buffer[0..]);
         defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
 test "Should detect JPEG properly" {
+    const io = std.testing.io;
     const image_tests = &[_][]const u8{
         helpers.fixtures_path ++ "jpeg/tuba.jpg",
         helpers.fixtures_path ++ "jpeg/huff_simple0.jpg",
@@ -350,15 +362,16 @@ test "Should detect JPEG properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .jpeg);
 
-        var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
+        var test_image = try helpers.testImageFromFile(io, image_path, read_buffer[0..]);
         defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
 test "Should detect Farbfeld properly" {
+    const io = std.testing.io;
     const image_tests = &[_][]const u8{
         helpers.fixtures_path ++ "farbfeld/dragon.ff",
         helpers.fixtures_path ++ "farbfeld/yellow-1x1-semitransparent.png.ff",
@@ -366,75 +379,80 @@ test "Should detect Farbfeld properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .farbfeld);
 
-        var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
+        var test_image = try helpers.testImageFromFile(io, image_path, read_buffer[0..]);
         defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
 test "Should detect IFF/PBM properly" {
+    const io = std.testing.io;
     const image_tests = &[_][]const u8{
         helpers.fixtures_path ++ "ilbm/sample-pbm.iff",
     };
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .iff);
 
-        var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
+        var test_image = try helpers.testImageFromFile(io, image_path, read_buffer[0..]);
         defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
 test "Should detect RAS properly" {
+    const io = std.testing.io;
     const image_tests = &[_][]const u8{
         helpers.fixtures_path ++ "ras/sample-rgb24.ras",
     };
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .ras);
 
-        var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
+        var test_image = try helpers.testImageFromFile(io, image_path, read_buffer[0..]);
         defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
 test "Should detect SGI properly" {
+    const io = std.testing.io;
     const image_tests = &[_][]const u8{
         helpers.fixtures_path ++ "sgi/sample-rgb24.sgi",
     };
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .sgi);
 
-        var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
+        var test_image = try helpers.testImageFromFile(io, image_path, read_buffer[0..]);
         defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
 test "Should detect TIFF properly" {
+    const io = std.testing.io;
     const image_tests = &[_][]const u8{
         helpers.fixtures_path ++ "tiff/sample-monob-raw.tiff",
     };
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .tiff);
 
-        var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
+        var test_image = try helpers.testImageFromFile(io, image_path, read_buffer[0..]);
         defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
 test "Should detect XBM properly" {
+    const io = std.testing.io;
     const image_tests = &[_][]const u8{
         // good files
         helpers.fixtures_path ++ "xbm/fancyclock.xbm",
@@ -449,23 +467,25 @@ test "Should detect XBM properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(image_path, read_buffer[0..]);
+        const format = try Image.detectFormatFromFilePath(io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .xbm);
 
-        var test_image = try helpers.testImageFromFile(image_path, read_buffer[0..]);
+        var test_image = try helpers.testImageFromFile(io, image_path, read_buffer[0..]);
         defer test_image.deinit(helpers.zigimg_test_allocator);
     }
 }
 
 test "Should error on invalid file" {
+    const io = std.testing.io;
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    const invalidFile = helpers.testImageFromFile("tests/helpers.zig", read_buffer[0..]);
+    const invalidFile = helpers.testImageFromFile(io, "tests/helpers.zig", read_buffer[0..]);
     try helpers.expectError(invalidFile, Image.Error.Unsupported);
 }
 
 test "Should read a 24-bit bitmap" {
+    const io = std.testing.io;
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var test_image = try helpers.testImageFromFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp", read_buffer[0..]);
+    var test_image = try helpers.testImageFromFile(io, helpers.fixtures_path ++ "bmp/simple_v4.bmp", read_buffer[0..]);
     defer test_image.deinit(helpers.zigimg_test_allocator);
 
     try helpers.expectEq(test_image.width, 8);
@@ -517,8 +537,9 @@ test "Should read a 24-bit bitmap" {
 }
 
 test "Test Colorf32 iterator" {
+    const io = std.testing.io;
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var test_image = try helpers.testImageFromFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp", read_buffer[0..]);
+    var test_image = try helpers.testImageFromFile(io, helpers.fixtures_path ++ "bmp/simple_v4.bmp", read_buffer[0..]);
     defer test_image.deinit(helpers.zigimg_test_allocator);
 
     const expectedColors = [_]color.Colorf32{
@@ -547,8 +568,9 @@ test "Test Colorf32 iterator" {
 }
 
 test "Convert Image from rgb24 to float32 (Colorf32)" {
+    const io = std.testing.io;
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var test_image = try helpers.testImageFromFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp", read_buffer[0..]);
+    var test_image = try helpers.testImageFromFile(io, helpers.fixtures_path ++ "bmp/simple_v4.bmp", read_buffer[0..]);
     defer test_image.deinit(helpers.zigimg_test_allocator);
 
     const expected_colors = [_]color.Colorf32{
@@ -578,8 +600,9 @@ test "Convert Image from rgb24 to float32 (Colorf32)" {
 }
 
 test "Should return a valid byte slice with rawByte()" {
+    const io = std.testing.io;
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var test_image = try helpers.testImageFromFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp", read_buffer[0..]);
+    var test_image = try helpers.testImageFromFile(io, helpers.fixtures_path ++ "bmp/simple_v4.bmp", read_buffer[0..]);
     defer test_image.deinit(helpers.zigimg_test_allocator);
 
     const slice = test_image.rawBytes();
@@ -614,8 +637,9 @@ test "Should return a valid byte slice with rawByte()" {
 }
 
 test "Should return a valid row size with rowByteSize()" {
+    const io = std.testing.io;
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var test_image = try helpers.testImageFromFile(helpers.fixtures_path ++ "bmp/windows_rgba_v5.bmp", read_buffer[0..]);
+    var test_image = try helpers.testImageFromFile(io, helpers.fixtures_path ++ "bmp/windows_rgba_v5.bmp", read_buffer[0..]);
     defer test_image.deinit(helpers.zigimg_test_allocator);
 
     const row_size = test_image.rowByteSize();
@@ -624,8 +648,9 @@ test "Should return a valid row size with rowByteSize()" {
 }
 
 test "Should return a valid byte size with imageByteSize()" {
+    const io = std.testing.io;
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var test_image = try helpers.testImageFromFile(helpers.fixtures_path ++ "bmp/windows_rgba_v5.bmp", read_buffer[0..]);
+    var test_image = try helpers.testImageFromFile(io, helpers.fixtures_path ++ "bmp/windows_rgba_v5.bmp", read_buffer[0..]);
     defer test_image.deinit(helpers.zigimg_test_allocator);
 
     const image_size = test_image.imageByteSize();

@@ -30,8 +30,10 @@ test "Build the oct tree with 3 colors" {
 }
 
 test "Build a oct tree with 32-bit RGBA bitmap" {
+    const io = std.testing.io;
+
     var memory_rgba_bitmap: [200 * 1024]u8 = undefined;
-    const buffer = try helpers.testReadFile(helpers.fixtures_path ++ "bmp/windows_rgba_v5.bmp", memory_rgba_bitmap[0..]);
+    const buffer = try helpers.testReadFile(io, helpers.fixtures_path ++ "bmp/windows_rgba_v5.bmp", memory_rgba_bitmap[0..]);
 
     var image = try zigimg.Image.fromMemory(helpers.zigimg_test_allocator, buffer);
     defer image.deinit(helpers.zigimg_test_allocator);

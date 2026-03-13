@@ -100,7 +100,7 @@ pub const XBM = struct {
 
         var line_full = try reader.takeDelimiterInclusive('\n');
         while (line_full.len > 0) {
-            const line = std.mem.trimRight(u8, line_full, " \r\n");
+            const line = std.mem.trimEnd(u8, line_full, " \r\n");
             if (isDefineLine(line)) {
                 if (parseDefineValue(line)) |value| {
                     if (width == null) {

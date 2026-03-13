@@ -335,7 +335,7 @@ pub const IFD = struct {
             // Skip unknown tags instead of panicking on invalid enum values.
             // Many TIFF files contain vendor/proprietary tags (Make, Model, ICC profile, etc.)
             // that we don't need to handle for image decoding.
-            const maybe_tag_id = std.meta.intToEnum(TagId, tag_id_raw) catch continue;
+            const maybe_tag_id = std.enums.fromInt(TagId, tag_id_raw) orelse continue;
 
             try self.tags_map.put(maybe_tag_id, TagField{
                 .data_type = std.mem.toNative(u16, tag.data_type, endianess),

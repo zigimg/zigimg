@@ -141,8 +141,9 @@ pub fn loadHeader(read_stream: *io.ReadStream) Image.ReadError!png.HeaderData {
     }
 
     const header_data = try reader.take(@sizeOf(png.HeaderData));
+
     var header_reader = std.Io.Reader.fixed(header_data);
-    const header = try utils.takeStruct(&header_reader, png.HeaderData, .big);
+    const header = try header_reader.takeStruct(png.HeaderData, .big);
     if (!header.isValid()) {
         return Image.ReadError.InvalidData;
     }

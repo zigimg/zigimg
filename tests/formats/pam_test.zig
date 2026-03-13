@@ -4,11 +4,12 @@ const std = @import("std");
 const zigimg = @import("zigimg");
 
 test "rejects non-PAM images" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
-    defer file.close();
+    const io = std.testing.io;
+    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "bmp/simple_v4.bmp");
+    defer file.close(io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
 
     const invalid = pam.PAM.readImage(helpers.zigimg_test_allocator, &read_stream);
 
@@ -16,11 +17,12 @@ test "rejects non-PAM images" {
 }
 
 test "rejects PAM images with unsupported depth" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pam/unsupported_depth.pam");
-    defer file.close();
+    const io = std.testing.io;
+    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "pam/unsupported_depth.pam");
+    defer file.close(io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
 
     const invalid = pam.PAM.readImage(helpers.zigimg_test_allocator, &read_stream);
 
@@ -28,11 +30,12 @@ test "rejects PAM images with unsupported depth" {
 }
 
 test "rejects PAM images with invalid maxval" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pam/invalid_maxval.pam");
-    defer file.close();
+    const io = std.testing.io;
+    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "pam/invalid_maxval.pam");
+    defer file.close(io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
 
     const invalid = pam.PAM.readImage(helpers.zigimg_test_allocator, &read_stream);
 
@@ -40,22 +43,24 @@ test "rejects PAM images with invalid maxval" {
 }
 
 test "rejects PAM images with component values greater than maxval" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pam/value_greater_than_maxval.pam");
-    defer file.close();
+    const io = std.testing.io;
+    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "pam/value_greater_than_maxval.pam");
+    defer file.close(io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
 
     const invalid = pam.PAM.readImage(helpers.zigimg_test_allocator, &read_stream);
     try helpers.expectError(invalid, zigimg.Image.ReadError.InvalidData);
 }
 
 test "rejects PAM images with unknown tuple type" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pam/unknown_tupletype.pam");
-    defer file.close();
+    const io = std.testing.io;
+    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "pam/unknown_tupletype.pam");
+    defer file.close(io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
 
     const invalid = pam.PAM.readImage(helpers.zigimg_test_allocator, &read_stream);
 
@@ -63,11 +68,12 @@ test "rejects PAM images with unknown tuple type" {
 }
 
 test "rejects PAM images with invalid first token" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pam/invalid_first_token.pam");
-    defer file.close();
+    const io = std.testing.io;
+    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "pam/invalid_first_token.pam");
+    defer file.close(io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
 
     const invalid = pam.PAM.readImage(helpers.zigimg_test_allocator, &read_stream);
 
@@ -75,11 +81,12 @@ test "rejects PAM images with invalid first token" {
 }
 
 test "rejects PAM images with tuple type not matching other parameters" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pam/non_matching_tuple_type.pam");
-    defer file.close();
+    const io = std.testing.io;
+    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "pam/non_matching_tuple_type.pam");
+    defer file.close(io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
 
     const invalid = pam.PAM.readImage(helpers.zigimg_test_allocator, &read_stream);
 
@@ -87,11 +94,12 @@ test "rejects PAM images with tuple type not matching other parameters" {
 }
 
 test "accepts comments" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pam/simple_blackandwhite_comments.pam");
-    defer file.close();
+    const io = std.testing.io;
+    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "pam/simple_blackandwhite_comments.pam");
+    defer file.close(io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
 
     var image = try pam.PAM.readImage(helpers.zigimg_test_allocator, &read_stream);
     defer image.deinit(helpers.zigimg_test_allocator);
@@ -109,11 +117,12 @@ test "accepts comments" {
 }
 
 test "reads blackandwhite pam" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pam/simple_blackandwhite.pam");
-    defer file.close();
+    const io = std.testing.io;
+    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "pam/simple_blackandwhite.pam");
+    defer file.close(io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
 
     var image = try pam.PAM.readImage(helpers.zigimg_test_allocator, &read_stream);
     defer image.deinit(helpers.zigimg_test_allocator);
@@ -131,11 +140,12 @@ test "reads blackandwhite pam" {
 }
 
 test "reads blackandwhite_alpha pam" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pam/simple_blackandwhite_alpha.pam");
-    defer file.close();
+    const io = std.testing.io;
+    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "pam/simple_blackandwhite_alpha.pam");
+    defer file.close(io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
 
     var image = try pam.PAM.readImage(helpers.zigimg_test_allocator, &read_stream);
     defer image.deinit(helpers.zigimg_test_allocator);
@@ -153,11 +163,12 @@ test "reads blackandwhite_alpha pam" {
 }
 
 test "reads grayscale pam with maxval 255" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pam/simple_grayscale_maxval_255.pam");
-    defer file.close();
+    const io = std.testing.io;
+    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "pam/simple_grayscale_maxval_255.pam");
+    defer file.close(io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
 
     var image = try pam.PAM.readImage(helpers.zigimg_test_allocator, &read_stream);
     defer image.deinit(helpers.zigimg_test_allocator);
@@ -175,11 +186,12 @@ test "reads grayscale pam with maxval 255" {
 }
 
 test "reads grayscale alpha pam with maxval 255" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pam/simple_grayscale_alpha_maxval_255.pam");
-    defer file.close();
+    const io = std.testing.io;
+    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "pam/simple_grayscale_alpha_maxval_255.pam");
+    defer file.close(io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
 
     var image = try pam.PAM.readImage(helpers.zigimg_test_allocator, &read_stream);
     defer image.deinit(helpers.zigimg_test_allocator);
@@ -197,11 +209,12 @@ test "reads grayscale alpha pam with maxval 255" {
 }
 
 test "read of rgb pam with maxval 255" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pam/horse.pam");
-    defer file.close();
+    const io = std.testing.io;
+    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "pam/horse.pam");
+    defer file.close(io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
 
     var image = try pam.PAM.readImage(helpers.zigimg_test_allocator, &read_stream);
     defer image.deinit(helpers.zigimg_test_allocator);
@@ -210,11 +223,12 @@ test "read of rgb pam with maxval 255" {
 }
 
 test "basic read-write-read produces same result" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pam/simple_grayscale_alpha_maxval_255.pam");
-    defer file.close();
+    const io = std.testing.io;
+    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "pam/simple_grayscale_alpha_maxval_255.pam");
+    defer file.close(io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
 
     var image = try pam.PAM.readImage(helpers.zigimg_test_allocator, &read_stream);
     defer image.deinit(helpers.zigimg_test_allocator);
@@ -253,11 +267,12 @@ test "basic read-write-read produces same result" {
 }
 
 test "reads rgba pam with maxval 255" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pam/simple_rgba_maxval_255.pam");
-    defer file.close();
+    const io = std.testing.io;
+    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "pam/simple_rgba_maxval_255.pam");
+    defer file.close(io);
 
       var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
 
     var image = try pam.PAM.readImage(helpers.zigimg_test_allocator, &read_stream);
     defer image.deinit(helpers.zigimg_test_allocator);
@@ -272,11 +287,12 @@ test "reads rgba pam with maxval 255" {
 }
 
 test "reads rgba pam with maxval 65535" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pam/simple_rgba_maxval_65535.pam");
-    defer file.close();
+    const io = std.testing.io;
+    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "pam/simple_rgba_maxval_65535.pam");
+    defer file.close(io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
 
     var image = try pam.PAM.readImage(helpers.zigimg_test_allocator, &read_stream);
     defer image.deinit(helpers.zigimg_test_allocator);
