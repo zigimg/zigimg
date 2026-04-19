@@ -120,7 +120,7 @@ pub const WriteStream = union(enum) {
         };
     }
 
-    pub fn seekTo(self: *WriteStream, offset: u64) (SeekError || std.Io.Writer.Error)!void {
+    pub fn seekTo(self: *WriteStream, offset: u64) Error!void {
         switch (self.*) {
             .memory => |*memory| {
                 if (offset >= memory.buffer.len) {
