@@ -30,17 +30,17 @@ pub inline fn expectApproxEqRel(actual: anytype, expected: anytype, tolerance: a
     return try std.testing.expectApproxEqRel(expected, actual, tolerance);
 }
 
-pub fn testOpenFile(file_path: []const u8) !std.fs.File {
-    return std.fs.cwd().openFile(file_path, .{}) catch |err|
+pub fn testOpenFile(io: std.Io, file_path: []const u8) !std.Io.File {
+    return std.Io.Dir.cwd().openFile(io, file_path, .{}) catch |err|
         if (err == error.FileNotFound) return error.SkipZigTest else return err;
 }
 
-pub fn testImageFromFile(image_path: []const u8, buffer: []u8) !zigimg.Image {
-    return zigimg.Image.fromFilePath(zigimg_test_allocator, image_path, buffer) catch |err|
+pub fn testImageFromFile(io: std.Io, image_path: []const u8, buffer: []u8) !zigimg.Image {
+    return zigimg.Image.fromFilePath(zigimg_test_allocator, io, image_path, buffer) catch |err|
         if (err == error.FileNotFound) return error.SkipZigTest else return err;
 }
 
-pub fn testReadFile(file_path: []const u8, buffer: []u8) ![]u8 {
-    return std.fs.cwd().readFile(file_path, buffer) catch |err|
+pub fn testReadFile(io: std.Io, file_path: []const u8, buffer: []u8) ![]u8 {
+    return std.Io.Dir.cwd().readFile(io, file_path, buffer) catch |err|
         if (err == error.FileNotFound) return error.SkipZigTest else return err;
 }

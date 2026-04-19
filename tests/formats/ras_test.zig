@@ -3,12 +3,14 @@ const zigimg = @import("zigimg");
 const std = @import("std");
 const helpers = @import("../helpers.zig");
 
+const test_io = std.testing.io;
+
 test "Should error on non RAS images" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
-    defer file.close();
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "bmp/simple_v4.bmp");
+    defer file.close(test_io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     var ras_file = ras.RAS{};
 
@@ -17,13 +19,13 @@ test "Should error on non RAS images" {
 }
 
 test "Sun-Raster 24-bit RGB24 uncompressed" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ras/sample-rgb24.ras");
-    defer file.close();
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "ras/sample-rgb24.ras");
+    defer file.close(test_io);
 
     var ras_file = ras.RAS{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try ras_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -45,13 +47,13 @@ test "Sun-Raster 24-bit RGB24 uncompressed" {
 }
 
 test "Sun-Raster 24-bit BGR24 uncompressed" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ras/sample-bgr24.ras");
-    defer file.close();
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "ras/sample-bgr24.ras");
+    defer file.close(test_io);
 
     var ras_file = ras.RAS{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try ras_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -73,13 +75,13 @@ test "Sun-Raster 24-bit BGR24 uncompressed" {
 }
 
 test "Sun-Raster 32-bit xRGB uncompressed" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ras/sample-xrgb32.ras");
-    defer file.close();
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "ras/sample-xrgb32.ras");
+    defer file.close(test_io);
 
     var ras_file = ras.RAS{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try ras_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -97,13 +99,13 @@ test "Sun-Raster 32-bit xRGB uncompressed" {
 }
 
 test "Sun-Raster 8-bit with palette uncompressed" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ras/sample-8bit.ras");
-    defer file.close();
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "ras/sample-8bit.ras");
+    defer file.close(test_io);
 
     var ras_file = ras.RAS{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try ras_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -123,13 +125,13 @@ test "Sun-Raster 8-bit with palette uncompressed" {
 }
 
 test "Sun-Raster 8-bit grayscale uncompressed" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ras/sample-8bit-grayscale.ras");
-    defer file.close();
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "ras/sample-8bit-grayscale.ras");
+    defer file.close(test_io);
 
     var ras_file = ras.RAS{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try ras_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -143,13 +145,13 @@ test "Sun-Raster 8-bit grayscale uncompressed" {
 }
 
 test "Sun-Raster 1-bit black & white uncompressed" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ras/sample-blackwhite.ras");
-    defer file.close();
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "ras/sample-blackwhite.ras");
+    defer file.close(test_io);
 
     var ras_file = ras.RAS{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try ras_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -163,13 +165,13 @@ test "Sun-Raster 1-bit black & white uncompressed" {
 }
 
 test "Sun-Raster bgr24 rle compressed" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "ras/sample-24bit-bgr-rle.ras");
-    defer file.close();
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "ras/sample-24bit-bgr-rle.ras");
+    defer file.close(test_io);
 
     var ras_file = ras.RAS{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try ras_file.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);

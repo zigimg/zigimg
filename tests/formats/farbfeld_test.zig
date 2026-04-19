@@ -3,12 +3,14 @@ const std = @import("std");
 const zigimg = @import("zigimg");
 const farbfeld = zigimg.formats.farbfeld;
 
+const test_io = std.testing.io;
+
 test "Farbfeld: Read yellow file" {
-    const yellow_file = try helpers.testOpenFile(helpers.fixtures_path ++ "farbfeld/yellow-1x1-semitransparent.png.ff");
-    defer yellow_file.close();
+    const yellow_file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "farbfeld/yellow-1x1-semitransparent.png.ff");
+    defer yellow_file.close(test_io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var yellow_read_stream = zigimg.io.ReadStream.initFile(yellow_file, read_buffer[0..]);
+    var yellow_read_stream = zigimg.io.ReadStream.initFile(test_io, yellow_file, read_buffer[0..]);
 
     var yellow_image = farbfeld.Farbfeld{};
     const yellow_pixels = try yellow_image.read(helpers.zigimg_test_allocator, &yellow_read_stream);
@@ -20,11 +22,11 @@ test "Farbfeld: Read yellow file" {
 }
 
 test "Farbfeld: read dragon file" {
-    const dragon_file = try helpers.testOpenFile(helpers.fixtures_path ++ "farbfeld/dragon.ff");
-    defer dragon_file.close();
+    const dragon_file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "farbfeld/dragon.ff");
+    defer dragon_file.close(test_io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var dragon_read_stream = zigimg.io.ReadStream.initFile(dragon_file, read_buffer[0..]);
+    var dragon_read_stream = zigimg.io.ReadStream.initFile(test_io, dragon_file, read_buffer[0..]);
 
     var dragon_image = farbfeld.Farbfeld{};
     const dragon_pixels = try dragon_image.read(helpers.zigimg_test_allocator, &dragon_read_stream);
@@ -36,11 +38,11 @@ test "Farbfeld: read dragon file" {
 }
 
 test "Farbfeld: invalid file format" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "farbfeld/dragon.png");
-    defer file.close();
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "farbfeld/dragon.png");
+    defer file.close(test_io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     var farbfeld_image = farbfeld.Farbfeld{};
     const image_error = farbfeld_image.read(helpers.zigimg_test_allocator, &read_stream);
@@ -49,11 +51,11 @@ test "Farbfeld: invalid file format" {
 }
 
 test "Farbfeld: read writeImage output" {
-    const source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "farbfeld/yellow-1x1-semitransparent.png.ff");
-    defer source_file.close();
+    const source_file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "farbfeld/yellow-1x1-semitransparent.png.ff");
+    defer source_file.close(test_io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var source_read_stream = zigimg.io.ReadStream.initFile(source_file, read_buffer[0..]);
+    var source_read_stream = zigimg.io.ReadStream.initFile(test_io, source_file, read_buffer[0..]);
 
     var source_image: farbfeld.Farbfeld = .{};
     const source_pixels = try source_image.read(helpers.zigimg_test_allocator, &source_read_stream);

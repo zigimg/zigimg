@@ -42,6 +42,7 @@ pub const ColorType = enum(u8) {
     indexed = 3,
     grayscale_alpha = 4,
     rgba_color = 6,
+    _,
 
     const Self = @This();
 
@@ -52,6 +53,7 @@ pub const ColorType = enum(u8) {
             .indexed => 1,
             .grayscale_alpha => 2,
             .rgba_color => 4,
+            _ => unreachable,
         };
     }
 
@@ -83,6 +85,7 @@ pub const FilterType = enum(u8) {
 pub const InterlaceMethod = enum(u8) {
     none = 0,
     adam7 = 1,
+    _,
 };
 
 /// The compression methods supported by PNG
@@ -120,8 +123,14 @@ pub const HeaderData = extern struct {
         if (w == 0 or w > max_dim) return false;
         if (h == 0 or h > max_dim) return false;
 
+        switch (self.interlace_method) {
+            _ => return false,
+            else => {},
+        }
+
         const bd = self.bit_depth;
         return switch (self.color_type) {
+            _ => false,
             .grayscale => bd == 1 or bd == 2 or bd == 4 or bd == 8 or bd == 16,
             .indexed => bd == 1 or bd == 2 or bd == 4 or bd == 8,
             else => bd == 8 or bd == 16,
@@ -139,13 +148,7 @@ pub const HeaderData = extern struct {
     }
 
     pub fn channelCount(self: *const Self) u8 {
-        return switch (self.color_type) {
-            .grayscale => 1,
-            .rgb_color => 3,
-            .indexed => 1,
-            .grayscale_alpha => 2,
-            .rgba_color => 4,
-        };
+        return self.color_type.channelCount();
     }
 
     pub fn pixelBits(self: *const Self) u8 {
@@ -188,6 +191,7 @@ pub const HeaderData = extern struct {
                 16 => PixelFormat.rgba64,
                 else => unreachable,
             },
+            _ => unreachable,
         };
     }
 };

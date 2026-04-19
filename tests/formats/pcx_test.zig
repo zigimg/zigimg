@@ -3,14 +3,15 @@ const pcx = zigimg.formats.pcx;
 const std = @import("std");
 const zigimg = @import("zigimg");
 
+const test_io = std.testing.io;
 const toU8 = zigimg.color.ScaleValue(u8);
 
 test "PCX indexed1 (linear)" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pcx/test-bpp1.pcx");
-    defer file.close();
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "pcx/test-bpp1.pcx");
+    defer file.close(test_io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     var pcx_file = pcx.PCX{};
 
@@ -44,11 +45,11 @@ test "PCX indexed1 (linear)" {
 }
 
 test "PCX indexed4 (linear)" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pcx/test-bpp4.pcx");
-    defer file.close();
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "pcx/test-bpp4.pcx");
+    defer file.close(test_io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     var pcx_file = pcx.PCX{};
 
@@ -83,11 +84,11 @@ test "PCX indexed4 (linear)" {
 }
 
 test "PCX indexed8 (linear)" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pcx/test-bpp8.pcx");
-    defer file.close();
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "pcx/test-bpp8.pcx");
+    defer file.close(test_io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     var pcx_file = pcx.PCX{};
 
@@ -124,11 +125,11 @@ test "PCX indexed8 (linear)" {
 }
 
 test "PCX indexed24 (planar)" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "pcx/test-bpp24.pcx");
-    defer file.close();
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "pcx/test-bpp24.pcx");
+    defer file.close(test_io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     var pcx_file = pcx.PCX{};
 
@@ -168,26 +169,26 @@ test "PCX indexed24 (planar)" {
 test "Write PCX indexed1 (odd width)" {
     const image_file_name = "zigimg_pcx_indexed1_odd.pcx";
 
-    var source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "pcx/test-bpp1.pcx");
-    defer source_file.close();
+    var source_file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "pcx/test-bpp1.pcx");
+    defer source_file.close(test_io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
+    var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, test_io, source_file, read_buffer[0..]);
     defer source_image.deinit(helpers.zigimg_test_allocator);
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, test_io, image_file_name, write_buffer[0..], .{
         .pcx = .{},
     });
 
     defer {
-        std.fs.cwd().deleteFile(image_file_name) catch {};
+        std.Io.Dir.cwd().deleteFile(test_io, image_file_name) catch {};
     }
 
-    const read_file = try helpers.testOpenFile(image_file_name);
-    defer read_file.close();
+    const read_file = try helpers.testOpenFile(test_io, image_file_name);
+    defer read_file.close(test_io);
 
-    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, read_file, read_buffer[0..]);
 
     var pcx_file = pcx.PCX{};
 
@@ -242,18 +243,18 @@ test "Write PCX indexed 1 (even width)" {
     const image_file_name = "zigimg_pcx_indexed1_even.pcx";
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try image_pattern.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
+    try image_pattern.writeToFilePath(helpers.zigimg_test_allocator, test_io, image_file_name, write_buffer[0..], .{
         .pcx = .{},
     });
     defer {
-        std.fs.cwd().deleteFile(image_file_name) catch {};
+        std.Io.Dir.cwd().deleteFile(test_io, image_file_name) catch {};
     }
 
-    const read_file = try helpers.testOpenFile(image_file_name);
-    defer read_file.close();
+    const read_file = try helpers.testOpenFile(test_io, image_file_name);
+    defer read_file.close(test_io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, read_file, read_buffer[0..]);
 
     var pcx_file = pcx.PCX{};
 
@@ -284,26 +285,26 @@ test "Write PCX indexed 1 (even width)" {
 test "Write PCX indexed4 (odd width)" {
     const image_file_name = "zigimg_pcx_indexed4_odd.pcx";
 
-    var source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "pcx/test-bpp4.pcx");
-    defer source_file.close();
+    var source_file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "pcx/test-bpp4.pcx");
+    defer source_file.close(test_io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
+    var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, test_io, source_file, read_buffer[0..]);
     defer source_image.deinit(helpers.zigimg_test_allocator);
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, test_io, image_file_name, write_buffer[0..], .{
         .pcx = .{},
     });
 
     defer {
-        std.fs.cwd().deleteFile(image_file_name) catch {};
+        std.Io.Dir.cwd().deleteFile(test_io, image_file_name) catch {};
     }
 
-    const read_file = try helpers.testOpenFile(image_file_name);
-    defer read_file.close();
+    const read_file = try helpers.testOpenFile(test_io, image_file_name);
+    defer read_file.close(test_io);
 
-    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, read_file, read_buffer[0..]);
 
     var pcx_file = pcx.PCX{};
 
@@ -359,18 +360,18 @@ test "Write PCX indexed 4 (even width)" {
     const image_file_name = "zigimg_pcx_indexed4_even.pcx";
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try rainbow_test.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
+    try rainbow_test.writeToFilePath(helpers.zigimg_test_allocator, test_io, image_file_name, write_buffer[0..], .{
         .pcx = .{},
     });
     defer {
-        std.fs.cwd().deleteFile(image_file_name) catch {};
+        std.Io.Dir.cwd().deleteFile(test_io, image_file_name) catch {};
     }
 
-    const read_file = try helpers.testOpenFile(image_file_name);
-    defer read_file.close();
+    const read_file = try helpers.testOpenFile(test_io, image_file_name);
+    defer read_file.close(test_io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, read_file, read_buffer[0..]);
 
     var pcx_file = pcx.PCX{};
 
@@ -399,26 +400,26 @@ test "Write PCX indexed 4 (even width)" {
 test "Write PCX indexed8 (odd width)" {
     const image_file_name = "zigimg_pcx_indexed8_odd.pcx";
 
-    var source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "pcx/test-bpp8.pcx");
-    defer source_file.close();
+    var source_file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "pcx/test-bpp8.pcx");
+    defer source_file.close(test_io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
+    var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, test_io, source_file, read_buffer[0..]);
     defer source_image.deinit(helpers.zigimg_test_allocator);
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, test_io, image_file_name, write_buffer[0..], .{
         .pcx = .{},
     });
 
     defer {
-        std.fs.cwd().deleteFile(image_file_name) catch {};
+        std.Io.Dir.cwd().deleteFile(test_io, image_file_name) catch {};
     }
 
-    const read_file = try helpers.testOpenFile(image_file_name);
-    defer read_file.close();
+    const read_file = try helpers.testOpenFile(test_io, image_file_name);
+    defer read_file.close(test_io);
 
-    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, read_file, read_buffer[0..]);
 
     var pcx_file = pcx.PCX{};
 
@@ -472,18 +473,18 @@ test "Write PCX indexed 8 (even width)" {
     const image_file_name = "zigimg_pcx_indexed8_even.pcx";
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try rainbow_test.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
+    try rainbow_test.writeToFilePath(helpers.zigimg_test_allocator, test_io, image_file_name, write_buffer[0..], .{
         .pcx = .{},
     });
     defer {
-        std.fs.cwd().deleteFile(image_file_name) catch {};
+        std.Io.Dir.cwd().deleteFile(test_io, image_file_name) catch {};
     }
 
-    const read_file = try helpers.testOpenFile(image_file_name);
-    defer read_file.close();
+    const read_file = try helpers.testOpenFile(test_io, image_file_name);
+    defer read_file.close(test_io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, read_file, read_buffer[0..]);
 
     var pcx_file = pcx.PCX{};
 
@@ -512,26 +513,26 @@ test "Write PCX indexed 8 (even width)" {
 test "Write PCX rgb24 (odd width)" {
     const image_file_name = "zigimg_pcx_bpp24_odd.pcx";
 
-    var source_file = try helpers.testOpenFile(helpers.fixtures_path ++ "pcx/test-bpp24.pcx");
-    defer source_file.close();
+    var source_file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "pcx/test-bpp24.pcx");
+    defer source_file.close(test_io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, source_file, read_buffer[0..]);
+    var source_image = try zigimg.Image.fromFile(helpers.zigimg_test_allocator, test_io, source_file, read_buffer[0..]);
     defer source_image.deinit(helpers.zigimg_test_allocator);
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try source_image.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, test_io, image_file_name, write_buffer[0..], .{
         .pcx = .{},
     });
 
     defer {
-        std.fs.cwd().deleteFile(image_file_name) catch {};
+        std.Io.Dir.cwd().deleteFile(test_io, image_file_name) catch {};
     }
 
-    const read_file = try helpers.testOpenFile(image_file_name);
-    defer read_file.close();
+    const read_file = try helpers.testOpenFile(test_io, image_file_name);
+    defer read_file.close(test_io);
 
-    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, read_file, read_buffer[0..]);
 
     var pcx_file = pcx.PCX{};
 
@@ -594,18 +595,18 @@ test "Write PCX rgb24 (even width)" {
     const image_file_name = "zigimg_pcx_rgb24_even.pcx";
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try rainbow_test.writeToFilePath(helpers.zigimg_test_allocator, image_file_name, write_buffer[0..], .{
+    try rainbow_test.writeToFilePath(helpers.zigimg_test_allocator, test_io, image_file_name, write_buffer[0..], .{
         .pcx = .{},
     });
     defer {
-        std.fs.cwd().deleteFile(image_file_name) catch {};
+        std.Io.Dir.cwd().deleteFile(test_io, image_file_name) catch {};
     }
 
-    const read_file = try helpers.testOpenFile(image_file_name);
-    defer read_file.close();
+    const read_file = try helpers.testOpenFile(test_io, image_file_name);
+    defer read_file.close(test_io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(read_file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, read_file, read_buffer[0..]);
 
     var pcx_file = pcx.PCX{};
 

@@ -70,14 +70,14 @@ const Header = struct {
         var maybe_depth: ?usize = null;
         var maybe_maxval: ?u16 = null;
         var maybe_tuple_type: ?TupleType = null;
-        var comments = std.ArrayListUnmanaged([]const u8){};
+        var comments: std.ArrayList([]const u8) = .empty;
         defer {
             for (comments.items) |comment| allocator.free(comment);
             comments.deinit(allocator);
         }
 
         {
-            var line_buffer_stream = try std.io.Writer.Allocating.initCapacity(allocator, 32);
+            var line_buffer_stream = try std.Io.Writer.Allocating.initCapacity(allocator, 32);
             defer line_buffer_stream.deinit();
 
             while (true) {

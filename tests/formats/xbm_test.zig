@@ -3,6 +3,8 @@ const std = @import("std");
 const xbm = zigimg.formats.xbm;
 const zigimg = @import("zigimg");
 
+const test_io = std.testing.io;
+
 // Simple 8x1 XBM with alternating pixels: 10101010
 const simple_8x1_xbm =
     "#define test_width 8\n" ++
@@ -29,26 +31,26 @@ const simple_4x4_xbm =
 
 test "XBM: invalid file format" {
     {
-        const file = try helpers.testOpenFile(helpers.fixtures_path ++ "xbm/bad_missing_dim.xbm");
-        defer file.close();
+        const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "xbm/bad_missing_dim.xbm");
+        defer file.close(test_io);
 
         var the_xbm = xbm.XBM{};
 
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+        var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
         const actual_error = the_xbm.read(helpers.zigimg_test_allocator, &read_stream);
         try helpers.expectError(actual_error, zigimg.Image.ReadError.InvalidData);
     }
 
     {
-        const file = try helpers.testOpenFile(helpers.fixtures_path ++ "xbm/bad_missing_pixels.xbm");
-        defer file.close();
+        const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "xbm/bad_missing_pixels.xbm");
+        defer file.close(test_io);
 
         var the_xbm = xbm.XBM{};
 
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+        var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
         const actual_error = the_xbm.read(helpers.zigimg_test_allocator, &read_stream);
         try helpers.expectError(actual_error, zigimg.Image.ReadError.InvalidData);

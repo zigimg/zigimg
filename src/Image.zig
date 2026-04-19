@@ -71,7 +71,7 @@ pub const WriteError = Error ||
     std.mem.Allocator.Error ||
     io.ReadStream.Error ||
     io.WriteStream.Error ||
-    std.fs.File.OpenError ||
+    std.Io.File.OpenError ||
     error{ EndOfStream, InvalidData, UnfinishedBits };
 
 pub const ConvertError = Error ||
@@ -101,7 +101,7 @@ pub const AnimationFrame = struct {
 };
 
 pub const Animation = struct {
-    frames: FrameList = .{},
+    frames: FrameList = .empty,
     loop_count: i32 = AnimationLoopInfinite,
 
     pub const FrameList = std.ArrayList(AnimationFrame);
@@ -150,16 +150,16 @@ pub fn deinit(self: *Image, allocator: std.mem.Allocator) void {
 }
 
 /// Detect which image format is used by the file path
-pub fn detectFormatFromFilePath(file_path: []const u8, read_buffer: []u8) !Format {
-    var file = try std.fs.cwd().openFile(file_path, .{});
-    defer file.close();
+pub fn detectFormatFromFilePath(io_instance: std.Io, file_path: []const u8, read_buffer: []u8) !Format {
+    var file = try std.Io.Dir.cwd().openFile(io_instance, file_path, .{});
+    defer file.close(io_instance);
 
-    return detectFormatFromFile(file, read_buffer);
+    return detectFormatFromFile(io_instance, file, read_buffer);
 }
 
 /// Detect which image format is used by the file
-pub fn detectFormatFromFile(file: std.fs.File, read_buffer: []u8) !Format {
-    var read_stream = io.ReadStream.initFile(file, read_buffer);
+pub fn detectFormatFromFile(io_instance: std.Io, file: std.Io.File, read_buffer: []u8) !Format {
+    var read_stream = io.ReadStream.initFile(io_instance, file, read_buffer);
     return internalDetectFormat(&read_stream);
 }
 
@@ -170,16 +170,16 @@ pub fn detectFormatFromMemory(buffer: []const u8) !Format {
 }
 
 /// Load an image from a file path
-pub fn fromFilePath(allocator: std.mem.Allocator, file_path: []const u8, read_buffer: []u8) !Image {
-    var file = try std.fs.cwd().openFile(file_path, .{});
-    defer file.close();
+pub fn fromFilePath(allocator: std.mem.Allocator, io_instance: std.Io, file_path: []const u8, read_buffer: []u8) !Image {
+    var file = try std.Io.Dir.cwd().openFile(io_instance, file_path, .{});
+    defer file.close(io_instance);
 
-    return fromFile(allocator, file, read_buffer);
+    return fromFile(allocator, io_instance, file, read_buffer);
 }
 
 /// Load an image from a standard library std.fs.File
-pub fn fromFile(allocator: std.mem.Allocator, file: std.fs.File, read_buffer: []u8) !Image {
-    var read_stream = io.ReadStream.initFile(file, read_buffer);
+pub fn fromFile(allocator: std.mem.Allocator, io_instance: std.Io, file: std.Io.File, read_buffer: []u8) !Image {
+    var read_stream = io.ReadStream.initFile(io_instance, file, read_buffer);
     return internalRead(allocator, &read_stream);
 }
 
@@ -260,16 +260,16 @@ pub fn toManaged(self: Image, allocator: std.mem.Allocator) Managed {
 }
 
 /// Write the image to an image format to the specified path
-pub fn writeToFilePath(self: Image, allocator: std.mem.Allocator, file_path: []const u8, write_buffer: []u8, encoder_options: EncoderOptions) WriteError!void {
-    var file = try std.fs.cwd().createFile(file_path, .{});
-    defer file.close();
+pub fn writeToFilePath(self: Image, allocator: std.mem.Allocator, io_instance: std.Io, file_path: []const u8, write_buffer: []u8, encoder_options: EncoderOptions) WriteError!void {
+    var file = try std.Io.Dir.cwd().createFile(io_instance, file_path, .{});
+    defer file.close(io_instance);
 
-    try self.writeToFile(allocator, file, write_buffer, encoder_options);
+    try self.writeToFile(allocator, io_instance, file, write_buffer, encoder_options);
 }
 
-/// Write the image to an image format to the specified std.fs.File
-pub fn writeToFile(self: Image, allocator: std.mem.Allocator, file: std.fs.File, write_buffer: []u8, encoder_options: EncoderOptions) WriteError!void {
-    var write_stream = io.WriteStream.initFile(file, write_buffer);
+/// Write the image to an image format to the specified std.Io.File
+pub fn writeToFile(self: Image, allocator: std.mem.Allocator, io_instance: std.Io, file: std.Io.File, write_buffer: []u8, encoder_options: EncoderOptions) WriteError!void {
+    var write_stream = io.WriteStream.initFile(io_instance, file, write_buffer);
 
     try self.internalWrite(allocator, &write_stream, encoder_options);
 }

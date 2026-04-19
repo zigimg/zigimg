@@ -5,11 +5,11 @@ pub const DEFAULT_BUFFER_SIZE = 4096;
 
 pub const ReadStream = union(enum) {
     memory: std.Io.Reader,
-    file: std.fs.File.Reader,
+    file: std.Io.File.Reader,
 
     pub const Error = SeekError || EndPosError || std.Io.Reader.Error || std.Io.Reader.StreamError;
-    pub const SeekError = std.fs.File.Reader.SeekError;
-    pub const EndPosError = std.fs.File.Reader.SizeError;
+    pub const SeekError = std.Io.File.Reader.SeekError;
+    pub const EndPosError = std.Io.File.Reader.SizeError;
 
     pub fn initMemory(buffer: []const u8) ReadStream {
         return .{
@@ -17,9 +17,9 @@ pub const ReadStream = union(enum) {
         };
     }
 
-    pub fn initFile(file: std.fs.File, buffer: []u8) ReadStream {
+    pub fn initFile(io: std.Io, file: std.Io.File, buffer: []u8) ReadStream {
         return .{
-            .file = file.reader(buffer),
+            .file = file.reader(io, buffer),
         };
     }
 
@@ -58,7 +58,7 @@ pub const ReadStream = union(enum) {
             .memory => |*memory| {
                 const new_pos: i64 = @as(i64, @intCast(memory.seek)) + offset;
                 if (new_pos < 0 or new_pos >= memory.end) {
-                    return std.fs.File.SeekError.Unseekable;
+                    return std.Io.File.SeekError.Unseekable;
                 }
 
                 memory.seek = @intCast(new_pos);
@@ -96,10 +96,10 @@ pub const ReadStream = union(enum) {
 
 pub const WriteStream = union(enum) {
     memory: std.Io.Writer,
-    file: std.fs.File.Writer,
+    file: std.Io.File.Writer,
 
     pub const Error = SeekError || std.Io.Writer.Error;
-    pub const SeekError = std.fs.File.SeekError;
+    pub const SeekError = std.Io.File.SeekError;
 
     pub fn initMemory(buffer: []u8) WriteStream {
         return .{
@@ -107,9 +107,9 @@ pub const WriteStream = union(enum) {
         };
     }
 
-    pub fn initFile(file: std.fs.File, buffer: []u8) WriteStream {
+    pub fn initFile(io: std.Io, file: std.Io.File, buffer: []u8) WriteStream {
         return .{
-            .file = file.writer(buffer),
+            .file = file.writer(io, buffer),
         };
     }
 
@@ -120,7 +120,7 @@ pub const WriteStream = union(enum) {
         };
     }
 
-    pub fn seekTo(self: *WriteStream, offset: u64) SeekError!void {
+    pub fn seekTo(self: *WriteStream, offset: u64) Error!void {
         switch (self.*) {
             .memory => |*memory| {
                 if (offset >= memory.buffer.len) {

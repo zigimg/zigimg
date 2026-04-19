@@ -3,6 +3,8 @@ const helpers = @import("../helpers.zig");
 const std = @import("std");
 const zigimg = @import("zigimg");
 
+const test_io = std.testing.io;
+
 test "GIF writer roundtrip simple indexed8 image" {
     const allocator = helpers.zigimg_test_allocator;
 
@@ -324,11 +326,11 @@ test "GIF writer roundtrip read existing GIF, write, read again" {
     const allocator = helpers.zigimg_test_allocator;
 
     // Read an existing GIF file using low-level reader
-    const gif_input_file = try helpers.testOpenFile(helpers.fixtures_path ++ "gif/rotating_earth.gif");
-    defer gif_input_file.close();
+    const gif_input_file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "gif/rotating_earth.gif");
+    defer gif_input_file.close(test_io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(gif_input_file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, gif_input_file, read_buffer[0..]);
 
     var original_gif = gif.GIF.init(allocator);
     defer original_gif.deinit();
@@ -488,11 +490,11 @@ test "GIF writer rejects non-indexed data without auto convert" {
 }
 
 test "Should error on non GIF images" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
-    defer file.close();
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "bmp/simple_v4.bmp");
+    defer file.close(test_io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     var gif_file = gif.GIF.init(helpers.zigimg_test_allocator);
     defer gif_file.deinit();
@@ -563,7 +565,7 @@ const SINGLE_GIF_FILE_TEST = false;
 fn loadRotatingEarthImage(allocator: std.mem.Allocator) !zigimg.Image {
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     const image_path = helpers.fixtures_path ++ "gif/rotating_earth.gif";
-    return zigimg.Image.fromFilePath(allocator, image_path, read_buffer[0..]);
+    return zigimg.Image.fromFilePath(allocator, test_io, image_path, read_buffer[0..]);
 }
 
 test "GIF test suite" {
@@ -574,11 +576,11 @@ test "GIF test suite" {
     var test_list: std.ArrayList([]const u8) = .empty;
     defer test_list.deinit(helpers.zigimg_test_allocator);
 
-    const test_list_file = try helpers.testOpenFile(helpers.fixtures_path ++ "gif/TESTS");
-    defer test_list_file.close();
+    const test_list_file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "gif/TESTS");
+    defer test_list_file.close(test_io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(test_list_file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, test_list_file, read_buffer[0..]);
 
     var reader = read_stream.reader();
 
@@ -611,11 +613,11 @@ test "GIF test suite" {
 }
 
 test "Rotating Earth GIF" {
-    const gif_input_file = try helpers.testOpenFile(helpers.fixtures_path ++ "gif/rotating_earth.gif");
-    defer gif_input_file.close();
+    const gif_input_file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "gif/rotating_earth.gif");
+    defer gif_input_file.close(test_io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(gif_input_file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, gif_input_file, read_buffer[0..]);
 
     var gif_file = gif.GIF.init(helpers.zigimg_test_allocator);
     defer gif_file.deinit();
@@ -710,8 +712,8 @@ const IniFile = struct {
                         const equals_sign_position_opt = std.mem.indexOf(u8, read_line[0..], "=");
 
                         if (equals_sign_position_opt) |equals_sign_position| {
-                            const key_name = std.mem.trimRight(u8, read_line[0..(equals_sign_position - 1)], " ");
-                            const string_value = std.mem.trimLeft(u8, read_line[(equals_sign_position + 1)..], " ");
+                            const key_name = std.mem.trimEnd(u8, read_line[0..(equals_sign_position - 1)], " ");
+                            const string_value = std.mem.trimStart(u8, read_line[(equals_sign_position + 1)..], " ");
 
                             if (self.sections.getPtr(current_section)) |section_entry| {
                                 const value = blk: {
@@ -769,14 +771,14 @@ fn doGifTest(entry_name: []const u8) !void {
     const config_filename = try std.fmt.allocPrint(area_allocator, "{s}.conf", .{entry_name});
     const config_filepath = try std.fs.path.resolve(area_allocator, &[_][]const u8{ helpers.fixtures_path, "gif", config_filename });
 
-    const config_file = try helpers.testOpenFile(config_filepath);
-    defer config_file.close();
+    const config_file = try helpers.testOpenFile(test_io, config_filepath);
+    defer config_file.close(test_io);
 
     var config_ini = IniFile.init(helpers.zigimg_test_allocator);
     defer config_ini.deinit();
 
     var ini_read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var ini_read_stream = zigimg.io.ReadStream.initFile(config_file, ini_read_buffer[0..]);
+    var ini_read_stream = zigimg.io.ReadStream.initFile(test_io, config_file, ini_read_buffer[0..]);
 
     try config_ini.parse(ini_read_stream.reader());
 
@@ -803,11 +805,11 @@ fn doGifTest(entry_name: []const u8) !void {
             return error.InvalidGifConfigFile;
 
         const gif_input_filepath = try std.fs.path.resolve(area_allocator, &[_][]const u8{ helpers.fixtures_path, "gif", input_filename.string });
-        const gif_input_file = try helpers.testOpenFile(gif_input_filepath);
-        defer gif_input_file.close();
+        const gif_input_file = try helpers.testOpenFile(test_io, gif_input_filepath);
+        defer gif_input_file.close(test_io);
 
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        var read_stream = zigimg.io.ReadStream.initFile(gif_input_file, read_buffer[0..]);
+        var read_stream = zigimg.io.ReadStream.initFile(test_io, gif_input_file, read_buffer[0..]);
 
         var gif_file = gif.GIF.init(helpers.zigimg_test_allocator);
         defer gif_file.deinit();
@@ -855,11 +857,11 @@ fn doGifTest(entry_name: []const u8) !void {
                 if (config_ini.getSection(current_frame)) |frame_section| {
                     const pixels_filename = frame_section.getValue("pixels") orelse return error.InvalidGifConfigFile;
                     const pixels_filepath = try std.fs.path.resolve(area_allocator, &[_][]const u8{ helpers.fixtures_path, "gif", pixels_filename.string });
-                    const pixels_file = try helpers.testOpenFile(pixels_filepath);
-                    defer pixels_file.close();
+                    const pixels_file = try helpers.testOpenFile(test_io, pixels_filepath);
+                    defer pixels_file.close(test_io);
 
                     var pixels_read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-                    var pixels_read_stream = zigimg.io.ReadStream.initFile(pixels_file, pixels_read_buffer[0..]);
+                    var pixels_read_stream = zigimg.io.ReadStream.initFile(test_io, pixels_file, pixels_read_buffer[0..]);
 
                     var pixels_reader = pixels_read_stream.reader();
 
@@ -938,11 +940,11 @@ fn doGifRoundtripTest(entry_name: []const u8) !RoundtripResult {
     };
 
     // Read original GIF
-    const gif_input_file = try std.fs.cwd().openFile(gif_filepath, .{});
-    defer gif_input_file.close();
+    const gif_input_file = try std.Io.Dir.cwd().openFile(test_io, gif_filepath, .{});
+    defer gif_input_file.close(test_io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(gif_input_file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, gif_input_file, read_buffer[0..]);
 
     var original_gif = gif.GIF.init(helpers.zigimg_test_allocator);
     defer original_gif.deinit();
@@ -1070,11 +1072,11 @@ test "GIF writer roundtrip test suite" {
     var test_list: std.ArrayList([]const u8) = .empty;
     defer test_list.deinit(helpers.zigimg_test_allocator);
 
-    const test_list_file = try helpers.testOpenFile(helpers.fixtures_path ++ "gif/TESTS");
-    defer test_list_file.close();
+    const test_list_file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "gif/TESTS");
+    defer test_list_file.close(test_io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(test_list_file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, test_list_file, read_buffer[0..]);
 
     var reader = read_stream.reader();
 

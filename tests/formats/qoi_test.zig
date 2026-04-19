@@ -3,15 +3,17 @@ const std = @import("std");
 const helpers = @import("../helpers.zig");
 const zigimg = @import("zigimg");
 
+const test_io = std.testing.io;
+
 const zero_raw_file = helpers.fixtures_path ++ "qoi/zero.raw";
 const zero_qoi_file = helpers.fixtures_path ++ "qoi/zero.qoi";
 
 test "Should error on non QOI images" {
-    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "bmp/simple_v4.bmp");
-    defer file.close();
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "bmp/simple_v4.bmp");
+    defer file.close(test_io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     var qoi_file = qoi.QOI{};
 
@@ -21,11 +23,11 @@ test "Should error on non QOI images" {
 }
 
 test "Read zero.qoi file" {
-    const file = try helpers.testOpenFile(zero_qoi_file);
-    defer file.close();
+    const file = try helpers.testOpenFile(test_io, zero_qoi_file);
+    defer file.close(test_io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     var qoi_file = qoi.QOI{};
 
@@ -40,7 +42,7 @@ test "Read zero.qoi file" {
     try std.testing.expect(pixels == .rgba32);
 
     var buffer: [1025 * 1024]u8 = undefined;
-    const zero_raw_pixels = try helpers.testReadFile(zero_raw_file, buffer[0..]);
+    const zero_raw_pixels = try helpers.testReadFile(test_io, zero_raw_file, buffer[0..]);
     try std.testing.expectEqualSlices(u8, zero_raw_pixels, std.mem.sliceAsBytes(pixels.rgba32));
 }
 
@@ -49,11 +51,11 @@ test "Write qoi file" {
     defer source_image.deinit(helpers.zigimg_test_allocator);
 
     var buffer: [1025 * 1024]u8 = undefined;
-    const zero_raw_pixels = try helpers.testReadFile(zero_raw_file, buffer[0..]);
+    const zero_raw_pixels = try helpers.testReadFile(test_io, zero_raw_file, buffer[0..]);
     @memcpy(std.mem.sliceAsBytes(source_image.pixels.rgba32), std.mem.bytesAsSlice(u8, zero_raw_pixels));
 
     var image_buffer: [100 * 1024]u8 = undefined;
-    var zero_qoi = try helpers.testReadFile(zero_qoi_file, buffer[0..]);
+    var zero_qoi = try helpers.testReadFile(test_io, zero_qoi_file, buffer[0..]);
 
     const result_image = try source_image.writeToMemory(helpers.zigimg_test_allocator, image_buffer[0..], .{ .qoi = .{} });
 

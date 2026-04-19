@@ -71,16 +71,18 @@ pub const XBM = struct {
     }
 
     fn collectHexBytes(line: []const u8, bytes: *std.array_list.Managed(u8)) !void {
-        var it = std.mem.tokenizeAny(u8, line, ", \t\n{};");
-        while (it.next()) |tok| {
-            if (tok.len >= 2 and (tok[0] == '0' and (tok[1] == 'x' or tok[1] == 'X'))) {
-                const val = std.fmt.parseInt(u32, tok[2..], 16) catch continue;
-                if (val <= 0xFF) {
-                    try bytes.append(@intCast(val));
+        var it = std.mem.tokenizeAny(u8, line, " ,\t\n{};");
+        while (it.next()) |token| {
+            const trimmed_token = std.mem.trim(u8, token, " \r\n\t");
+
+            if (trimmed_token.len >= 2 and (trimmed_token[0] == '0' and (trimmed_token[1] == 'x' or trimmed_token[1] == 'X'))) {
+                const parsed_value = std.fmt.parseInt(u32, trimmed_token[2..], 16) catch continue;
+                if (parsed_value <= 0xFF) {
+                    try bytes.append(@intCast(parsed_value));
                 } else {
                     //  Older XI0 mode – 16-bit words, pack little-endian
-                    try bytes.append(@intCast(val & 0xFF));
-                    try bytes.append(@intCast((val >> 8) & 0xFF));
+                    try bytes.append(@intCast(parsed_value & 0xFF));
+                    try bytes.append(@intCast((parsed_value >> 8) & 0xFF));
                 }
             }
         }
@@ -98,9 +100,8 @@ pub const XBM = struct {
         var first_pixel_line: []const u8 = &[_]u8{};
         var have_first_pixel_line = false;
 
-        var line_full = try reader.takeDelimiterInclusive('\n');
-        while (line_full.len > 0) {
-            const line = std.mem.trimRight(u8, line_full, " \r\n");
+        while (try reader.takeDelimiter('\n')) |line_full| {
+            const line = std.mem.trimEnd(u8, line_full, " \r\n");
             if (isDefineLine(line)) {
                 if (parseDefineValue(line)) |value| {
                     if (width == null) {
@@ -121,7 +122,6 @@ pub const XBM = struct {
                 have_first_pixel_line = true;
                 break;
             }
-            line_full = try reader.takeDelimiterInclusive('\n');
         }
 
         if (width == null or height == null) {
@@ -153,15 +153,8 @@ pub const XBM = struct {
         }
 
         //  Read remaining lines till EOF and gather bytes
-        while (true) {
-            const l = reader.takeDelimiterInclusive('\n') catch |err| {
-                if (err == error.EndOfStream) {
-                    break;
-                } else {
-                    return err;
-                }
-            };
-            try collectHexBytes(l, &byte_list);
+        while (try reader.takeDelimiter('\n')) |line| {
+            try collectHexBytes(line, &byte_list);
         }
 
         if (byte_list.items.len < expected_bytes) {

@@ -8,7 +8,7 @@ This is a work in progress library to create, process, read and write different 
 
 ## Install & Build
 
-This library currently uses zig [0.15.2](https://ziglang.org/download/), we do plan to go back to using mach nominated zig until a newer version than 0.15.2 will be nominated.
+This library currently uses zig [0.16.0](https://ziglang.org/download/)
 
 ### Use zigimg in your project
 
@@ -224,12 +224,10 @@ You can use either a file path
 const std = @import("std");
 const zigimg = @import("zigimg");
 
-pub fn main() !void {
-    const allocator = std.heap.smp_allocator;
-
+pub fn main(init: std.process.Init) !void {
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var image = try zigimg.Image.fromFilePath(allocator,  "my_image.png", read_buffer[0..]);
-    defer image.deinit(allocator);
+    var image = try zigimg.Image.fromFilePath(init.gpa, init.io, "my_image.png", read_buffer[0..]);
+    defer image.deinit(init.gpa);
 
     // Do something with your image
 }
@@ -241,15 +239,13 @@ or a `std.fs.File` directly
 const std = @import("std");
 const zigimg = @import("zigimg");
 
-pub fn main() !void {
-    const allocator = std.heap.smp_allocator;
-
-    var file = try std.fs.cwd().openFile(file_path, .{});
-    defer file.close();
+pub fn main(init: std.process.Init) !void {
+    var file = try std.Io.Dir.cwd().openFile(init.io, file_path, .{});
+    defer file.close(init.io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var image = try zigimg.Image.fromFile(allocator, &file, read_buffer[0..]);
-    defer image.deinit(allocator);
+    var image = try zigimg.Image.fromFile(init.gpa, init.io, &file, read_buffer[0..]);
+    defer image.deinit(init.gpa);
 
     // Do something with your image
 }
@@ -263,11 +259,9 @@ const zigimg = @import("zigimg");
 
 const image_data = @embedFile("test.bmp");
 
-pub fn main() !void {
-    const allocator = std.heap.smp_allocator;
-
-    const image = try zigimg.Image.fromMemory(allocator, image_data[0..]);
-    defer image.deinit(allocator);
+pub fn main(init: std.process.Init) !void {
+    const image = try zigimg.Image.fromMemory(init.gpa, init.io, image_data[0..]);
+    defer image.deinit(init.gpa);
 
     // Do something with your image
 }
@@ -382,9 +376,9 @@ You can use either a file path
 const std = @import("std");
 const zigimg = @import("zigimg");
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    const image_format = try zigimg.Image.detectFormatFromFilePath(allocator, "my_image.png", read_buffer[0..]);
+    const image_format = try zigimg.Image.detectFormatFromFilePath(init.io, "my_image.png", read_buffer[0..]);
 
     // Will print png
     std.log.debug("Image format: {}", .{image_format});
@@ -397,12 +391,12 @@ or a `std.fs.File` directly
 const std = @import("std");
 const zigimg = @import("zigimg");
 
-pub fn main() !void {
-    var file = try std.fs.cwd().openFile("my_image.gif", .{});
-    defer file.close();
+pub fn main(init: std.process.Init) !void {
+    var file = try std.Io.Dir.cwd().openFile(init.io, "my_image.gif", .{});
+    defer file.close(init.io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    const image_format = try zigimg.Image.detectFormatFromFile(allocator, file, read_buffer[0..]);
+    const image_format = try zigimg.Image.detectFormatFromFile(init.io, file, read_buffer[0..]);
 
     // Will print gif
     std.log.debug("Image format: {}", .{image_format});
@@ -418,7 +412,7 @@ const zigimg = @import("zigimg");
 const image_data = @embedFile("test.bmp");
 
 pub fn main() !void {
-    const image_format = try zigimg.Image.detectFormatFromMemory(allocator, image_data[0..]);
+    const image_format = try zigimg.Image.detectFormatFromMemory(image_data[0..]);
 
     // Will print bmp
     std.log.debug("Image format: {}", .{image_format});
@@ -432,27 +426,27 @@ Each 3 functions to write an image take a union of encoder options for the targe
 ### Write to a file path
 
 ```zig
-pub fn example() !void {
+pub fn example(allocator: std.mem.Allocator, io: std.Io) !void {
     // [...]
     // Assuming you already have an image loaded
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try image.writeToFilePath("my_new_image.png", write_buffer[0..], .{ .png = .{} });
+    try image.writeToFilePath(allocator, io, "my_new_image.png", write_buffer[0..], .{ .png = .{} });
 
     // Or with encoder options
-    try image.writeToFilePath("my_new_image.png", write_buffer[0..]. .{ .png = .{ .interlaced = true } });
+    try image.writeToFilePath(allocator, io, "my_new_image.png", write_buffer[0..]. .{ .png = .{ .interlaced = true } });
 }
 ```
 
 ### Write to `std.fs.File`
 
 ```zig
-pub fn example() !void {
+pub fn example(allocator: std.mem.Allocator, io: std.Io) !void {
     // [...]
     // Assuming you already have an image loaded and the file already created
 
     var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    try image.writeToFile(file, write_buffer[0..], .{ .bmp = .{} });
+    try image.writeToFile(allocator, io, file, write_buffer[0..], .{ .bmp = .{} });
 }
 ```
 
@@ -461,7 +455,7 @@ pub fn example() !void {
 Ensure that you have enough place in your buffer before calling `writeToMemory()`
 
 ```zig
-pub fn example() !void {
+pub fn example(allocator: std.mem.Allocator) !void {
     // [...]
     // Assuming you already have an image loaded and the buffer already allocated
 
@@ -479,11 +473,9 @@ Use `Image.create()` and pass the width, height and the pixel format that you wa
 const std = @import("std");
 const zigimg = @import("zigimg");
 
-pub fn main() !void {
-    const allocator = std.heap.smp_allocator;
-
-    var image = try zigimg.Image.create(allocator, 1920, 1080, .rgba32);
-    defer image.deinit(allocator);
+pub fn main(init: std.process.Init) !void {
+    var image = try zigimg.Image.create(init.gpa, 1920, 1080, .rgba32);
+    defer image.deinit(init.gpa);
 
     // Do something with your image
 }
@@ -498,13 +490,11 @@ Using `fromRawPixel()`:
 const std = @import("std");
 const zigimg = @import("zigimg");
 
-pub fn main() !void {
-    const allocator = std.heap.smp_allocator;
-
+pub fn main(init: std.process.Init) !void {
     const my_raw_pixels = @embedData("raw_bgra32.bin");
 
-    var image = try zigimg.Image.fromRawPixels(allocator, 1920, 1080, my_raw_pixels[0..], .bgra32);
-    defer image.deinit(allocator);
+    var image = try zigimg.Image.fromRawPixels(init.gpa, 1920, 1080, my_raw_pixels[0..], .bgra32);
+    defer image.deinit(init.gpa);
 
     // Do something with your image
 }
@@ -516,8 +506,6 @@ const std = @import("std");
 const zigimg = @import("zigimg");
 
 pub fn main() !void {
-    const allocator = std.heap.smp_allocator;
-
     const my_raw_pixels = @embedData("raw_bgra32.bin");
 
     var image = try zigimg.Image.fromRawPixelsOwned(1920, 1080, my_raw_pixels[0..], .bgra32);
@@ -534,17 +522,15 @@ In the case you want more direct access to the image format, all the image forma
 const std = @import("std");
 const zigimg = @import("zigimg");
 
-pub fn main() !void {
-    const allocator = std.heap.smp_allocator;
-
+pub fn main(init: std.process.Init) !void {
     const image_data = @embedFile("windows_rgba_v5.bmp");
 
     var read_stream = zigimg.io.ReadStream.initMemory(image_data);
 
     var bmp = zigimg.formats.bmp.BMP{};
 
-    const pixels = try bmp.read(allocator, read_stream.reader());
-    defer pixels.deinit(allocator);
+    const pixels = try bmp.read(init.gpa, read_stream.reader());
+    defer pixels.deinit(init.gpa);
 
     std.log.info("BMP info header: {}", .{bmp.info_header});
 }
