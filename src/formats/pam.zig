@@ -70,7 +70,7 @@ const Header = struct {
         var maybe_depth: ?usize = null;
         var maybe_maxval: ?u16 = null;
         var maybe_tuple_type: ?TupleType = null;
-        var comments = std.ArrayList([]const u8).empty;
+        var comments: std.ArrayList([]const u8) = .empty;
         defer {
             for (comments.items) |comment| allocator.free(comment);
             comments.deinit(allocator);
