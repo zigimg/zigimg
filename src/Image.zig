@@ -1,7 +1,7 @@
 const color = @import("color.zig");
 const FormatInterface = @import("FormatInterface.zig");
 const formats = @import("formats.zig");
-const zio = @import("io.zig");
+const io = @import("io.zig");
 const PixelFormat = @import("pixel_format.zig").PixelFormat;
 const PixelFormatConverter = @import("PixelFormatConverter.zig");
 const std = @import("std");
@@ -64,13 +64,13 @@ pub const Error = error{
 
 pub const ReadError = Error ||
     std.mem.Allocator.Error ||
-    zio.ReadStream.Error ||
+    io.ReadStream.Error ||
     error{ EndOfStream, StreamTooLong, InvalidData };
 
 pub const WriteError = Error ||
     std.mem.Allocator.Error ||
-    zio.ReadStream.Error ||
-    zio.WriteStream.Error ||
+    io.ReadStream.Error ||
+    io.WriteStream.Error ||
     std.Io.File.OpenError ||
     error{ EndOfStream, InvalidData, UnfinishedBits };
 
@@ -150,42 +150,42 @@ pub fn deinit(self: *Image, allocator: std.mem.Allocator) void {
 }
 
 /// Detect which image format is used by the file path
-pub fn detectFormatFromFilePath(io: std.Io, file_path: []const u8, read_buffer: []u8) !Format {
-    var file = try std.Io.Dir.cwd().openFile(io, file_path, .{});
-    defer file.close(io);
+pub fn detectFormatFromFilePath(io_instance: std.Io, file_path: []const u8, read_buffer: []u8) !Format {
+    var file = try std.Io.Dir.cwd().openFile(io_instance, file_path, .{});
+    defer file.close(io_instance);
 
-    return detectFormatFromFile(io, file, read_buffer);
+    return detectFormatFromFile(io_instance, file, read_buffer);
 }
 
 /// Detect which image format is used by the file
-pub fn detectFormatFromFile(io: std.Io, file: std.Io.File, read_buffer: []u8) !Format {
-    var read_stream = zio.ReadStream.initFile(io, file, read_buffer);
+pub fn detectFormatFromFile(io_instance: std.Io, file: std.Io.File, read_buffer: []u8) !Format {
+    var read_stream = io.ReadStream.initFile(io_instance, file, read_buffer);
     return internalDetectFormat(&read_stream);
 }
 
 /// Detect which image format is used by the memory buffer
 pub fn detectFormatFromMemory(buffer: []const u8) !Format {
-    var read_stream = zio.ReadStream.initMemory(buffer);
+    var read_stream = io.ReadStream.initMemory(buffer);
     return internalDetectFormat(&read_stream);
 }
 
 /// Load an image from a file path
-pub fn fromFilePath(allocator: std.mem.Allocator, io: std.Io, file_path: []const u8, read_buffer: []u8) !Image {
-    var file = try std.Io.Dir.cwd().openFile(io, file_path, .{});
-    defer file.close(io);
+pub fn fromFilePath(allocator: std.mem.Allocator, io_instance: std.Io, file_path: []const u8, read_buffer: []u8) !Image {
+    var file = try std.Io.Dir.cwd().openFile(io_instance, file_path, .{});
+    defer file.close(io_instance);
 
-    return fromFile(allocator, io, file, read_buffer);
+    return fromFile(allocator, io_instance, file, read_buffer);
 }
 
 /// Load an image from a standard library std.fs.File
-pub fn fromFile(allocator: std.mem.Allocator, io: std.Io, file: std.Io.File, read_buffer: []u8) !Image {
-    var read_stream = zio.ReadStream.initFile(io, file, read_buffer);
+pub fn fromFile(allocator: std.mem.Allocator, io_instance: std.Io, file: std.Io.File, read_buffer: []u8) !Image {
+    var read_stream = io.ReadStream.initFile(io_instance, file, read_buffer);
     return internalRead(allocator, &read_stream);
 }
 
 /// Load an image from a memory buffer
 pub fn fromMemory(allocator: std.mem.Allocator, buffer: []const u8) !Image {
-    var read_stream = zio.ReadStream.initMemory(buffer);
+    var read_stream = io.ReadStream.initMemory(buffer);
     return internalRead(allocator, &read_stream);
 }
 
@@ -260,16 +260,16 @@ pub fn toManaged(self: Image, allocator: std.mem.Allocator) Managed {
 }
 
 /// Write the image to an image format to the specified path
-pub fn writeToFilePath(self: Image, allocator: std.mem.Allocator, io: std.Io, file_path: []const u8, write_buffer: []u8, encoder_options: EncoderOptions) WriteError!void {
-    var file = try std.Io.Dir.cwd().createFile(io, file_path, .{});
-    defer file.close(io);
+pub fn writeToFilePath(self: Image, allocator: std.mem.Allocator, io_instance: std.Io, file_path: []const u8, write_buffer: []u8, encoder_options: EncoderOptions) WriteError!void {
+    var file = try std.Io.Dir.cwd().createFile(io_instance, file_path, .{});
+    defer file.close(io_instance);
 
-    try self.writeToFile(allocator, io, file, write_buffer, encoder_options);
+    try self.writeToFile(allocator, io_instance, file, write_buffer, encoder_options);
 }
 
 /// Write the image to an image format to the specified std.Io.File
-pub fn writeToFile(self: Image, allocator: std.mem.Allocator, io: std.Io, file: std.Io.File, write_buffer: []u8, encoder_options: EncoderOptions) WriteError!void {
-    var write_stream = zio.WriteStream.initFile(io, file, write_buffer);
+pub fn writeToFile(self: Image, allocator: std.mem.Allocator, io_instance: std.Io, file: std.Io.File, write_buffer: []u8, encoder_options: EncoderOptions) WriteError!void {
+    var write_stream = io.WriteStream.initFile(io_instance, file, write_buffer);
 
     try self.internalWrite(allocator, &write_stream, encoder_options);
 }
@@ -277,7 +277,7 @@ pub fn writeToFile(self: Image, allocator: std.mem.Allocator, io: std.Io, file: 
 /// Write the image to an image format in a memory buffer. The memory buffer is not grown
 /// for you so make sure you pass a large enough buffer.
 pub fn writeToMemory(self: Image, allocator: std.mem.Allocator, write_buffer: []u8, encoder_options: EncoderOptions) WriteError![]u8 {
-    var write_stream = zio.WriteStream.initMemory(write_buffer);
+    var write_stream = io.WriteStream.initMemory(write_buffer);
 
     try self.internalWrite(allocator, &write_stream, encoder_options);
 
@@ -334,7 +334,7 @@ pub fn iterator(self: *const Image) color.PixelStorageIterator {
     return color.PixelStorageIterator.init(&self.pixels);
 }
 
-fn internalDetectFormat(read_stream: *zio.ReadStream) !Format {
+fn internalDetectFormat(read_stream: *io.ReadStream) !Format {
     for (all_interface_funcs, 0..) |intefaceFn, format_index| {
         const formatInterface = intefaceFn();
 
@@ -347,13 +347,13 @@ fn internalDetectFormat(read_stream: *zio.ReadStream) !Format {
     return Error.Unsupported;
 }
 
-fn internalRead(allocator: std.mem.Allocator, read_stream: *zio.ReadStream) !Image {
+fn internalRead(allocator: std.mem.Allocator, read_stream: *io.ReadStream) !Image {
     const format_interface = try findImageInterfaceFromStream(read_stream);
 
     return try format_interface.readImage(allocator, read_stream);
 }
 
-fn internalWrite(self: Image, allocator: std.mem.Allocator, write_stream: *zio.WriteStream, encoder_options: EncoderOptions) WriteError!void {
+fn internalWrite(self: Image, allocator: std.mem.Allocator, write_stream: *io.WriteStream, encoder_options: EncoderOptions) WriteError!void {
     const image_format = std.meta.activeTag(encoder_options);
 
     var format_interface = try findImageInterfaceFromImageFormat(image_format);
@@ -361,7 +361,7 @@ fn internalWrite(self: Image, allocator: std.mem.Allocator, write_stream: *zio.W
     try format_interface.writeImage(allocator, write_stream, self, encoder_options);
 }
 
-fn findImageInterfaceFromStream(read_stream: *zio.ReadStream) !FormatInterface {
+fn findImageInterfaceFromStream(read_stream: *io.ReadStream) !FormatInterface {
     for (all_interface_funcs) |intefaceFn| {
         const formatInterface = intefaceFn();
 
