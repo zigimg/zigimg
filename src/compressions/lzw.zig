@@ -4,7 +4,6 @@ const io = @import("../io.zig");
 // Implement a variable code size LZW decoder with support for clear code and end of information code required for GIF decoding
 pub fn Decoder(comptime endian: std.builtin.Endian) type {
     return struct {
-        gpa: std.mem.Allocator,
         area_allocator: std.heap.ArenaAllocator,
         code_size: u8 = 0,
         clear_code: u13 = 0,
@@ -26,7 +25,6 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
 
         pub fn init(allocator: std.mem.Allocator, initial_code_size: u8, early_change: u8) !Self {
             var result: Self = .{
-                .gpa = allocator,
                 .area_allocator = std.heap.ArenaAllocator.init(allocator),
                 .code_size = initial_code_size,
                 .dictionary = .empty,
@@ -45,7 +43,6 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
 
         pub fn deinit(self: *Self) void {
             self.area_allocator.deinit();
-            self.dictionary.deinit(self.gpa);
         }
 
         pub fn decode(self: *Self, reader: *std.Io.Reader, writer: *std.Io.Writer) !void {
@@ -76,7 +73,7 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
                 read_code = try bit_reader.readBits(u13, bits_to_read, &read_size);
             }
 
-            var allocator = self.area_allocator.allocator();
+            const allocator = self.area_allocator.allocator();
 
             while (read_size > 0) {
                 if (self.dictionary.get(read_code)) |value| {
@@ -87,7 +84,7 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
                             var new_value = try allocator.alloc(u8, previous_value.len + 1);
                             std.mem.copyForwards(u8, new_value, previous_value);
                             new_value[previous_value.len] = value[0];
-                            try self.dictionary.put(self.gpa, self.next_code, new_value);
+                            try self.dictionary.put(allocator, self.next_code, new_value);
 
                             self.next_code += 1;
 
@@ -111,7 +108,7 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
                                 var new_value = try allocator.alloc(u8, previous_value.len + 1);
                                 std.mem.copyForwards(u8, new_value, previous_value);
                                 new_value[previous_value.len] = previous_value[0];
-                                try self.dictionary.put(self.gpa, self.next_code, new_value);
+                                try self.dictionary.put(allocator, self.next_code, new_value);
 
                                 _ = try writer.write(new_value);
 
@@ -139,14 +136,14 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
         }
 
         fn resetDictionary(self: *Self) !void {
-            self.dictionary.clearRetainingCapacity();
+            self.dictionary.clearAndFree(self.area_allocator.allocator());
             self.area_allocator.deinit();
 
             self.code_size = self.initial_code_size;
             self.next_code = (@as(u13, 1) << @intCast(self.initial_code_size)) + 2;
 
             self.area_allocator = std.heap.ArenaAllocator.init(self.area_allocator.child_allocator);
-            var allocator = self.area_allocator.allocator();
+            const allocator = self.area_allocator.allocator();
 
             const roots_size = @as(usize, 1) << @intCast(self.code_size);
 
@@ -156,7 +153,7 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
                 var data = try allocator.alloc(u8, 1);
                 data[0] = @as(u8, @truncate(index));
 
-                try self.dictionary.put(self.gpa, index, data);
+                try self.dictionary.put(allocator, index, data);
             }
         }
     };
