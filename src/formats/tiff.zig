@@ -211,12 +211,20 @@ pub const TIFF = struct {
 
     pub fn readStrips(self: *TIFF, allocator: std.mem.Allocator, read_stream: *io.ReadStream, pixel_storage: *color.PixelStorage) Image.ReadError!void {
         const bitmap = &self.bitmap;
+        // Reject corrupted IFDs that omit or shrink the strip tables, or that
+        // declare zero rows-per-strip (div-by-zero on the total_strips math).
+        // Fuzzing (validate --test-coverage shotgun corruption) reliably SEGV'd
+        // here before these guards, because `.?` on a null optional is UB in
+        // ReleaseFast and `total_strips > strip_offsets.len` walks off the heap.
+        if (bitmap.rows_per_strip == 0) return error.InvalidData;
+        const byte_counts_array = bitmap.strip_byte_counts orelse return error.InvalidData;
+        const offsets_array = bitmap.strip_offsets orelse return error.InvalidData;
         const total_strips = (bitmap.image_height + bitmap.rows_per_strip - 1) / bitmap.rows_per_strip;
-        const byte_counts_array = bitmap.strip_byte_counts.?;
-        const offsets_array = bitmap.strip_offsets.?;
+        if (total_strips > offsets_array.len or total_strips > byte_counts_array.len) return error.InvalidData;
         const image_width = bitmap.image_width;
         const image_height = bitmap.image_height;
         const rows_per_strip = @min(bitmap.rows_per_strip, bitmap.image_height);
+        if (rows_per_strip == 0) return error.InvalidData;
         const photometric_interpretation = bitmap.photometric_interpretation;
         const predictor = bitmap.predictor;
         const compression = bitmap.compression;
