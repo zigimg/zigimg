@@ -3,13 +3,14 @@ const std = @import("std");
 const tiff = zigimg.formats.tiff;
 const zigimg = @import("zigimg");
 
+const test_io = std.testing.io;
+
 test "Should error on non TIFF images" {
-    const io = std.testing.io;
-    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "bmp/simple_v4.bmp");
-    defer file.close(io);
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "bmp/simple_v4.bmp");
+    defer file.close(test_io);
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     var sgi_file = tiff.TIFF{};
 
@@ -18,14 +19,13 @@ test "Should error on non TIFF images" {
 }
 
 test "TIFF/LE monochrome black uncompressed" {
-    const io = std.testing.io;
-    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "tiff/sample-monob-raw.tiff");
-    defer file.close(io);
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "tiff/sample-monob-raw.tiff");
+    defer file.close(test_io);
 
     var the_tiff = tiff.TIFF{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try the_tiff.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -40,14 +40,13 @@ test "TIFF/LE monochrome black uncompressed" {
 }
 
 test "TIFF/LE grayscale8 uncompressed" {
-    const io = std.testing.io;
-    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "tiff/sample-grayscale8-raw.tiff");
-    defer file.close(io);
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "tiff/sample-grayscale8-raw.tiff");
+    defer file.close(test_io);
 
     var the_tiff = tiff.TIFF{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try the_tiff.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -63,14 +62,13 @@ test "TIFF/LE grayscale8 uncompressed" {
 }
 
 test "TIFF/LE 8-bit with colormap uncompressed" {
-    const io = std.testing.io;
-    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "tiff/sample-pal8-raw.tiff");
-    defer file.close(io);
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "tiff/sample-pal8-raw.tiff");
+    defer file.close(test_io);
 
     var the_tiff = tiff.TIFF{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try the_tiff.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -90,14 +88,13 @@ test "TIFF/LE 8-bit with colormap uncompressed" {
 }
 
 test "TIFF/LE 24-bit uncompressed" {
-    const io = std.testing.io;
-    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "tiff/sample-rgb24-raw.tiff");
-    defer file.close(io);
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "tiff/sample-rgb24-raw.tiff");
+    defer file.close(test_io);
 
     var the_tiff = tiff.TIFF{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try the_tiff.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -119,14 +116,13 @@ test "TIFF/LE 24-bit uncompressed" {
 }
 
 test "TIFF/BE rgb24 gray single strip uncompressed" {
-    const io = std.testing.io;
-    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "tiff/big-endian/sample-rgb24-single-strip.tiff");
-    defer file.close(io);
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "tiff/big-endian/sample-rgb24-single-strip.tiff");
+    defer file.close(test_io);
 
     var the_tiff = tiff.TIFF{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try the_tiff.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -148,14 +144,13 @@ test "TIFF/BE rgb24 gray single strip uncompressed" {
 }
 
 test "TIFF/BE rgb24 color single strip uncompressed" {
-    const io = std.testing.io;
-    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "tiff/big-endian/sample-pal8-raw.tiff");
-    defer file.close(io);
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "tiff/big-endian/sample-pal8-raw.tiff");
+    defer file.close(test_io);
 
     var the_tiff = tiff.TIFF{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try the_tiff.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -177,14 +172,13 @@ test "TIFF/BE rgb24 color single strip uncompressed" {
 }
 
 test "TIFF/BE 24-bit uncompressed" {
-    const io = std.testing.io;
-    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "tiff/big-endian/sample-rgb24-raw.tiff");
-    defer file.close(io);
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "tiff/big-endian/sample-rgb24-raw.tiff");
+    defer file.close(test_io);
 
     var the_tiff = tiff.TIFF{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try the_tiff.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -206,14 +200,13 @@ test "TIFF/BE 24-bit uncompressed" {
 }
 
 test "TIFF/LE RGBA uncompressed" {
-    const io = std.testing.io;
-    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "tiff/sample-rgba-raw.tiff");
-    defer file.close(io);
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "tiff/sample-rgba-raw.tiff");
+    defer file.close(test_io);
 
     var the_tiff = tiff.TIFF{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try the_tiff.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -231,14 +224,13 @@ test "TIFF/LE RGBA uncompressed" {
 }
 
 test "TIFF/LE monochrome black packbits" {
-    const io = std.testing.io;
-    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "tiff/sample-monob-packbits.tiff");
-    defer file.close(io);
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "tiff/sample-monob-packbits.tiff");
+    defer file.close(test_io);
 
     var the_tiff = tiff.TIFF{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try the_tiff.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -253,14 +245,13 @@ test "TIFF/LE monochrome black packbits" {
 }
 
 test "TIFF/LE grayscale8 packbits" {
-    const io = std.testing.io;
-    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "tiff/sample-grayscale8-packbits.tiff");
-    defer file.close(io);
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "tiff/sample-grayscale8-packbits.tiff");
+    defer file.close(test_io);
 
     var the_tiff = tiff.TIFF{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try the_tiff.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -276,14 +267,13 @@ test "TIFF/LE grayscale8 packbits" {
 }
 
 test "TIFF/LE 8-bit with colormap packbits" {
-    const io = std.testing.io;
-    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "tiff/sample-pal8-packbits.tiff");
-    defer file.close(io);
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "tiff/sample-pal8-packbits.tiff");
+    defer file.close(test_io);
 
     var the_tiff = tiff.TIFF{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try the_tiff.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -303,14 +293,13 @@ test "TIFF/LE 8-bit with colormap packbits" {
 }
 
 test "TIFF/LE 24-bit packbits" {
-    const io = std.testing.io;
-    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "tiff/sample-rgb24-packbits.tiff");
-    defer file.close(io);
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "tiff/sample-rgb24-packbits.tiff");
+    defer file.close(test_io);
 
     var the_tiff = tiff.TIFF{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try the_tiff.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -332,14 +321,13 @@ test "TIFF/LE 24-bit packbits" {
 }
 
 test "TIFF/LE RGBA packbits" {
-    const io = std.testing.io;
-    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "tiff/sample-rgba-packbits.tiff");
-    defer file.close(io);
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "tiff/sample-rgba-packbits.tiff");
+    defer file.close(test_io);
 
     var the_tiff = tiff.TIFF{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try the_tiff.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -357,14 +345,13 @@ test "TIFF/LE RGBA packbits" {
 }
 
 test "TIFF/LE monochrome black CCITT" {
-    const io = std.testing.io;
-    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "tiff/ccitt_rle.tiff");
-    defer file.close(io);
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "tiff/ccitt_rle.tiff");
+    defer file.close(test_io);
 
     var the_tiff = tiff.TIFF{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try the_tiff.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -378,14 +365,13 @@ test "TIFF/LE monochrome black CCITT" {
 }
 
 test "TIFF/LE monochrome black LZW" {
-    const io = std.testing.io;
-    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "tiff/sample-monob-lzw.tiff");
-    defer file.close(io);
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "tiff/sample-monob-lzw.tiff");
+    defer file.close(test_io);
 
     var the_tiff = tiff.TIFF{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try the_tiff.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -400,14 +386,13 @@ test "TIFF/LE monochrome black LZW" {
 }
 
 test "TIFF/LE grayscale8 LZW" {
-    const io = std.testing.io;
-    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "tiff/sample-grayscale8-lzw.tiff");
-    defer file.close(io);
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "tiff/sample-grayscale8-lzw.tiff");
+    defer file.close(test_io);
 
     var the_tiff = tiff.TIFF{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try the_tiff.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -423,14 +408,13 @@ test "TIFF/LE grayscale8 LZW" {
 }
 
 test "TIFF/LE 8-bit with colormap LZW" {
-    const io = std.testing.io;
-    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "tiff/sample-pal8-lzw.tiff");
-    defer file.close(io);
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "tiff/sample-pal8-lzw.tiff");
+    defer file.close(test_io);
 
     var the_tiff = tiff.TIFF{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try the_tiff.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -450,14 +434,13 @@ test "TIFF/LE 8-bit with colormap LZW" {
 }
 
 test "TIFF/LE 24-bit LZW" {
-    const io = std.testing.io;
-    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "tiff/sample-rgb24-lzw.tiff");
-    defer file.close(io);
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "tiff/sample-rgb24-lzw.tiff");
+    defer file.close(test_io);
 
     var the_tiff = tiff.TIFF{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try the_tiff.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -479,14 +462,13 @@ test "TIFF/LE 24-bit LZW" {
 }
 
 test "TIFF/LE RGBA LZW" {
-    const io = std.testing.io;
-    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "tiff/sample-rgba-lzw.tiff");
-    defer file.close(io);
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "tiff/sample-rgba-lzw.tiff");
+    defer file.close(test_io);
 
     var the_tiff = tiff.TIFF{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try the_tiff.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -504,14 +486,13 @@ test "TIFF/LE RGBA LZW" {
 }
 
 test "TIFF/LE monochrome black Deflate" {
-    const io = std.testing.io;
-    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "tiff/sample-monob-deflate.tiff");
-    defer file.close(io);
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "tiff/sample-monob-deflate.tiff");
+    defer file.close(test_io);
 
     var the_bitmap = tiff.TIFF{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try the_bitmap.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -526,14 +507,13 @@ test "TIFF/LE monochrome black Deflate" {
 }
 
 test "TIFF/LE grayscale8 Deflate" {
-    const io = std.testing.io;
-    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "tiff/sample-grayscale8-deflate.tiff");
-    defer file.close(io);
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "tiff/sample-grayscale8-deflate.tiff");
+    defer file.close(test_io);
 
     var the_tiff = tiff.TIFF{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try the_tiff.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -549,14 +529,13 @@ test "TIFF/LE grayscale8 Deflate" {
 }
 
 test "TIFF/LE 8-bit with colormap Deflate" {
-    const io = std.testing.io;
-    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "tiff/sample-pal8-deflate.tiff");
-    defer file.close(io);
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "tiff/sample-pal8-deflate.tiff");
+    defer file.close(test_io);
 
     var the_tiff = tiff.TIFF{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try the_tiff.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -576,14 +555,13 @@ test "TIFF/LE 8-bit with colormap Deflate" {
 }
 
 test "TIFF/LE 24-bit Deflate" {
-    const io = std.testing.io;
-    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "tiff/sample-rgb24-deflate.tiff");
-    defer file.close(io);
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "tiff/sample-rgb24-deflate.tiff");
+    defer file.close(test_io);
 
     var the_tiff = tiff.TIFF{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try the_tiff.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
@@ -605,14 +583,13 @@ test "TIFF/LE 24-bit Deflate" {
 }
 
 test "TIFF/LE RGBA Deflate" {
-    const io = std.testing.io;
-    const file = try helpers.testOpenFile(io, helpers.fixtures_path ++ "tiff/sample-rgba-deflate.tiff");
-    defer file.close(io);
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "tiff/sample-rgba-deflate.tiff");
+    defer file.close(test_io);
 
     var the_tiff = tiff.TIFF{};
 
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-    var read_stream = zigimg.io.ReadStream.initFile(io, file, read_buffer[0..]);
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
 
     const pixels = try the_tiff.read(helpers.zigimg_test_allocator, &read_stream);
     defer pixels.deinit(helpers.zigimg_test_allocator);
