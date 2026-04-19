@@ -1,11 +1,6 @@
 const builtin = @import("builtin");
 const std = @import("std");
 
-const native_endian = builtin.target.cpu.arch.endian();
-
-pub const StructReadError = error{InvalidData} || std.Io.Reader.Error;
-pub const StructWriteError = std.io.StreamSource.WriteError;
-
 pub fn FixedStorage(comptime T: type, comptime storage_size: usize) type {
     return struct {
         data: []T = &.{},
@@ -36,7 +31,7 @@ pub fn toMagicNumberForeign(magic: []const u8) u32 {
 }
 
 pub inline fn toMagicNumber(magic: []const u8, comptime wanted_endian: std.builtin.Endian) u32 {
-    return switch (native_endian) {
+    return switch (builtin.target.cpu.arch.endian();) {
         .little => {
             return switch (wanted_endian) {
                 .little => toMagicNumberNative(magic),
