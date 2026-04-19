@@ -531,12 +531,20 @@ test "Write TGA uncompressed grayscale8" {
         try std.testing.expectStringStartsWith(extension.author_name[0..], encoder_options.tga.author_name);
 
         try std.testing.expectStringStartsWith(extension.software_id[0..], encoder_options.tga.software_id);
-        try helpers.expectEq(extension.software_version, encoder_options.tga.software_version);
+        try helpers.expectEq(extension.software_version.letter, encoder_options.tga.software_version.letter);
+        try helpers.expectEq(extension.software_version.number, encoder_options.tga.software_version.number);
 
         try std.testing.expectStringStartsWith(extension.job_id[0..], encoder_options.tga.job_id);
-        try helpers.expectEq(extension.job_time, encoder_options.tga.job_time);
+        try helpers.expectEq(extension.job_time.hours, encoder_options.tga.job_time.hours);
+        try helpers.expectEq(extension.job_time.minutes, encoder_options.tga.job_time.minutes);
+        try helpers.expectEq(extension.job_time.seconds, encoder_options.tga.job_time.seconds);
 
-        try helpers.expectEq(extension.timestamp, encoder_options.tga.timestamp);
+        try helpers.expectEq(extension.timestamp.month, encoder_options.tga.timestamp.month);
+        try helpers.expectEq(extension.timestamp.day, encoder_options.tga.timestamp.day);
+        try helpers.expectEq(extension.timestamp.year, encoder_options.tga.timestamp.year);
+        try helpers.expectEq(extension.timestamp.hour, encoder_options.tga.timestamp.hour);
+        try helpers.expectEq(extension.timestamp.minute, encoder_options.tga.timestamp.minute);
+        try helpers.expectEq(extension.timestamp.second, encoder_options.tga.timestamp.second);
     }
 
     const width = tga_file.width();
