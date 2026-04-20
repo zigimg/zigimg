@@ -189,7 +189,7 @@ test "Should detect BMP properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
+        const format = try helpers.testDetectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .bmp);
 
         var test_image = try helpers.testImageFromFile(test_io, image_path, read_buffer[0..]);
@@ -215,7 +215,7 @@ test "Should detect GIF properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
+        const format = try helpers.testDetectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .gif);
 
         var test_image = try helpers.testImageFromFile(test_io, image_path, read_buffer[0..]);
@@ -233,7 +233,7 @@ test "Should detect PCX properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
+        const format = try helpers.testDetectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .pcx);
 
         var test_image = try helpers.testImageFromFile(test_io, image_path, read_buffer[0..]);
@@ -249,7 +249,7 @@ test "Should detect PBM properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
+        const format = try helpers.testDetectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .pbm);
 
         var test_image = try helpers.testImageFromFile(test_io, image_path, read_buffer[0..]);
@@ -267,7 +267,7 @@ test "Should detect PGM properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
+        const format = try helpers.testDetectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .pgm);
 
         var test_image = try helpers.testImageFromFile(test_io, image_path, read_buffer[0..]);
@@ -283,7 +283,7 @@ test "Should detect PPM properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
+        const format = try helpers.testDetectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .ppm);
 
         var test_image = try helpers.testImageFromFile(test_io, image_path, read_buffer[0..]);
@@ -299,7 +299,7 @@ test "Should detect PNG properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
+        const format = try helpers.testDetectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .png);
 
         var test_image = try helpers.testImageFromFile(test_io, image_path, read_buffer[0..]);
@@ -323,7 +323,7 @@ test "Should detect TGA properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
+        const format = try helpers.testDetectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .tga);
 
         var test_image = try helpers.testImageFromFile(test_io, image_path, read_buffer[0..]);
@@ -336,7 +336,7 @@ test "Should detect QOI properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
+        const format = try helpers.testDetectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .qoi);
 
         var test_image = try helpers.testImageFromFile(test_io, image_path, read_buffer[0..]);
@@ -352,7 +352,7 @@ test "Should detect JPEG properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
+        const format = try helpers.testDetectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .jpeg);
 
         var test_image = try helpers.testImageFromFile(test_io, image_path, read_buffer[0..]);
@@ -368,7 +368,7 @@ test "Should detect Farbfeld properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
+        const format = try helpers.testDetectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .farbfeld);
 
         var test_image = try helpers.testImageFromFile(test_io, image_path, read_buffer[0..]);
@@ -383,7 +383,7 @@ test "Should detect IFF/PBM properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
+        const format = try helpers.testDetectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .iff);
 
         var test_image = try helpers.testImageFromFile(test_io, image_path, read_buffer[0..]);
@@ -398,7 +398,7 @@ test "Should detect RAS properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
+        const format = try helpers.testDetectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .ras);
 
         var test_image = try helpers.testImageFromFile(test_io, image_path, read_buffer[0..]);
@@ -413,7 +413,7 @@ test "Should detect SGI properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
+        const format = try helpers.testDetectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .sgi);
 
         var test_image = try helpers.testImageFromFile(test_io, image_path, read_buffer[0..]);
@@ -428,7 +428,7 @@ test "Should detect TIFF properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
+        const format = try helpers.testDetectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .tiff);
 
         var test_image = try helpers.testImageFromFile(test_io, image_path, read_buffer[0..]);
@@ -451,7 +451,7 @@ test "Should detect XBM properly" {
 
     for (image_tests) |image_path| {
         var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
-        const format = try Image.detectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
+        const format = try helpers.testDetectFormatFromFilePath(test_io, image_path, read_buffer[0..]);
         try std.testing.expect(format == .xbm);
 
         var test_image = try helpers.testImageFromFile(test_io, image_path, read_buffer[0..]);

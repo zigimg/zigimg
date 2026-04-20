@@ -35,9 +35,18 @@ pub fn testOpenFile(io: std.Io, file_path: []const u8) !std.Io.File {
         if (err == error.FileNotFound) return error.SkipZigTest else return err;
 }
 
-pub fn testImageFromFile(io: std.Io, image_path: []const u8, buffer: []u8) !zigimg.Image {
-    return zigimg.Image.fromFilePath(zigimg_test_allocator, io, image_path, buffer) catch |err|
+pub fn testDetectFormatFromFilePath(io: std.Io, file_path: []const u8, buffer: []u8) !zigimg.Image.Format {
+    return zigimg.Image.detectFormatFromFilePath(io, file_path, buffer) catch |err|
         if (err == error.FileNotFound) return error.SkipZigTest else return err;
+}
+
+pub fn testImageFromFileWithAllocator(allocator: std.mem.Allocator, io: std.Io, image_path: []const u8, buffer: []u8) !zigimg.Image {
+    return zigimg.Image.fromFilePath(allocator, io, image_path, buffer) catch |err|
+        if (err == error.FileNotFound) return error.SkipZigTest else return err;
+}
+
+pub fn testImageFromFile(io: std.Io, image_path: []const u8, buffer: []u8) !zigimg.Image {
+    return testImageFromFileWithAllocator(zigimg_test_allocator, io, image_path, buffer);
 }
 
 pub fn testReadFile(io: std.Io, file_path: []const u8, buffer: []u8) ![]u8 {
