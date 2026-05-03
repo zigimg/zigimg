@@ -117,6 +117,7 @@ pub const BitmapDescriptor = struct {
         // only raw, packbits, lzw and ccitt_rle compression supported for now
         switch (self.compression) {
             .uncompressed,
+            .uncompressed_old,
             .packbits,
             .ccitt_rle,
             .lzw,

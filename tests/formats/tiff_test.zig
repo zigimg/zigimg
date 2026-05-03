@@ -603,3 +603,30 @@ test "TIFF/LE RGBA Deflate" {
         try helpers.expectEq(pixels.rgba32[index].to.u32Rgb(), hex_color);
     }
 }
+
+test "TIFF/BE 24-bit uncompressed RGB with replicated BitsPerSample and missing StripByteCounts" {
+    // Real-world scanner output (e.g. Epson scan) often writes BitsPerSample
+    // with data_count=1 (single SHORT=8) even when SamplesPerPixel=3, and
+    // omits StripByteCounts entirely. libtiff handles both leniencies; this
+    // test pins zigimg to do the same.
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tiff/sample-rgb24-bps1-no-stripbc.tiff");
+    defer file.close();
+
+    var the_tiff = tiff.TIFF{};
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+
+    const pixels = try the_tiff.read(helpers.zigimg_test_allocator, &read_stream);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(the_tiff.width(), 4);
+    try helpers.expectEq(the_tiff.height(), 4);
+    try std.testing.expect(pixels == .rgb24);
+    // Strip data is bytes 0..47 in RGB order: pixel[0] = (0,1,2), pixel[1] = (3,4,5), ...
+    for (0..16) |i| {
+        const base: u8 = @intCast(i * 3);
+        try helpers.expectEq(pixels.rgb24[i].r, base);
+        try helpers.expectEq(pixels.rgb24[i].g, base + 1);
+        try helpers.expectEq(pixels.rgb24[i].b, base + 2);
+    }
+}
