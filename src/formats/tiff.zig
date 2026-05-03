@@ -1,4 +1,5 @@
 const ccitt = @import("../compressions/ccitt.zig");
+const ccitt_t6 = @import("../compressions/ccitt_t6.zig");
 const color = @import("../color.zig");
 const FormatInterface = @import("../FormatInterface.zig");
 const Image = @import("../Image.zig");
@@ -249,6 +250,17 @@ pub const TIFF = struct {
         };
     }
 
+    /// CCITT T.6 (Group 4 / MMR) strip decoder. T.6 has no EOL/RTC markers and
+    /// each row is decoded relative to the previous reference line; the first
+    /// reference line is implicit all-white.
+    pub fn uncompressCCITT_T6(self: *TIFF, read_stream: *io.ReadStream, dest_buffer: []u8, image_width: usize, num_rows: usize) !void {
+        var writer = std.Io.Writer.fixed(dest_buffer);
+        var t6_decoder = ccitt_t6.Decoder.init(image_width, num_rows, @truncate(self.bitmap.photometric_interpretation));
+        t6_decoder.decode(read_stream.reader(), &writer) catch {
+            return Image.ReadError.InvalidData;
+        };
+    }
+
     pub fn calRowByteSize(self: *TIFF) !usize {
         const bitmap = &self.bitmap;
         var total_bits: usize = 0;
@@ -307,6 +319,7 @@ pub const TIFF = struct {
                 .uncompressed, .uncompressed_old => _ = try reader.readSliceShort(strip_buffer[0..]),
                 .packbits => _ = try packbits.decode(read_stream, strip_buffer, compressed_byte_count),
                 .ccitt_rle => _ = try self.uncompressCCITT(read_stream, strip_buffer, image_width, current_row_size),
+                .gp_4_fax => try self.uncompressCCITT_T6(read_stream, strip_buffer, image_width, current_row_size),
                 .lzw => try self.uncompressLZW(allocator, read_stream, strip_buffer, compressed_byte_count),
                 .deflate, .pixar_deflate => _ = try self.uncompressDeflate(read_stream, strip_buffer),
                 else => return Image.Error.Unsupported,

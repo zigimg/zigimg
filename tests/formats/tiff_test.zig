@@ -630,3 +630,89 @@ test "TIFF/BE 24-bit uncompressed RGB with replicated BitsPerSample and missing 
         try helpers.expectEq(pixels.rgb24[i].b, base + 2);
     }
 }
+
+test "TIFF/BE monochrome CCITT Group 4 (T.6) - all white" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tiff/sample-monob-ccitt-g4-white.tiff");
+    defer file.close();
+
+    var the_tiff = tiff.TIFF{};
+
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+
+    const pixels = try the_tiff.read(helpers.zigimg_test_allocator, &read_stream);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(the_tiff.width(), 16);
+    try helpers.expectEq(the_tiff.height(), 16);
+    try std.testing.expect(pixels == .grayscale1);
+    // min-is-white photometric => white pixels render as 1
+    for (pixels.grayscale1) |p| try helpers.expectEq(p.value, 1);
+}
+
+test "TIFF/BE monochrome CCITT Group 4 (T.6) - all black" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tiff/sample-monob-ccitt-g4-black.tiff");
+    defer file.close();
+
+    var the_tiff = tiff.TIFF{};
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+
+    const pixels = try the_tiff.read(helpers.zigimg_test_allocator, &read_stream);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(the_tiff.width(), 16);
+    try helpers.expectEq(the_tiff.height(), 16);
+    try std.testing.expect(pixels == .grayscale1);
+    for (pixels.grayscale1) |p| try helpers.expectEq(p.value, 0);
+}
+
+test "TIFF/BE monochrome CCITT Group 4 (T.6) - vertical stripe pattern" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tiff/sample-monob-ccitt-g4-pattern.tiff");
+    defer file.close();
+
+    var the_tiff = tiff.TIFF{};
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+
+    const pixels = try the_tiff.read(helpers.zigimg_test_allocator, &read_stream);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(the_tiff.width(), 16);
+    try helpers.expectEq(the_tiff.height(), 16);
+    try std.testing.expect(pixels == .grayscale1);
+    // Pattern is "1 0 1 0..." in PBM (1=black, 0=white). With min-is-white the
+    // rendered values are inverted: black-white-black-white => 0-1-0-1.
+    for (0..16) |row| {
+        for (0..16) |col| {
+            const expected: u1 = if (col & 1 == 0) 0 else 1;
+            try helpers.expectEq(pixels.grayscale1[row * 16 + col].value, expected);
+        }
+    }
+}
+
+test "TIFF/BE monochrome CCITT Group 4 (T.6) - mixed checkerboard halves" {
+    const file = try helpers.testOpenFile(helpers.fixtures_path ++ "tiff/sample-monob-ccitt-g4-mixed.tiff");
+    defer file.close();
+
+    var the_tiff = tiff.TIFF{};
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(file, read_buffer[0..]);
+
+    const pixels = try the_tiff.read(helpers.zigimg_test_allocator, &read_stream);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(the_tiff.width(), 24);
+    try helpers.expectEq(the_tiff.height(), 16);
+    try std.testing.expect(pixels == .grayscale1);
+    // Top 8 rows: 12 white + 12 black; bottom 8 rows: 12 black + 12 white.
+    // With min-is-white photometric, white => 1, black => 0.
+    for (0..8) |row| {
+        for (0..12) |col| try helpers.expectEq(pixels.grayscale1[row * 24 + col].value, 1);
+        for (12..24) |col| try helpers.expectEq(pixels.grayscale1[row * 24 + col].value, 0);
+    }
+    for (8..16) |row| {
+        for (0..12) |col| try helpers.expectEq(pixels.grayscale1[row * 24 + col].value, 0);
+        for (12..24) |col| try helpers.expectEq(pixels.grayscale1[row * 24 + col].value, 1);
+    }
+}

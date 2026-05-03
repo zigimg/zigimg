@@ -120,6 +120,7 @@ pub const BitmapDescriptor = struct {
             .uncompressed_old,
             .packbits,
             .ccitt_rle,
+            .gp_4_fax,
             .lzw,
             .deflate,
             .pixar_deflate,
