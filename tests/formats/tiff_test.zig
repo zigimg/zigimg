@@ -716,3 +716,69 @@ test "TIFF/BE monochrome CCITT Group 4 (T.6) - mixed checkerboard halves" {
         for (12..24) |col| try helpers.expectEq(pixels.grayscale1[row * 24 + col].value, 1);
     }
 }
+
+test "TIFF/BE monochrome CCITT Group 4 (T.6) - complex fixture matches libtiff" {
+    // Regression test for parity-based b1 scan drift: a small but complex
+    // fixture (text + lines + circle + filled polygon + rectangle on 800x600)
+    // exposes the drift bug that the old parity-scan decoder hits on the real
+    // 11059x15671 reproducer after row 1884. This must produce row-for-row
+    // identical output to libtiff's tiff2rgba for every row.
+    const allocator = helpers.zigimg_test_allocator;
+
+    const tiff_file = try helpers.testOpenFile(helpers.fixtures_path ++ "tiff/sample-monob-ccitt-g4-complex.tiff");
+    defer tiff_file.close();
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(tiff_file, read_buffer[0..]);
+    var the_tiff = tiff.TIFF{};
+    const pixels = try the_tiff.read(allocator, &read_stream);
+    defer pixels.deinit(allocator);
+
+    try helpers.expectEq(the_tiff.width(), 800);
+    try helpers.expectEq(the_tiff.height(), 600);
+    try std.testing.expect(pixels == .grayscale1);
+
+    // Load libtiff reference (PBM P4 format: header then packed bits, 1=black 0=white).
+    const ref_buf = try std.fs.cwd().readFileAlloc(
+        allocator,
+        helpers.fixtures_path ++ "tiff/sample-monob-ccitt-g4-complex.pbm",
+        16 * 1024 * 1024,
+    );
+    defer allocator.free(ref_buf);
+
+    // Skip P4 header: "P4\n800 600\n"
+    var hdr_end: usize = 0;
+    var newlines: u32 = 0;
+    while (hdr_end < ref_buf.len and newlines < 2) : (hdr_end += 1) {
+        if (ref_buf[hdr_end] == '\n') newlines += 1;
+    }
+    const ref_bits = ref_buf[hdr_end..];
+    const stride: usize = (800 + 7) / 8;
+    try helpers.expectEq(ref_bits.len, stride * 600);
+
+    // Compare: zigimg grayscale1 stores 1=white-intensity. Photometric=1 fixture
+    // means decoder output passes through storage unchanged, so .value = white?1:0.
+    // PBM: 1=black 0=white => zigimg.value = !PBM_bit.
+    var first_mismatch_row: i32 = -1;
+    var mismatch_count: usize = 0;
+    var row: usize = 0;
+    while (row < 600) : (row += 1) {
+        var col: usize = 0;
+        while (col < 800) : (col += 1) {
+            const ref_byte = ref_bits[row * stride + (col >> 3)];
+            const ref_bit: u1 = @truncate((ref_byte >> @intCast(@as(u3, 7) - @as(u3, @intCast(col & 7)))) & 1);
+            const expected_zig: u1 = ref_bit ^ 1;
+            const got = pixels.grayscale1[row * 800 + col].value;
+            if (got != expected_zig) {
+                if (first_mismatch_row < 0) first_mismatch_row = @intCast(row);
+                mismatch_count += 1;
+            }
+        }
+    }
+    if (mismatch_count != 0) {
+        std.debug.print(
+            "\nG4 complex drift: first_mismatch_row={d}, total_mismatches={d}\n",
+            .{ first_mismatch_row, mismatch_count },
+        );
+    }
+    try helpers.expectEq(mismatch_count, 0);
+}
