@@ -603,3 +603,33 @@ test "TIFF/LE RGBA Deflate" {
         try helpers.expectEq(pixels.rgba32[index].to.u32Rgb(), hex_color);
     }
 }
+
+test "TIFF calRowByteSize handles 1-bit widths not divisible by 8" {
+    // For 1-bit (bilevel) images, the row byte size must be the ceiling of
+    // width/8, not the floor. A bare `width >> 3` truncates and yields a
+    // buffer that is one byte short for any width whose low 3 bits are
+    // non-zero — corrupting strip reads, predictor passes, and CCITT/T.4/T.6
+    // decode for every such fixture.
+    var the_tiff = tiff.TIFF{};
+    the_tiff.bitmap = .{};
+    the_tiff.bitmap.samples_per_pixel = 1;
+    the_tiff.bitmap.bits_per_sample.resize(1);
+    the_tiff.bitmap.bits_per_sample.data[0] = 1;
+
+    const cases = [_]struct { width: u32, expected: usize }{
+        .{ .width = 11, .expected = 2 },
+        .{ .width = 17, .expected = 3 },
+        .{ .width = 2363, .expected = 296 },
+        .{ .width = 11059, .expected = 1383 },
+        // Multiples of 8 must still work (regression guard).
+        .{ .width = 8, .expected = 1 },
+        .{ .width = 16, .expected = 2 },
+        .{ .width = 1024, .expected = 128 },
+    };
+
+    for (cases) |c| {
+        the_tiff.bitmap.image_width = c.width;
+        const got = try the_tiff.calRowByteSize();
+        try helpers.expectEq(got, c.expected);
+    }
+}

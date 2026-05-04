@@ -192,6 +192,10 @@ pub const TIFF = struct {
         };
     }
 
+    /// Bytes required to hold a single decoded scanline. For 1-bit (bilevel)
+    /// images we use ceiling division so widths that are not a multiple of 8
+    /// still allocate the trailing partial byte — required by every 1-bit
+    /// codec path (CCITT RLE / T.4 / T.6) and any 1-bit predictor pass.
     pub fn calRowByteSize(self: *TIFF) !usize {
         const bitmap = &self.bitmap;
         var total_bits: usize = 0;
@@ -201,7 +205,8 @@ pub const TIFF = struct {
         }
 
         if (total_bits == 1) {
-            return bitmap.image_width >> 3;
+            // Ceiling division — handles widths not divisible by 8.
+            return (bitmap.image_width + 7) >> 3;
         } else if (total_bits >= 8) {
             return bitmap.image_width * (total_bits / 8);
         }
