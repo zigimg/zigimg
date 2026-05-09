@@ -13,9 +13,9 @@ const prime4 = 0x9E3779B1; // 4 bytes prime number 2654435761
 const chain_len = 2 * consts.history.len;
 
 // Maps hash => first position
-head: [consts.lookup.len]u16 = [_]u16{0} ** consts.lookup.len,
+head: [consts.lookup.len]u16 = @splat(0),
 // Maps position => previous positions for the same hash value
-chain: [chain_len]u16 = [_]u16{0} ** (chain_len),
+chain: [chain_len]u16 = @splat(0),
 
 // Calculates hash of the 4 bytes from data.
 // Inserts `pos` position of that hash in the lookup tables.

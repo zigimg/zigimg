@@ -338,7 +338,7 @@ pub fn fixedDistanceEncoder() DistanceEncoder {
 }
 
 pub fn huffmanDistanceEncoder() DistanceEncoder {
-    var distance_freq = [1]u16{0} ** consts.distance_code_count;
+    var distance_freq: [consts.distance_code_count]u16 = @splat(0);
     distance_freq[0] = 1;
     // huff_distance is a static distance encoder used for huffman only encoding.
     // It can be reused since we will not be encoding distance values.
