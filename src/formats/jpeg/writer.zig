@@ -156,7 +156,7 @@ const unzig = [block_size]u8{
 
 // Initialize Huffman LUT from Huffman specification
 fn initHuffmanLUT(spec: HuffmanSpec) [256]u32 {
-    var lut: [256]u32 = [_]u32{0} ** 256;
+    var lut: [256]u32 = @splat(0);
 
     var code: u32 = 0;
     var value_index: usize = 0;

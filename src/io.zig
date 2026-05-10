@@ -495,8 +495,8 @@ pub fn BitWriter(comptime endian: std.builtin.Endian) type {
 }
 
 test "BitWriter: api coverage" {
-    var mem_be = [_]u8{0} ** 2;
-    var mem_le = [_]u8{0} ** 2;
+    var mem_be: [2]u8 = @splat(0);
+    var mem_le: [2]u8 = @splat(0);
 
     var mem_out_be = std.Io.Writer.fixed(mem_be[0..]);
     var bit_stream_be: BitWriter(.big) = .{
