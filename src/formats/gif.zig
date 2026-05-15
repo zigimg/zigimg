@@ -722,7 +722,7 @@ pub const GIF = struct {
             var dispose_method: DisposeMethod = .none;
 
             if (frame.graphics_control) |graphics_control| {
-                current_animation_frame.duration = @as(f32, @floatFromInt(graphics_control.delay_time)) * (1.0 / 100.0);
+                current_animation_frame.duration = @as(f32, graphics_control.delay_time) * (1.0 / 100.0);
                 if (graphics_control.flags.has_transparent_color) {
                     transparency_index_opt = graphics_control.transparent_color_index;
                 }

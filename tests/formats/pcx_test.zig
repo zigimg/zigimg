@@ -448,7 +448,7 @@ test "Write PCX indexed 8 (even width)" {
     for (0..255) |index| {
         const current_step = index % colors_per_channel;
         const current_channel = index / colors_per_channel;
-        const current_intensity = toU8(@as(f32, @floatFromInt(current_step)) / @as(f32, @floatFromInt(colors_per_channel)));
+        const current_intensity = toU8(@as(f32, @floatFromInt(current_step)) / @as(f32, colors_per_channel));
 
         rainbow_test.pixels.indexed8.palette[index].r = 0;
         rainbow_test.pixels.indexed8.palette[index].g = 0;
