@@ -698,7 +698,7 @@ const IniFile = struct {
                         // Do nothing
                     },
                     '[' => {
-                        const end_bracket_position_opt = std.mem.lastIndexOf(u8, read_line[0..], "]");
+                        const end_bracket_position_opt = std.mem.findLast(u8, read_line[0..], "]");
 
                         if (end_bracket_position_opt) |end_bracket_position| {
                             current_section = try allocator.dupe(u8, read_line[1..end_bracket_position]);
@@ -709,7 +709,7 @@ const IniFile = struct {
                         }
                     },
                     else => {
-                        const equals_sign_position_opt = std.mem.indexOf(u8, read_line[0..], "=");
+                        const equals_sign_position_opt = std.mem.find(u8, read_line[0..], "=");
 
                         if (equals_sign_position_opt) |equals_sign_position| {
                             const key_name = std.mem.trimEnd(u8, read_line[0..(equals_sign_position - 1)], " ");
@@ -834,8 +834,8 @@ fn doGifTest(entry_name: []const u8) !void {
         try helpers.expectEq(gif_file.loopCount(), expected_loop_count);
 
         if (config_section.getValue("comment")) |comment_value| {
-            const first_quote_index = std.mem.indexOfScalar(u8, comment_value.string, '\'') orelse 0;
-            const last_quote_index = std.mem.lastIndexOfScalar(u8, comment_value.string, '\'') orelse comment_value.string.len;
+            const first_quote_index = std.mem.findScalar(u8, comment_value.string, '\'') orelse 0;
+            const last_quote_index = std.mem.findScalarLast(u8, comment_value.string, '\'') orelse comment_value.string.len;
 
             const comment_slice = comment_value.string[(first_quote_index + 1)..(last_quote_index)];
 

@@ -78,7 +78,7 @@ fn processChunk(self: *InfoProcessor, data: *ChunkProcessData) Image.ReadError!P
                     try data.read_stream.seekBy(@as(i64, data.chunk_length) - buffer.len);
                 }
                 self.writer.print("tEXt Length {Bi}:\n", .{data.chunk_length}) catch return result_format;
-                const strEnd = std.mem.indexOfScalar(u8, txt, 0).?;
+                const strEnd = std.mem.findScalar(u8, txt, 0).?;
                 self.writer.print("               Keyword: {s}\n", .{txt[0..strEnd]}) catch return result_format;
                 txt = txt[strEnd + 1 ..];
                 self.writer.print("                  Text: {s}\n", .{txt[0..]}) catch return result_format;
@@ -88,7 +88,7 @@ fn processChunk(self: *InfoProcessor, data: *ChunkProcessData) Image.ReadError!P
                 var txt = buffer[0..to_read];
                 try reader.readSliceAll(txt);
                 self.writer.print("zTXt Length {Bi}:\n", .{data.chunk_length}) catch return result_format;
-                const strEnd = std.mem.indexOfScalar(u8, txt, 0).?;
+                const strEnd = std.mem.findScalar(u8, txt, 0).?;
                 self.writer.print("               Keyword: {s}\n", .{txt[0..strEnd]}) catch return result_format;
                 if (txt[strEnd + 1] == 0) {
                     self.writer.print("           Compression: Zlib Deflate\n", .{}) catch return result_format;
@@ -116,7 +116,7 @@ fn processChunk(self: *InfoProcessor, data: *ChunkProcessData) Image.ReadError!P
                     try data.read_stream.seekBy(@as(i64, data.chunk_length) - buffer.len);
                 }
                 self.writer.print("iTXt Length {Bi}:\n", .{data.chunk_length}) catch return result_format;
-                var strEnd = std.mem.indexOfScalar(u8, txt, 0).?;
+                var strEnd = std.mem.findScalar(u8, txt, 0).?;
                 self.writer.print("               Keyword: {s}\n", .{txt[0..strEnd]}) catch return result_format;
                 txt = txt[strEnd + 1 ..];
                 if (txt[0] == 1) {
@@ -125,10 +125,10 @@ fn processChunk(self: *InfoProcessor, data: *ChunkProcessData) Image.ReadError!P
                     self.writer.print("            Compressed: No\n", .{}) catch return result_format;
                 }
                 txt = txt[2..];
-                strEnd = std.mem.indexOfScalar(u8, txt, 0).?;
+                strEnd = std.mem.findScalar(u8, txt, 0).?;
                 self.writer.print("          Language Tag: {s}\n", .{txt[0..strEnd]}) catch return result_format;
                 txt = txt[strEnd + 1 ..];
-                strEnd = std.mem.indexOfScalar(u8, txt, 0).?;
+                strEnd = std.mem.findScalar(u8, txt, 0).?;
                 self.writer.print("    Translated Keyword: {s}\n", .{txt[0..strEnd]}) catch return result_format;
                 txt = txt[strEnd + 1 ..];
                 self.writer.print("                  Text: {s}\n", .{txt[0..]}) catch return result_format;
@@ -231,7 +231,7 @@ fn processChunk(self: *InfoProcessor, data: *ChunkProcessData) Image.ReadError!P
 
                     var iccp = buffer[0..data.chunk_length];
                     try reader.readSliceAll(iccp);
-                    if (std.mem.indexOfScalar(u8, iccp, 0)) |str_end| {
+                    if (std.mem.findScalar(u8, iccp, 0)) |str_end| {
                         self.writer.print("Profile Name: {s}\n", .{iccp[0..str_end]}) catch return result_format;
                     } else {
                         self.writer.print("Invalid Data\n", .{}) catch return result_format;
