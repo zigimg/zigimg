@@ -374,7 +374,7 @@ fn RunLengthSIMDEncoder(
         const VectorType = @Vector(VectorLength, IntType);
         const BytesPerPixels = (@typeInfo(IntType).int.bits + 7) / 8;
         const IndexStep = VectorLength * BytesPerPixels;
-        const MaskType = std.meta.Int(.unsigned, VectorLength);
+        const MaskType = @Int(.unsigned, VectorLength);
 
         comptime {
             if (!std.math.isPowerOfTwo(@typeInfo(IntType).int.bits)) {
@@ -1242,7 +1242,7 @@ pub const TGA = struct {
         if (self.header.image_type.run_length) {
             // The TGA spec recommend that the RLE compression should be done on scanline per scanline basis
             inline for (1..(4 + 1)) |bpp| {
-                const IntType = std.meta.Int(.unsigned, bpp * 8);
+                const IntType = @Int(.unsigned, bpp * 8);
 
                 if (bytes_per_pixel == bpp) {
                     if (comptime std.math.isPowerOfTwo(bpp)) {
