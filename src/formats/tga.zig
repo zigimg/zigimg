@@ -767,7 +767,7 @@ pub const TGA = struct {
                 return Image.WriteError.Unsupported;
             }
 
-            std.mem.copyForwards(u8, extension.author_name[0..], tga_encoder_options.author_name[0..]);
+            @memcpy(extension.author_name[0..tga_encoder_options.author_name.len], tga_encoder_options.author_name);
 
             var remaining_comment_length = @min(tga_encoder_options.author_comment.len, 4 * 80);
             var line: usize = 0;
@@ -791,14 +791,14 @@ pub const TGA = struct {
                 .year = tga_encoder_options.timestamp.year,
             };
 
-            std.mem.copyForwards(u8, extension.job_id[0..], tga_encoder_options.job_id[0..]);
+            @memcpy(extension.job_id[0..tga_encoder_options.job_id.len], tga_encoder_options.job_id);
             extension.job_time = .{
                 .hours = tga_encoder_options.job_time.hours,
                 .minutes = tga_encoder_options.job_time.minutes,
                 .seconds = tga_encoder_options.job_time.seconds,
             };
 
-            std.mem.copyForwards(u8, extension.software_id[0..], tga_encoder_options.software_id[0..]);
+            @memcpy(extension.software_id[0..tga_encoder_options.software_id.len], tga_encoder_options.software_id);
             extension.software_version = .{
                 .letter = tga_encoder_options.software_version.letter,
                 .number = tga_encoder_options.software_version.number,
@@ -1225,7 +1225,7 @@ pub const TGA = struct {
 
         var footer = TGAFooter{};
         footer.extension_offset = extension_offset;
-        std.mem.copyForwards(u8, footer.signature[0..], TGASignature[0..]);
+        footer.signature = TGASignature.*;
         try writer.writeStruct(footer, .little);
 
         try write_stream.flush();

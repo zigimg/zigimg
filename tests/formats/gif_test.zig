@@ -520,7 +520,7 @@ fn makeAnimatedTestImage(allocator: std.mem.Allocator) !zigimg.Image {
 
     var frame0_pixels = try zigimg.color.PixelStorage.init(allocator, .indexed8, width * height);
     frame0_pixels.resizePalette(palette.len);
-    std.mem.copy(zigimg.color.Rgba32, frame0_pixels.indexed8.palette, palette[0..]);
+    @memcpy(frame0_pixels.indexed8.palette[0..palette.len], palette[0..]);
     for (0..width * height) |i| frame0_pixels.indexed8.indices[i] = @intCast(i % 2);
 
     const frame0 = zigimg.Image.AnimationFrame{
@@ -532,7 +532,7 @@ fn makeAnimatedTestImage(allocator: std.mem.Allocator) !zigimg.Image {
 
     var frame1_pixels = try zigimg.color.PixelStorage.init(allocator, .indexed8, width * height);
     frame1_pixels.resizePalette(palette.len);
-    std.mem.copy(zigimg.color.Rgba32, frame1_pixels.indexed8.palette, palette[0..]);
+    @memcpy(frame1_pixels.indexed8.palette[0..palette.len], palette[0..]);
     for (0..height) |row| {
         for (0..width) |col| {
             const idx = row * width + col;
