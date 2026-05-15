@@ -535,8 +535,8 @@ test "PixelFormatConverter: convert from grayscale16 to rgb555" {
     defer grayscale16_pixels.deinit(helpers.zigimg_test_allocator);
 
     grayscale16_pixels.grayscale16[0].value = 0;
-    grayscale16_pixels.grayscale16[1].value = @intFromFloat(@as(f32, @floatFromInt(std.math.maxInt(u16))) * 0.25);
-    grayscale16_pixels.grayscale16[2].value = @intFromFloat(@as(f32, @floatFromInt(std.math.maxInt(u16))) * 0.50);
+    grayscale16_pixels.grayscale16[1].value = std.math.maxInt(u16) / 4;
+    grayscale16_pixels.grayscale16[2].value = std.math.maxInt(u16) / 2;
     grayscale16_pixels.grayscale16[3].value = std.math.maxInt(u16);
 
     const rgb555_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &grayscale16_pixels, .rgb555);

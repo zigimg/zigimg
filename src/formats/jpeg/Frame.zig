@@ -192,9 +192,9 @@ pub fn yCbCrToRgbBlock(self: *Frame, y_block: *[3]Block, cbcr_block: *[3]Block, 
         g_vec = std.math.clamp(g_vec, vec_0, vec_255);
         b_vec = std.math.clamp(b_vec, vec_0, vec_255);
 
-        y_vec_i32 = @intFromFloat(r_vec);
-        cb_vec_i32 = @intFromFloat(g_vec);
-        cr_vec_i32 = @intFromFloat(b_vec);
+        y_vec_i32 = @trunc(r_vec);
+        cb_vec_i32 = @trunc(g_vec);
+        cr_vec_i32 = @trunc(b_vec);
 
         simd.store(i32, y_block[0][y * 8 ..][0..8], y_vec_i32, 8);
         simd.store(i32, y_block[1][y * 8 ..][0..8], cb_vec_i32, 8);
@@ -296,7 +296,7 @@ pub fn idctBlocks(self: *Frame) void {
 // https://github.com/nothings/stb/blob/5c205738c191bcb0abc65c4febfa9bd25ff35234/stb_image.h#L2430C9-L2430C22
 fn f2f(comptime x: f32) i32 {
     // 4096 = 1 << 12
-    return @intFromFloat(x * 4096 + 0.5);
+    return @trunc(x * 4096 + 0.5);
 }
 
 fn idct1D(s0: i32, s1: i32, s2: i32, s3: i32, s4: i32, s5: i32, s6: i32, s7: i32) struct { i32, i32, i32, i32, i32, i32, i32, i32 } {

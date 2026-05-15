@@ -47,7 +47,7 @@ pub fn floatToInt(comptime DestinationType: type, source: anytype, comptime leng
 
     comptime var index: u32 = 0;
     inline while (index < length) : (index += 1) {
-        result[index] = @intFromFloat(source[index]);
+        result[index] = @trunc(source[index]);
     }
 
     return result;

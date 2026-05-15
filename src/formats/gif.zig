@@ -266,7 +266,7 @@ pub const GIF = struct {
         if (image.animation.frames.items.len > 1) {
             // Multi-frame animated GIF - write each frame with its bounds
             for (image.animation.frames.items) |frame| {
-                const delay_cs: u16 = @intFromFloat(frame.duration * 100.0);
+                const delay_cs: u16 = @trunc(frame.duration * 100.0);
                 const disposal: DisposeMethod = @enumFromInt(frame.disposal);
 
                 // Use frame bounds if set, otherwise use full image dimensions

@@ -658,7 +658,7 @@ test "ImageEditor.crop: crop indexed2 images" {
 
     // Setup the palette
     for (0..big_image.pixels.indexed2.palette.len) |palette_index| {
-        const grayscale_value: u8 = @intFromFloat(@as(f32, @floatFromInt(palette_index)) / @as(f32, @floatFromInt(big_image.pixels.indexed2.palette.len)) * 255.0);
+        const grayscale_value: u8 = @trunc(@as(f32, @floatFromInt(palette_index)) / @as(f32, @floatFromInt(big_image.pixels.indexed2.palette.len)) * 255.0);
         big_image.pixels.indexed2.palette[0] = .{ .r = grayscale_value, .g = grayscale_value, .b = grayscale_value, .a = 255 };
     }
 
@@ -698,7 +698,7 @@ test "ImageEditor.crop: crop indexed4 images" {
 
     // Setup the palette
     for (0..big_image.pixels.indexed4.palette.len) |palette_index| {
-        const grayscale_value: u8 = @intFromFloat(@as(f32, @floatFromInt(palette_index)) / @as(f32, @floatFromInt(big_image.pixels.indexed4.palette.len)) * 255.0);
+        const grayscale_value: u8 = @trunc(@as(f32, @floatFromInt(palette_index)) / @as(f32, @floatFromInt(big_image.pixels.indexed4.palette.len)) * 255.0);
         big_image.pixels.indexed4.palette[0] = .{ .r = grayscale_value, .g = grayscale_value, .b = grayscale_value, .a = 255 };
     }
 
@@ -738,7 +738,7 @@ test "ImageEditor.crop: crop indexed8 images" {
 
     // Setup the palette
     for (0..big_image.pixels.indexed8.palette.len) |palette_index| {
-        const grayscale_value: u8 = @intFromFloat(@as(f32, @floatFromInt(palette_index)) / @as(f32, @floatFromInt(big_image.pixels.indexed8.palette.len)) * 255.0);
+        const grayscale_value: u8 = @trunc(@as(f32, @floatFromInt(palette_index)) / @as(f32, @floatFromInt(big_image.pixels.indexed8.palette.len)) * 255.0);
         big_image.pixels.indexed8.palette[0] = .{ .r = grayscale_value, .g = grayscale_value, .b = grayscale_value, .a = 255 };
     }
 
@@ -778,7 +778,7 @@ test "ImageEditor.crop: crop indexed16 images" {
 
     // Setup the palette
     for (0..big_image.pixels.indexed16.palette.len) |palette_index| {
-        const grayscale_value: u8 = @intFromFloat(@as(f32, @floatFromInt(palette_index)) / @as(f32, @floatFromInt(big_image.pixels.indexed16.palette.len)) * 255.0);
+        const grayscale_value: u8 = @trunc(@as(f32, @floatFromInt(palette_index)) / @as(f32, @floatFromInt(big_image.pixels.indexed16.palette.len)) * 255.0);
         big_image.pixels.indexed16.palette[0] = .{ .r = grayscale_value, .g = grayscale_value, .b = grayscale_value, .a = 255 };
     }
 
