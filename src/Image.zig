@@ -9,7 +9,7 @@ const utils = @import("utils.zig");
 
 width: usize = 0,
 height: usize = 0,
-pixels: color.PixelStorage = .{ .invalid = void{} },
+pixels: color.PixelStorage = .{ .invalid = {} },
 animation: Animation = .{},
 
 const Image = @This();

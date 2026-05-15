@@ -830,7 +830,7 @@ pub const PixelStorage = union(PixelFormat) {
         return switch (format) {
             .invalid => {
                 return .{
-                    .invalid = void{},
+                    .invalid = {},
                 };
             },
             .indexed1 => {
