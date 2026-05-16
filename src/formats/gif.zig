@@ -266,7 +266,7 @@ pub const GIF = struct {
         if (image.animation.frames.items.len > 1) {
             // Multi-frame animated GIF - write each frame with its bounds
             for (image.animation.frames.items) |frame| {
-                const delay_cs: u16 = @intFromFloat(frame.duration * 100.0);
+                const delay_cs: u16 = @trunc(frame.duration * 100.0);
                 const disposal: DisposeMethod = @enumFromInt(frame.disposal);
 
                 // Use frame bounds if set, otherwise use full image dimensions
@@ -722,7 +722,7 @@ pub const GIF = struct {
             var dispose_method: DisposeMethod = .none;
 
             if (frame.graphics_control) |graphics_control| {
-                current_animation_frame.duration = @as(f32, @floatFromInt(graphics_control.delay_time)) * (1.0 / 100.0);
+                current_animation_frame.duration = @as(f32, graphics_control.delay_time) * (1.0 / 100.0);
                 if (graphics_control.flags.has_transparent_color) {
                     transparency_index_opt = graphics_control.transparent_color_index;
                 }

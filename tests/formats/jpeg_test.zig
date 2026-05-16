@@ -228,9 +228,9 @@ fn averageDelta(img0: Image, img1: Image) !f32 {
             for (0..height) |y| {
                 for (0..width) |x| {
                     const idx = y * width + x;
-                    sum += @abs(@as(f64, @floatFromInt(pix0[idx].r)) - @as(f64, @floatFromInt(pix1[idx].r)));
-                    sum += @abs(@as(f64, @floatFromInt(pix0[idx].g)) - @as(f64, @floatFromInt(pix1[idx].g)));
-                    sum += @abs(@as(f64, @floatFromInt(pix0[idx].b)) - @as(f64, @floatFromInt(pix1[idx].b)));
+                    sum += @abs(@as(f64, pix0[idx].r) - @as(f64, pix1[idx].r));
+                    sum += @abs(@as(f64, pix0[idx].g) - @as(f64, pix1[idx].g));
+                    sum += @abs(@as(f64, pix0[idx].b) - @as(f64, pix1[idx].b));
                     total_pixel_diff += 3;
                 }
             }
@@ -242,7 +242,7 @@ fn averageDelta(img0: Image, img1: Image) !f32 {
             for (0..height) |y| {
                 for (0..width) |x| {
                     const idx = y * width + x;
-                    sum += @abs(@as(f64, @floatFromInt(pix0[idx].value)) - @as(f64, @floatFromInt(pix1[idx].value)));
+                    sum += @abs(@as(f64, pix0[idx].value) - @as(f64, pix1[idx].value));
                     total_pixel_diff += 1;
                 }
             }

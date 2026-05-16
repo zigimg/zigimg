@@ -18,7 +18,7 @@ pub const Editor = Image.Editor;
 // This layout must match the one in Image
 width: usize = 0,
 height: usize = 0,
-pixels: color.PixelStorage = .{ .invalid = void{} },
+pixels: color.PixelStorage = .{ .invalid = {} },
 animation: Animation = .{},
 allocator: std.mem.Allocator = undefined, // Allocator needs to be last in order to be able to ptrCast to Image
 

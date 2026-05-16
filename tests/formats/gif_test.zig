@@ -520,7 +520,7 @@ fn makeAnimatedTestImage(allocator: std.mem.Allocator) !zigimg.Image {
 
     var frame0_pixels = try zigimg.color.PixelStorage.init(allocator, .indexed8, width * height);
     frame0_pixels.resizePalette(palette.len);
-    std.mem.copy(zigimg.color.Rgba32, frame0_pixels.indexed8.palette, palette[0..]);
+    @memcpy(frame0_pixels.indexed8.palette[0..palette.len], palette[0..]);
     for (0..width * height) |i| frame0_pixels.indexed8.indices[i] = @intCast(i % 2);
 
     const frame0 = zigimg.Image.AnimationFrame{
@@ -532,7 +532,7 @@ fn makeAnimatedTestImage(allocator: std.mem.Allocator) !zigimg.Image {
 
     var frame1_pixels = try zigimg.color.PixelStorage.init(allocator, .indexed8, width * height);
     frame1_pixels.resizePalette(palette.len);
-    std.mem.copy(zigimg.color.Rgba32, frame1_pixels.indexed8.palette, palette[0..]);
+    @memcpy(frame1_pixels.indexed8.palette[0..palette.len], palette[0..]);
     for (0..height) |row| {
         for (0..width) |col| {
             const idx = row * width + col;
@@ -698,7 +698,7 @@ const IniFile = struct {
                         // Do nothing
                     },
                     '[' => {
-                        const end_bracket_position_opt = std.mem.lastIndexOf(u8, read_line[0..], "]");
+                        const end_bracket_position_opt = std.mem.findLast(u8, read_line[0..], "]");
 
                         if (end_bracket_position_opt) |end_bracket_position| {
                             current_section = try allocator.dupe(u8, read_line[1..end_bracket_position]);
@@ -709,7 +709,7 @@ const IniFile = struct {
                         }
                     },
                     else => {
-                        const equals_sign_position_opt = std.mem.indexOf(u8, read_line[0..], "=");
+                        const equals_sign_position_opt = std.mem.find(u8, read_line[0..], "=");
 
                         if (equals_sign_position_opt) |equals_sign_position| {
                             const key_name = std.mem.trimEnd(u8, read_line[0..(equals_sign_position - 1)], " ");
@@ -834,8 +834,8 @@ fn doGifTest(entry_name: []const u8) !void {
         try helpers.expectEq(gif_file.loopCount(), expected_loop_count);
 
         if (config_section.getValue("comment")) |comment_value| {
-            const first_quote_index = std.mem.indexOfScalar(u8, comment_value.string, '\'') orelse 0;
-            const last_quote_index = std.mem.lastIndexOfScalar(u8, comment_value.string, '\'') orelse comment_value.string.len;
+            const first_quote_index = std.mem.findScalar(u8, comment_value.string, '\'') orelse 0;
+            const last_quote_index = std.mem.findScalarLast(u8, comment_value.string, '\'') orelse comment_value.string.len;
 
             const comment_slice = comment_value.string[(first_quote_index + 1)..(last_quote_index)];
 
@@ -904,7 +904,7 @@ fn doGifTest(entry_name: []const u8) !void {
                     }
 
                     if (config_section.getValue("delay")) |delay| {
-                        const actual_duration: u32 = @intFromFloat(frames.items[frame_index].duration * 100);
+                        const actual_duration: u32 = @trunc(frames.items[frame_index].duration * 100);
 
                         try helpers.expectEq(actual_duration, delay.number);
                     }

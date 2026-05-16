@@ -82,7 +82,7 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
                     if (self.previous_code) |previous_code| {
                         if (self.dictionary.get(previous_code)) |previous_value| {
                             var new_value = try allocator.alloc(u8, previous_value.len + 1);
-                            std.mem.copyForwards(u8, new_value, previous_value);
+                            @memcpy(new_value[0..previous_value.len], previous_value);
                             new_value[previous_value.len] = value[0];
                             try self.dictionary.put(allocator, self.next_code, new_value);
 
@@ -106,7 +106,7 @@ pub fn Decoder(comptime endian: std.builtin.Endian) type {
                         if (self.previous_code) |previous_code| {
                             if (self.dictionary.get(previous_code)) |previous_value| {
                                 var new_value = try allocator.alloc(u8, previous_value.len + 1);
-                                std.mem.copyForwards(u8, new_value, previous_value);
+                                @memcpy(new_value[0..previous_value.len], previous_value);
                                 new_value[previous_value.len] = previous_value[0];
                                 try self.dictionary.put(allocator, self.next_code, new_value);
 

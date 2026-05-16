@@ -61,7 +61,7 @@ pub fn ScaleValue(comptime T: type) fn (anytype) T {
                             } else return value;
                         },
 
-                        .float => return @intFromFloat(std.math.clamp(
+                        .float => return @trunc(std.math.clamp(
                             @round(value * @as(ValueT, @floatFromInt(out_max))),
                             0.0,
                             out_max,
@@ -830,7 +830,7 @@ pub const PixelStorage = union(PixelFormat) {
         return switch (format) {
             .invalid => {
                 return .{
-                    .invalid = void{},
+                    .invalid = {},
                 };
             },
             .indexed1 => {

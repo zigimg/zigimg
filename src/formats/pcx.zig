@@ -364,7 +364,7 @@ pub const PCX = struct {
             },
         }
 
-        pcx.header.stride = @as(u16, @intFromFloat((@as(f32, @floatFromInt(image.width)) / 8.0) * @as(f32, @floatFromInt(pcx.header.bpp))));
+        pcx.header.stride = @trunc((@as(f32, @floatFromInt(image.width)) / 8.0) * @as(f32, pcx.header.bpp));
         // Add one if the result is a odd number
         pcx.header.stride += (pcx.header.stride & 0x1);
 
