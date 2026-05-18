@@ -988,6 +988,11 @@ pub const PixelStorage = union(PixelFormat) {
                     .grayscale8Alpha = @constCast(std.mem.bytesAsSlice(Grayscale8Alpha, pixels)),
                 };
             },
+            .grayscale16 => {
+                return .{
+                    .grayscale16 = @alignCast(@constCast(std.mem.bytesAsSlice(Grayscale16, pixels))),
+                };
+            },
             .grayscale16Alpha => {
                 return .{
                     .grayscale16Alpha = @alignCast(@constCast(std.mem.bytesAsSlice(Grayscale16Alpha, pixels))),
