@@ -28,6 +28,7 @@ test {
     _ = @import("tests/formats/gif_test.zig");
     _ = @import("tests/formats/iff_test.zig");
     _ = @import("tests/formats/jpeg_test.zig");
+    _ = @import("tests/formats/jpeg_overflow_test.zig");
     _ = @import("tests/formats/pam_test.zig");
     _ = @import("tests/formats/netpbm_test.zig");
     _ = @import("tests/formats/pcx_test.zig");

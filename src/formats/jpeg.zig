@@ -178,7 +178,7 @@ pub const JPEG = struct {
 
         if (self.frame) |*frame| {
             try frame.dequantizeBlocks();
-            frame.idctBlocks();
+            try frame.idctBlocks();
             try frame.renderToPixels(&pixels_opt.*.?);
 
             return frame.*;
