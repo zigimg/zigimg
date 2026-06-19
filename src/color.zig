@@ -380,10 +380,6 @@ fn ToMethods(
     const scaleRed = ScaleValue(RedT);
     const scaleGreen = ScaleValue(GreenT);
     const scaleBlue = ScaleValue(BlueT);
-    // const scaleAlpha: if (has_alpha) fn (anytype) AlphaT else void =
-    //     if (has_alpha)
-    //         ScaleValue(AlphaT)
-    //     else {};
 
     const toU8 = ScaleValue(u8);
     const toU16 = ScaleValue(u16);
@@ -477,30 +473,32 @@ fn ToMethods(
         /// is done with a round-trip to f32.
         pub fn premultipliedAlpha(to: ToPointer) T {
             const self = to.getSelf();
-            var res = self.*;
-            if (!has_alpha) return res;
+            var result = self.*;
+            if (!has_alpha) {
+                return result;
+            }
 
             const alpha = if (@typeInfo(AlphaT) == .int)
-                toF32(res.a)
+                toF32(result.a)
             else
-                res.a;
+                result.a;
 
-            res.r = if (@typeInfo(RedT) == .int)
-                scaleRed(toF32(res.r) * alpha)
+            result.r = if (@typeInfo(RedT) == .int)
+                scaleRed(toF32(result.r) * alpha)
             else
-                res.r * alpha;
+                result.r * alpha;
 
-            res.g = if (@typeInfo(GreenT) == .int)
-                scaleGreen(toF32(res.g) * alpha)
+            result.g = if (@typeInfo(GreenT) == .int)
+                scaleGreen(toF32(result.g) * alpha)
             else
-                res.g * alpha;
+                result.g * alpha;
 
-            res.b = if (@typeInfo(BlueT) == .int)
-                scaleBlue(toF32(res.b) * alpha)
+            result.b = if (@typeInfo(BlueT) == .int)
+                scaleBlue(toF32(result.b) * alpha)
             else
-                res.b * alpha;
+                result.b * alpha;
 
-            return res;
+            return result;
         }
     };
 }
@@ -742,66 +740,152 @@ pub const IndexedStorage4 = IndexedStorage(u4);
 pub const IndexedStorage8 = IndexedStorage(u8);
 pub const IndexedStorage16 = IndexedStorage(u16);
 
-pub fn Grayscale(comptime T: type) type {
+fn ToMethodsGrayscale(
+    comptime T: type,
+    comptime ValueT: type,
+    comptime AlphaT: type,
+) type {
+    const has_alpha = AlphaT != void;
+
+    const multiple_channel_types = (ValueT != AlphaT and AlphaT != void);
+
+    const scaleValue = ScaleValue(ValueT);
+
+    const toU8 = ScaleValue(u8);
+    const toU16 = ScaleValue(u16);
     const toF32 = ScaleValue(f32);
 
+    return packed struct(u0) {
+        const To = @This();
+        const ToPointer = if (@typeInfo(T).@"struct".layout == .@"packed") *align(@sizeOf(T):0:@sizeOf(T)) const To else *const To;
+
+        comptime {
+            std.debug.assert(@FieldType(T, "to") == To);
+            std.debug.assert(@bitOffsetOf(T, "to") == 0);
+        }
+
+        fn getSelf(to: ToPointer) *align(1) const T {
+            // @fieldParentPtr is broken for packed structs.
+            // See: https://github.com/ziglang/zig/issues/20458
+
+            return @ptrCast(to);
+        }
+
+        /// Assumes the target color type has `FromMethods` for it.
+        pub fn color(to: ToPointer, ColorT: type) ColorT {
+            return ColorT.from.grayscale(to.getSelf().*);
+        }
+
+        pub fn u32Rgba(to: ToPointer) u32 {
+            const self = to.getSelf();
+            return @as(u32, toU8(self.value)) << 24 |
+                @as(u32, toU8(self.value)) << 16 |
+                @as(u32, toU8(self.value)) << 8 |
+                if (has_alpha) toU8(self.alpha) else 0xff;
+        }
+
+        pub fn u32Rgb(to: ToPointer) u32 {
+            const self = to.getSelf();
+            return @as(u32, toU8(self.value)) << 16 |
+                @as(u32, toU8(self.value)) << 8 |
+                toU8(self.value);
+        }
+
+        pub fn u64Rgba(to: ToPointer) u64 {
+            const self = to.getSelf();
+            return @as(u64, toU16(self.value)) << 48 |
+                @as(u64, toU16(self.value)) << 32 |
+                @as(u64, toU16(self.value)) << 16 |
+                if (has_alpha) toU16(self.alpha) else 0xffff;
+        }
+
+        pub fn u64Rgb(to: ToPointer) u64 {
+            const self = to.getSelf();
+            return @as(u64, toU16(self.value)) << 32 |
+                @as(u64, toU16(self.value)) << 16 |
+                toU16(self.value);
+        }
+
+        /// Only valid for color types where all channels are the same type.
+        pub fn array(to: ToPointer) [4]ValueT {
+            if (comptime multiple_channel_types) {
+                @compileError("Color.to.array may only be used when all channels in the color are the same type.");
+            }
+
+            const self = to.getSelf();
+
+            return .{
+                self.value,
+                self.value,
+                self.value,
+                if (has_alpha)
+                    self.alpha
+                else
+                    scaleValue(@as(f32, 1.0)),
+            };
+        }
+
+        pub fn float4(to: ToPointer) math.float4 {
+            const self = to.getSelf();
+
+            return .{
+                toF32(self.value),
+                toF32(self.value),
+                toF32(self.valuie),
+                if (has_alpha)
+                    toF32(self.alpha)
+                else
+                    1.0,
+            };
+        }
+
+        /// For int channels, premultiplication
+        /// is done with a round-trip to f32.
+        pub fn premultipliedAlpha(to: ToPointer) T {
+            const self = to.getSelf();
+            var result = self.*;
+            if (!has_alpha) {
+                return result;
+            }
+
+            const alpha = if (@typeInfo(AlphaT) == .int)
+                toF32(result.alpha)
+            else
+                result.alpha;
+
+            result.value = if (@typeInfo(ValueT) == .int)
+                scaleValue(toF32(result.value) * alpha)
+            else
+                result.value * alpha;
+
+            return result;
+        }
+    };
+}
+
+pub fn Grayscale(comptime T: type) type {
     if ((@bitSizeOf(T) % 8) == 0) {
         return extern struct {
+            to: ToMethodsGrayscale(@This(), T, void) = .{},
             value: T,
-
-            const Self = @This();
-
-            pub fn toColorf32(self: Self) Colorf32 {
-                const gray = toF32(self.value);
-                return Colorf32{
-                    .r = gray,
-                    .g = gray,
-                    .b = gray,
-                    .a = 1.0,
-                };
-            }
         };
     } else {
         return struct {
+            to: ToMethodsGrayscale(@This(), T, void) = .{},
             value: T,
-
-            const Self = @This();
-
-            pub fn toColorf32(self: Self) Colorf32 {
-                const gray = toF32(self.value);
-                return Colorf32{
-                    .r = gray,
-                    .g = gray,
-                    .b = gray,
-                    .a = 1.0,
-                };
-            }
         };
     }
 }
 
 pub fn GrayscaleAlpha(comptime T: type) type {
-    const toF32 = ScaleValue(f32);
-
     return extern struct {
+        to: ToMethodsGrayscale(@This(), T, T) = .{},
         value: T,
         alpha: T =
             if (@typeInfo(T) == .int)
                 std.math.maxInt(T)
             else
                 1.0,
-
-        const Self = @This();
-
-        pub fn toColorf32(self: Self) Colorf32 {
-            const gray = toF32(self.value);
-            return Colorf32{
-                .r = gray,
-                .g = gray,
-                .b = gray,
-                .a = toF32(self.alpha),
-            };
-        }
     };
 }
 
@@ -1325,13 +1409,13 @@ pub const PixelStorageIterator = struct {
             .indexed4 => |data| data.palette[data.indices[self.current_index]].to.color(Colorf32),
             .indexed8 => |data| data.palette[data.indices[self.current_index]].to.color(Colorf32),
             .indexed16 => |data| data.palette[data.indices[self.current_index]].to.color(Colorf32),
-            .grayscale1 => |data| data[self.current_index].toColorf32(),
-            .grayscale2 => |data| data[self.current_index].toColorf32(),
-            .grayscale4 => |data| data[self.current_index].toColorf32(),
-            .grayscale8 => |data| data[self.current_index].toColorf32(),
-            .grayscale8Alpha => |data| data[self.current_index].toColorf32(),
-            .grayscale16 => |data| data[self.current_index].toColorf32(),
-            .grayscale16Alpha => |data| data[self.current_index].toColorf32(),
+            .grayscale1 => |data| data[self.current_index].to.color(Colorf32),
+            .grayscale2 => |data| data[self.current_index].to.color(Colorf32),
+            .grayscale4 => |data| data[self.current_index].to.color(Colorf32),
+            .grayscale8 => |data| data[self.current_index].to.color(Colorf32),
+            .grayscale8Alpha => |data| data[self.current_index].to.color(Colorf32),
+            .grayscale16 => |data| data[self.current_index].to.color(Colorf32),
+            .grayscale16Alpha => |data| data[self.current_index].to.color(Colorf32),
             .rgb24 => |data| data[self.current_index].to.color(Colorf32),
             .rgba32 => |data| data[self.current_index].to.color(Colorf32),
             .rgb332 => |data| data[self.current_index].to.color(Colorf32),

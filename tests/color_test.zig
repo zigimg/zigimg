@@ -105,7 +105,7 @@ test "Convert Bgra32 to Colorf32" {
 
 test "Convert Grayscale1 to Colorf32" {
     const white = color.Grayscale1{ .value = 1 };
-    const whiteColor = white.toColorf32().to.color(color.Rgba32);
+    const whiteColor = white.to.color(color.Colorf32).to.color(color.Rgba32);
 
     try helpers.expectEq(whiteColor.r, 255);
     try helpers.expectEq(whiteColor.g, 255);
@@ -113,7 +113,7 @@ test "Convert Grayscale1 to Colorf32" {
     try helpers.expectEq(whiteColor.a, 255);
 
     const black = color.Grayscale1{ .value = 0 };
-    const blackColor = black.toColorf32().to.color(color.Rgba32);
+    const blackColor = black.to.color(color.Colorf32).to.color(color.Rgba32);
 
     try helpers.expectEq(blackColor.r, 0);
     try helpers.expectEq(blackColor.g, 0);
@@ -123,7 +123,7 @@ test "Convert Grayscale1 to Colorf32" {
 
 test "Convert Grayscale8 to Colorf32" {
     const original = color.Grayscale8{ .value = 128 };
-    const result = original.toColorf32().to.color(color.Rgba32);
+    const result = original.to.color(color.Colorf32).to.color(color.Rgba32);
 
     try helpers.expectEq(result.r, 128);
     try helpers.expectEq(result.g, 128);
@@ -131,14 +131,34 @@ test "Convert Grayscale8 to Colorf32" {
     try helpers.expectEq(result.a, 255);
 }
 
+test "Convert Grayscale8Alpha to Colorf32" {
+    const original = color.Grayscale8Alpha{ .value = 128, .alpha = 120 };
+    const result = original.to.color(color.Colorf32).to.color(color.Rgba32);
+
+    try helpers.expectEq(result.r, 128);
+    try helpers.expectEq(result.g, 128);
+    try helpers.expectEq(result.b, 128);
+    try helpers.expectEq(result.a, 120);
+}
+
 test "Convert Grayscale16 to Colorf32" {
     const original = color.Grayscale16{ .value = 21845 };
-    const result = original.toColorf32().to.color(color.Rgba32);
+    const result = original.to.color(color.Colorf32).to.color(color.Rgba32);
 
     try helpers.expectEq(result.r, 85);
     try helpers.expectEq(result.g, 85);
     try helpers.expectEq(result.b, 85);
     try helpers.expectEq(result.a, 255);
+}
+
+test "Convert Grayscale16Alpha to Colorf32" {
+    const original = color.Grayscale16Alpha{ .value = 21845, .alpha = 21845 };
+    const result = original.to.color(color.Colorf32).to.color(color.Rgba32);
+
+    try helpers.expectEq(result.r, 85);
+    try helpers.expectEq(result.g, 85);
+    try helpers.expectEq(result.b, 85);
+    try helpers.expectEq(result.a, 85);
 }
 
 test "Rgb from and to U32" {

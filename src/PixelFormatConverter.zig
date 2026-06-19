@@ -1017,7 +1017,7 @@ fn grayscaleToColorf32(comptime source_format: PixelFormat, source: *const color
     const source_grayscale = @field(source, getFieldNameFromPixelFormat(source_format));
 
     for (0..source_grayscale.len) |index| {
-        destination.float32[index] = source_grayscale[index].toColorf32();
+        destination.float32[index] = source_grayscale[index].to.color(color.Colorf32);
     }
 }
 
