@@ -745,27 +745,45 @@ pub const IndexedStorage16 = IndexedStorage(u16);
 pub fn Grayscale(comptime T: type) type {
     const toF32 = ScaleValue(f32);
 
-    return struct {
-        value: T,
+    if ((@bitSizeOf(T) % 8) == 0) {
+        return extern struct {
+            value: T,
 
-        const Self = @This();
+            const Self = @This();
 
-        pub fn toColorf32(self: Self) Colorf32 {
-            const gray = toF32(self.value);
-            return Colorf32{
-                .r = gray,
-                .g = gray,
-                .b = gray,
-                .a = 1.0,
-            };
-        }
-    };
+            pub fn toColorf32(self: Self) Colorf32 {
+                const gray = toF32(self.value);
+                return Colorf32{
+                    .r = gray,
+                    .g = gray,
+                    .b = gray,
+                    .a = 1.0,
+                };
+            }
+        };
+    } else {
+        return struct {
+            value: T,
+
+            const Self = @This();
+
+            pub fn toColorf32(self: Self) Colorf32 {
+                const gray = toF32(self.value);
+                return Colorf32{
+                    .r = gray,
+                    .g = gray,
+                    .b = gray,
+                    .a = 1.0,
+                };
+            }
+        };
+    }
 }
 
 pub fn GrayscaleAlpha(comptime T: type) type {
     const toF32 = ScaleValue(f32);
 
-    return struct {
+    return extern struct {
         value: T,
         alpha: T =
             if (@typeInfo(T) == .int)
