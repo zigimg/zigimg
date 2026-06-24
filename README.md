@@ -434,7 +434,7 @@ pub fn example(allocator: std.mem.Allocator, io: std.Io) !void {
     try image.writeToFilePath(allocator, io, "my_new_image.png", write_buffer[0..], .{ .png = .{} });
 
     // Or with encoder options
-    try image.writeToFilePath(allocator, io, "my_new_image.png", write_buffer[0..]. .{ .png = .{ .interlaced = true } });
+    try image.writeToFilePath(allocator, io, "my_new_image.png", write_buffer[0..], .{ .png = .{ .interlaced = true } });
 }
 ```
 
