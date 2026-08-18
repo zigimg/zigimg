@@ -743,3 +743,80 @@ test "Managed to Image" {
     try std.testing.expect(managed_pixels == .rgb24);
     try std.testing.expect(managed_pixels.rgb24.len == 24 * 32);
 }
+
+test "Image.dupe()" {
+    const color_data: []const color.Rgb24 = &.{
+        Colors(color.Rgb24).Red,
+        Colors(color.Rgb24).Green,
+        Colors(color.Rgb24).Blue,
+        Colors(color.Rgb24).Cyan,
+        Colors(color.Rgb24).Magenta,
+        Colors(color.Rgb24).Yellow,
+        Colors(color.Rgb24).Black,
+        Colors(color.Rgb24).White,
+    };
+
+    const frame1_data: []const color.Rgb24 = &.{
+        Colors(color.Rgb24).White,
+        Colors(color.Rgb24).Black,
+        Colors(color.Rgb24).Yellow,
+        Colors(color.Rgb24).Magenta,
+        Colors(color.Rgb24).Cyan,
+        Colors(color.Rgb24).Blue,
+        Colors(color.Rgb24).Green,
+        Colors(color.Rgb24).Red,
+    };
+
+    const pixel_data = std.mem.sliceAsBytes(color_data);
+    var image = try Image.fromRawPixels(helpers.zigimg_test_allocator, 8, 1, pixel_data, .rgb24);
+    defer image.deinit(helpers.zigimg_test_allocator);
+
+    image.animation.loop_count = 2;
+    try image.animation.frames.append(helpers.zigimg_test_allocator, .{
+        .duration = 16.1234,
+        .frame_width = 8,
+        .frame_height = 1,
+        .pixels = image.pixels,
+    });
+
+    const frame1_pixels = try zigimg.color.PixelStorage.init(helpers.zigimg_test_allocator, .rgb24, frame1_data.len);
+    @memcpy(frame1_pixels.rgb24, frame1_data);
+
+    try image.animation.frames.append(helpers.zigimg_test_allocator, .{
+        .duration = 12.3456,
+        .frame_width = 8,
+        .frame_height = 1,
+        .pixels = frame1_pixels,
+    });
+
+    var duped_image = try image.dupe(helpers.zigimg_test_allocator);
+    defer duped_image.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(std.meta.activeTag(duped_image.pixels), .rgb24);
+    try helpers.expectEq(duped_image.width, 8);
+    try helpers.expectEq(duped_image.height, 1);
+    try helpers.expectEq(duped_image.animation.loop_count, 2);
+    try helpers.expectEq(duped_image.animation.frames.items.len, 2);
+
+    try std.testing.expect(duped_image.pixels.rgb24.ptr != image.pixels.rgb24.ptr);
+    try std.testing.expect(duped_image.animation.frames.items[0].pixels.rgb24.ptr != image.animation.frames.items[0].pixels.rgb24.ptr);
+    try std.testing.expect(duped_image.animation.frames.items[1].pixels.rgb24.ptr != image.animation.frames.items[1].pixels.rgb24.ptr);
+
+    try helpers.expectEq(duped_image.pixels.rgb24[0], Colors(color.Rgb24).Red);
+    try helpers.expectEq(duped_image.pixels.rgb24[1], Colors(color.Rgb24).Green);
+    try helpers.expectEq(duped_image.pixels.rgb24[2], Colors(color.Rgb24).Blue);
+    try helpers.expectEq(duped_image.pixels.rgb24[3], Colors(color.Rgb24).Cyan);
+    try helpers.expectEq(duped_image.pixels.rgb24[4], Colors(color.Rgb24).Magenta);
+    try helpers.expectEq(duped_image.pixels.rgb24[5], Colors(color.Rgb24).Yellow);
+    try helpers.expectEq(duped_image.pixels.rgb24[6], Colors(color.Rgb24).Black);
+    try helpers.expectEq(duped_image.pixels.rgb24[7], Colors(color.Rgb24).White);
+
+    try helpers.expectEq(duped_image.animation.frames.items[1].pixels.rgb24[0], Colors(color.Rgb24).White);
+    try helpers.expectEq(duped_image.animation.frames.items[1].pixels.rgb24[1], Colors(color.Rgb24).Black);
+    try helpers.expectEq(duped_image.animation.frames.items[1].pixels.rgb24[2], Colors(color.Rgb24).Yellow);
+    try helpers.expectEq(duped_image.animation.frames.items[1].pixels.rgb24[3], Colors(color.Rgb24).Magenta);
+    try helpers.expectEq(duped_image.animation.frames.items[1].pixels.rgb24[4], Colors(color.Rgb24).Cyan);
+    try helpers.expectEq(duped_image.animation.frames.items[1].pixels.rgb24[5], Colors(color.Rgb24).Blue);
+    try helpers.expectEq(duped_image.animation.frames.items[1].pixels.rgb24[6], Colors(color.Rgb24).Green);
+    try helpers.expectEq(duped_image.animation.frames.items[1].pixels.rgb24[7], Colors(color.Rgb24).Red);
+}

@@ -89,6 +89,18 @@ pub fn create(allocator: std.mem.Allocator, width: usize, height: usize, pixel_f
     return result;
 }
 
+pub fn dupe(self: Managed) !Managed {
+    const unmanaged_image = try self.toUnmanaged().dupe(self.allocator);
+
+    return .{
+        .animation = unmanaged_image.animation,
+        .allocator = self.allocator,
+        .height = unmanaged_image.height,
+        .pixels = unmanaged_image.pixels,
+        .width = unmanaged_image.width,
+    };
+}
+
 /// Return the pixel format of the image
 pub fn pixelFormat(self: Managed) PixelFormat {
     return std.meta.activeTag(self.pixels);
