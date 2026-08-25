@@ -466,7 +466,9 @@ fn RLEStreamEncoder(comptime ColorType: type) type {
                 if (std.mem.eql(u8, std.mem.asBytes(&rle_value), std.mem.asBytes(&value))) {
                     self.length += 1;
                 } else {
-                    try RunLengthEncoderCommon.flush(IntType, writer, @as(IntType, @bitCast(rle_value)), self.length);
+                    const int_byte_size = @divExact(@typeInfo(IntType).int.bits, 8);
+                    const int_value = std.mem.readInt(IntType, std.mem.asBytes(&rle_value)[0..int_byte_size], .little);
+                    try RunLengthEncoderCommon.flush(IntType, writer, int_value, self.length);
 
                     self.length = 1;
                     self.rle_value = value;
@@ -480,7 +482,9 @@ fn RLEStreamEncoder(comptime ColorType: type) type {
             }
 
             if (self.rle_value) |rle_value| {
-                try RunLengthEncoderCommon.flush(IntType, writer, @as(IntType, @bitCast(rle_value)), self.length);
+                const int_byte_size = @divExact(@typeInfo(IntType).int.bits, 8);
+                const int_value = std.mem.readInt(IntType, std.mem.asBytes(&rle_value)[0..int_byte_size], .little);
+                try RunLengthEncoderCommon.flush(IntType, writer, int_value, self.length);
             }
         }
     };
