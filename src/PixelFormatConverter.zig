@@ -869,17 +869,6 @@ fn conversionId(source_format: PixelFormat, destination_format: PixelFormat) u64
     return @as(u64, @intFromEnum(source_format)) | @as(u64, @intFromEnum(destination_format)) << 32;
 }
 
-fn getFieldNameFromPixelFormat(comptime source_format: PixelFormat) []const u8 {
-    const enum_fields = std.meta.fields(PixelFormat);
-    inline for (enum_fields) |field| {
-        if (field.value == @intFromEnum(source_format)) {
-            return field.name;
-        }
-    }
-
-    return "";
-}
-
 // ========================
 // Single color conversions
 // ========================
@@ -941,8 +930,8 @@ fn grayscaleAlphaToRgba(comptime T: type, gray: anytype) T {
 fn IndexedSmallToLarge(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
     return struct {
         pub fn convert(source: *const color.PixelStorage, destination: *color.PixelStorage) void {
-            const source_indexed = @field(source, getFieldNameFromPixelFormat(source_format));
-            var destination_indexed = @field(destination, getFieldNameFromPixelFormat(destination_format));
+            const source_indexed = @field(source, @tagName(source_format));
+            var destination_indexed = @field(destination, @tagName(destination_format));
 
             for (0..source_indexed.palette.len) |index| {
                 destination_indexed.palette[index] = source_indexed.palette[index];
@@ -958,8 +947,8 @@ fn IndexedSmallToLarge(comptime source_format: PixelFormat, comptime destination
 fn IndexedLargeToSmall(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
     return struct {
         pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, destination: *color.PixelStorage) Image.ConvertError!void {
-            const source_indexed = @field(source, getFieldNameFromPixelFormat(source_format));
-            var destination_indexed = @field(destination, getFieldNameFromPixelFormat(destination_format));
+            const source_indexed = @field(source, @tagName(source_format));
+            var destination_indexed = @field(destination, @tagName(destination_format));
 
             var quantizer = OctTreeQuantizer.init(allocator);
             defer quantizer.deinit();
@@ -989,8 +978,8 @@ fn IndexedLargeToSmall(comptime source_format: PixelFormat, comptime destination
 fn IndexedToRgbColor(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
     return struct {
         pub fn convert(source: *const color.PixelStorage, destination: *color.PixelStorage) void {
-            const source_indexed = @field(source, getFieldNameFromPixelFormat(source_format));
-            var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+            const source_indexed = @field(source, @tagName(source_format));
+            var destination_pixels = @field(destination, @tagName(destination_format));
             const destination_type = @TypeOf(destination_pixels[0]);
 
             for (0..source_indexed.indices.len) |index| {
@@ -1003,8 +992,8 @@ fn IndexedToRgbColor(comptime source_format: PixelFormat, comptime destination_f
 fn IndexedToRgbaColor(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
     return struct {
         pub fn convert(source: *const color.PixelStorage, destination: *color.PixelStorage) void {
-            const source_indexed = @field(source, getFieldNameFromPixelFormat(source_format));
-            var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+            const source_indexed = @field(source, @tagName(source_format));
+            var destination_pixels = @field(destination, @tagName(destination_format));
             const destination_type = @TypeOf(destination_pixels[0]);
 
             for (0..source_indexed.indices.len) |index| {
@@ -1015,7 +1004,7 @@ fn IndexedToRgbaColor(comptime source_format: PixelFormat, comptime destination_
 }
 
 fn indexedToRgba32(comptime source_format: PixelFormat, source: *const color.PixelStorage, destination: *color.PixelStorage) void {
-    const source_indexed = @field(source, getFieldNameFromPixelFormat(source_format));
+    const source_indexed = @field(source, @tagName(source_format));
 
     for (0..source_indexed.indices.len) |index| {
         destination.rgba32[index] = source_indexed.palette[source_indexed.indices[index]];
@@ -1023,7 +1012,7 @@ fn indexedToRgba32(comptime source_format: PixelFormat, source: *const color.Pix
 }
 
 fn indexedToColorf32(comptime source_format: PixelFormat, source: *const color.PixelStorage, destination: *color.PixelStorage) void {
-    const source_indexed = @field(source, getFieldNameFromPixelFormat(source_format));
+    const source_indexed = @field(source, @tagName(source_format));
 
     for (0..source_indexed.indices.len) |index| {
         destination.float32[index] = source_indexed.palette[source_indexed.indices[index]].to.color(color.Colorf32);
@@ -1036,8 +1025,8 @@ fn indexedToColorf32(comptime source_format: PixelFormat, source: *const color.P
 fn GrayscaleToGrayscale(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
     return struct {
         pub fn convert(source: *const color.PixelStorage, destination: *color.PixelStorage) void {
-            const source_grayscale = @field(source, getFieldNameFromPixelFormat(source_format));
-            var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+            const source_grayscale = @field(source, @tagName(source_format));
+            var destination_pixels = @field(destination, @tagName(destination_format));
             const destination_type = @TypeOf(destination_pixels[0]);
 
             for (0..source_grayscale.len) |index| {
@@ -1050,8 +1039,8 @@ fn GrayscaleToGrayscale(comptime source_format: PixelFormat, comptime destinatio
 fn GrayscaleAlphaToGrayscale(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
     return struct {
         pub fn convert(source: *const color.PixelStorage, destination: *color.PixelStorage) void {
-            const source_grayscale = @field(source, getFieldNameFromPixelFormat(source_format));
-            var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+            const source_grayscale = @field(source, @tagName(source_format));
+            var destination_pixels = @field(destination, @tagName(destination_format));
             const destination_type = @TypeOf(destination_pixels[0]);
 
             for (0..source_grayscale.len) |index| {
@@ -1064,8 +1053,8 @@ fn GrayscaleAlphaToGrayscale(comptime source_format: PixelFormat, comptime desti
 fn GrayscaleAlphaToGrayscaleAlpha(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
     return struct {
         pub fn convert(source: *const color.PixelStorage, destination: *color.PixelStorage) void {
-            const source_grayscale = @field(source, getFieldNameFromPixelFormat(source_format));
-            var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+            const source_grayscale = @field(source, @tagName(source_format));
+            var destination_pixels = @field(destination, @tagName(destination_format));
             const destination_type = @TypeOf(destination_pixels[0]);
 
             for (0..source_grayscale.len) |index| {
@@ -1078,8 +1067,8 @@ fn GrayscaleAlphaToGrayscaleAlpha(comptime source_format: PixelFormat, comptime 
 fn GrayscaleToRgbColor(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
     return struct {
         pub fn convert(source: *const color.PixelStorage, destination: *color.PixelStorage) void {
-            const source_grayscale = @field(source, getFieldNameFromPixelFormat(source_format));
-            var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+            const source_grayscale = @field(source, @tagName(source_format));
+            var destination_pixels = @field(destination, @tagName(destination_format));
             const destination_type = @TypeOf(destination_pixels[0]);
 
             for (0..source_grayscale.len) |index| {
@@ -1092,8 +1081,8 @@ fn GrayscaleToRgbColor(comptime source_format: PixelFormat, comptime destination
 fn GrayscaleToRgbaColor(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
     return struct {
         pub fn convert(source: *const color.PixelStorage, destination: *color.PixelStorage) void {
-            const source_grayscale = @field(source, getFieldNameFromPixelFormat(source_format));
-            var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+            const source_grayscale = @field(source, @tagName(source_format));
+            var destination_pixels = @field(destination, @tagName(destination_format));
             const destination_type = @TypeOf(destination_pixels[0]);
 
             for (0..source_grayscale.len) |index| {
@@ -1106,8 +1095,8 @@ fn GrayscaleToRgbaColor(comptime source_format: PixelFormat, comptime destinatio
 fn GrayscaleAlphaToRgbColor(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
     return struct {
         pub fn convert(source: *const color.PixelStorage, destination: *color.PixelStorage) void {
-            const source_grayscale = @field(source, getFieldNameFromPixelFormat(source_format));
-            var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+            const source_grayscale = @field(source, @tagName(source_format));
+            var destination_pixels = @field(destination, @tagName(destination_format));
             const destination_type = @TypeOf(destination_pixels[0]);
 
             for (0..source_grayscale.len) |index| {
@@ -1120,8 +1109,8 @@ fn GrayscaleAlphaToRgbColor(comptime source_format: PixelFormat, comptime destin
 fn GrayscaleAlphaToRgbaColor(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
     return struct {
         pub fn convert(source: *const color.PixelStorage, destination: *color.PixelStorage) void {
-            const source_grayscale = @field(source, getFieldNameFromPixelFormat(source_format));
-            var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+            const source_grayscale = @field(source, @tagName(source_format));
+            var destination_pixels = @field(destination, @tagName(destination_format));
             const destination_type = @TypeOf(destination_pixels[0]);
 
             for (0..source_grayscale.len) |index| {
@@ -1132,7 +1121,7 @@ fn GrayscaleAlphaToRgbaColor(comptime source_format: PixelFormat, comptime desti
 }
 
 fn grayscaleToColorf32(comptime source_format: PixelFormat, source: *const color.PixelStorage, destination: *color.PixelStorage) void {
-    const source_grayscale = @field(source, getFieldNameFromPixelFormat(source_format));
+    const source_grayscale = @field(source, @tagName(source_format));
 
     for (0..source_grayscale.len) |index| {
         destination.float32[index] = source_grayscale[index].to.color(color.Colorf32);
@@ -1142,8 +1131,8 @@ fn grayscaleToColorf32(comptime source_format: PixelFormat, source: *const color
 fn GrayscaleToIndexed(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
     return struct {
         pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, destination: *color.PixelStorage) Image.ConvertError!void {
-            const source_grayscale = @field(source, getFieldNameFromPixelFormat(source_format));
-            var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+            const source_grayscale = @field(source, @tagName(source_format));
+            var destination_pixels = @field(destination, @tagName(destination_format));
 
             var quantizer = OctTreeQuantizer.init(allocator);
             defer quantizer.deinit();
@@ -1177,8 +1166,8 @@ fn GrayscaleToIndexed(comptime source_format: PixelFormat, comptime destination_
 fn GrayscaleAlphaToIndexed(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
     return struct {
         pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, destination: *color.PixelStorage) Image.ConvertError!void {
-            const source_grayscale = @field(source, getFieldNameFromPixelFormat(source_format));
-            var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+            const source_grayscale = @field(source, @tagName(source_format));
+            var destination_pixels = @field(destination, @tagName(destination_format));
 
             var quantizer = OctTreeQuantizer.init(allocator);
             defer quantizer.deinit();
@@ -1215,8 +1204,8 @@ fn GrayscaleAlphaToIndexed(comptime source_format: PixelFormat, comptime destina
 fn RgbColorToGrayscale(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
     return struct {
         pub fn convert(source: *const color.PixelStorage, destination: *color.PixelStorage) void {
-            const source_rgb = @field(source, getFieldNameFromPixelFormat(source_format));
-            var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+            const source_rgb = @field(source, @tagName(source_format));
+            var destination_pixels = @field(destination, @tagName(destination_format));
             const DestinationType = @TypeOf(destination_pixels[0]);
 
             const scaleValue = color.ScaleValue(std.meta.fieldInfo(DestinationType, .value).type);
@@ -1239,8 +1228,8 @@ fn RgbColorToGrayscale(comptime source_format: PixelFormat, comptime destination
 fn RgbColorToGrayscaleAlpha(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
     return struct {
         pub fn convert(source: *const color.PixelStorage, destination: *color.PixelStorage) void {
-            const source_rgb = @field(source, getFieldNameFromPixelFormat(source_format));
-            var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+            const source_rgb = @field(source, @tagName(source_format));
+            var destination_pixels = @field(destination, @tagName(destination_format));
             const DestinationType = @TypeOf(destination_pixels[0]);
 
             const scaleValue = color.ScaleValue(std.meta.fieldInfo(DestinationType, .value).type);
@@ -1265,8 +1254,8 @@ fn RgbColorToGrayscaleAlpha(comptime source_format: PixelFormat, comptime destin
 fn RgbColorToRgbColor(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
     return struct {
         pub fn convert(source: *const color.PixelStorage, destination: *color.PixelStorage) void {
-            const source_rgb = @field(source, getFieldNameFromPixelFormat(source_format));
-            var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+            const source_rgb = @field(source, @tagName(source_format));
+            var destination_pixels = @field(destination, @tagName(destination_format));
             const destination_type = @TypeOf(destination_pixels[0]);
 
             for (0..source_rgb.len) |index| {
@@ -1279,8 +1268,8 @@ fn RgbColorToRgbColor(comptime source_format: PixelFormat, comptime destination_
 fn RgbColorToRgbaColor(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
     return struct {
         pub fn convert(source: *const color.PixelStorage, destination: *color.PixelStorage) void {
-            const source_rgb = @field(source, getFieldNameFromPixelFormat(source_format));
-            var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+            const source_rgb = @field(source, @tagName(source_format));
+            var destination_pixels = @field(destination, @tagName(destination_format));
             const destination_type = @TypeOf(destination_pixels[0]);
 
             for (0..source_rgb.len) |index| {
@@ -1293,8 +1282,8 @@ fn RgbColorToRgbaColor(comptime source_format: PixelFormat, comptime destination
 fn RgbaColorToRgbColor(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
     return struct {
         pub fn convert(source: *const color.PixelStorage, destination: *color.PixelStorage) void {
-            const source_rgb = @field(source, getFieldNameFromPixelFormat(source_format));
-            var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+            const source_rgb = @field(source, @tagName(source_format));
+            var destination_pixels = @field(destination, @tagName(destination_format));
             const destination_type = @TypeOf(destination_pixels[0]);
 
             for (0..source_rgb.len) |index| {
@@ -1307,8 +1296,8 @@ fn RgbaColorToRgbColor(comptime source_format: PixelFormat, comptime destination
 fn RgbaColorToRgbaColor(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
     return struct {
         pub fn convert(source: *const color.PixelStorage, destination: *color.PixelStorage) void {
-            const source_rgb = @field(source, getFieldNameFromPixelFormat(source_format));
-            var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+            const source_rgb = @field(source, @tagName(source_format));
+            var destination_pixels = @field(destination, @tagName(destination_format));
             const destination_type = @TypeOf(destination_pixels[0]);
 
             for (0..source_rgb.len) |index| {
@@ -1319,7 +1308,7 @@ fn RgbaColorToRgbaColor(comptime source_format: PixelFormat, comptime destinatio
 }
 
 fn rgbColorToColorf32(comptime source_format: PixelFormat, source: *const color.PixelStorage, destination: *color.PixelStorage) void {
-    const source_rgb = @field(source, getFieldNameFromPixelFormat(source_format));
+    const source_rgb = @field(source, @tagName(source_format));
 
     for (0..source_rgb.len) |index| {
         destination.float32[index] = source_rgb[index].to.color(color.Colorf32);
@@ -1329,8 +1318,8 @@ fn rgbColorToColorf32(comptime source_format: PixelFormat, source: *const color.
 fn FastRgba32Shuffle(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
     return struct {
         pub fn convert(source: *const color.PixelStorage, destination: *color.PixelStorage) void {
-            const source_pixels = @field(source, getFieldNameFromPixelFormat(source_format));
-            var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+            const source_pixels = @field(source, @tagName(source_format));
+            var destination_pixels = @field(destination, @tagName(destination_format));
             const destination_type = @TypeOf(destination_pixels[0]);
 
             const vector_length = std.simd.suggestVectorLength(u8) orelse 4;
@@ -1373,7 +1362,7 @@ fn FastRgba32Shuffle(comptime source_format: PixelFormat, comptime destination_f
 }
 
 fn rgba32ToColorf32(comptime source_format: PixelFormat, source: *const color.PixelStorage, destination: *color.PixelStorage) void {
-    const source_pixels = @field(source, getFieldNameFromPixelFormat(source_format));
+    const source_pixels = @field(source, @tagName(source_format));
     var destination_pixels = destination.float32;
     var destination_f32: [*]f32 = @ptrCast(@alignCast(destination_pixels.ptr));
 
@@ -1404,7 +1393,7 @@ fn rgba32ToColorf32(comptime source_format: PixelFormat, source: *const color.Pi
 }
 
 fn bgra32ToColorf32(comptime source_format: PixelFormat, source: *const color.PixelStorage, destination: *color.PixelStorage) void {
-    const source_pixels = @field(source, getFieldNameFromPixelFormat(source_format));
+    const source_pixels = @field(source, @tagName(source_format));
     var destination_pixels = destination.float32;
     var destination_f32: [*]f32 = @ptrCast(@alignCast(destination_pixels.ptr));
 
@@ -1453,8 +1442,8 @@ fn bgra32ToColorf32(comptime source_format: PixelFormat, source: *const color.Pi
 fn RgbColorToIndexed(comptime source_format: PixelFormat, comptime destination_format: PixelFormat) type {
     return struct {
         pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, destination: *color.PixelStorage) Image.ConvertError!void {
-            const source_rgb = @field(source, getFieldNameFromPixelFormat(source_format));
-            var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+            const source_rgb = @field(source, @tagName(source_format));
+            var destination_pixels = @field(destination, @tagName(destination_format));
 
             var quantizer = OctTreeQuantizer.init(allocator);
             defer quantizer.deinit();
@@ -1495,7 +1484,7 @@ fn colorf32ToRgba(comptime T: type, source: color.Colorf32) T {
 fn colorf32ToRgbColor(comptime destination_format: PixelFormat, source: *const color.PixelStorage, destination: *color.PixelStorage) void {
     const source_pixels = source.float32;
 
-    var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+    var destination_pixels = @field(destination, @tagName(destination_format));
     const destination_type = @TypeOf(destination_pixels[0]);
 
     for (0..source_pixels.len) |index| {
@@ -1506,7 +1495,7 @@ fn colorf32ToRgbColor(comptime destination_format: PixelFormat, source: *const c
 fn colorf32ToRgbaColor(comptime destination_format: PixelFormat, source: *const color.PixelStorage, destination: *color.PixelStorage) void {
     const source_pixels = source.float32;
 
-    var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+    var destination_pixels = @field(destination, @tagName(destination_format));
     const destination_type = @TypeOf(destination_pixels[0]);
 
     for (0..source_pixels.len) |index| {
@@ -1518,7 +1507,7 @@ fn colorf32ToRgba32(comptime destination_format: PixelFormat, source: *const col
     const source_pixels = source.float32;
     var source_f32: [*]f32 = @ptrCast(@alignCast(source_pixels.ptr));
 
-    var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+    var destination_pixels = @field(destination, @tagName(destination_format));
     const destination_type = @TypeOf(destination_pixels[0]);
 
     const vector_length = std.simd.suggestVectorLength(u8) orelse 4;
@@ -1550,7 +1539,7 @@ fn colorf32ToBgra32(comptime destination_format: PixelFormat, source: *const col
     const source_pixels = source.float32;
     var source_f32: [*]f32 = @ptrCast(@alignCast(source_pixels.ptr));
 
-    var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+    var destination_pixels = @field(destination, @tagName(destination_format));
     const destination_type = @TypeOf(destination_pixels[0]);
 
     const vector_length = std.simd.suggestVectorLength(u8) orelse 4;
@@ -1597,7 +1586,7 @@ fn colorf32ToBgra32(comptime destination_format: PixelFormat, source: *const col
 fn colorf32ToGrayscale(comptime destination_format: PixelFormat, source: *const color.PixelStorage, destination: *color.PixelStorage) void {
     const source_pixels = source.float32;
 
-    var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+    var destination_pixels = @field(destination, @tagName(destination_format));
     const DestinationType = @TypeOf(destination_pixels[0]);
 
     const scaleValue = color.ScaleValue(std.meta.fieldInfo(DestinationType, .value).type);
@@ -1618,7 +1607,7 @@ fn colorf32ToGrayscale(comptime destination_format: PixelFormat, source: *const 
 fn colorf32ToGrayscaleAlpha(comptime destination_format: PixelFormat, source: *const color.PixelStorage, destination: *color.PixelStorage) void {
     const source_pixels = source.float32;
 
-    var destination_pixels = @field(destination, getFieldNameFromPixelFormat(destination_format));
+    var destination_pixels = @field(destination, @tagName(destination_format));
     const DestinationType = @TypeOf(destination_pixels[0]);
 
     const scaleValue = color.ScaleValue(std.meta.fieldInfo(DestinationType, .value).type);

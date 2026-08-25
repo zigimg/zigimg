@@ -20,7 +20,7 @@ const QuantIndex = enum(u8) {
     luminance,
     chrominance,
 };
-const quant_index_size = @typeInfo(QuantIndex).@"enum".fields.len;
+const quant_index_size = @typeInfo(QuantIndex).@"enum".field_names.len;
 
 const n_huff_index = 4;
 const HuffmanIndex = enum(usize) {

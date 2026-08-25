@@ -1672,11 +1672,11 @@ pub const CIEXYZAlpha = extern struct {
     a: f32 align(1) = 1.0,
 
     pub inline fn fromFloat4(value: math.float4) CIEXYZAlpha {
-        return @bitCast(value);
+        return .{ .x = value[0], .y = value[1], .z = value[2], .a = value[3] };
     }
 
     pub inline fn toFloat4(self: CIEXYZAlpha) math.float4 {
-        return @bitCast(self);
+        return .{ self.x, self.y, self.z, self.a };
     }
 
     pub fn toXYZ(self: CIEXYZAlpha) CIEXYZ {
@@ -1830,11 +1830,11 @@ pub const CIELabAlpha = extern struct {
     }
 
     pub inline fn fromFloat4(value: math.float4) CIELabAlpha {
-        return @bitCast(value);
+        return .{ .l = value[0], .a = value[1], .b = value[2], .alpha = value[3] };
     }
 
     pub inline fn toFloat4(self: CIELabAlpha) math.float4 {
-        return @bitCast(self);
+        return .{ self.l, self.a, self.b, self.alpha };
     }
 };
 
@@ -2050,11 +2050,11 @@ pub const CIELuvAlpha = extern struct {
     }
 
     pub inline fn fromFloat4(value: math.float4) CIELuvAlpha {
-        return @bitCast(value);
+        return .{ .l = value[0], .u = value[1], .v = value[2], .alpha = value[3] };
     }
 
     pub inline fn toFloat4(self: CIELuvAlpha) math.float4 {
-        return @bitCast(self);
+        return .{ self.l, self.u, self.v, self.alpha };
     }
 };
 
@@ -2280,11 +2280,11 @@ pub const HSLuvAlpha = extern struct {
     }
 
     pub inline fn fromFloat4(value: math.float4) CIELuvAlpha {
-        return @bitCast(value);
+        return .{ .l = value[0], .u = value[1], .v = value[2], .alpha = value[3] };
     }
 
     pub inline fn toFloat4(self: CIELuvAlpha) math.float4 {
-        return @bitCast(self);
+        return .{ self.l, self.u, self.v, self.alpha };
     }
 };
 
@@ -2386,11 +2386,11 @@ pub const OklabAlpha = extern struct {
     }
 
     pub inline fn fromFloat4(value: math.float4) OklabAlpha {
-        return @bitCast(value);
+        return .{ .l = value[0], .a = value[1], .b = value[2], .alpha = value[3] };
     }
 
     pub inline fn toFloat4(self: OklabAlpha) math.float4 {
-        return @bitCast(self);
+        return .{ self.l, self.a, self.b, self.alpha };
     }
 };
 
@@ -2840,7 +2840,7 @@ pub const RgbColorspace = struct {
         const all_ones: math.float4 = @splat(1.0);
 
         for (slice_rgba) |*rgba| {
-            const lab_alpha: CIELabAlpha = @bitCast(rgba.*);
+            const lab_alpha: CIELabAlpha = .{ .l = rgba.r, .a = rgba.g, .b = rgba.b, .alpha = rgba.a };
 
             const xyza = lab_alpha.toXYZAlphaPrecomputedWhitePoint(white_point_xyz);
 
@@ -2918,7 +2918,7 @@ pub const RgbColorspace = struct {
         const all_ones: math.float4 = @splat(1.0);
 
         for (slice_rgba) |*rgba| {
-            const luv_alpha: CIELuvAlpha = @bitCast(rgba.*);
+            const luv_alpha: CIELuvAlpha = .{ .l = rgba.r, .u = rgba.g, .v = rgba.b, .alpha = rgba.a };
 
             const xyza = luv_alpha.toXYZAlphaPrecomputedWhitePoint(white_point_xyz);
 
@@ -2996,7 +2996,7 @@ pub const RgbColorspace = struct {
         const all_ones: math.float4 = @splat(1.0);
 
         for (slice_rgba) |*rgba| {
-            const lab_alpha: OklabAlpha = @bitCast(rgba.*);
+            const lab_alpha: OklabAlpha = .{ .l = rgba.r, .a = rgba.g, .b = rgba.b, .alpha = rgba.a };
 
             const xyza = lab_alpha.toXYZAlpha();
 
