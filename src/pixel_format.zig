@@ -5,6 +5,8 @@ pub const PixelFormatVariant = enum(u4) {
     rgb565 = 3,
     sega_grb333 = 4,
     sega_bgr333 = 5,
+    sega_bgr222 = 6,
+    sega_bgr444 = 7,
     _,
 };
 
@@ -41,6 +43,8 @@ pub const PixelFormat = enum(u32) {
     rgb332 = toPixelFormatValue(.{ .channel_count = 3, .bits_per_channel = 3 }),
     sega_grb333 = toPixelFormatValue(.{ .variant = .sega_grb333, .channel_count = 3, .bits_per_channel = 3 }),
     sega_bgr333 = toPixelFormatValue(.{ .variant = .sega_bgr333, .channel_count = 3, .bits_per_channel = 3 }),
+    sega_bgr222 = toPixelFormatValue(.{ .variant = .sega_bgr222, .channel_count = 3, .bits_per_channel = 2 }),
+    sega_bgr444 = toPixelFormatValue(.{ .variant = .sega_bgr444, .channel_count = 3, .bits_per_channel = 4 }),
     rgb555 = toPixelFormatValue(.{ .channel_count = 3, .bits_per_channel = 5 }),
     rgb565 = toPixelFormatValue(.{ .variant = .rgb565, .channel_count = 3, .bits_per_channel = 5 }),
     rgb24 = toPixelFormatValue(.{ .channel_count = 3, .bits_per_channel = 8 }),

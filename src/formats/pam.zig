@@ -227,6 +227,8 @@ const Header = struct {
             .rgb565,
             .sega_grb333,
             .sega_bgr333,
+            .sega_bgr222,
+            .sega_bgr444,
             => return error.Unsupported, // unsupported pixel format
 
             .grayscale1 => {
