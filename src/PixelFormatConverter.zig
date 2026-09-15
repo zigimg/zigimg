@@ -977,6 +977,7 @@ fn IndexedLargeToSmall(comptime source_format: PixelFormat, comptime destination
             // Make the palette
             const color_count: u32 = @as(u32, 1) << @as(u5, @truncate(destination_format.bitsPerChannel()));
             destination_indexed.palette = quantizer.makePalette(color_count, destination_indexed.palette);
+            destination.resizePalette(destination_indexed.palette.len);
 
             // Second pass: assign indices
             for (0..source_indexed.indices.len) |index| {
@@ -1163,6 +1164,7 @@ fn GrayscaleToIndexed(comptime source_format: PixelFormat, comptime destination_
             // Make the palette
             const color_count: u32 = @as(u32, 1) << @as(u5, @truncate(destination_format.bitsPerChannel()));
             destination_pixels.palette = quantizer.makePalette(color_count, destination_pixels.palette);
+            destination.resizePalette(destination_pixels.palette.len);
 
             // Second pass: assign indices
             for (0..source_grayscale.len) |index| {
@@ -1198,6 +1200,7 @@ fn GrayscaleAlphaToIndexed(comptime source_format: PixelFormat, comptime destina
             // Make the palette
             const color_count: u32 = @as(u32, 1) << @as(u5, @truncate(destination_format.bitsPerChannel()));
             destination_pixels.palette = quantizer.makePalette(color_count, destination_pixels.palette);
+            destination.resizePalette(destination_pixels.palette.len);
 
             // Second pass: assign indices
             for (0..source_grayscale.len) |index| {
@@ -1472,6 +1475,7 @@ fn RgbColorToIndexed(comptime source_format: PixelFormat, comptime destination_f
             // Make the palette
             const color_count: u32 = @as(u32, 1) << @as(u5, @truncate(destination_format.bitsPerChannel()));
             destination_pixels.palette = quantizer.makePalette(color_count, destination_pixels.palette);
+            destination.resizePalette(destination_pixels.palette.len);
 
             // Second pass: assign indices
             for (0..source_rgb.len) |index| {

@@ -2428,3 +2428,69 @@ test "PixelFormatConverter: convert grayscale8 to indexed2" {
         }
     }
 }
+
+test "PixelFormatConverter: convert rgb24 to indexed8 shrinks the palette to the quantized color count" {
+    const rgb24_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .rgb24, 4);
+    defer rgb24_pixels.deinit(helpers.zigimg_test_allocator);
+
+    rgb24_pixels.rgb24[0] = Colors(color.Rgb24).Red;
+    rgb24_pixels.rgb24[1] = Colors(color.Rgb24).Green;
+    rgb24_pixels.rgb24[2] = Colors(color.Rgb24).Blue;
+    rgb24_pixels.rgb24[3] = Colors(color.Rgb24).Red;
+
+    const indexed8_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &rgb24_pixels, .indexed8);
+    defer indexed8_pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(indexed8_pixels.indexed8.palette.len, 3);
+}
+
+test "PixelFormatConverter: convert grayscale8 to indexed8 shrinks the palette to the quantized color count" {
+    const grayscale8_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .grayscale8, 4);
+    defer grayscale8_pixels.deinit(helpers.zigimg_test_allocator);
+
+    grayscale8_pixels.grayscale8[0].value = 0;
+    grayscale8_pixels.grayscale8[1].value = 100;
+    grayscale8_pixels.grayscale8[2].value = 200;
+    grayscale8_pixels.grayscale8[3].value = 0;
+
+    const indexed8_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &grayscale8_pixels, .indexed8);
+    defer indexed8_pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(indexed8_pixels.indexed8.palette.len, 3);
+}
+
+test "PixelFormatConverter: convert grayscale8Alpha to indexed8 shrinks the palette to the quantized color count" {
+    const grayscale8_alpha_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .grayscale8Alpha, 4);
+    defer grayscale8_alpha_pixels.deinit(helpers.zigimg_test_allocator);
+
+    grayscale8_alpha_pixels.grayscale8Alpha[0].value = 0;
+    grayscale8_alpha_pixels.grayscale8Alpha[0].alpha = 255;
+    grayscale8_alpha_pixels.grayscale8Alpha[1].value = 100;
+    grayscale8_alpha_pixels.grayscale8Alpha[1].alpha = 255;
+    grayscale8_alpha_pixels.grayscale8Alpha[2].value = 200;
+    grayscale8_alpha_pixels.grayscale8Alpha[2].alpha = 255;
+    grayscale8_alpha_pixels.grayscale8Alpha[3].value = 0;
+    grayscale8_alpha_pixels.grayscale8Alpha[3].alpha = 255;
+
+    const indexed8_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &grayscale8_alpha_pixels, .indexed8);
+    defer indexed8_pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(indexed8_pixels.indexed8.palette.len, 3);
+}
+
+test "PixelFormatConverter: convert indexed8 to indexed4 shrinks the palette to the quantized color count" {
+    const indexed8_pixels = try color.PixelStorage.init(helpers.zigimg_test_allocator, .indexed8, 4);
+    defer indexed8_pixels.deinit(helpers.zigimg_test_allocator);
+
+    indexed8_pixels.indexed8.palette[0] = Colors(color.Rgba32).Red;
+    indexed8_pixels.indexed8.palette[1] = Colors(color.Rgba32).Green;
+    indexed8_pixels.indexed8.indices[0] = 0;
+    indexed8_pixels.indexed8.indices[1] = 1;
+    indexed8_pixels.indexed8.indices[2] = 1;
+    indexed8_pixels.indexed8.indices[3] = 0;
+
+    const indexed4_pixels = try PixelFormatConverter.convert(helpers.zigimg_test_allocator, &indexed8_pixels, .indexed4);
+    defer indexed4_pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(indexed4_pixels.indexed4.palette.len, 3);
+}
