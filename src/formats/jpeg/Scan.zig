@@ -127,13 +127,14 @@ pub fn performScan(frame: *const Frame, restart_interval: u16, read_stream: *io.
     const y_step = if (noninterleaved) 1 else frame.vertical_sampling_factor_max;
     const x_step = if (noninterleaved) 1 else frame.horizontal_sampling_factor_max;
 
+    // DRI counts MCUs in scan order. Block coordinates are not MCU indexes
+    // when both sampling factors are greater than 1.
+    var mcu_index: usize = 0;
     var y: usize = 0;
     while (y < self.frame.block_height) : (y += y_step) {
         var x: usize = 0;
         while (x < self.frame.block_width) : (x += x_step) {
-            const mcu_id = y * self.frame.block_width_actual + x;
-
-            if (restart_interval != 0 and mcu_id % (restart_interval * y_step * x_step) == 0) {
+            if (restart_interval != 0 and mcu_index % restart_interval == 0) {
                 self.reader.flushBits();
                 self.prediction_values = @splat(0);
                 skips = 0;
@@ -168,6 +169,7 @@ pub fn performScan(frame: *const Frame, restart_interval: u16, read_stream: *io.
                     }
                 }
             }
+            mcu_index += 1;
         }
     }
 }
