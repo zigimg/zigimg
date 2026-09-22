@@ -182,6 +182,38 @@ test "Read subsampling images" {
     }
 }
 
+test "Read 4:2:0 JPEG with restart interval" {
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "jpeg/restart_420.jpg");
+    defer file.close(test_io);
+
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
+
+    var jpeg_file = jpeg.JPEG.init(helpers.zigimg_test_allocator);
+    defer jpeg_file.deinit();
+
+    var pixels_opt: ?zigimg.color.PixelStorage = null;
+    const frame = try jpeg_file.read(&read_stream, &pixels_opt);
+
+    defer {
+        if (pixels_opt) |pixels| {
+            pixels.deinit(helpers.zigimg_test_allocator);
+        }
+    }
+
+    try helpers.expectEq(frame.frame_header.width, 32);
+    try helpers.expectEq(frame.frame_header.height, 32);
+
+    try std.testing.expect(pixels_opt != null);
+    if (pixels_opt) |pixels| {
+        try std.testing.expect(pixels == .rgb24);
+        try helpers.expectEq(pixels.rgb24[4 * 32 + 4], zigimg.color.Rgb24.from.rgb(254, 0, 0));
+        try helpers.expectEq(pixels.rgb24[4 * 32 + 20], zigimg.color.Rgb24.from.rgb(0, 255, 1));
+        try helpers.expectEq(pixels.rgb24[20 * 32 + 4], zigimg.color.Rgb24.from.rgb(0, 0, 254));
+        try helpers.expectEq(pixels.rgb24[20 * 32 + 20], zigimg.color.Rgb24.from.rgb(255, 255, 255));
+    }
+}
+
 test "Read progressive jpeg with restart intervals" {
     const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "jpeg/tuba_restart_prog.jpg");
     defer file.close(test_io);
