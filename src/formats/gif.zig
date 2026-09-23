@@ -395,8 +395,9 @@ pub const GIF = struct {
     fn takeDataBlock(self: *GIF, context: *ReaderContext) Image.ReadError!DataBlockKind {
         _ = self;
         while (true) {
-            const byte = context.reader.takeByte() catch {
-                return Image.ReadError.InvalidData;
+            const byte = context.reader.takeByte() catch |err| switch (err) {
+                error.EndOfStream => return error.EndOfStream,
+                else => return Image.ReadError.InvalidData,
             };
             if (byte == 0) continue;
             return std.enums.fromInt(DataBlockKind, byte) orelse return Image.ReadError.InvalidData;
@@ -405,7 +406,9 @@ pub const GIF = struct {
 
     // <Data> ::= <Graphic Block> | <Special-Purpose Block>
     fn readData(self: *GIF, context: *ReaderContext) Image.ReadError!void {
-        var current_block = try self.takeDataBlock(context);
+        var current_block = self.takeDataBlock(context) catch {
+            return Image.ReadError.InvalidData;
+        };
 
         while (current_block != .end_of_file) {
             var is_graphic_block = false;
@@ -435,7 +438,9 @@ pub const GIF = struct {
                             else => {},
                         }
                     } else {
-                        current_block = try self.takeDataBlock(context);
+                        current_block = self.takeDataBlock(context) catch {
+                            return Image.ReadError.InvalidData;
+                        };
                         continue;
                     }
                 },
@@ -445,12 +450,28 @@ pub const GIF = struct {
             }
 
             if (is_graphic_block) {
-                try self.readGraphicBlock(context, current_block, extension_kind_opt);
+                const frames_before = self.frames.items.len;
+                self.readGraphicBlock(context, current_block, extension_kind_opt) catch |err| switch (err) {
+                    // The file ended inside this frame. Drop it and keep the frames that finished.
+                    error.EndOfStream => {
+                        if (self.frames.items.len > frames_before) {
+                            var frame = self.frames.pop().?;
+                            frame.deinit(self.arena_allocator.allocator());
+                        }
+                        if (self.frames.items.len == 0) return error.EndOfStream;
+                        return;
+                    },
+                    else => |e| return e,
+                };
             } else {
                 try self.readSpecialPurposeBlock(context, extension_kind_opt.?);
             }
 
-            current_block = try self.takeDataBlock(context);
+            // End of file between blocks keeps the frames already read.
+            current_block = self.takeDataBlock(context) catch |err| switch (err) {
+                error.EndOfStream => return,
+                else => return err,
+            };
         }
     }
 
