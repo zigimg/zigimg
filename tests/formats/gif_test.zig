@@ -629,6 +629,22 @@ test "GIF Netscape extension between graphic control and image" {
     try helpers.expectApproxEqAbs(img.animation.frames.items[0].duration, 0.05, 0.001);
 }
 
+test "GIF ignores a zero byte before the trailer" {
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var img = try helpers.testImageFromFileWithAllocator(
+        helpers.zigimg_test_allocator,
+        test_io,
+        helpers.fixtures_path ++ "gif/nul-before-trailer.gif",
+        read_buffer[0..],
+    );
+    defer img.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(img.width, 2);
+    try helpers.expectEq(img.height, 2);
+    try helpers.expectEq(img.animation.frames.items.len, 2);
+    try helpers.expectEq(img.animation.loop_count, zigimg.Image.AnimationLoopInfinite);
+}
+
 test "Rotating Earth GIF" {
     const gif_input_file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "gif/rotating_earth.gif");
     defer gif_input_file.close(test_io);

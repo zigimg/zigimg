@@ -391,11 +391,21 @@ pub const GIF = struct {
         return try self.render();
     }
 
+    // A zero byte is not a block. Some encoders write one before the trailer.
+    fn takeDataBlock(self: *GIF, context: *ReaderContext) Image.ReadError!DataBlockKind {
+        _ = self;
+        while (true) {
+            const byte = context.reader.takeByte() catch {
+                return Image.ReadError.InvalidData;
+            };
+            if (byte == 0) continue;
+            return std.enums.fromInt(DataBlockKind, byte) orelse return Image.ReadError.InvalidData;
+        }
+    }
+
     // <Data> ::= <Graphic Block> | <Special-Purpose Block>
     fn readData(self: *GIF, context: *ReaderContext) Image.ReadError!void {
-        var current_block = context.reader.takeEnum(DataBlockKind, .little) catch {
-            return Image.ReadError.InvalidData;
-        };
+        var current_block = try self.takeDataBlock(context);
 
         while (current_block != .end_of_file) {
             var is_graphic_block = false;
@@ -425,9 +435,7 @@ pub const GIF = struct {
                             else => {},
                         }
                     } else {
-                        current_block = context.reader.takeEnum(DataBlockKind, .little) catch {
-                            return Image.ReadError.InvalidData;
-                        };
+                        current_block = try self.takeDataBlock(context);
                         continue;
                     }
                 },
@@ -442,9 +450,7 @@ pub const GIF = struct {
                 try self.readSpecialPurposeBlock(context, extension_kind_opt.?);
             }
 
-            current_block = context.reader.takeEnum(DataBlockKind, .little) catch {
-                return Image.ReadError.InvalidData;
-            };
+            current_block = try self.takeDataBlock(context);
         }
     }
 
