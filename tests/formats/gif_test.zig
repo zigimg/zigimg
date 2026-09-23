@@ -661,6 +661,34 @@ test "GIF graphic control survives a short read buffer" {
     try helpers.expectEq(img.animation.frames.items.len, 2);
 }
 
+test "GIF truncated after a complete frame keeps that frame" {
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var img = try helpers.testImageFromFileWithAllocator(
+        helpers.zigimg_test_allocator,
+        test_io,
+        helpers.fixtures_path ++ "gif/truncated-after-frame.gif",
+        read_buffer[0..],
+    );
+    defer img.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(img.width, 2);
+    try helpers.expectEq(img.height, 2);
+    try helpers.expectEq(img.animation.frames.items.len, 1);
+}
+
+test "GIF truncated inside a frame drops that frame" {
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var img = try helpers.testImageFromFileWithAllocator(
+        helpers.zigimg_test_allocator,
+        test_io,
+        helpers.fixtures_path ++ "gif/truncated-mid-frame.gif",
+        read_buffer[0..],
+    );
+    defer img.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(img.animation.frames.items.len, 1);
+}
+
 test "Rotating Earth GIF" {
     const gif_input_file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "gif/rotating_earth.gif");
     defer gif_input_file.close(test_io);
