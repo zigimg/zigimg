@@ -524,6 +524,15 @@ pub const GIF = struct {
                         const sub_data_size = try context.reader.takeByte();
                         try context.reader.discardAll(sub_data_size + 1);
                     },
+                    // A graphic-control extension applies to the next image. Encoders
+                    // sometimes place the Netscape loop block, or a comment, between them.
+                    .comment, .application_extension => {
+                        try self.readSpecialPurposeBlock(context, extension_kind);
+                        const next_block = context.reader.takeEnum(DataBlockKind, .little) catch {
+                            return Image.ReadError.InvalidData;
+                        };
+                        try self.readGraphicRenderingBlock(context, next_block, null);
+                    },
                     else => {
                         return Image.ReadError.InvalidData;
                     },
