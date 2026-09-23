@@ -122,10 +122,22 @@ pub fn performScan(frame: *const Frame, restart_interval: u16, read_stream: *io.
 
     var skips: u32 = 0;
 
-    const noninterleaved = self.component_count == 1 and self.components[0].?.component_id == 1;
+    // A scan with one component is non-interleaved, whatever that component's id is.
+    // Each MCU is one data unit, spaced by Hmax/H and Vmax/V on the frame block grid.
+    const noninterleaved = self.component_count == 1;
 
-    const y_step = if (noninterleaved) 1 else frame.vertical_sampling_factor_max;
-    const x_step = if (noninterleaved) 1 else frame.horizontal_sampling_factor_max;
+    var y_step: usize = frame.vertical_sampling_factor_max;
+    var x_step: usize = frame.horizontal_sampling_factor_max;
+    if (noninterleaved) {
+        const scan_component = self.components[0].?;
+        for (frame.frame_header.components) |frame_component| {
+            if (frame_component.id == scan_component.component_id) {
+                y_step = frame.vertical_sampling_factor_max / frame_component.vertical_sampling_factor;
+                x_step = frame.horizontal_sampling_factor_max / frame_component.horizontal_sampling_factor;
+                break;
+            }
+        }
+    }
 
     // DRI counts MCUs in scan order. Block coordinates are not MCU indexes
     // when both sampling factors are greater than 1.
