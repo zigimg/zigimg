@@ -275,7 +275,7 @@ pub const SGI = struct {
                 for (0..image_height) |y| {
                     for (0..image_width) |x| {
                         const offset = (image_height - y - 1) * image_width + x;
-                        storage[y * image_width + x] = color.Rgba64{ .r = std.mem.bigToNative(u16, u16_buffer[offset]), .g = std.mem.bigToNative(u16, u16_buffer[offset + channel_size]), .b = std.mem.bigToNative(u16, u16_buffer[offset + channel_size * 2]), .a = std.mem.bigToNative(u16, buffer[offset + channel_size * 3]) };
+                        storage[y * image_width + x] = color.Rgba64{ .r = std.mem.bigToNative(u16, u16_buffer[offset]), .g = std.mem.bigToNative(u16, u16_buffer[offset + channel_size]), .b = std.mem.bigToNative(u16, u16_buffer[offset + channel_size * 2]), .a = std.mem.bigToNative(u16, u16_buffer[offset + channel_size * 3]) };
                     }
                 }
             },
