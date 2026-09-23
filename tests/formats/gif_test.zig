@@ -645,6 +645,22 @@ test "GIF ignores a zero byte before the trailer" {
     try helpers.expectEq(img.animation.loop_count, zigimg.Image.AnimationLoopInfinite);
 }
 
+test "GIF graphic control survives a short read buffer" {
+    // 20 bytes empties the reader on the first tossed byte of this file.
+    var read_buffer: [20]u8 = undefined;
+    var img = try helpers.testImageFromFileWithAllocator(
+        helpers.zigimg_test_allocator,
+        test_io,
+        helpers.fixtures_path ++ "gif/toss-boundary.gif",
+        read_buffer[0..],
+    );
+    defer img.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(img.width, 2);
+    try helpers.expectEq(img.height, 2);
+    try helpers.expectEq(img.animation.frames.items.len, 2);
+}
+
 test "Rotating Earth GIF" {
     const gif_input_file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "gif/rotating_earth.gif");
     defer gif_input_file.close(test_io);

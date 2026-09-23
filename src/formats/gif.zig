@@ -464,8 +464,8 @@ pub const GIF = struct {
                 context.current_frame_data.?.graphics_control = blk: {
                     var graphics_control: GraphicControlExtension = undefined;
 
-                    // Eat block size
-                    context.reader.toss(1);
+                    // takeByte refills. toss aborts when this byte is not already buffered.
+                    _ = try context.reader.takeByte();
 
                     graphics_control.flags = try context.reader.takeStruct(GraphicControlExtensionFlags, .little);
                     graphics_control.delay_time = try context.reader.takeInt(u16, .little);
@@ -473,14 +473,14 @@ pub const GIF = struct {
                     if (graphics_control.flags.has_transparent_color) {
                         graphics_control.transparent_color_index = try context.reader.takeByte();
                     } else {
-                        // Eat transparent index byte
-                        context.reader.toss(1);
+                        // Eat transparent index byte.
+                        _ = try context.reader.takeByte();
 
                         graphics_control.transparent_color_index = 0;
                     }
 
-                    // Eat block terminator
-                    context.reader.toss(1);
+                    // Eat block terminator.
+                    _ = try context.reader.takeByte();
 
                     break :blk graphics_control;
                 };
@@ -584,8 +584,8 @@ pub const GIF = struct {
                 const new_application_info = blk: {
                     var application_info: ApplicationExtension = undefined;
 
-                    // Eat block size
-                    context.reader.toss(1);
+                    // Eat block size.
+                    _ = try context.reader.takeByte();
 
                     _ = try context.reader.readSliceAll(application_info.application_identifier[0..]);
                     _ = try context.reader.readSliceAll(application_info.authentification_code[0..]);
