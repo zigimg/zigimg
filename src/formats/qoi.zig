@@ -85,8 +85,8 @@ pub const Header = extern struct {
         @memcpy(result[0..4], &correct_magic);
         std.mem.writeInt(u32, result[4..8], header.width, .big);
         std.mem.writeInt(u32, result[8..12], header.height, .big);
-        result[12] = @intFromEnum(header.format);
-        result[13] = @intFromEnum(header.colorspace);
+        result[12] = @backingInt(header.format);
+        result[13] = @backingInt(header.colorspace);
         return result;
     }
 

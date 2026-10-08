@@ -235,7 +235,7 @@ pub const TagField = extern struct {
     // this function either returns an u16 casted to u32, or an u32
     // based on the tag data_type
     pub inline fn toLongOrShort(self: *const TagField, endianess: std.builtin.Endian) u32 {
-        return if (self.data_type == @intFromEnum(TagType.short)) self.toShort(endianess) else self.data_offset;
+        return if (self.data_type == @backingInt(TagType.short)) self.toShort(endianess) else self.data_offset;
     }
 
     pub inline fn toShort(self: *const TagField, endianess: std.builtin.Endian) u16 {
@@ -253,7 +253,7 @@ pub const TagField = extern struct {
     }
 
     pub fn readTagData(self: *const TagField, allocator: std.mem.Allocator, read_stream: *io.ReadStream, endianess: std.builtin.Endian) ![]u32 {
-        const byte_size = if (self.data_type == @intFromEnum(TagType.short)) self.data_count * 2 else self.data_count * 4;
+        const byte_size = if (self.data_type == @backingInt(TagType.short)) self.data_count * 2 else self.data_count * 4;
         const long_data: []u32 = try allocator.alloc(u32, self.data_count);
 
         // the offset is enough to hold the data so
@@ -272,7 +272,7 @@ pub const TagField = extern struct {
 
         _ = try reader.readSliceShort(data[0..]);
 
-        if (self.data_type == @intFromEnum(TagType.long)) {
+        if (self.data_type == @backingInt(TagType.long)) {
             if (endianess == native_endian) {
                 @memcpy(std.mem.sliceAsBytes(long_data)[0..], std.mem.sliceAsBytes(data)[0..]);
             } else {

@@ -199,7 +199,7 @@ const TargaRLEDecoder = struct {
     fn stream(reader: *std.Io.Reader, writer: *std.Io.Writer, limit: std.Io.Limit) std.Io.Reader.StreamError!usize {
         const self: *TargaRLEDecoder = @alignCast(@fieldParentPtr("reader", reader));
 
-        var remaining: usize = @intFromEnum(limit);
+        var remaining: usize = @backingInt(limit);
 
         state_machine: switch (self.state) {
             .read_header => {
@@ -230,7 +230,7 @@ const TargaRLEDecoder = struct {
                         self.state = .read_header;
                         continue :state_machine .read_header;
                     } else {
-                        return @intFromEnum(limit) - remaining;
+                        return @backingInt(limit) - remaining;
                     }
                 } else {
                     self.state = .read_header;
@@ -281,7 +281,7 @@ const TargaRLEDecoder = struct {
                         continue :state_machine .repeated;
                     }
                 } else {
-                    return @intFromEnum(limit) - remaining;
+                    return @backingInt(limit) - remaining;
                 }
             },
         }
@@ -466,7 +466,8 @@ fn RLEStreamEncoder(comptime ColorType: type) type {
                 if (std.mem.eql(u8, std.mem.asBytes(&rle_value), std.mem.asBytes(&value))) {
                     self.length += 1;
                 } else {
-                    try RunLengthEncoderCommon.flush(IntType, writer, @as(IntType, @bitCast(rle_value)), self.length);
+                    const int_value = std.mem.readVarInt(IntType, std.mem.asBytes(&rle_value), .little);
+                    try RunLengthEncoderCommon.flush(IntType, writer, int_value, self.length);
 
                     self.length = 1;
                     self.rle_value = value;
@@ -480,7 +481,8 @@ fn RLEStreamEncoder(comptime ColorType: type) type {
             }
 
             if (self.rle_value) |rle_value| {
-                try RunLengthEncoderCommon.flush(IntType, writer, @as(IntType, @bitCast(rle_value)), self.length);
+                const int_value = std.mem.readVarInt(IntType, std.mem.asBytes(&rle_value), .little);
+                try RunLengthEncoderCommon.flush(IntType, writer, int_value, self.length);
             }
         }
     };

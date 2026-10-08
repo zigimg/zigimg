@@ -181,10 +181,10 @@ const PngWriter = struct {
         try writer.writeInt(u32, header.width, .big);
         try writer.writeInt(u32, header.height, .big);
         try writer.writeInt(u8, header.bit_depth, .big);
-        try writer.writeInt(u8, @intFromEnum(header.color_type), .big);
-        try writer.writeInt(u8, @intFromEnum(header.compression_method), .big);
-        try writer.writeInt(u8, @intFromEnum(header.filter_method), .big);
-        try writer.writeInt(u8, @intFromEnum(header.interlace_method), .big);
+        try writer.writeInt(u8, @backingInt(header.color_type), .big);
+        try writer.writeInt(u8, @backingInt(header.compression_method), .big);
+        try writer.writeInt(u8, @backingInt(header.filter_method), .big);
+        try writer.writeInt(u8, @backingInt(header.interlace_method), .big);
 
         try writer.flush();
     }

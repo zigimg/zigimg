@@ -77,10 +77,10 @@ pub const ViewportMode = enum(u32) {
     ehb = 0x80,
     ham = 0x800,
     pub fn isEhb(mode: u32) bool {
-        return (@intFromEnum(ViewportMode.ehb) & mode) != 0;
+        return (@backingInt(ViewportMode.ehb) & mode) != 0;
     }
     pub fn isHam(mode: u32) bool {
-        return (@intFromEnum(ViewportMode.ham) & mode) != 0;
+        return (@backingInt(ViewportMode.ham) & mode) != 0;
     }
 };
 

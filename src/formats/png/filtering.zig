@@ -53,7 +53,7 @@ pub fn filter(allocator: std.mem.Allocator, writer: *std.Io.Writer, pixels: colo
             .specified => |f| f,
         };
 
-        writer.writeByte(@intFromEnum(filter_type)) catch return Image.WriteError.InvalidData;
+        writer.writeByte(@backingInt(filter_type)) catch return Image.WriteError.InvalidData;
 
         for (0..current_scanline_row.len) |byte_index| {
             const i = byte_index;
