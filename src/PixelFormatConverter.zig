@@ -866,7 +866,7 @@ pub fn convert(allocator: std.mem.Allocator, source: *const color.PixelStorage, 
 }
 
 fn conversionId(source_format: PixelFormat, destination_format: PixelFormat) u64 {
-    return @as(u64, @intFromEnum(source_format)) | @as(u64, @intFromEnum(destination_format)) << 32;
+    return @as(u64, @backingInt(source_format)) | @as(u64, @backingInt(destination_format)) << 32;
 }
 
 // ========================

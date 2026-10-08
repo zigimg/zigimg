@@ -108,22 +108,22 @@ pub const JPEG = struct {
         const reader = read_stream.reader();
         var marker = try reader.takeInt(u16, .big);
 
-        if (marker != @intFromEnum(Markers.start_of_image)) {
+        if (marker != @backingInt(Markers.start_of_image)) {
             return Image.ReadError.InvalidData;
         }
 
-        while (marker != @intFromEnum(Markers.end_of_image)) {
+        while (marker != @backingInt(Markers.end_of_image)) {
             marker = try reader.takeInt(u16, .big);
 
             if (JPEG_DEBUG) std.debug.print("Parsing marker value: 0x{X}\n", .{marker});
 
-            switch (@as(Markers, @enumFromInt(marker))) {
+            switch (@as(Markers, @fromBackingInt(@intCast(marker)))) {
                 .sof0, .sof2 => { // Baseline DCT, progressive DCT Huffman coding
                     if (self.frame != null) {
                         return Image.Error.Unsupported;
                     }
 
-                    self.frame = try Frame.read(self.allocator, @enumFromInt(marker), &self.quantization_tables, &self.dc_huffman_tables, &self.ac_huffman_tables, reader);
+                    self.frame = try Frame.read(self.allocator, @fromBackingInt(@intCast(marker)), &self.quantization_tables, &self.dc_huffman_tables, &self.ac_huffman_tables, reader);
                     try self.initializePixels(pixels_opt);
                 },
 
@@ -199,7 +199,7 @@ pub const JPEG = struct {
     fn formatDetect(read_stream: *io.ReadStream) Image.ReadError!bool {
         const reader = read_stream.reader();
         const maybe_start_of_image = try reader.peekInt(u16, .big);
-        return maybe_start_of_image == @intFromEnum(Markers.start_of_image);
+        return maybe_start_of_image == @backingInt(Markers.start_of_image);
     }
 
     fn readImage(allocator: std.mem.Allocator, read_stream: *io.ReadStream) Image.ReadError!Image {

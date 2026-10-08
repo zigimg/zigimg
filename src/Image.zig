@@ -368,7 +368,7 @@ fn internalDetectFormat(read_stream: *io.ReadStream) !Format {
 
         const found = try formatInterface.formatDetect(read_stream);
         if (found) {
-            return @enumFromInt(format_index);
+            return @fromBackingInt(@intCast(format_index));
         }
     }
 
@@ -403,5 +403,5 @@ fn findImageInterfaceFromStream(read_stream: *io.ReadStream) !FormatInterface {
 }
 
 fn findImageInterfaceFromImageFormat(image_format: Format) !FormatInterface {
-    return all_interface_funcs[@intFromEnum(image_format)]();
+    return all_interface_funcs[@backingInt(image_format)]();
 }

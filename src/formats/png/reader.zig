@@ -79,7 +79,7 @@ const IDatChunksReader = struct {
             return std.Io.Reader.StreamError.EndOfStream;
         }
 
-        const remaining: usize = @intFromEnum(limit);
+        const remaining: usize = @backingInt(limit);
 
         var to_read: usize = remaining;
         if (to_read > self.remaining_chunk_length) {
@@ -508,10 +508,10 @@ fn callPaletteProcessors(options: *const ReaderOptions, palette: []color.Rgba32)
 
 fn defilter(current_row: []u8, prev_row: []u8, filter_stride: u8) Image.ReadError!void {
     const filter_byte = current_row[filter_stride - 1];
-    if (filter_byte > @intFromEnum(png.FilterType.paeth)) {
+    if (filter_byte > @backingInt(png.FilterType.paeth)) {
         return Image.ReadError.InvalidData;
     }
-    const filter: png.FilterType = @enumFromInt(filter_byte);
+    const filter: png.FilterType = @fromBackingInt(@intCast(filter_byte));
     current_row[filter_stride - 1] = 0;
 
     var x: u32 = filter_stride;
@@ -1033,7 +1033,7 @@ test "testDefilter" {
 
 fn testFilter(filter_type: png.FilterType, current_row: []u8, prev_row: []u8, filter_stride: u8, expected: []const u8) !void {
     const expectEqualSlices = std.testing.expectEqualSlices;
-    current_row[filter_stride - 1] = @intFromEnum(filter_type);
+    current_row[filter_stride - 1] = @backingInt(filter_type);
     try defilter(current_row, prev_row, filter_stride);
     try expectEqualSlices(u8, expected, current_row);
 }

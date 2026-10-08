@@ -57,7 +57,7 @@ pub const PixelFormat = enum(u32) {
     float32 = toPixelFormatValue(.{ .variant = .float, .channel_count = 4, .bits_per_channel = 32 }),
 
     pub inline fn info(self: PixelFormat) PixelFormatInfo {
-        return @as(PixelFormatInfo, @bitCast(@intFromEnum(self)));
+        return @as(PixelFormatInfo, @bitCast(@backingInt(self)));
     }
 
     pub fn isGrayscale(self: PixelFormat) bool {
@@ -116,14 +116,14 @@ pub const PixelFormat = enum(u32) {
 comptime {
     const std = @import("std");
 
-    std.debug.assert(@intFromEnum(PixelFormat.grayscale1) == 0x101);
-    std.debug.assert(@intFromEnum(PixelFormat.grayscale16) == 0x110);
-    std.debug.assert(@intFromEnum(PixelFormat.grayscale8Alpha) == 0x208);
-    std.debug.assert(@intFromEnum(PixelFormat.rgb332) == 0x303);
-    std.debug.assert(@intFromEnum(PixelFormat.rgb555) == 0x305);
-    std.debug.assert(@intFromEnum(PixelFormat.rgb565) == 0x3305);
-    std.debug.assert(@intFromEnum(PixelFormat.rgba32) == 0x408);
-    std.debug.assert(@intFromEnum(PixelFormat.bgr24) == 0x1308);
-    std.debug.assert(@intFromEnum(PixelFormat.bgra32) == 0x1408);
-    std.debug.assert(@intFromEnum(PixelFormat.float32) == 0x2420);
+    std.debug.assert(@backingInt(PixelFormat.grayscale1) == 0x101);
+    std.debug.assert(@backingInt(PixelFormat.grayscale16) == 0x110);
+    std.debug.assert(@backingInt(PixelFormat.grayscale8Alpha) == 0x208);
+    std.debug.assert(@backingInt(PixelFormat.rgb332) == 0x303);
+    std.debug.assert(@backingInt(PixelFormat.rgb555) == 0x305);
+    std.debug.assert(@backingInt(PixelFormat.rgb565) == 0x3305);
+    std.debug.assert(@backingInt(PixelFormat.rgba32) == 0x408);
+    std.debug.assert(@backingInt(PixelFormat.bgr24) == 0x1308);
+    std.debug.assert(@backingInt(PixelFormat.bgra32) == 0x1408);
+    std.debug.assert(@backingInt(PixelFormat.float32) == 0x2420);
 }

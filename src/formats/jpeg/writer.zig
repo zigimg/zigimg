@@ -363,7 +363,7 @@ pub const JPEGWriter = struct {
     fn writeMarkerHeader(self: *JPEGWriter, marker: Markers, marker_len: usize) Image.WriteError!void {
         std.debug.assert(marker_len <= math.maxInt(u16));
 
-        const value = @intFromEnum(marker);
+        const value = @backingInt(marker);
         self.buf[0] = @as(u8, @intCast(value >> 8));
         self.buf[1] = @as(u8, @intCast(value & 0xff));
         self.buf[2] = @as(u8, @intCast(marker_len >> 8));
@@ -372,7 +372,7 @@ pub const JPEGWriter = struct {
     }
 
     fn writeMarker(self: *JPEGWriter, marker: Markers) Image.WriteError!void {
-        const value = @intFromEnum(marker);
+        const value = @backingInt(marker);
         self.buf[0] = @as(u8, @intCast(value >> 8));
         self.buf[1] = @as(u8, @intCast(value & 0xff));
         try self.writer.writeAll(self.buf[0..2]);
@@ -421,17 +421,17 @@ pub const JPEGWriter = struct {
     pub fn writeBlock(self: *JPEGWriter, block: *[64]i32, quant_idx: QuantIndex, prev_dc: i32) Image.WriteError!i32 {
         fdct(block);
 
-        const dc_table = @intFromEnum(quant_idx) * 2;
+        const dc_table = @backingInt(quant_idx) * 2;
         const ac_table = dc_table + 1;
 
-        const dc_quant = 8 * @as(i32, self.quant[@intFromEnum(quant_idx)][0]);
+        const dc_quant = 8 * @as(i32, self.quant[@backingInt(quant_idx)][0]);
         const dc = @divTrunc(block[0], dc_quant);
         try self.emitHuffRLE(dc_table, 0, dc - prev_dc);
 
         var run_length: i32 = 0;
 
         for (1..block_size) |zig| {
-            const quant = 8 * @as(i32, self.quant[@intFromEnum(quant_idx)][zig]);
+            const quant = 8 * @as(i32, self.quant[@backingInt(quant_idx)][zig]);
             const ac = @divTrunc(block[unzig[zig]], quant);
 
             if (ac == 0) {

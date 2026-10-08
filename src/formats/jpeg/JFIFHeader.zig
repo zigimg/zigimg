@@ -28,7 +28,7 @@ pub fn read(read_stream: *io.ReadStream) !JFIFHeader {
     const reader = read_stream.reader();
     try read_stream.seekTo(2);
     const maybe_app0_marker = try reader.takeInt(u16, .big);
-    if (maybe_app0_marker != @intFromEnum(Markers.app0)) {
+    if (maybe_app0_marker != @backingInt(Markers.app0)) {
         return error.App0MarkerDoesNotExist;
     }
 
@@ -44,7 +44,7 @@ pub fn read(read_stream: *io.ReadStream) !JFIFHeader {
     try reader.discardAll(1);
 
     const jfif_revision = try reader.takeInt(u16, .big);
-    const density_unit: DensityUnit = @enumFromInt(try reader.takeByte());
+    const density_unit: DensityUnit = @fromBackingInt(@intCast(try reader.takeByte()));
     const x_density = try reader.takeInt(u16, .big);
     const y_density = try reader.takeInt(u16, .big);
 
@@ -60,7 +60,7 @@ pub fn read(read_stream: *io.ReadStream) !JFIFHeader {
     // TODO: Support application markers, present in versions 1.02 and above.
     // see https://www.ecma-international.org/wp-content/uploads/ECMA_TR-98_1st_edition_june_2009.pdf
     // chapt 10.1
-    if (((try reader.takeInt(u16, .big)) & 0xFFF0) == @intFromEnum(Markers.app0)) {
+    if (((try reader.takeInt(u16, .big)) & 0xFFF0) == @backingInt(Markers.app0)) {
         return error.ExtraneousApplicationMarker;
     }
 

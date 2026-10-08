@@ -267,7 +267,7 @@ pub const GIF = struct {
             // Multi-frame animated GIF - write each frame with its bounds
             for (image.animation.frames.items) |frame| {
                 const delay_cs: u16 = @trunc(frame.duration * 100.0);
-                const disposal: DisposeMethod = @enumFromInt(frame.disposal);
+                const disposal: DisposeMethod = @fromBackingInt(@intCast(frame.disposal));
 
                 // Use frame bounds if set, otherwise use full image dimensions
                 const frame_width: u16 = if (frame.frame_width > 0) frame.frame_width else @truncate(image.width);
@@ -681,7 +681,7 @@ pub const GIF = struct {
 
             const lzw_minimum_code_size = try context.reader.takeByte();
 
-            if (lzw_minimum_code_size == @intFromEnum(DataBlockKind.end_of_file)) {
+            if (lzw_minimum_code_size == @backingInt(DataBlockKind.end_of_file)) {
                 return Image.ReadError.InvalidData;
             }
 
@@ -1281,8 +1281,8 @@ fn loopCountToExtension(loop_count: i32) Image.WriteError!?u16 {
 
 fn writeLoopExtension(writer: *std.Io.Writer, loop_count: u16) Image.WriteError!void {
     writer.writeAll(&[_]u8{
-        @intFromEnum(DataBlockKind.extension),
-        @intFromEnum(ExtensionKind.application_extension),
+        @backingInt(DataBlockKind.extension),
+        @backingInt(ExtensionKind.application_extension),
         0x0b, // Block size (always 11 for application extension)
     }) catch return Image.WriteError.WriteFailed;
     writer.writeAll("NETSCAPE2.0") catch return Image.WriteError.WriteFailed;
@@ -1420,8 +1420,8 @@ fn writeGraphicControlExtension(
     transparent_index: ?u8,
 ) Image.WriteError!void {
     var gce_block: [8]u8 = .{
-        @intFromEnum(DataBlockKind.extension), // 0x21 Extension Introducer
-        @intFromEnum(ExtensionKind.graphic_control), // 0xF9 Graphic Control Label
+        @backingInt(DataBlockKind.extension), // 0x21 Extension Introducer
+        @backingInt(ExtensionKind.graphic_control), // 0xF9 Graphic Control Label
         0x04, // Block Size (always 4)
         0x00, // Flags (will be set below)
         0x00, // Delay time low byte
@@ -1431,7 +1431,7 @@ fn writeGraphicControlExtension(
     };
 
     // Build flags byte
-    var flags: u8 = @as(u8, @intFromEnum(disposal)) << 2;
+    var flags: u8 = @as(u8, @backingInt(disposal)) << 2;
     if (transparent_index != null) {
         flags |= 0x01; // has_transparent_color
     }
@@ -1518,7 +1518,7 @@ fn writeImageBlock(
     const use_global = palettesMatch(palette, global_palette, transparent_index);
 
     var descriptor: [10]u8 = .{
-        @intFromEnum(DataBlockKind.image_descriptor), // 0x2C
+        @backingInt(DataBlockKind.image_descriptor), // 0x2C
         @truncate(left & 0xff),
         @truncate((left >> 8) & 0xff),
         @truncate(top & 0xff),
@@ -1623,14 +1623,14 @@ fn writeImageBlock(
 
 /// Write the GIF trailer
 fn writeTrailer(writer: *std.Io.Writer) Image.WriteError!void {
-    writer.writeByte(@intFromEnum(DataBlockKind.end_of_file)) catch return Image.WriteError.WriteFailed;
+    writer.writeByte(@backingInt(DataBlockKind.end_of_file)) catch return Image.WriteError.WriteFailed;
 }
 
 /// Write an application extension block
 fn writeApplicationExtension(writer: *std.Io.Writer, app_info: *const ApplicationExtension) Image.WriteError!void {
     writer.writeAll(&[_]u8{
-        @intFromEnum(DataBlockKind.extension), // 0x21
-        @intFromEnum(ExtensionKind.application_extension), // 0xFF
+        @backingInt(DataBlockKind.extension), // 0x21
+        @backingInt(ExtensionKind.application_extension), // 0xFF
         0x0b, // Block size (always 11)
     }) catch return Image.WriteError.WriteFailed;
 
@@ -1653,8 +1653,8 @@ fn writeApplicationExtension(writer: *std.Io.Writer, app_info: *const Applicatio
 /// Write a comment extension block
 fn writeCommentExtension(writer: *std.Io.Writer, comment: []const u8) Image.WriteError!void {
     writer.writeAll(&[_]u8{
-        @intFromEnum(DataBlockKind.extension), // 0x21
-        @intFromEnum(ExtensionKind.comment), // 0xFE
+        @backingInt(DataBlockKind.extension), // 0x21
+        @backingInt(ExtensionKind.comment), // 0xFE
     }) catch return Image.WriteError.WriteFailed;
 
     // Write comment data in sub-blocks (max 255 bytes each)
@@ -1703,7 +1703,7 @@ fn writeSubImage(
     const desc = sub_image.image_descriptor;
 
     // Write image descriptor
-    writer.writeByte(@intFromEnum(DataBlockKind.image_descriptor)) catch return Image.WriteError.WriteFailed;
+    writer.writeByte(@backingInt(DataBlockKind.image_descriptor)) catch return Image.WriteError.WriteFailed;
     writer.writeStruct(desc, .little) catch return Image.WriteError.WriteFailed;
 
     // Write local color table if present

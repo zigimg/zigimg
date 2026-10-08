@@ -199,7 +199,7 @@ const TargaRLEDecoder = struct {
     fn stream(reader: *std.Io.Reader, writer: *std.Io.Writer, limit: std.Io.Limit) std.Io.Reader.StreamError!usize {
         const self: *TargaRLEDecoder = @alignCast(@fieldParentPtr("reader", reader));
 
-        var remaining: usize = @intFromEnum(limit);
+        var remaining: usize = @backingInt(limit);
 
         state_machine: switch (self.state) {
             .read_header => {
@@ -230,7 +230,7 @@ const TargaRLEDecoder = struct {
                         self.state = .read_header;
                         continue :state_machine .read_header;
                     } else {
-                        return @intFromEnum(limit) - remaining;
+                        return @backingInt(limit) - remaining;
                     }
                 } else {
                     self.state = .read_header;
@@ -281,7 +281,7 @@ const TargaRLEDecoder = struct {
                         continue :state_machine .repeated;
                     }
                 } else {
-                    return @intFromEnum(limit) - remaining;
+                    return @backingInt(limit) - remaining;
                 }
             },
         }

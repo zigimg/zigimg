@@ -60,7 +60,7 @@ pub const TIFF = struct {
                     bitmap.image_height = tag.toLongOrShort(endianess);
                 },
                 .compression => {
-                    bitmap.compression = @enumFromInt(tag.toShort(endianess));
+                    bitmap.compression = @fromBackingInt(@intCast(tag.toShort(endianess)));
                 },
                 .color_map => {
                     // get color_map data: TIFF stores components as 16-bit values
@@ -95,7 +95,7 @@ pub const TIFF = struct {
                     bitmap.samples_per_pixel = tag.toShort(endianess);
                 },
                 .resolution_unit => {
-                    bitmap.resolution_unit = @enumFromInt(tag.toShort(endianess));
+                    bitmap.resolution_unit = @fromBackingInt(@intCast(tag.toShort(endianess)));
                 },
                 .new_subfile_type => {
                     bitmap.new_subfile_type = tag.toLong();
