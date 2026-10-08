@@ -2840,7 +2840,7 @@ pub const RgbColorspace = struct {
         const all_ones: math.float4 = @splat(1.0);
 
         for (slice_rgba) |*rgba| {
-            const lab_alpha: CIELabAlpha = .{ .l = rgba.r, .a = rgba.g, .b = rgba.b, .alpha = rgba.a };
+            const lab_alpha: *const CIELabAlpha = @ptrCast(rgba);
 
             const xyza = lab_alpha.toXYZAlphaPrecomputedWhitePoint(white_point_xyz);
 
@@ -2918,7 +2918,7 @@ pub const RgbColorspace = struct {
         const all_ones: math.float4 = @splat(1.0);
 
         for (slice_rgba) |*rgba| {
-            const luv_alpha: CIELuvAlpha = .{ .l = rgba.r, .u = rgba.g, .v = rgba.b, .alpha = rgba.a };
+            const luv_alpha: *const CIELuvAlpha = @ptrCast(rgba);
 
             const xyza = luv_alpha.toXYZAlphaPrecomputedWhitePoint(white_point_xyz);
 
@@ -2996,7 +2996,7 @@ pub const RgbColorspace = struct {
         const all_ones: math.float4 = @splat(1.0);
 
         for (slice_rgba) |*rgba| {
-            const lab_alpha: OklabAlpha = .{ .l = rgba.r, .a = rgba.g, .b = rgba.b, .alpha = rgba.a };
+            const lab_alpha: *const OklabAlpha = @ptrCast(rgba);
 
             const xyza = lab_alpha.toXYZAlpha();
 
