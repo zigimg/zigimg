@@ -18,7 +18,7 @@ How to add to your project:
 
 1. Clone this repository or add as a submodule
 1. Add to your `build.zig`
-```
+```zig
 pub fn build(b: *std.Build) void {
     exe.root_module.addAnonymousModule("zigimg", .{ .root_source_file = b.path("zigimg.zig") });
 }
