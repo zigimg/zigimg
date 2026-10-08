@@ -230,7 +230,7 @@ test "SGI 64-bit RGBA uncompressed - alpha channel bug test" {
     const width: u16 = 2;
     const height: u16 = 2;
 
-    var file_data: [544]u8 = .{0} ** 544;
+    var file_data: [544]u8 = @splat(0);
 
     file_data[0] = 0x01;
     file_data[1] = 0xda;
@@ -247,6 +247,7 @@ test "SGI 64-bit RGBA uncompressed - alpha channel bug test" {
 
     const data_offset = 512;
 
+    // zig fmt: off
     file_data[data_offset + 0] = 0x10; file_data[data_offset + 1] = 0x00;
     file_data[data_offset + 2] = 0x20; file_data[data_offset + 3] = 0x00;
     file_data[data_offset + 4] = 0x30; file_data[data_offset + 5] = 0x00;
@@ -266,6 +267,7 @@ test "SGI 64-bit RGBA uncompressed - alpha channel bug test" {
     file_data[data_offset + 26] = 0x12; file_data[data_offset + 27] = 0x34;
     file_data[data_offset + 28] = 0x56; file_data[data_offset + 29] = 0x78;
     file_data[data_offset + 30] = 0x9A; file_data[data_offset + 31] = 0xBC;
+    // zig fmt: on
 
     var read_stream = zigimg.io.ReadStream.initMemory(&file_data);
 
