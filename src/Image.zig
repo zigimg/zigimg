@@ -14,49 +14,13 @@ animation: Animation = .{},
 
 const Image = @This();
 
-const SupportedFormats = struct {
-    pub const bmp = formats.bmp.BMP;
-    pub const farbfeld = formats.farbfeld.Farbfeld;
-    pub const gif = formats.gif.GIF;
-    pub const iff = formats.iff.IFF;
-    pub const jpeg = formats.jpeg.JPEG;
-    pub const pam = formats.pam.PAM;
-    pub const pbm = formats.netpbm.PBM;
-    pub const pcx = formats.pcx.PCX;
-    pub const pgm = formats.netpbm.PGM;
-    pub const png = formats.png.PNG;
-    pub const ppm = formats.netpbm.PPM;
-    pub const qoi = formats.qoi.QOI;
-    pub const ras = formats.ras.RAS;
-    pub const sgi = formats.sgi.SGI;
-    pub const tga = formats.tga.TGA;
-    pub const tiff = formats.tiff.TIFF;
-    pub const xbm = formats.xbm.XBM;
-};
+const SupportedFormats = @import("format_info").SupportedFormats;
 
 pub const Editor = @import("Image/Editor.zig");
 pub const Managed = @import("Image/Managed.zig");
-pub const Format = std.meta.DeclEnum(SupportedFormats);
+pub const Format = @import("format_info").Format;
 
-pub const EncoderOptions = union(Format) {
-    bmp: SupportedFormats.bmp.EncoderOptions,
-    farbfeld: void,
-    gif: SupportedFormats.gif.EncoderOptions,
-    iff: void,
-    jpeg: SupportedFormats.jpeg.EncoderOptions,
-    pam: SupportedFormats.pam.EncoderOptions,
-    pbm: SupportedFormats.pbm.EncoderOptions,
-    pcx: SupportedFormats.pcx.EncoderOptions,
-    pgm: SupportedFormats.pgm.EncoderOptions,
-    png: SupportedFormats.png.EncoderOptions,
-    ppm: SupportedFormats.ppm.EncoderOptions,
-    qoi: SupportedFormats.qoi.EncoderOptions,
-    ras: void,
-    sgi: void,
-    tga: SupportedFormats.tga.EncoderOptions,
-    tiff: void,
-    xbm: void,
-};
+pub const EncoderOptions = @import("format_info").EncoderOptions;
 
 pub const Error = error{
     Unsupported,
