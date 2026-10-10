@@ -4,6 +4,8 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const default_disable_formats = b.option(bool, "default_disable_formats", "Disable support for all file formats by default") orelse false;
+
     const zigimg_module = b.addModule("zigimg", .{
         .root_source_file = b.path("zigimg.zig"),
         .target = target,
@@ -13,7 +15,7 @@ pub fn build(b: *std.Build) void {
     zigimg_module.addImport("zigimg", zigimg_module);
     zigimg_module.addImport(
         "format_info",
-        getSupportedFormatsModule(b, zigimg_module, target, optimize),
+        getSupportedFormatsModule(b, zigimg_module, target, optimize, default_disable_formats),
     );
 
     const test_filters = b.option([]const []const u8, "test-filter", "Skip tests that do not match any filter") orelse &[0][]const u8{};
@@ -45,24 +47,25 @@ fn getSupportedFormatsModule(
     zigimg_module: *std.Build.Module,
     target: std.Build.ResolvedTarget,
     optimize: std.lang.Optimize,
+    default_disable_formats: bool,
 ) *std.Build.Module {
-    const enable_bmp = b.option(bool, "bmp", "Enable BMP support (default: true)") orelse true;
-    const enable_farbfeld = b.option(bool, "farbfeld", "Enable Farbfeld support (default: true)") orelse true;
-    const enable_gif = b.option(bool, "gif", "Enable GIF support (default: true)") orelse true;
-    const enable_iff = b.option(bool, "iff", "Enable IFF support (default: true)") orelse true;
-    const enable_jpeg = b.option(bool, "jpeg", "Enable JPEG support (default: true)") orelse true;
-    const enable_pam = b.option(bool, "pam", "Enable PAM support (default: true)") orelse true;
-    const enable_pbm = b.option(bool, "pbm", "Enable PBM support (default: true)") orelse true;
-    const enable_pcx = b.option(bool, "pcx", "Enable PCX support (default: true)") orelse true;
-    const enable_pgm = b.option(bool, "pgm", "Enable PGM support (default: true)") orelse true;
-    const enable_png = b.option(bool, "png", "Enable PNG support (default: true)") orelse true;
-    const enable_ppm = b.option(bool, "ppm", "Enable PPM support (default: true)") orelse true;
-    const enable_qoi = b.option(bool, "qoi", "Enable QOI support (default: true)") orelse true;
-    const enable_ras = b.option(bool, "ras", "Enable RAS support (default: true)") orelse true;
-    const enable_sgi = b.option(bool, "sgi", "Enable SGI support (default: true)") orelse true;
-    const enable_tga = b.option(bool, "tga", "Enable TGA support (default: true)") orelse true;
-    const enable_tiff = b.option(bool, "tiff", "Enable TIFF support (default: true)") orelse true;
-    const enable_xbm = b.option(bool, "xbm", "Enable XBM support (default: true)") orelse true;
+    const enable_bmp = b.option(bool, "bmp", "Enable BMP support (default: true)") orelse !default_disable_formats;
+    const enable_farbfeld = b.option(bool, "farbfeld", "Enable Farbfeld support (default: true)") orelse !default_disable_formats;
+    const enable_gif = b.option(bool, "gif", "Enable GIF support (default: true)") orelse !default_disable_formats;
+    const enable_iff = b.option(bool, "iff", "Enable IFF support (default: true)") orelse !default_disable_formats;
+    const enable_jpeg = b.option(bool, "jpeg", "Enable JPEG support (default: true)") orelse !default_disable_formats;
+    const enable_pam = b.option(bool, "pam", "Enable PAM support (default: true)") orelse !default_disable_formats;
+    const enable_pbm = b.option(bool, "pbm", "Enable PBM support (default: true)") orelse !default_disable_formats;
+    const enable_pcx = b.option(bool, "pcx", "Enable PCX support (default: true)") orelse !default_disable_formats;
+    const enable_pgm = b.option(bool, "pgm", "Enable PGM support (default: true)") orelse !default_disable_formats;
+    const enable_png = b.option(bool, "png", "Enable PNG support (default: true)") orelse !default_disable_formats;
+    const enable_ppm = b.option(bool, "ppm", "Enable PPM support (default: true)") orelse !default_disable_formats;
+    const enable_qoi = b.option(bool, "qoi", "Enable QOI support (default: true)") orelse !default_disable_formats;
+    const enable_ras = b.option(bool, "ras", "Enable RAS support (default: true)") orelse !default_disable_formats;
+    const enable_sgi = b.option(bool, "sgi", "Enable SGI support (default: true)") orelse !default_disable_formats;
+    const enable_tga = b.option(bool, "tga", "Enable TGA support (default: true)") orelse !default_disable_formats;
+    const enable_tiff = b.option(bool, "tiff", "Enable TIFF support (default: true)") orelse !default_disable_formats;
+    const enable_xbm = b.option(bool, "xbm", "Enable XBM support (default: true)") orelse !default_disable_formats;
 
     var supported_formats_src: std.ArrayList(u8) = .empty;
     supported_formats_src.appendSlice(b.allocator, "const std = @import(\"std\");\n") catch @panic("OOM");
