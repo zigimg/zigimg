@@ -177,8 +177,10 @@ pub const BMP = struct {
         //  Fill header information based on pixel format
         switch (image.pixels) {
             .bgr24 => {
+                const row_byte_size = std.mem.alignForward(usize, image.width * 3, 4);
+
                 bmp.file_header = .{
-                    .size = @intCast(image.width * image.height * 3 + @sizeOf(BitmapFileHeader) + BitmapInfoHeaderV4.HeaderSize),
+                    .size = @intCast(row_byte_size * image.height + @sizeOf(BitmapFileHeader) + BitmapInfoHeaderV4.HeaderSize),
                     .pixel_offset = @sizeOf(BitmapFileHeader) + BitmapInfoHeaderV4.HeaderSize,
                 };
 
@@ -190,7 +192,7 @@ pub const BMP = struct {
                         .color_plane = 1,
                         .bit_count = 24,
                         .compression_method = .none,
-                        .image_raw_size = @intCast(image.width * image.height * 3),
+                        .image_raw_size = @intCast(row_byte_size * image.height),
                         .horizontal_resolution = PIXELS_PER_METER_RESOLUTION,
                         .vertical_resolution = PIXELS_PER_METER_RESOLUTION,
                         .color_space = .srgb,
@@ -366,6 +368,7 @@ pub const BMP = struct {
 
     fn readPixelsInternal(pixels: anytype, reader: *std.Io.Reader, pixel_width: i32, pixel_height: i32) Image.ReadError!void {
         const ColorBufferType = @typeInfo(@TypeOf(pixels)).pointer.child;
+        const padding = rowPadding(ColorBufferType, pixel_width);
 
         var x: i32 = 0;
         var y: i32 = pixel_height - 1;
@@ -376,7 +379,15 @@ pub const BMP = struct {
             while (x < pixel_width) : (x += 1) {
                 pixels[@intCast(scanline + x)] = try reader.takeStruct(ColorBufferType, .little);
             }
+
+            try reader.discardAll(padding);
         }
+    }
+
+    // Each row is padded to a multiple of 4 bytes
+    fn rowPadding(comptime ColorType: type, pixel_width: i32) usize {
+        const row_byte_size = @as(usize, @intCast(pixel_width)) * @sizeOf(ColorType);
+        return std.mem.alignForward(usize, row_byte_size, 4) - row_byte_size;
     }
 
     fn writePixels(writer: *std.Io.Writer, pixels: color.PixelStorage, pixel_width: i32, pixel_height: i32) Image.WriteError!void {
@@ -394,6 +405,8 @@ pub const BMP = struct {
     }
 
     fn writePixelsInternal(pixels: anytype, writer: *std.Io.Writer, pixel_width: i32, pixel_height: i32) Image.WriteError!void {
+        const padding = rowPadding(@typeInfo(@TypeOf(pixels)).pointer.child, pixel_width);
+
         var x: i32 = 0;
         var y: i32 = pixel_height - 1;
         while (y >= 0) : (y -= 1) {
@@ -403,6 +416,8 @@ pub const BMP = struct {
             while (x < pixel_width) : (x += 1) {
                 try writer.writeStruct(pixels[@intCast(scanline + x)], .little);
             }
+
+            try writer.splatByteAll(0, padding);
         }
     }
 };
