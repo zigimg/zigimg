@@ -17,6 +17,28 @@ const Scan = @This();
 const JPEG_DEBUG = false;
 const JPEG_VERY_DEBUG = false;
 
+/// Theoretical maximum magnitude of a DC coefficient for 8-bit sample precision.
+/// The JPEG spec (ITU-T T.81, §F.2.2.1 and Table F.1) bounds a single DC
+/// difference by the range of a category <= 11 value, i.e. [-(2^11 - 1), 2^11 - 1],
+/// and requires the accumulated (predicted) DC coefficient to stay inside the
+/// same representable range. A malformed bitstream can otherwise push the running
+/// predictor arbitrarily far, later overflowing downstream arithmetic.
+const DC_COEFFICIENT_MAX: i32 = (1 << 11) - 1;
+
+/// Adds a decoded DC difference to the running prediction value, rejecting
+/// streams whose accumulated predictor would leave the valid DC range. This
+/// catches the malformed-stream case before the value reaches dequantization,
+/// where the unchecked multiply would otherwise overflow.
+fn accumulateDC(predictor: *i32, diff: i32) Image.ReadError!i32 {
+    const dc_coefficient = std.math.add(i32, predictor.*, diff) catch
+        return Image.ReadError.InvalidData;
+    if (dc_coefficient > DC_COEFFICIENT_MAX or dc_coefficient < -DC_COEFFICIENT_MAX - 1) {
+        return Image.ReadError.InvalidData;
+    }
+    predictor.* = dc_coefficient;
+    return dc_coefficient;
+}
+
 frame: *const Frame,
 reader: HuffmanReader,
 
@@ -193,8 +215,10 @@ fn decodeBlockProgressive(self: *Scan, component: *const ScanComponentSpec, bloc
             const maybe_magnitude = try self.reader.readCode();
             if (maybe_magnitude > 11) return Image.ReadError.InvalidData;
             const diff = try self.reader.readMagnitudeCoded(@intCast(maybe_magnitude));
-            const dc_coefficient = diff + self.prediction_values[component_index];
-            self.prediction_values[component_index] = dc_coefficient;
+            const dc_coefficient = try accumulateDC(
+                &self.prediction_values[component_index],
+                diff,
+            );
             block[0] = dc_coefficient << self.approximation_low;
         } else if (self.approximation_high != 0) {
             const bit: u32 = try self.reader.readBits(1);
@@ -303,8 +327,10 @@ fn decodeBlockBaseline(self: *Scan, component: *const ScanComponentSpec, block: 
     var maybe_magnitude = try self.reader.readCode();
     if (maybe_magnitude > 11) return Image.ReadError.InvalidData;
     const diff: i32 = try self.reader.readMagnitudeCoded(@intCast(maybe_magnitude));
-    const dc_coefficient = diff + self.prediction_values[component_destination];
-    self.prediction_values[component_destination] = dc_coefficient;
+    const dc_coefficient = try accumulateDC(
+        &self.prediction_values[component_destination],
+        diff,
+    );
 
     block[0] = dc_coefficient;
 
@@ -359,3 +385,27 @@ pub const ScanComponentSpec = struct {
         };
     }
 };
+
+test "accumulateDC rejects predictors outside the valid DC range" {
+    const testing = std.testing;
+
+    // A single valid difference within the category <= 11 range is accepted.
+    var predictor: i32 = 0;
+    try testing.expectEqual(@as(i32, 2047), try accumulateDC(&predictor, 2047));
+    try testing.expectEqual(@as(i32, 2047), predictor);
+
+    // Accumulating past the theoretical maximum must be rejected instead of
+    // overflowing the predictor.
+    try testing.expectError(Image.ReadError.InvalidData, accumulateDC(&predictor, 1));
+    try testing.expectEqual(@as(i32, 2047), predictor);
+
+    // The negative bound (-2^11) is reachable but not exceedable.
+    var negative: i32 = 0;
+    try testing.expectEqual(@as(i32, -2048), try accumulateDC(&negative, -2048));
+    try testing.expectError(Image.ReadError.InvalidData, accumulateDC(&negative, -1));
+
+    // Values that would overflow i32 in the unchecked add must also be caught.
+    var huge: i32 = std.math.maxInt(i32) - 1;
+    try testing.expectError(Image.ReadError.InvalidData, accumulateDC(&huge, 1000));
+    try testing.expectEqual(std.math.maxInt(i32) - 1, huge);
+}
