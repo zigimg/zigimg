@@ -6,6 +6,7 @@ const PixelFormat = @import("pixel_format.zig").PixelFormat;
 const PixelFormatConverter = @import("PixelFormatConverter.zig");
 const std = @import("std");
 const utils = @import("utils.zig");
+const enabled_formats = @import("enabled_formats");
 
 width: usize = 0,
 height: usize = 0,
@@ -15,23 +16,23 @@ animation: Animation = .{},
 const Image = @This();
 
 const SupportedFormats = struct {
-    pub const bmp = formats.bmp.BMP;
-    pub const farbfeld = formats.farbfeld.Farbfeld;
-    pub const gif = formats.gif.GIF;
-    pub const iff = formats.iff.IFF;
-    pub const jpeg = formats.jpeg.JPEG;
-    pub const pam = formats.pam.PAM;
-    pub const pbm = formats.netpbm.PBM;
-    pub const pcx = formats.pcx.PCX;
-    pub const pgm = formats.netpbm.PGM;
-    pub const png = formats.png.PNG;
-    pub const ppm = formats.netpbm.PPM;
-    pub const qoi = formats.qoi.QOI;
-    pub const ras = formats.ras.RAS;
-    pub const sgi = formats.sgi.SGI;
-    pub const tga = formats.tga.TGA;
-    pub const tiff = formats.tiff.TIFF;
-    pub const xbm = formats.xbm.XBM;
+    pub const bmp = if (enabled_formats.bmp) formats.bmp.BMP else {};
+    pub const farbfeld = if (enabled_formats.farbfeld) formats.farbfeld.Farbfeld else {};
+    pub const gif = if (enabled_formats.gif) formats.gif.GIF else {};
+    pub const iff = if (enabled_formats.iff) formats.iff.IFF else {};
+    pub const jpeg = if (enabled_formats.jpeg) formats.jpeg.JPEG else {};
+    pub const pam = if (enabled_formats.pam) formats.pam.PAM else {};
+    pub const pbm = if (enabled_formats.pbm) formats.netpbm.PBM else {};
+    pub const pcx = if (enabled_formats.pcx) formats.pcx.PCX else {};
+    pub const pgm = if (enabled_formats.pgm) formats.netpbm.PGM else {};
+    pub const png = if (enabled_formats.png) formats.png.PNG else {};
+    pub const ppm = if (enabled_formats.ppm) formats.netpbm.PPM else {};
+    pub const qoi = if (enabled_formats.qoi) formats.qoi.QOI else {};
+    pub const ras = if (enabled_formats.ras) formats.ras.RAS else {};
+    pub const sgi = if (enabled_formats.sgi) formats.sgi.SGI else {};
+    pub const tga = if (enabled_formats.tga) formats.tga.TGA else {};
+    pub const tiff = if (enabled_formats.tiff) formats.tiff.TIFF else {};
+    pub const xbm = if (enabled_formats.xbm) formats.xbm.XBM else {};
 };
 
 pub const Editor = @import("Image/Editor.zig");
@@ -39,21 +40,21 @@ pub const Managed = @import("Image/Managed.zig");
 pub const Format = std.meta.DeclEnum(SupportedFormats);
 
 pub const EncoderOptions = union(Format) {
-    bmp: SupportedFormats.bmp.EncoderOptions,
+    bmp: if (enabled_formats.bmp) SupportedFormats.bmp.EncoderOptions else void,
     farbfeld: void,
-    gif: SupportedFormats.gif.EncoderOptions,
+    gif: if (enabled_formats.gif) SupportedFormats.gif.EncoderOptions else void,
     iff: void,
-    jpeg: SupportedFormats.jpeg.EncoderOptions,
-    pam: SupportedFormats.pam.EncoderOptions,
-    pbm: SupportedFormats.pbm.EncoderOptions,
-    pcx: SupportedFormats.pcx.EncoderOptions,
-    pgm: SupportedFormats.pgm.EncoderOptions,
-    png: SupportedFormats.png.EncoderOptions,
-    ppm: SupportedFormats.ppm.EncoderOptions,
-    qoi: SupportedFormats.qoi.EncoderOptions,
+    jpeg: if (enabled_formats.jpeg) SupportedFormats.jpeg.EncoderOptions else void,
+    pam: if (enabled_formats.pam) SupportedFormats.pam.EncoderOptions else void,
+    pbm: if (enabled_formats.pbm) SupportedFormats.pbm.EncoderOptions else void,
+    pcx: if (enabled_formats.pcx) SupportedFormats.pcx.EncoderOptions else void,
+    pgm: if (enabled_formats.pgm) SupportedFormats.pgm.EncoderOptions else void,
+    png: if (enabled_formats.png) SupportedFormats.png.EncoderOptions else void,
+    ppm: if (enabled_formats.ppm) SupportedFormats.ppm.EncoderOptions else void,
+    qoi: if (enabled_formats.qoi) SupportedFormats.qoi.EncoderOptions else void,
     ras: void,
     sgi: void,
-    tga: SupportedFormats.tga.EncoderOptions,
+    tga: if (enabled_formats.tga) SupportedFormats.tga.EncoderOptions else void,
     tiff: void,
     xbm: void,
 };
