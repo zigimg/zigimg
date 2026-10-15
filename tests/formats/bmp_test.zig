@@ -312,3 +312,29 @@ test "Write a v5 bitmap when writing an image with bgra32 pixel format" {
         try helpers.expectEq(read_image_pixels.bgra32[index].to.u32Rgb(), hex_color);
     }
 }
+
+test "Write and read a 24-bit bitmap with padded rows" {
+    const expected_colors = [_]u32{ 0xff0000, 0x00ff00, 0x0000ff, 0x000000, 0xffffff, 0x00ffff };
+
+    var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, 3, 2, .bgr24);
+    defer source_image.deinit(helpers.zigimg_test_allocator);
+
+    for (expected_colors, 0..) |hex_color, index| {
+        source_image.pixels.bgr24[index] = zigimg.color.Bgr24.from.u32Rgb(hex_color);
+    }
+
+    var image_buffer: [1024]u8 = undefined;
+    const encoded = try source_image.writeToMemory(helpers.zigimg_test_allocator, image_buffer[0..], .{ .bmp = .{} });
+
+    // Each row is 9 bytes of pixels padded to 12
+    try helpers.expectEq(encoded.len, @sizeOf(bmp.BitmapFileHeader) + bmp.BitmapInfoHeaderV4.HeaderSize + 2 * 12);
+
+    var read_image = try zigimg.Image.fromMemory(helpers.zigimg_test_allocator, encoded);
+    defer read_image.deinit(helpers.zigimg_test_allocator);
+
+    try std.testing.expect(read_image.pixels == .bgr24);
+
+    for (expected_colors, 0..) |hex_color, index| {
+        try helpers.expectEq(read_image.pixels.bgr24[index].to.u32Rgb(), hex_color);
+    }
+}
