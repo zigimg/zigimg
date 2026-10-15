@@ -298,6 +298,11 @@ test "Write a v5 bitmap when writing an image with bgra32 pixel format" {
 
     try std.testing.expect(read_bmp.info_header == .v5);
 
+    try helpers.expectEq(read_bmp.info_header.v5.red_mask, 0x00ff0000);
+    try helpers.expectEq(read_bmp.info_header.v5.green_mask, 0x0000ff00);
+    try helpers.expectEq(read_bmp.info_header.v5.blue_mask, 0x000000ff);
+    try helpers.expectEq(read_bmp.info_header.v5.alpha_mask, 0xff000000);
+
     try helpers.expectEq(read_bmp.width(), @as(i32, @intCast(width)));
     try helpers.expectEq(read_bmp.height(), @as(i32, @intCast(height)));
 
