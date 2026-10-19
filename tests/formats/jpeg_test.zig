@@ -243,6 +243,30 @@ test "Read progressive 4:2:0 JPEG with component ids 0, 1, and 2" {
     }
 }
 
+test "Read progressive 4:2:0 JPEG with padding" {
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "jpeg/tuba_prog_padding_subsampling420.jpg");
+    defer file.close(test_io);
+
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
+
+    var jpeg_file = jpeg.JPEG.init(helpers.zigimg_test_allocator);
+    defer jpeg_file.deinit();
+
+    var pixels_opt: ?zigimg.color.PixelStorage = null;
+    const frame = try jpeg_file.read(&read_stream, &pixels_opt);
+
+    defer {
+        if (pixels_opt) |pixels| {
+            pixels.deinit(helpers.zigimg_test_allocator);
+        }
+    }
+
+    try helpers.expectEq(frame.frame_header.width, 500);
+    try helpers.expectEq(frame.frame_header.height, 500);
+    try std.testing.expect(pixels_opt != null);
+}
+
 test "Read progressive jpeg with restart intervals" {
     const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "jpeg/tuba_restart_prog.jpg");
     defer file.close(test_io);
