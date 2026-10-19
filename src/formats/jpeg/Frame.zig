@@ -261,7 +261,7 @@ pub fn dequantizeBlocks(self: *Frame) Image.ReadError!void {
                     for (0..h_max) |h| {
                         const block_id = (y + v) * self.block_width_actual + (x + h);
                         const block = &self.block_storage[block_id][component_id];
-                        if (y + v >= self.block_height) {
+                        if (y + v >= self.block_height or x + h >= self.block_width) {
                             @memset(block, 0);
                             continue;
                         }
