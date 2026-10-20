@@ -476,16 +476,17 @@ test "JPEG writer round-trip with all test fixtures" {
 
     // Test all available JPEG fixtures with round-trip encoding/decoding
     const test_fixtures = [_][]const u8{
-        "test-suite/fixtures/jpeg/huff_simple0.jpg",
-        "test-suite/fixtures/jpeg/grayscale_sample0.jpg",
-        "test-suite/fixtures/jpeg/subsampling_410.jpg",
-        "test-suite/fixtures/jpeg/subsampling_411.jpg",
-        "test-suite/fixtures/jpeg/subsampling_420.jpg",
-        "test-suite/fixtures/jpeg/subsampling_422.jpg",
-        "test-suite/fixtures/jpeg/subsampling_440.jpg",
-        "test-suite/fixtures/jpeg/subsampling_444.jpg",
-        "test-suite/fixtures/jpeg/tuba.jpg",
-        "test-suite/fixtures/jpeg/tuba_restart_prog.jpg",
+        helpers.fixtures_path ++ "jpeg/huff_simple0.jpg",
+        helpers.fixtures_path ++ "jpeg/grayscale_sample0.jpg",
+        helpers.fixtures_path ++ "jpeg/subsampling_410.jpg",
+        helpers.fixtures_path ++ "jpeg/subsampling_411.jpg",
+        helpers.fixtures_path ++ "jpeg/subsampling_420.jpg",
+        helpers.fixtures_path ++ "jpeg/subsampling_422.jpg",
+        helpers.fixtures_path ++ "jpeg/subsampling_440.jpg",
+        helpers.fixtures_path ++ "jpeg/subsampling_444.jpg",
+        helpers.fixtures_path ++ "jpeg/tuba.jpg",
+        helpers.fixtures_path ++ "jpeg/tuba_restart_prog.jpg",
+        helpers.fixtures_path ++ "jpeg/tuba_prog_padding_subsampling420.jpg",
     };
 
     for (test_fixtures) |fixture_path| {
