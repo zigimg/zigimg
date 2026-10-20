@@ -243,6 +243,30 @@ test "Read progressive 4:2:0 JPEG with component ids 0, 1, and 2" {
     }
 }
 
+test "Read progressive 4:2:0 JPEG with padding" {
+    const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "jpeg/tuba_prog_padding_subsampling420.jpg");
+    defer file.close(test_io);
+
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, file, read_buffer[0..]);
+
+    var jpeg_file = jpeg.JPEG.init(helpers.zigimg_test_allocator);
+    defer jpeg_file.deinit();
+
+    var pixels_opt: ?zigimg.color.PixelStorage = null;
+    const frame = try jpeg_file.read(&read_stream, &pixels_opt);
+
+    defer {
+        if (pixels_opt) |pixels| {
+            pixels.deinit(helpers.zigimg_test_allocator);
+        }
+    }
+
+    try helpers.expectEq(frame.frame_header.width, 500);
+    try helpers.expectEq(frame.frame_header.height, 500);
+    try std.testing.expect(pixels_opt != null);
+}
+
 test "Read progressive jpeg with restart intervals" {
     const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "jpeg/tuba_restart_prog.jpg");
     defer file.close(test_io);
@@ -452,16 +476,17 @@ test "JPEG writer round-trip with all test fixtures" {
 
     // Test all available JPEG fixtures with round-trip encoding/decoding
     const test_fixtures = [_][]const u8{
-        "test-suite/fixtures/jpeg/huff_simple0.jpg",
-        "test-suite/fixtures/jpeg/grayscale_sample0.jpg",
-        "test-suite/fixtures/jpeg/subsampling_410.jpg",
-        "test-suite/fixtures/jpeg/subsampling_411.jpg",
-        "test-suite/fixtures/jpeg/subsampling_420.jpg",
-        "test-suite/fixtures/jpeg/subsampling_422.jpg",
-        "test-suite/fixtures/jpeg/subsampling_440.jpg",
-        "test-suite/fixtures/jpeg/subsampling_444.jpg",
-        "test-suite/fixtures/jpeg/tuba.jpg",
-        "test-suite/fixtures/jpeg/tuba_restart_prog.jpg",
+        helpers.fixtures_path ++ "jpeg/huff_simple0.jpg",
+        helpers.fixtures_path ++ "jpeg/grayscale_sample0.jpg",
+        helpers.fixtures_path ++ "jpeg/subsampling_410.jpg",
+        helpers.fixtures_path ++ "jpeg/subsampling_411.jpg",
+        helpers.fixtures_path ++ "jpeg/subsampling_420.jpg",
+        helpers.fixtures_path ++ "jpeg/subsampling_422.jpg",
+        helpers.fixtures_path ++ "jpeg/subsampling_440.jpg",
+        helpers.fixtures_path ++ "jpeg/subsampling_444.jpg",
+        helpers.fixtures_path ++ "jpeg/tuba.jpg",
+        helpers.fixtures_path ++ "jpeg/tuba_restart_prog.jpg",
+        helpers.fixtures_path ++ "jpeg/tuba_prog_padding_subsampling420.jpg",
     };
 
     for (test_fixtures) |fixture_path| {
