@@ -182,10 +182,10 @@ pub const TIFF = struct {
         };
     }
 
-    pub fn uncompressCCITT(self: *TIFF, read_stream: *io.ReadStream, dest_buffer: []u8, image_width: usize, num_rows: usize) !void {
+    pub fn uncompressCCITT(_: *TIFF, read_stream: *io.ReadStream, dest_buffer: []u8, image_width: usize, num_rows: usize) !void {
         var writer = std.Io.Writer.fixed(dest_buffer);
 
-        var ccitt_decoder = try ccitt.Decoder.init(image_width, num_rows, @truncate(self.bitmap.photometric_interpretation));
+        var ccitt_decoder = try ccitt.Decoder.init(image_width, num_rows);
 
         ccitt_decoder.decode(read_stream.reader(), &writer) catch {
             return Image.ReadError.InvalidData;
