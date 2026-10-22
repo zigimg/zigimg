@@ -21,6 +21,7 @@ test {
     _ = Colors;
     _ = io;
 
+    _ = @import("src/compressions/ccitt.zig");
     _ = @import("src/compressions/lzw.zig");
     _ = @import("tests/color_test.zig");
     _ = @import("tests/io_test.zig");
