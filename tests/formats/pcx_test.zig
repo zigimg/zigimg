@@ -569,6 +569,46 @@ test "Write PCX rgb24 (odd width)" {
     try helpers.expectEq(pixels.rgb24[26 * 27 + 26].b, 0x55);
 }
 
+test "Write PCX rgb24 (odd width with black channels)" {
+    const image_file_name = "zigimg_pcx_bpp24_odd_black.pcx";
+
+    var source_image = try zigimg.Image.create(helpers.zigimg_test_allocator, 3, 2, .rgb24);
+    defer source_image.deinit(helpers.zigimg_test_allocator);
+
+    const colors = [_]zigimg.color.Rgb24{
+        .{ .r = 0x00, .g = 0x00, .b = 0x00 },
+        .{ .r = 0xff, .g = 0x00, .b = 0x10 },
+        .{ .r = 0x00, .g = 0x80, .b = 0x00 },
+        .{ .r = 0x01, .g = 0x02, .b = 0x03 },
+        .{ .r = 0x00, .g = 0xff, .b = 0xff },
+        .{ .r = 0xff, .g = 0xff, .b = 0x00 },
+    };
+    @memcpy(source_image.pixels.rgb24, colors[0..]);
+
+    var write_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    try source_image.writeToFilePath(helpers.zigimg_test_allocator, test_io, image_file_name, write_buffer[0..], .{
+        .pcx = .{},
+    });
+
+    defer {
+        std.Io.Dir.cwd().deleteFile(test_io, image_file_name) catch {};
+    }
+
+    const read_file = try helpers.testOpenFile(test_io, image_file_name);
+    defer read_file.close(test_io);
+
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var read_stream = zigimg.io.ReadStream.initFile(test_io, read_file, read_buffer[0..]);
+
+    var pcx_file = pcx.PCX{};
+
+    const pixels = try pcx_file.read(helpers.zigimg_test_allocator, &read_stream);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try std.testing.expect(pixels == .rgb24);
+    try std.testing.expectEqualSlices(zigimg.color.Rgb24, colors[0..], pixels.rgb24);
+}
+
 test "Write PCX rgb24 (even width)" {
     var rainbow_test = try zigimg.Image.create(helpers.zigimg_test_allocator, 256, 256, .rgb24);
     defer rainbow_test.deinit(helpers.zigimg_test_allocator);
