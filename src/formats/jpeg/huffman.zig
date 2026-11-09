@@ -69,7 +69,7 @@ pub const Table = struct {
 
                 // construct accelaration structure see stb_image
                 if (i + 1 <= fast_bits) {
-                    const first_index = code << fast_bits - @as(u4, @intCast(i + 1));
+                    const first_index = code << (fast_bits - @as(u4, @intCast(i + 1)));
                     const num_indexes = @as(usize, 1) << @as(u4, @intCast(fast_bits - (i + 1)));
                     for (0..num_indexes) |index| {
                         std.debug.assert(fast_table[first_index + index] == 255);

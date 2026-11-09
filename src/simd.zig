@@ -70,7 +70,7 @@ fn vectorInnerType(comptime VectorType: type) type {
 }
 
 pub fn vpermd(v: @Vector(8, i32), mask: @Vector(8, i32)) @Vector(8, i32) {
-    const has_avx2 = comptime std.Target.x86.featureSetHas(builtin.cpu.features, .avx2);
+    const has_avx2 = comptime builtin.cpu.arch.isX86() and std.Target.x86.featureSetHas(builtin.cpu.features, .avx2);
     if (has_avx2) {
         return asm ("vpermd %[v], %[mask], %[dest]"
             : [dest] "=x" (-> @Vector(8, i32)),

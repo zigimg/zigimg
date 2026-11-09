@@ -252,7 +252,7 @@ pub const TIFF = struct {
                     for (0..byte_count) |strip_index| {
                         const byte = strip_buffer[strip_index];
                         for (0..8) |bit_index| {
-                            const value: u1 = @truncate(byte >> @intCast(@as(u3, 7) - bit_index) & 1);
+                            const value: u1 = @truncate((byte >> @intCast(@as(u3, 7) - bit_index)) & 1);
                             pixels[pixel_index].value = if (photometric_interpretation == 1) value else value ^ 1;
                             pixel_index += 1;
                             if (pixel_index >= pixels.len)
