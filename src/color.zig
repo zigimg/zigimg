@@ -408,31 +408,31 @@ fn ToMethods(
 
         pub fn u32Rgba(to: ToPointer) u32 {
             const self = to.getSelf();
-            return @as(u32, toU8(self.r)) << 24 |
-                @as(u32, toU8(self.g)) << 16 |
-                @as(u32, toU8(self.b)) << 8 |
+            return (@as(u32, toU8(self.r)) << 24) |
+                (@as(u32, toU8(self.g)) << 16) |
+                (@as(u32, toU8(self.b)) << 8) |
                 if (has_alpha) toU8(self.a) else 0xff;
         }
 
         pub fn u32Rgb(to: ToPointer) u32 {
             const self = to.getSelf();
-            return @as(u32, toU8(self.r)) << 16 |
-                @as(u32, toU8(self.g)) << 8 |
+            return (@as(u32, toU8(self.r)) << 16) |
+                (@as(u32, toU8(self.g)) << 8) |
                 toU8(self.b);
         }
 
         pub fn u64Rgba(to: ToPointer) u64 {
             const self = to.getSelf();
-            return @as(u64, toU16(self.r)) << 48 |
-                @as(u64, toU16(self.g)) << 32 |
-                @as(u64, toU16(self.b)) << 16 |
+            return (@as(u64, toU16(self.r)) << 48) |
+                (@as(u64, toU16(self.g)) << 32) |
+                (@as(u64, toU16(self.b)) << 16) |
                 if (has_alpha) toU16(self.a) else 0xffff;
         }
 
         pub fn u64Rgb(to: ToPointer) u64 {
             const self = to.getSelf();
-            return @as(u64, toU16(self.r)) << 32 |
-                @as(u64, toU16(self.g)) << 16 |
+            return (@as(u64, toU16(self.r)) << 32) |
+                (@as(u64, toU16(self.g)) << 16) |
                 toU16(self.b);
         }
 
@@ -802,31 +802,31 @@ fn ToMethodsGrayscale(
 
         pub fn u32Rgba(to: ToPointer) u32 {
             const self = to.getSelf();
-            return @as(u32, toU8(self.value)) << 24 |
-                @as(u32, toU8(self.value)) << 16 |
-                @as(u32, toU8(self.value)) << 8 |
+            return (@as(u32, toU8(self.value)) << 24) |
+                (@as(u32, toU8(self.value)) << 16) |
+                (@as(u32, toU8(self.value)) << 8) |
                 if (has_alpha) toU8(self.alpha) else 0xff;
         }
 
         pub fn u32Rgb(to: ToPointer) u32 {
             const self = to.getSelf();
-            return @as(u32, toU8(self.value)) << 16 |
-                @as(u32, toU8(self.value)) << 8 |
+            return (@as(u32, toU8(self.value)) << 16) |
+                (@as(u32, toU8(self.value)) << 8) |
                 toU8(self.value);
         }
 
         pub fn u64Rgba(to: ToPointer) u64 {
             const self = to.getSelf();
-            return @as(u64, toU16(self.value)) << 48 |
-                @as(u64, toU16(self.value)) << 32 |
-                @as(u64, toU16(self.value)) << 16 |
+            return (@as(u64, toU16(self.value)) << 48) |
+                (@as(u64, toU16(self.value)) << 32) |
+                (@as(u64, toU16(self.value)) << 16) |
                 if (has_alpha) toU16(self.alpha) else 0xffff;
         }
 
         pub fn u64Rgb(to: ToPointer) u64 {
             const self = to.getSelf();
-            return @as(u64, toU16(self.value)) << 32 |
-                @as(u64, toU16(self.value)) << 16 |
+            return (@as(u64, toU16(self.value)) << 32) |
+                (@as(u64, toU16(self.value)) << 16) |
                 toU16(self.value);
         }
 

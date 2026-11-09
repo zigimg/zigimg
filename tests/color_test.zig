@@ -284,7 +284,7 @@ test "Rgb.toFromU32Rgba()" {
         try helpers.expectEq(actual24_from_rgba.to.u32Rgba(), expected | 0xff);
         const actual24_from_rgb = color.Rgb24.from.u32Rgb(expected);
         try helpers.expectEq(actual24_from_rgb, expected_rgb24_from_rgb[i]);
-        try helpers.expectEq(actual24_from_rgb.to.u32Rgba(), expected << 8 | 0xff);
+        try helpers.expectEq(actual24_from_rgb.to.u32Rgba(), (expected << 8) | 0xff);
         const actual555_from_rgb = color.Rgb555.from.u32Rgb(expected);
         try helpers.expectEq(actual555_from_rgb, expected_rgb555_from_rgb[i]);
         try helpers.expectEq(actual555_from_rgb.to.u32Rgba(), expected_rgb555_from_rgb[i].to.color(color.Colorf32).to.u32Rgba());
@@ -300,7 +300,7 @@ test "Rgb.toFromU32Rgba()" {
         try helpers.expectEq(actual48_from_rgba.to.u32Rgba(), expected | 0xff);
         const actual48_from_rgb = color.Rgb48.from.u32Rgb(expected);
         try helpers.expectEq(actual48_from_rgb, expected_rgb48_from_rgb[i]);
-        try helpers.expectEq(actual48_from_rgb.to.u32Rgba(), expected << 8 | 0xff);
+        try helpers.expectEq(actual48_from_rgb.to.u32Rgba(), (expected << 8) | 0xff);
 
         // We make sure that conversion through u64 give the same result as through f32
         try helpers.expectEq(actual48_from_rgba.to.u64Rgba(), expected_colorf32[i].to.u64Rgba());
@@ -337,7 +337,7 @@ test "Rgb.toFromU64Rgba()" {
         try helpers.expectEq(actual_from_rgba.to.u64Rgba(), expected | 0xffff);
         const actual_from_rgb = color.Rgb48.from.u64Rgb(expected);
         try helpers.expectEq(actual_from_rgb, expected_rgb48_from_rgb[i]);
-        try helpers.expectEq(actual_from_rgb.to.u64Rgba(), expected << 16 | 0xffff);
+        try helpers.expectEq(actual_from_rgb.to.u64Rgba(), (expected << 16) | 0xffff);
 
         // We make sure that conversion through u64 give the same result as through f32
         try helpers.expectEq(actual_from_rgba.to.u64Rgba(), expected_colorf32[i].to.u64Rgba());

@@ -213,7 +213,7 @@ test "Read utc32 TGA file" {
         while (x < width) : (x += 1) {
             const strip_index = x / 8;
 
-            try helpers.expectEq(pixels.bgra32[stride + x].to.u32Rgba(), expected_strip[strip_index] << 8 | 0xff);
+            try helpers.expectEq(pixels.bgra32[stride + x].to.u32Rgba(), (expected_strip[strip_index] << 8) | 0xff);
         }
     }
 }
@@ -1191,7 +1191,7 @@ test "Write uncompressed 32-bit true color TGA" {
         while (x < width) : (x += 1) {
             const strip_index = x / 8;
 
-            try helpers.expectEq(pixels.bgra32[stride + x].to.u32Rgba(), expected_strip[strip_index] << 8 | 0xff);
+            try helpers.expectEq(pixels.bgra32[stride + x].to.u32Rgba(), (expected_strip[strip_index] << 8) | 0xff);
         }
     }
 }
@@ -1252,7 +1252,7 @@ test "Write compressed 32-bit true color TGA" {
         while (x < width) : (x += 1) {
             const strip_index = x / 8;
 
-            try helpers.expectEq(pixels.bgra32[stride + x].to.u32Rgba(), expected_strip[strip_index] << 8 | 0xff);
+            try helpers.expectEq(pixels.bgra32[stride + x].to.u32Rgba(), (expected_strip[strip_index] << 8) | 0xff);
         }
     }
 }
