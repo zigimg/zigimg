@@ -461,10 +461,11 @@ pub const PCX = struct {
                         x += 1;
                     },
                     .rgb24 => |storage| {
-                        if (has_dummy_byte and byte == 0x00) {
+                        const pixel_x = offset % (actual_width);
+                        // the pad byte that ends each plane of an odd-width row
+                        if (pixel_x >= image_width) {
                             continue;
                         }
-                        const pixel_x = offset % (actual_width);
                         const current_color = offset / (actual_width);
                         switch (current_color) {
                             0 => {
