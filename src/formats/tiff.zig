@@ -320,6 +320,13 @@ pub const TIFF = struct {
                 else => return Image.Error.Unsupported,
             }
         }
+
+        // WhiteIsZero: invert after the predictor pass, which works on the stored values
+        if (photometric_interpretation == 0 and pixel_storage.* == .grayscale8) {
+            for (pixel_storage.grayscale8) |*pixel| {
+                pixel.value = ~pixel.value;
+            }
+        }
     }
 
     pub fn read(self: *TIFF, allocator: std.mem.Allocator, read_stream: *io.ReadStream) Image.ReadError!color.PixelStorage {
