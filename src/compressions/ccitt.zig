@@ -228,10 +228,9 @@ pub const Decoder = struct {
     should_reverse: bool = false,
     width: usize = 0,
     num_rows: usize = 0,
-    white_value: u1 = 0,
 
-    pub fn init(width: usize, num_rows: usize, white_value: u1) !Decoder {
-        return .{ .width = width, .num_rows = num_rows, .white_value = white_value };
+    pub fn init(width: usize, num_rows: usize) !Decoder {
+        return .{ .width = width, .num_rows = num_rows };
     }
 
     pub fn decode(self: *Decoder, reader: *std.Io.Reader, writer: *std.Io.Writer) !void {
@@ -243,48 +242,51 @@ pub const Decoder = struct {
             .writer = writer,
         };
 
-        const max_row = self.num_rows;
-        var current_row: usize = 0;
-        var code_length: u8 = 0;
-        var code: u13 = 0;
-        var decoded_bits: u16 = 0;
         var bits_read: u16 = 0;
 
-        while (current_row < max_row) {
+        for (0..self.num_rows) |_| {
+            // Every row starts with a white run
+            self.current_color = .white;
             var pixels_to_decode = self.width;
-            // Max code_length is 13 bits long
-            while (pixels_to_decode > 0 and code_length < 14) {
+            var code_length: u8 = 0;
+            var code: u13 = 0;
+
+            // A row ends on a terminating code, even when a make-up code already filled it
+            var row_done = false;
+            while (!row_done) {
+                // Max code_length is 13 bits long
+                if (code_length == 13) {
+                    return Image.ReadError.InvalidData;
+                }
+
                 code <<= 1;
                 code |= try bit_reader.readBits(u1, 1, &bits_read);
                 code_length += 1;
 
-                const run_length = self.get_run_length(code, code_length);
+                const run_length = self.get_run_length(code, code_length) orelse continue;
 
-                if (run_length != null) {
-                    pixels_to_decode -= run_length.?;
-                    decoded_bits += code_length;
-                    for (0..run_length.?) |_| {
-                        _ = try bit_writer.writeBits(if (self.current_color == .white) @as(u1, self.white_value) else @as(u1, self.white_value ^ 1), 1);
-                    }
-                    code = 0;
-                    code_length = 0;
-                    if (self.should_reverse) {
-                        self.current_color = if (self.current_color == .white) Color.black else .white;
-                        self.should_reverse = false;
-                    }
+                if (run_length > pixels_to_decode) {
+                    return Image.ReadError.InvalidData;
+                }
+                pixels_to_decode -= run_length;
+
+                // Black runs are 1 bits, PhotometricInterpretation decides how they are displayed
+                const bit: u1 = if (self.current_color == .white) 0 else 1;
+                for (0..run_length) |_| {
+                    try bit_writer.writeBits(bit, 1);
+                }
+                code = 0;
+                code_length = 0;
+                if (self.should_reverse) {
+                    self.current_color = if (self.current_color == .white) Color.black else .white;
+                    self.should_reverse = false;
+                    row_done = pixels_to_decode == 0;
                 }
             }
-            current_row += 1;
-            const bits_remainder: u16 = decoded_bits % 8;
-            // Align to byte boundary
-            if (bits_remainder > 0) {
-                _ = try bit_reader.readBits(u1, 8 - bits_remainder, &bits_read);
-            }
 
-            // malfornmed file
-            if (pixels_to_decode != 0) {
-                return Image.ReadError.InvalidData;
-            }
+            // Rows start on a byte boundary, in the input and in the output
+            bit_reader.alignToByte();
+            try bit_writer.flushBits();
         }
     }
 
@@ -327,3 +329,35 @@ pub const Decoder = struct {
         return null;
     }
 };
+
+fn testDecode(width: usize, num_rows: usize, encoded: []const u8, expected: []const u8) !void {
+    var read_stream = io.ReadStream.initMemory(encoded);
+
+    var out_data: [64]u8 = @splat(0xaa);
+    var writer = std.Io.Writer.fixed(out_data[0..expected.len]);
+
+    var decoder = try Decoder.init(width, num_rows);
+    try decoder.decode(read_stream.reader(), &writer);
+
+    try std.testing.expectEqualSlices(u8, expected, out_data[0..expected.len]);
+}
+
+test "Decode several rows in one strip" {
+    // Rows: 64 white, 10 black + 54 white, 20 white + 44 black, 64 black
+    try testDecode(64, 4, &.{ 0xd9, 0xa8, 0x35, 0x08, 0x4a, 0x10, 0x0a, 0x80, 0x35, 0x03, 0xc3, 0x70 }, &.{
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0xff, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x0f, 0xff, 0xff, 0xff, 0xff, 0xff,
+        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    });
+}
+
+test "Decoded rows are padded to a byte boundary" {
+    // Rows: 12 white, 3 black + 9 white, 5 white + 7 black
+    try testDecode(12, 3, &.{ 0x20, 0x35, 0xa8, 0xc1, 0x80 }, &.{ 0x00, 0x00, 0xe0, 0x00, 0x07, 0xf0 });
+}
+
+test "Run longer than the row is invalid data" {
+    // White run of 64 in a row of 8 pixels
+    try std.testing.expectError(Image.ReadError.InvalidData, testDecode(8, 1, &.{ 0xd9, 0xa8 }, &.{0x00}));
+}
