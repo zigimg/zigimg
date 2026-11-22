@@ -183,15 +183,9 @@ pub const RAS = struct {
         const pixel_size = @max(1, (self.header.depth / 8));
         // calc line size, adding padding byte so that scanline
         // is multiple of 16 bits
-        const line_size = calc_line_width: {
-            if (self.header.depth == 1) {
-                const bytes_needed = (std.math.divCeil(usize, image_width, 8) catch 0);
-                // add padding if needed to make line width multiple of 16
-                break :calc_line_width bytes_needed + (bytes_needed & 1);
-            }
-            break :calc_line_width image_width;
-        };
-        const buffer_size = line_size * image_height * pixel_size;
+        const row_size = if (self.header.depth == 1) (std.math.divCeil(usize, image_width, 8) catch 0) else image_width * pixel_size;
+        const line_size = row_size + (row_size & 1);
+        const buffer_size = line_size * image_height;
         const buffer: []u8 = try allocator.alloc(u8, buffer_size);
         defer allocator.free(buffer);
 
@@ -209,11 +203,10 @@ pub const RAS = struct {
                 }
             },
             .grayscale8 => {
-                const pixel_array = pixels.asBytes();
-                @memcpy(pixel_array[0..], buffer[0..]);
+                copyRows(pixels.asBytes(), buffer, row_size, line_size);
             },
             .indexed8 => |*storage| {
-                @memcpy(storage.indices[0..], buffer[0..storage.indices.len]);
+                copyRows(storage.indices, buffer, row_size, line_size);
                 storage.resizePalette(self.palette.data.len);
                 for (0..self.palette.data.len) |index| {
                     const palette = storage.palette;
@@ -221,8 +214,7 @@ pub const RAS = struct {
                 }
             },
             .rgb24, .bgr24 => {
-                const pixel_array = pixels.asBytes();
-                @memcpy(pixel_array[0..], buffer[0..]);
+                copyRows(pixels.asBytes(), buffer, row_size, line_size);
             },
             .rgba32 => |*storage| {
                 if (self.header.type == .rgb) {
@@ -245,6 +237,14 @@ pub const RAS = struct {
         }
 
         return pixels;
+    }
+
+    // copy each scanline without the byte that pads it to 16 bits
+    fn copyRows(destination: []u8, buffer: []const u8, row_size: usize, line_size: usize) void {
+        var y: usize = 0;
+        while (y * row_size < destination.len) : (y += 1) {
+            @memcpy(destination[y * row_size ..][0..row_size], buffer[y * line_size ..][0..row_size]);
+        }
     }
 
     pub fn writeImage(allocator: std.mem.Allocator, write_stream: *io.WriteStream, image: Image, encoder_options: Image.EncoderOptions) Image.WriteError!void {

@@ -46,6 +46,25 @@ test "Sun-Raster 24-bit RGB24 uncompressed" {
     }
 }
 
+test "Sun-Raster 24-bit RGB24 odd width skips row padding" {
+    // 3x2 pixels: each 9-byte row is padded to 10 bytes
+    const data = [_]u8{
+        0x59, 0xa6, 0x6a, 0x95, 0, 0, 0, 3, 0, 0, 0,  2,  0,  0,  0,  24,
+        0,    0,    0,    20,   0, 0, 0, 3, 0, 0, 0,  0,  0,  0,  0,  0,
+        1,    2,    3,    4,    5, 6, 7, 8, 9, 0, 10, 11, 12, 13, 14, 15,
+        16,   17,   18,   0,
+    };
+    var read_stream = zigimg.io.ReadStream.initMemory(data[0..]);
+
+    var ras_file = ras.RAS{};
+
+    const pixels = try ras_file.read(helpers.zigimg_test_allocator, &read_stream);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try std.testing.expect(pixels == .rgb24);
+    try std.testing.expectEqualSlices(u8, &.{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 }, pixels.asBytes());
+}
+
 test "Sun-Raster 24-bit BGR24 uncompressed" {
     const file = try helpers.testOpenFile(test_io, helpers.fixtures_path ++ "ras/sample-bgr24.ras");
     defer file.close(test_io);
