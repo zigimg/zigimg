@@ -461,6 +461,24 @@ test "Read stopsignsmallcompressed TGA v1 file" {
     try helpers.expectEq(pixels.bgr24[479 * width + 215], zigimg.color.Bgr24.from.rgb(33, 29, 17));
 }
 
+test "Read RLE TGA v1 file without footer" {
+    // 12x1 truecolor RLE image with no footer, as ImageMagick writes it:
+    // 10 repeated pixels, then 2 raw pixels
+    const header = [_]u8{ 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, 0, 1, 0, 24, 0x20 };
+    const packets = [_]u8{ 0x89, 0x18, 0x22, 0xbc, 0x01, 0x11, 0x1d, 0x21, 0x00, 0x00, 0xff };
+    const data = header ++ packets;
+    var read_stream = zigimg.io.ReadStream.initMemory(data[0..]);
+
+    var tga_file = tga.TGA{};
+
+    const pixels = try tga_file.read(helpers.zigimg_test_allocator, &read_stream);
+    defer pixels.deinit(helpers.zigimg_test_allocator);
+
+    try helpers.expectEq(pixels.bgr24.len, 12);
+    try helpers.expectEq(pixels.bgr24[9], zigimg.color.Bgr24.from.rgb(188, 34, 24));
+    try helpers.expectEq(pixels.bgr24[11], zigimg.color.Bgr24.from.rgb(255, 0, 0));
+}
+
 test "Write TGA uncompressed grayscale8" {
     const image_file_name = "zigimg_tga_uncompressed_grayscale8.tga";
 

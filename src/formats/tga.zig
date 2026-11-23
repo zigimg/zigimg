@@ -203,7 +203,12 @@ const TargaRLEDecoder = struct {
 
         state_machine: switch (self.state) {
             .read_header => {
-                const packet_header = try self.source_reader.takeStruct(RLEPacketHeader, .little);
+                const packet_header = self.source_reader.takeStruct(RLEPacketHeader, .little) catch |err| {
+                    // A TGA without a footer ends right after the last packet: keep what this call produced
+                    const produced = @backingInt(limit) - remaining;
+                    if (err == error.EndOfStream and produced > 0) return produced;
+                    return err;
+                };
 
                 switch (packet_header.packet_type) {
                     .repeated => {
