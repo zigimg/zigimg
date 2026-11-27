@@ -735,9 +735,28 @@ pub const GIF = struct {
         var previous_canvas = try self.createNewAnimationFrame(frame_list_allocator, final_pixel_format);
         defer previous_canvas.deinit(frame_list_allocator);
 
+        // Frames are indexed and keep a pixel's index, so a palette entry can only be made transparent
+        // when every frame uses that index as its transparent color.
+        const palette_transparency_index: ?u8 = blk: {
+            var shared_index: ?u8 = null;
+            for (self.frames.items) |frame| {
+                const graphics_control = frame.graphics_control orelse break :blk null;
+                if (!graphics_control.flags.has_transparent_color) break :blk null;
+                if (shared_index) |index| {
+                    if (index != graphics_control.transparent_color_index) break :blk null;
+                }
+                shared_index = graphics_control.transparent_color_index;
+            }
+            break :blk shared_index;
+        };
+
         if (self.header.flags.use_global_color_table) {
-            fillPalette(&canvas, self.global_color_table.data, null);
-            fillWithBackgroundColor(&canvas, self.global_color_table.data, self.header.background_color_index);
+            fillPalette(&canvas, self.global_color_table.data, palette_transparency_index);
+            const fill_index = if (palette_transparency_index) |index|
+                (if (index < self.global_color_table.data.len) index else self.header.background_color_index)
+            else
+                self.header.background_color_index;
+            fillWithBackgroundColor(&canvas, self.global_color_table.data, fill_index);
 
             copyFrame(&canvas, &previous_canvas);
         }
@@ -767,14 +786,14 @@ pub const GIF = struct {
             }
 
             if (self.header.flags.use_global_color_table) {
-                fillPalette(&current_animation_frame, self.global_color_table.data, transparency_index_opt);
+                fillPalette(&current_animation_frame, self.global_color_table.data, palette_transparency_index);
             }
 
             for (frame.sub_images.items) |sub_image| {
                 const effective_color_table = if (sub_image.image_descriptor.flags.has_local_color_table) sub_image.local_color_table.data else self.global_color_table.data;
 
                 if (sub_image.image_descriptor.flags.has_local_color_table) {
-                    fillPalette(&current_animation_frame, effective_color_table, transparency_index_opt);
+                    fillPalette(&current_animation_frame, effective_color_table, palette_transparency_index);
                 }
 
                 self.renderSubImage(sub_image, &canvas, effective_color_table, transparency_index_opt);
@@ -811,9 +830,6 @@ pub const GIF = struct {
     }
 
     fn fillPalette(current_frame: *Image.AnimationFrame, effective_color_table: []const color.Rgb24, transparency_index_opt: ?u8) void {
-        // TODO: Support transparency index for indexed images
-        _ = transparency_index_opt;
-
         switch (current_frame.pixels) {
             .indexed1 => |pixels| {
                 for (0..@min(effective_color_table.len, pixels.palette.len)) |index| {
@@ -836,6 +852,17 @@ pub const GIF = struct {
                 }
             },
             else => {},
+        }
+
+        if (transparency_index_opt) |transparency_index| {
+            switch (current_frame.pixels) {
+                inline .indexed1, .indexed2, .indexed4, .indexed8 => |pixels| {
+                    if (transparency_index < pixels.palette.len) {
+                        pixels.palette[transparency_index].a = 0;
+                    }
+                },
+                else => {},
+            }
         }
     }
 

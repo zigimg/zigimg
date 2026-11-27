@@ -612,6 +612,25 @@ test "GIF test suite" {
     }
 }
 
+test "GIF transparent color index decodes as transparent" {
+    var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
+    var img = try helpers.testImageFromFileWithAllocator(
+        helpers.zigimg_test_allocator,
+        test_io,
+        helpers.fixtures_path ++ "gif/transparent.gif",
+        read_buffer[0..],
+    );
+    defer img.deinit(helpers.zigimg_test_allocator);
+
+    var iterator = img.iterator();
+    try helpers.expectEq(iterator.next().?.to.color(zigimg.color.Rgba32).a, 0);
+    try helpers.expectEq(iterator.next().?.to.color(zigimg.color.Rgba32), zigimg.color.Rgba32.from.rgba(0, 255, 0, 255));
+
+    try doGifTest("transparent");
+    try doGifTest("disabled-transparent");
+    try doGifTest("invalid-transparent");
+}
+
 test "GIF Netscape extension between graphic control and image" {
     var read_buffer: [zigimg.io.DEFAULT_BUFFER_SIZE]u8 = undefined;
     var img = try helpers.testImageFromFileWithAllocator(
@@ -970,7 +989,11 @@ fn doGifTest(entry_name: []const u8) !void {
                     for (pixel_list.items, 0..) |expected_color, index| {
                         if (frame_data_iterator.next()) |actual_color| {
                             if (expected_color.to.u32Rgba() == 0) {
-                                try helpers.expectEq(actual_color.to.color(zigimg.color.Rgba32), gif_background_color);
+                                // The suite marks transparent and background pixels alike; either rendering is accepted
+                                const actual = actual_color.to.color(zigimg.color.Rgba32);
+                                if (actual.a != 0) {
+                                    try helpers.expectEq(actual, gif_background_color);
+                                }
                             } else {
                                 helpers.expectEq(actual_color.to.color(zigimg.color.Rgba32), expected_color) catch |err| {
                                     std.debug.print("Pixel #{} does not match: expected={}, actual={}\n", .{ index, expected_color, actual_color.to.color(zigimg.color.Rgba32) });
